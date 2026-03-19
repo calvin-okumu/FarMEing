@@ -9,11 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import api from '../lib/api';
+import { database } from '../db';
 import { syncAll } from '../services/syncService';
 
 const CATEGORIES = [
@@ -29,7 +28,7 @@ const CATEGORIES = [
 ];
 
 export default function AddExpenseScreen({ route, navigation }) {
-  const { projectId } = route.params;
+  const { projectId } = route.params; // project's remoteId
   const [category, setCategory] = useState('Other');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -38,50 +37,24 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
 
   const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant camera roll permissions to add photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.7,
-        base64: false,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setPhoto(result.assets[0].uri);
-      }
-    } catch (err) {
-      console.warn('[AddExpense] pickImage error:', err.message);
-      Alert.alert('Error', 'Failed to pick image');
-    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant camera permissions to take photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        quality: 0.7,
-        base64: false,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setPhoto(result.assets[0].uri);
-      }
-    } catch (err) {
-      console.warn('[AddExpense] takePhoto error:', err.message);
-      Alert.alert('Error', 'Failed to take photo');
-    }
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
   const handleSave = async () => {
@@ -89,26 +62,32 @@ export default function AddExpenseScreen({ route, navigation }) {
       Alert.alert('Error', 'Amount is required');
       return;
     }
-    if (!date) {
-      Alert.alert('Error', 'Date is required');
-      return;
-    }
 
     setSaving(true);
     try {
-      const payload = {
-        projectId,
-        category,
-        amount: parseFloat(amount),
-        date,
-        note: note.trim() || null,
-        receiptPhoto: photo || null,
-      };
-      await api.post('/expenses', payload);
-      await syncAll();
+      // 1. Save to local WatermelonDB first (Offline-first!)
+      await database.write(async () => {
+        await database.get('expenses').create((record) => {
+          record._raw.id = `pending_${Date.now()}`;
+          record.remoteId = ''; // will be filled after sync
+          record.projectId = projectId;
+          record.category = category;
+          record.amount = parseFloat(amount);
+          record.date = new Date(date).getTime();
+          record.note = note.trim();
+          record.receiptUrl = photo || '';
+          record.isDeleted = false;
+          record.updatedAt = Date.now();
+        });
+      });
+
+      // 2. Trigger background sync
+      syncAll().catch(() => {});
+
+      // 3. Return immediately
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to save');
+      Alert.alert('Error', 'Failed to save locally');
     } finally {
       setSaving(false);
     }
@@ -137,7 +116,6 @@ export default function AddExpenseScreen({ route, navigation }) {
         value={amount}
         onChangeText={setAmount}
         placeholder="0.00"
-        placeholderTextColor="#9ca3af"
         keyboardType="decimal-pad"
       />
 
@@ -146,8 +124,6 @@ export default function AddExpenseScreen({ route, navigation }) {
         style={styles.input}
         value={date}
         onChangeText={setDate}
-        placeholder="2024-01-01"
-        placeholderTextColor="#9ca3af"
       />
 
       <Text style={styles.label}>Note</Text>
@@ -156,7 +132,6 @@ export default function AddExpenseScreen({ route, navigation }) {
         value={note}
         onChangeText={setNote}
         placeholder="Optional description..."
-        placeholderTextColor="#9ca3af"
         multiline
         numberOfLines={3}
       />
@@ -173,11 +148,11 @@ export default function AddExpenseScreen({ route, navigation }) {
         <View style={styles.photoButtons}>
           <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
             <Ionicons name="image-outline" size={24} color="#16a34a" />
-            <Text style={styles.photoButtonText}>Choose Photo</Text>
+            <Text style={styles.photoButtonText}>Album</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
             <Ionicons name="camera-outline" size={24} color="#16a34a" />
-            <Text style={styles.photoButtonText}>Take Photo</Text>
+            <Text style={styles.photoButtonText}>Camera</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -190,7 +165,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         {saving ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveButtonText}>Add Expense</Text>
+          <Text style={styles.saveButtonText}>Save Expense</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
@@ -198,106 +173,23 @@ export default function AddExpenseScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  content: {
-    padding: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  categoryRow: {
-    marginBottom: 4,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    marginRight: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: '#16a34a',
-    borderColor: '#16a34a',
-  },
-  categoryText: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  categoryTextActive: {
-    color: '#fff',
-  },
-  photoButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  photoButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 16,
-  },
-  photoButtonText: {
-    fontSize: 14,
-    color: '#16a34a',
-    fontWeight: '600',
-  },
-  photoContainer: {
-    position: 'relative',
-  },
-  photo: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    resizeMode: 'cover',
-  },
-  removePhoto: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-  },
-  saveButton: {
-    backgroundColor: '#16a34a',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#f9fafb' },
+  content: { padding: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
+  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a', backgroundColor: '#fff' },
+  textArea: { height: 80, textAlignVertical: 'top' },
+  categoryRow: { marginBottom: 4 },
+  categoryChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', marginRight: 8 },
+  categoryChipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  categoryText: { fontSize: 13, color: '#6b7280' },
+  categoryTextActive: { color: '#fff' },
+  photoButtons: { flexDirection: 'row', gap: 12 },
+  photoButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 16 },
+  photoButtonText: { fontSize: 14, color: '#16a34a', fontWeight: '600' },
+  photoContainer: { position: 'relative' },
+  photo: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover' },
+  removePhoto: { position: 'absolute', top: 8, right: 8, backgroundColor: '#fff', borderRadius: 12 },
+  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
+  saveButtonDisabled: { opacity: 0.6 },
+  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

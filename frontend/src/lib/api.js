@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 //   e.g. http://192.168.1.100:3000
 // For Android emulator use: http://10.0.2.2:3000
 // For iOS simulator use:    http://localhost:3000
-export const BASE_URL = 'http://192.168.0.171:3000';
+export const BASE_URL = 'http://192.168.9.118:3000';
 
 const api = axios.create({
     baseURL: BASE_URL,

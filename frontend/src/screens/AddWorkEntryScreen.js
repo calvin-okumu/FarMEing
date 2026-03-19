@@ -12,13 +12,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
-import api from '../lib/api';
 import { syncAll } from '../services/syncService';
 
 const ACTIVITIES = ['Planting', 'Weeding', 'Harvesting', 'Spraying', 'Other'];
 
 export default function AddWorkEntryScreen({ route, navigation }) {
-  const { projectId } = route.params; // remoteId of the project
+  const { projectId } = route.params; // project's remoteId
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,19 +58,32 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
     setSaving(true);
     try {
-      await api.post('/work-entries', {
-        projectId,
-        employeeId: selectedEmployee.remoteId,
-        activity,
-        date,
-        daysWorked: parseFloat(daysWorked),
-        ratePerDay: parseFloat(ratePerDay),
-        notes: notes.trim() || null,
+      // 1. Save locally (Offline-first!)
+      await database.write(async () => {
+        await database.get('work_entries').create((record) => {
+          record._raw.id = `pending_${Date.now()}`;
+          record.remoteId = '';
+          record.projectId = projectId;
+          record.employeeId = selectedEmployee.remoteId;
+          record.activity = activity;
+          record.date = new Date(date).getTime();
+          record.daysWorked = parseFloat(daysWorked);
+          record.ratePerDay = parseFloat(ratePerDay);
+          record.totalCost = total;
+          record.notes = notes.trim();
+          record.isPaid = false;
+          record.isDeleted = false;
+          record.updatedAt = Date.now();
+        });
       });
-      await syncAll();
+
+      // 2. Trigger sync
+      syncAll().catch(() => {});
+
+      // 3. Return
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to save');
+      Alert.alert('Error', 'Failed to save locally');
     } finally {
       setSaving(false);
     }
@@ -191,53 +203,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   content: { padding: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  
   label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
-  },
+  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a', backgroundColor: '#fff' },
   textArea: { height: 80, textAlignVertical: 'top' },
-  
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
-  
   scrollRow: { marginBottom: 4 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    marginRight: 8,
-  },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', marginRight: 8 },
   chipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
   chipText: { fontSize: 13, color: '#6b7280' },
   chipTextActive: { color: '#fff' },
-
   emptyButton: { padding: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#16a34a', borderRadius: 8, alignItems: 'center' },
   emptyButtonText: { color: '#16a34a', fontWeight: '600' },
-
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 8, marginTop: 20, borderWidth: 1, borderColor: '#e5e7eb' },
   totalLabel: { fontSize: 16, color: '#6b7280' },
   totalValue: { fontSize: 18, fontWeight: '700', color: '#16a34a' },
-
   saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
