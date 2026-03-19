@@ -1,16 +1,391 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+  Modal,
+  TextInput,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Q } from '@nozbe/watermelondb';
+import { Swipeable } from 'react-native-gesture-handler';
+import { database } from '../db';
+import { syncAll }   from '../services/syncService';
+import useAuthStore  from '../store/useAuthStore';
+import api           from '../lib/api';
 
-export default function ProjectsScreen() {
+export default function ProjectsScreen({ navigation }) {
+  const token    = useAuthStore((s) => s.token);
+  const [projects,   setProjects]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formData, setFormData] = useState({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: '' });
+  const [saving, setSaving] = useState(false);
+
+  // ── Create new project ─────────────────────────────────────────────────────
+  const handleCreate = async () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Project name is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        crop: formData.crop.trim() || null,
+        landSize: parseFloat(formData.landSize) || 0,
+        landUnit: formData.landUnit || 'acres',
+        startDate: formData.startDate || null,
+      };
+      await api.post('/projects', payload);
+      await syncAll();
+      setModalVisible(false);
+      setFormData({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: '' });
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to create project');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Soft delete project ────────────────────────────────────────────────────
+  const handleDelete = (project) => {
+    Alert.alert('Delete Project', `Are you sure you want to delete "${project.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/projects/${project.id}`);
+            await syncAll();
+          } catch (err) {
+            Alert.alert('Error', 'Failed to delete project');
+          }
+        },
+      },
+    ]);
+  };
+
+  // ── Load from local DB ───────────────────────────────────────────────────
+  const loadLocal = async () => {
+    try {
+      const col = database.get('farm_projects');
+      const rows = await col
+        .query(Q.where('is_deleted', false))
+        .fetch();
+      // Sort newest first by startDate
+      rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
+      setProjects(rows);
+    } catch (err) {
+      console.warn('[ProjectsScreen] load error:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Pull-to-refresh: sync then reload ────────────────────────────────────
+  const handleRefresh = async () => {
+    if (!token) return;
+    setRefreshing(true);
+    try {
+      await syncAll();
+      await loadLocal();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLocal();
+
+    // Subscribe to DB changes so list updates automatically after sync
+    const col          = database.get('farm_projects');
+    const subscription = col
+      .query(Q.where('is_deleted', false))
+      .observe()
+      .subscribe((rows) => {
+        rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
+        setProjects(rows);
+        setLoading(false);
+      });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#16a34a" />
+      </View>
+    );
+  }
+
+  // ── Swipeable row ─────────────────────────────────────────────────────────
+  const renderRightActions = (project) => (
+    <TouchableOpacity
+      style={styles.deleteAction}
+      onPress={() => handleDelete(project)}
+    >
+      <Ionicons name="trash-outline" size={22} color="#fff" />
+      <Text style={styles.deleteText}>Delete</Text>
+    </TouchableOpacity>
+  );
+
+  const renderItem = ({ item }) => (
+    <Swipeable renderRightActions={() => renderRightActions(item)}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardHeader}>
+          <Ionicons name="leaf" size={18} color="#16a34a" />
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+        </View>
+        <Text style={styles.cardCrop}>{item.crop}</Text>
+        <View style={styles.cardMeta}>
+          <Text style={styles.metaText}>{item.landSize} {item.landUnit}</Text>
+          {item.startDate ? (
+            <Text style={styles.metaText}>
+              {new Date(item.startDate).toLocaleDateString('en-GB')}
+            </Text>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+    </Swipeable>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Projects</Text>
-      <Text style={styles.subtitle}>Your farm projects will appear here.</Text>
+      {projects.length === 0 ? (
+        <View style={styles.center}>
+          <Ionicons name="leaf-outline" size={48} color="#d1fae5" />
+          <Text style={styles.emptyTitle}>No projects yet</Text>
+          <Text style={styles.emptySubtitle}>Pull down to sync from the server.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={projects}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#16a34a"
+            />
+          }
+        />
+      )}
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Create Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>New Project</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Project Name *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.name}
+              onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
+              placeholder="e.g. North Field Wheat"
+              placeholderTextColor="#9ca3af"
+            />
+
+            <Text style={styles.inputLabel}>Crop</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.crop}
+              onChangeText={(t) => setFormData(p => ({ ...p, crop: t }))}
+              placeholder="e.g. Wheat, Corn"
+              placeholderTextColor="#9ca3af"
+            />
+
+            <View style={styles.row}>
+              <View style={styles.halfInput}>
+                <Text style={styles.inputLabel}>Land Size</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.landSize}
+                  onChangeText={(t) => setFormData(p => ({ ...p, landSize: t }))}
+                  placeholder="0"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.halfInput}>
+                <Text style={styles.inputLabel}>Unit</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.landUnit}
+                  onChangeText={(t) => setFormData(p => ({ ...p, landUnit: t }))}
+                  placeholder="acres"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+            </View>
+
+            <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.startDate}
+              onChangeText={(t) => setFormData(p => ({ ...p, startDate: t }))}
+              placeholder="2024-01-01"
+              placeholderTextColor="#9ca3af"
+            />
+
+            <TouchableOpacity
+              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+              onPress={handleCreate}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>Create Project</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' },
-  title:     { fontSize: 24, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
-  subtitle:  { fontSize: 15, color: '#6b7280' },
+  container:     { flex: 1, backgroundColor: '#f9fafb' },
+  center:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  list:          { padding: 16, gap: 12 },
+  card:          { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  cardHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  cardTitle:     { fontSize: 16, fontWeight: '700', color: '#1a1a1a', flex: 1 },
+  cardCrop:      { fontSize: 13, color: '#6b7280', marginBottom: 8 },
+  cardMeta:      { flexDirection: 'row', justifyContent: 'space-between' },
+  metaText:      { fontSize: 12, color: '#9ca3af' },
+  emptyTitle:    { fontSize: 18, fontWeight: '600', color: '#6b7280', marginTop: 16 },
+  emptySubtitle: { fontSize: 14, color: '#9ca3af', marginTop: 4, textAlign: 'center' },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+
+  // Swipe delete
+  deleteAction: {
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 12,
+    marginVertical: 1,
+  },
+  deleteText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#1a1a1a',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfInput: {
+    flex: 1,
+  },
+  saveButton: {
+    backgroundColor: '#16a34a',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "eas-cli": "^18.4.0"
+  }
+}
