@@ -45,7 +45,13 @@ export default function DashboardScreen() {
   }, [selectedProject]);
 
   const loadProjectData = useCallback(async () => {
-    if (!selectedProject) return;
+    if (!selectedProject || !selectedProject.remoteId) {
+      setSummary(null);
+      setLaborByEmployee([]);
+      setLaborByActivity([]);
+      setUnpaidBalance(0);
+      return;
+    }
 
     try {
       // Fetch summary from API for accurate figures

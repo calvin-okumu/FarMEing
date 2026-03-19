@@ -36,6 +36,19 @@ export default function EmployeesScreen({ navigation }) {
       
       // Calculate balance for each employee
       const withBalances = await Promise.all(rows.map(async (emp) => {
+        // If remoteId is not yet available, we can't fetch its work entries/payments by remoteId
+        // In this app's architecture, we seem to be using remoteId for relations.
+        // If it's missing, balance is 0 for now until sync.
+        if (!emp.remoteId) {
+          return {
+            id: emp.id,
+            employee: emp,
+            totalEarned: 0,
+            totalPaid: 0,
+            balance: 0,
+          };
+        }
+
         const workEntries = await database.get('work_entries')
           .query(Q.where('employee_id', emp.remoteId))
           .fetch();
@@ -47,10 +60,16 @@ export default function EmployeesScreen({ navigation }) {
         const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
         const balance = totalEarned - totalPaid;
         
-        return { ...emp, totalEarned, totalPaid, balance };
+        return {
+          id: emp.id,
+          employee: emp,
+          totalEarned,
+          totalPaid,
+          balance,
+        };
       }));
       
-      withBalances.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+      withBalances.sort((a, b) => (a.employee.name ?? '').localeCompare(b.employee.name ?? ''));
       setEmployees(withBalances);
     } catch (err) {
       console.warn('[EmployeesScreen] load error:', err.message);
@@ -135,12 +154,13 @@ export default function EmployeesScreen({ navigation }) {
   );
 
   const renderItem = ({ item }) => {
+    const employee = item.employee;
     const balance = item.balance ?? 0;
     const isPositive = balance > 0;
     const isNegative = balance < 0;
     
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item)}>
+      <Swipeable renderRightActions={() => renderRightActions(employee)}>
         <TouchableOpacity 
           style={styles.card}
           onPress={() => navigation.navigate('EmployeeDetail', { employeeId: item.id })}
@@ -149,14 +169,14 @@ export default function EmployeesScreen({ navigation }) {
           <View style={styles.cardHeader}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {(item.name ?? '').charAt(0).toUpperCase()}
+                {(employee.name ?? '').charAt(0).toUpperCase()}
               </Text>
             </View>
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              {item.role && <Text style={styles.cardRole}>{item.role}</Text>}
+              <Text style={styles.cardTitle}>{employee.name}</Text>
+              {employee.role && <Text style={styles.cardRole}>{employee.role}</Text>}
             </View>
-            {item.phone && (
+            {employee.phone && (
               <TouchableOpacity onPress={() => {}}>
                 <Ionicons name="call-outline" size={20} color="#16a34a" />
               </TouchableOpacity>
