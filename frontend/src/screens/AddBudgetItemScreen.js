@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { database } from '../db';
@@ -76,86 +78,93 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Category</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
-        {CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
-            onPress={() => setCategory(cat)}
-          >
-            <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
-              {cat}
-            </Text>
-          </TouchableOpacity>
-        ))}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.flex}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.label}>Category</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
+              onPress={() => setCategory(cat)}
+            >
+              <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <Text style={styles.label}>Item Name *</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Urea Fertilizer"
+          placeholderTextColor="#9ca3af"
+        />
+
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <Text style={styles.label}>Quantity *</Text>
+            <TextInput
+              style={styles.input}
+              value={quantity}
+              onChangeText={setQuantity}
+              placeholder="0"
+              placeholderTextColor="#9ca3af"
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.half}>
+            <Text style={styles.label}>Unit</Text>
+            <TextInput
+              style={styles.input}
+              value={unit}
+              onChangeText={setUnit}
+              placeholder="kg, liters, etc."
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+        </View>
+
+        <Text style={styles.label}>Unit Price ($) *</Text>
+        <TextInput
+          style={styles.input}
+          value={unitPrice}
+          onChangeText={setUnitPrice}
+          placeholder="0.00"
+          placeholderTextColor="#9ca3af"
+          keyboardType="decimal-pad"
+        />
+
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Estimated Total:</Text>
+          <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Add Budget Item</Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
-
-      <Text style={styles.label}>Item Name *</Text>
-      <TextInput
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. Urea Fertilizer"
-        placeholderTextColor="#9ca3af"
-      />
-
-      <View style={styles.row}>
-        <View style={styles.half}>
-          <Text style={styles.label}>Quantity *</Text>
-          <TextInput
-            style={styles.input}
-            value={quantity}
-            onChangeText={setQuantity}
-            placeholder="0"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numeric"
-          />
-        </View>
-        <View style={styles.half}>
-          <Text style={styles.label}>Unit</Text>
-          <TextInput
-            style={styles.input}
-            value={unit}
-            onChangeText={setUnit}
-            placeholder="kg, liters, etc."
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
-      </View>
-
-      <Text style={styles.label}>Unit Price ($) *</Text>
-      <TextInput
-        style={styles.input}
-        value={unitPrice}
-        onChangeText={setUnitPrice}
-        placeholder="0.00"
-        placeholderTextColor="#9ca3af"
-        keyboardType="decimal-pad"
-      />
-
-      <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>Estimated Total:</Text>
-        <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.saveButtonText}>Add Budget Item</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { flex: 1, backgroundColor: '#f9fafb' },
   content: { padding: 16 },
   label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
@@ -170,7 +179,7 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 8, marginTop: 20 },
   totalLabel: { fontSize: 16, color: '#6b7280' },
   totalValue: { fontSize: 18, fontWeight: '700', color: '#16a34a' },
-  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
+  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24, marginBottom: 20 },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

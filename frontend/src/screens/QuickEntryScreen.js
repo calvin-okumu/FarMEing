@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { database } from '../db';
 import api from '../lib/api';
 import { syncAll } from '../services/syncService';
@@ -35,7 +38,8 @@ export default function QuickEntryScreen() {
   const [workers, setWorkers] = useState('1');
   const [days, setDays] = useState('1');
   const [rate, setRate] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const employeeInputRef = useRef(null);
   const rateInputRef = useRef(null);
@@ -67,6 +71,11 @@ export default function QuickEntryScreen() {
 
   const total = (parseFloat(workers) || 0) * (parseFloat(days) || 0) * (parseFloat(rate) || 0);
 
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) setDate(selectedDate);
+  };
+
   const handleSave = async () => {
     if (!selectedProject) {
       Alert.alert('Error', 'Please select a project');
@@ -84,50 +93,9 @@ export default function QuickEntryScreen() {
     setSaving(true);
     Keyboard.dismiss();
 
-    const workEntryData = {
-      projectId: selectedProject.remoteId,
-      employeeName: employeeName.trim(),
-      activity,
-      date,
-      daysWorked: (parseFloat(workers) || 1) * (parseFloat(days) || 1),
-      ratePerDay: parseFloat(rate) || 0,
-      totalCost: total,
-    };
-
     try {
-      // Try to sync first (if online)
-      try {
-        // Find or create employee
-        let empId = selectedEmployee?.remoteId;
-        
-        if (!empId) {
-          const existing = employees.find(e => 
-            e.name?.toLowerCase() === employeeName.trim().toLowerCase()
-          );
-          if (existing) {
-            empId = existing.remoteId;
-          } else {
-            const { data: newEmp } = await api.post('/employees', {
-              name: employeeName.trim(),
-            });
-            empId = newEmp.employee.id;
-          }
-        }
-
-        await api.post('/work-entries', {
-          projectId: workEntryData.projectId,
-          employeeId: empId,
-          activity: workEntryData.activity,
-          date: workEntryData.date,
-          daysWorked: workEntryData.daysWorked,
-          ratePerDay: workEntryData.ratePerDay,
-          totalCost: workEntryData.totalCost,
-        });
-      } catch (apiError) {
-        // Save locally for offline sync
-        console.log('[QuickEntry] Offline - saving locally');
-        await saveLocally(workEntryData);
-      }
+      // Offline-first: Save locally always
+      await saveLocally();
       
       // Reset form for next entry (keep project selected for speed)
       setEmployeeName('');
@@ -136,7 +104,7 @@ export default function QuickEntryScreen() {
       setWorkers('1');
       setDays('1');
       setRate('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(new Date());
       
       // Focus employee input for next entry
       setTimeout(() => {
@@ -149,25 +117,39 @@ export default function QuickEntryScreen() {
       syncAll().catch(() => {});
       
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to save');
+      Alert.alert('Error', 'Failed to save entry locally');
     } finally {
       setSaving(false);
     }
   };
 
-  const saveLocally = async (data) => {
-    // Save to local DB with pending sync flag
+  const saveLocally = async () => {
     await database.write(async () => {
+      // 1. Handle Employee if new
+      let empId = selectedEmployee?.remoteId;
+      if (!empId) {
+        const existing = employees.find(e => 
+          e.name?.toLowerCase() === employeeName.trim().toLowerCase()
+        );
+        if (existing) {
+          empId = existing.remoteId;
+        } else {
+          // If totally new, we'll use the name and sync will handle employee creation
+          empId = `name_${employeeName.trim()}`;
+        }
+      }
+
+      // 2. Create Work Entry
       await database.get('work_entries').create((record) => {
         record._raw.id = `pending_${Date.now()}`;
-        record.remoteId = `pending_${Date.now()}`;
-        record.projectId = data.projectId;
-        record.employeeId = data.employeeName; // Store name temporarily
-        record.activity = data.activity;
-        record.date = new Date(data.date).getTime();
-        record.daysWorked = data.daysWorked;
-        record.ratePerDay = data.ratePerDay;
-        record.totalCost = data.totalCost;
+        record.remoteId = '';
+        record.projectId = selectedProject.remoteId;
+        record.employeeId = empId;
+        record.activity = activity;
+        record.date = date.getTime();
+        record.daysWorked = (parseFloat(workers) || 1) * (parseFloat(days) || 1);
+        record.ratePerDay = parseFloat(rate) || 0;
+        record.totalCost = total;
         record.notes = '';
         record.isPaid = false;
         record.isDeleted = false;
@@ -189,178 +171,192 @@ export default function QuickEntryScreen() {
   }
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.flex}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      {/* Project Selection - Quick tap */}
-      <Text style={styles.label}>Project *</Text>
-      <TouchableOpacity
-        style={[styles.dropdown, !selectedProject && styles.dropdownPlaceholder]}
-        onPress={() => setProjectDropdownVisible(!projectDropdownVisible)}
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.dropdownText, !selectedProject && styles.placeholder]}>
-          {selectedProject?.name || 'Select project...'}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color="#6b7280" />
-      </TouchableOpacity>
-      
-      {projectDropdownVisible && (
-        <View style={styles.dropdownMenu}>
-          {projects.length === 0 ? (
-            <Text style={styles.dropdownEmpty}>No projects</Text>
-          ) : (
-            projects.map((proj) => (
+        {/* Project Selection - Quick tap */}
+        <Text style={styles.label}>Project *</Text>
+        <TouchableOpacity
+          style={[styles.dropdown, !selectedProject && styles.dropdownPlaceholder]}
+          onPress={() => setProjectDropdownVisible(!projectDropdownVisible)}
+        >
+          <Text style={[styles.dropdownText, !selectedProject && styles.placeholder]}>
+            {selectedProject?.name || 'Select project...'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#6b7280" />
+        </TouchableOpacity>
+        
+        {projectDropdownVisible && (
+          <View style={styles.dropdownMenu}>
+            {projects.length === 0 ? (
+              <Text style={styles.dropdownEmpty}>No projects</Text>
+            ) : (
+              projects.map((proj) => (
+                <TouchableOpacity
+                  key={proj.id}
+                  style={[
+                    styles.dropdownItem,
+                    selectedProject?.id === proj.id && styles.dropdownItemActive
+                  ]}
+                  onPress={() => {
+                    setSelectedProject(proj);
+                    setProjectDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>{proj.name}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* Employee - Auto-focus on load */}
+        <Text style={styles.label}>Employee *</Text>
+        <TextInput
+          ref={employeeInputRef}
+          style={styles.input}
+          value={employeeName}
+          onChangeText={(t) => {
+            setEmployeeName(t);
+            setSelectedEmployee(null);
+            setEmployeeDropdownVisible(t.length > 0);
+          }}
+          onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
+          placeholder="Type name..."
+          placeholderTextColor="#9ca3af"
+          autoCapitalize="words"
+          returnKeyType="next"
+        />
+        
+        {employeeDropdownVisible && filteredEmployees.length > 0 && (
+          <View style={styles.employeeDropdown}>
+            {filteredEmployees.slice(0, 3).map((emp) => (
               <TouchableOpacity
-                key={proj.id}
-                style={[
-                  styles.dropdownItem,
-                  selectedProject?.id === proj.id && styles.dropdownItemActive
-                ]}
+                key={emp.id}
+                style={styles.employeeItem}
                 onPress={() => {
-                  setSelectedProject(proj);
-                  setProjectDropdownVisible(false);
-                  rateInputRef.current?.focus();
+                  setEmployeeName(emp.name);
+                  setSelectedEmployee(emp);
+                  setEmployeeDropdownVisible(false);
                 }}
               >
-                <Text style={styles.dropdownItemText}>{proj.name}</Text>
+                <Text>{emp.name}</Text>
               </TouchableOpacity>
-            ))
-          )}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {/* Employee - Auto-focus on load */}
-      <Text style={styles.label}>Employee *</Text>
-      <TextInput
-        ref={employeeInputRef}
-        style={styles.input}
-        value={employeeName}
-        onChangeText={(t) => {
-          setEmployeeName(t);
-          setSelectedEmployee(null);
-          setEmployeeDropdownVisible(t.length > 0);
-        }}
-        onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
-        placeholder="Type name..."
-        placeholderTextColor="#9ca3af"
-        autoCapitalize="words"
-        returnKeyType="next"
-      />
-      
-      {employeeDropdownVisible && filteredEmployees.length > 0 && (
-        <View style={styles.employeeDropdown}>
-          {filteredEmployees.slice(0, 3).map((emp) => (
+        {/* Activity - Horizontal scroll chips */}
+        <Text style={styles.label}>Activity</Text>
+        <View style={styles.activityRow}>
+          {ACTIVITIES.map((act) => (
             <TouchableOpacity
-              key={emp.id}
-              style={styles.employeeItem}
-              onPress={() => {
-                setEmployeeName(emp.name);
-                setSelectedEmployee(emp);
-                setEmployeeDropdownVisible(false);
-                rateInputRef.current?.focus();
-              }}
+              key={act}
+              style={[styles.activityChip, activity === act && styles.activityChipActive]}
+              onPress={() => setActivity(act)}
             >
-              <Text>{emp.name}</Text>
+              <Text style={[styles.activityText, activity === act && styles.activityTextActive]}>
+                {act}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
-      )}
 
-      {/* Activity - Horizontal scroll chips */}
-      <Text style={styles.label}>Activity</Text>
-      <View style={styles.activityRow}>
-        {ACTIVITIES.map((act) => (
-          <TouchableOpacity
-            key={act}
-            style={[styles.activityChip, activity === act && styles.activityChipActive]}
-            onPress={() => setActivity(act)}
-          >
-            <Text style={[styles.activityText, activity === act && styles.activityTextActive]}>
-              {act}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        {/* Date */}
+        <Text style={styles.label}>Date</Text>
+        <TouchableOpacity 
+          style={styles.dateSelector} 
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text style={styles.dateSelectorText}>
+            {date.toLocaleDateString('en-GB')}
+          </Text>
+          <Ionicons name="calendar-outline" size={20} color="#16a34a" />
+        </TouchableOpacity>
 
-      {/* Date */}
-      <Text style={styles.label}>Date</Text>
-      <TextInput
-        style={styles.input}
-        value={date}
-        onChangeText={setDate}
-        placeholder="YYYY-MM-DD"
-        placeholderTextColor="#9ca3af"
-      />
-
-      {/* Workers, Days, Rate - Single row for speed */}
-      <View style={styles.row}>
-        <View style={styles.third}>
-          <Text style={styles.labelSmall}>Workers</Text>
-          <TextInput
-            style={[styles.input, styles.inputSmall]}
-            value={workers}
-            onChangeText={setWorkers}
-            keyboardType="numeric"
+        {showDatePicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onDateChange}
           />
-        </View>
-        <View style={styles.third}>
-          <Text style={styles.labelSmall}>Days</Text>
-          <TextInput
-            style={[styles.input, styles.inputSmall]}
-            value={days}
-            onChangeText={setDays}
-            keyboardType="numeric"
-          />
-        </View>
-        <View style={styles.third}>
-          <Text style={styles.labelSmall}>Rate ($)</Text>
-          <TextInput
-            ref={rateInputRef}
-            style={[styles.input, styles.inputSmall]}
-            value={rate}
-            onChangeText={setRate}
-            keyboardType="decimal-pad"
-            placeholder="0"
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
-      </View>
-
-      {/* Total Preview - Always visible */}
-      <View style={styles.totalContainer}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
-      </View>
-
-      {/* Save Button - Large, easy to tap */}
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <>
-            <Ionicons name="checkmark-circle" size={24} color="#fff" />
-            <Text style={styles.saveButtonText}>SAVE ENTRY</Text>
-          </>
         )}
-      </TouchableOpacity>
-    </ScrollView>
+
+        {/* Workers, Days, Rate - Single row for speed */}
+        <View style={styles.row}>
+          <View style={styles.third}>
+            <Text style={styles.labelSmall}>Workers</Text>
+            <TextInput
+              style={[styles.input, styles.inputSmall]}
+              value={workers}
+              onChangeText={setWorkers}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.third}>
+            <Text style={styles.labelSmall}>Days</Text>
+            <TextInput
+              style={[styles.input, styles.inputSmall]}
+              value={days}
+              onChangeText={setDays}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.third}>
+            <Text style={styles.labelSmall}>Rate ($)</Text>
+            <TextInput
+              ref={rateInputRef}
+              style={[styles.input, styles.inputSmall]}
+              value={rate}
+              onChangeText={setRate}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+        </View>
+
+        {/* Total Preview - Always visible */}
+        <View style={styles.totalContainer}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
+        </View>
+
+        {/* Save Button - Large, easy to tap */}
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+              <Text style={styles.saveButtonText}>SAVE ENTRY</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { flex: 1, backgroundColor: '#f9fafb' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 16, paddingBottom: 40 },
-  
+  content: { padding: 16, paddingBottom: 60 },
   label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
   labelSmall: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
-  
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -374,7 +370,6 @@ const styles = StyleSheet.create({
   dropdownPlaceholder: { borderColor: '#d1d5db' },
   dropdownText: { fontSize: 16, color: '#1a1a1a', fontWeight: '500' },
   placeholder: { color: '#9ca3af' },
-  
   dropdownMenu: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -382,12 +377,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 4,
     maxHeight: 180,
+    zIndex: 10,
   },
   dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   dropdownItemActive: { backgroundColor: '#f0fdf4' },
   dropdownItemText: { fontSize: 16, color: '#1a1a1a' },
   dropdownEmpty: { padding: 14, color: '#9ca3af', textAlign: 'center' },
-
   input: {
     borderWidth: 1,
     borderColor: '#d1d5db',
@@ -403,7 +398,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 14,
+    backgroundColor: '#fff',
+  },
+  dateSelectorText: { fontSize: 16, color: '#1a1a1a' },
   employeeDropdown: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -411,13 +416,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 4,
     maxHeight: 120,
+    zIndex: 10,
   },
   employeeItem: {
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
-
   activityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   activityChip: {
     paddingHorizontal: 16,
@@ -433,10 +438,8 @@ const styles = StyleSheet.create({
   },
   activityText: { fontSize: 14, color: '#6b7280', fontWeight: '500' },
   activityTextActive: { color: '#fff' },
-
   row: { flexDirection: 'row', gap: 8, marginTop: 8 },
   third: { flex: 1 },
-
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -448,7 +451,6 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 18, color: '#fff', fontWeight: '600' },
   totalValue: { fontSize: 32, color: '#fff', fontWeight: '700' },
-
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,6 +460,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 18,
     marginTop: 16,
+    marginBottom: 40,
   },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },

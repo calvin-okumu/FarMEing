@@ -11,10 +11,13 @@ import {
   Modal,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { Swipeable } from 'react-native-gesture-handler';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { database } from '../db';
 import { syncAll }   from '../services/syncService';
 import useAuthStore  from '../store/useAuthStore';
@@ -26,7 +29,8 @@ export default function ProjectsScreen({ navigation }) {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: '' });
+  const [formData, setFormData] = useState({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: new Date() });
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // ── Create new project ─────────────────────────────────────────────────────
@@ -37,19 +41,31 @@ export default function ProjectsScreen({ navigation }) {
     }
     setSaving(true);
     try {
-      const payload = {
-        name: formData.name.trim(),
-        crop: formData.crop.trim() || null,
-        landSize: parseFloat(formData.landSize) || 0,
-        landUnit: formData.landUnit || 'acres',
-        startDate: formData.startDate || null,
-      };
-      await api.post('/projects', payload);
-      await syncAll();
+      // 1. Save to local WatermelonDB first (Offline-first!)
+      await database.write(async () => {
+        await database.get('farm_projects').create((record) => {
+          record._raw.id = `pending_${Date.now()}`;
+          record.remoteId = ''; 
+          record.userId = ''; // will be filled by backend
+          record.name = formData.name.trim();
+          record.crop = formData.crop.trim();
+          record.landSize = parseFloat(formData.landSize) || 0;
+          record.landUnit = formData.landUnit || 'acres';
+          record.startDate = formData.startDate.getTime();
+          record.isDeleted = false;
+          record.createdAt = Date.now();
+          record.updatedAt = Date.now();
+        });
+      });
+
+      // 2. Trigger background sync
+      syncAll().catch(() => {});
+
+      // 3. Close and Reset
       setModalVisible(false);
-      setFormData({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: '' });
+      setFormData({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: new Date() });
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to create project');
+      Alert.alert('Error', 'Failed to save project locally');
     } finally {
       setSaving(false);
     }
@@ -64,14 +80,25 @@ export default function ProjectsScreen({ navigation }) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await api.delete(`/projects/${project.id}`);
-            await syncAll();
+            await database.write(async () => {
+              await project.update((r) => {
+                r.isDeleted = true;
+              });
+            });
+            syncAll().catch(() => {});
           } catch (err) {
             Alert.alert('Error', 'Failed to delete project');
           }
         },
       },
     ]);
+  };
+
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setFormData(p => ({ ...p, startDate: selectedDate }));
+    }
   };
 
   // ── Load from local DB ───────────────────────────────────────────────────
@@ -204,77 +231,95 @@ export default function ProjectsScreen({ navigation }) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>New Project</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>New Project</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
 
-            <Text style={styles.inputLabel}>Project Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.name}
-              onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
-              placeholder="e.g. North Field Wheat"
-              placeholderTextColor="#9ca3af"
-            />
-
-            <Text style={styles.inputLabel}>Crop</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.crop}
-              onChangeText={(t) => setFormData(p => ({ ...p, crop: t }))}
-              placeholder="e.g. Wheat, Corn"
-              placeholderTextColor="#9ca3af"
-            />
-
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
-                <Text style={styles.inputLabel}>Land Size</Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={styles.inputLabel}>Project Name *</Text>
                 <TextInput
                   style={styles.input}
-                  value={formData.landSize}
-                  onChangeText={(t) => setFormData(p => ({ ...p, landSize: t }))}
-                  placeholder="0"
+                  value={formData.name}
+                  onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
+                  placeholder="e.g. North Field Wheat"
                   placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
                 />
-              </View>
-              <View style={styles.halfInput}>
-                <Text style={styles.inputLabel}>Unit</Text>
+
+                <Text style={styles.inputLabel}>Crop</Text>
                 <TextInput
                   style={styles.input}
-                  value={formData.landUnit}
-                  onChangeText={(t) => setFormData(p => ({ ...p, landUnit: t }))}
-                  placeholder="acres"
+                  value={formData.crop}
+                  onChangeText={(t) => setFormData(p => ({ ...p, crop: t }))}
+                  placeholder="e.g. Wheat, Corn"
                   placeholderTextColor="#9ca3af"
                 />
-              </View>
+
+                <View style={styles.row}>
+                  <View style={styles.halfInput}>
+                    <Text style={styles.inputLabel}>Land Size</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formData.landSize}
+                      onChangeText={(t) => setFormData(p => ({ ...p, landSize: t }))}
+                      placeholder="0"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.halfInput}>
+                    <Text style={styles.inputLabel}>Unit</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formData.landUnit}
+                      onChangeText={(t) => setFormData(p => ({ ...p, landUnit: t }))}
+                      placeholder="acres"
+                      placeholderTextColor="#9ca3af"
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.inputLabel}>Start Date</Text>
+                <TouchableOpacity 
+                  style={styles.dateSelector} 
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={styles.dateSelectorText}>
+                    {formData.startDate.toLocaleDateString('en-GB')}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#16a34a" />
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={formData.startDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                  />
+                )}
+
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                  onPress={handleCreate}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Create Project</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-
-            <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.startDate}
-              onChangeText={(t) => setFormData(p => ({ ...p, startDate: t }))}
-              placeholder="2024-01-01"
-              placeholderTextColor="#9ca3af"
-            />
-
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-              onPress={handleCreate}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Create Project</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -333,11 +378,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  keyboardView: {
+    width: '100%',
+  },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+    maxHeight: '90%',
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   modalHeader: {
@@ -365,6 +414,21 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: '#1a1a1a',
+    backgroundColor: '#fff',
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  dateSelectorText: {
+    fontSize: 16,
+    color: '#1a1a1a',
   },
   row: {
     flexDirection: 'row',
@@ -379,6 +443,7 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
     marginTop: 24,
+    marginBottom: 20,
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -389,3 +454,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

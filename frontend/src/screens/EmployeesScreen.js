@@ -11,6 +11,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -34,11 +35,7 @@ export default function EmployeesScreen({ navigation }) {
       const empCol = database.get('employees');
       const rows = await empCol.query(Q.where('is_deleted', false)).fetch();
       
-      // Calculate balance for each employee
       const withBalances = await Promise.all(rows.map(async (emp) => {
-        // If remoteId is not yet available, we can't fetch its work entries/payments by remoteId
-        // In this app's architecture, we seem to be using remoteId for relations.
-        // If it's missing, balance is 0 for now until sync.
         if (!emp.remoteId) {
           return {
             id: emp.id,
@@ -110,16 +107,25 @@ export default function EmployeesScreen({ navigation }) {
     }
     setSaving(true);
     try {
-      await api.post('/employees', {
-        name: formData.name.trim(),
-        phone: formData.phone.trim() || null,
-        role: formData.role.trim() || null,
+      await database.write(async () => {
+        await database.get('employees').create((record) => {
+          record._raw.id = `pending_${Date.now()}`;
+          record.remoteId = '';
+          record.name = formData.name.trim();
+          record.phone = formData.phone.trim() || '';
+          record.role = formData.role.trim() || '';
+          record.isDeleted = false;
+          record.createdAt = Date.now();
+          record.updatedAt = Date.now();
+        });
       });
-      await syncAll();
+
+      syncAll().catch(() => {});
+      
       setModalVisible(false);
       setFormData({ name: '', phone: '', role: '' });
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to create employee');
+      Alert.alert('Error', 'Failed to save employee locally');
     } finally {
       setSaving(false);
     }
@@ -133,8 +139,12 @@ export default function EmployeesScreen({ navigation }) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await api.delete(`/employees/${employee.id}`);
-            await syncAll();
+            await database.write(async () => {
+              await employee.update((r) => {
+                r.isDeleted = true;
+              });
+            });
+            syncAll().catch(() => {});
           } catch (err) {
             Alert.alert('Error', 'Failed to delete employee');
           }
@@ -177,9 +187,7 @@ export default function EmployeesScreen({ navigation }) {
               {employee.role && <Text style={styles.cardRole}>{employee.role}</Text>}
             </View>
             {employee.phone && (
-              <TouchableOpacity onPress={() => {}}>
-                <Ionicons name="call-outline" size={20} color="#16a34a" />
-              </TouchableOpacity>
+              <Ionicons name="call-outline" size={20} color="#16a34a" />
             )}
           </View>
           <View style={styles.balanceRow}>
@@ -253,54 +261,59 @@ export default function EmployeesScreen({ navigation }) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>New Employee</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#374151" />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>New Employee</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.inputLabel}>Name *</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.name}
+                onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
+                placeholder="e.g. John Doe"
+                placeholderTextColor="#9ca3af"
+              />
+
+              <Text style={styles.inputLabel}>Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={(t) => setFormData(p => ({ ...p, phone: t }))}
+                placeholder="e.g. +1 234 567 8900"
+                placeholderTextColor="#9ca3af"
+                keyboardType="phone-pad"
+              />
+
+              <Text style={styles.inputLabel}>Role</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.role}
+                onChangeText={(t) => setFormData(p => ({ ...p, role: t }))}
+                placeholder="e.g. Farm Worker, Supervisor"
+                placeholderTextColor="#9ca3af"
+              />
+
+              <TouchableOpacity
+                style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                onPress={handleCreate}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Add Employee</Text>
+                )}
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.inputLabel}>Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.name}
-              onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
-              placeholder="e.g. John Doe"
-              placeholderTextColor="#9ca3af"
-            />
-
-            <Text style={styles.inputLabel}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.phone}
-              onChangeText={(t) => setFormData(p => ({ ...p, phone: t }))}
-              placeholder="e.g. +1 234 567 8900"
-              placeholderTextColor="#9ca3af"
-              keyboardType="phone-pad"
-            />
-
-            <Text style={styles.inputLabel}>Role</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.role}
-              onChangeText={(t) => setFormData(p => ({ ...p, role: t }))}
-              placeholder="e.g. Farm Worker, Supervisor"
-              placeholderTextColor="#9ca3af"
-            />
-
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-              onPress={handleCreate}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Add Employee</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -320,7 +333,6 @@ const styles = StyleSheet.create({
   cardRole: { fontSize: 13, color: '#6b7280', marginTop: 2 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: '#6b7280', marginTop: 16 },
   emptySubtitle: { fontSize: 14, color: '#9ca3af', marginTop: 4, textAlign: 'center' },
-
   fab: {
     position: 'absolute',
     bottom: 20,
@@ -337,7 +349,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-
   deleteAction: {
     backgroundColor: '#ef4444',
     justifyContent: 'center',
@@ -347,8 +358,8 @@ const styles = StyleSheet.create({
     marginVertical: 1,
   },
   deleteText: { color: '#fff', fontSize: 12, marginTop: 4 },
-
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  keyboardView: { width: '100%' },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
@@ -359,11 +370,10 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a' },
+  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a', backgroundColor: '#fff' },
   saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-
   balanceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
   balanceInfo: { flexDirection: 'row', gap: 12 },
   balanceLabel: { fontSize: 11, color: '#9ca3af' },

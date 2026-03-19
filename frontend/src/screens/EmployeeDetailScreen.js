@@ -10,9 +10,11 @@ import {
   Modal,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useAuthStore from '../store/useAuthStore';
@@ -31,7 +33,8 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
 
   // 1. Initial Load: Get the employee record
@@ -84,6 +87,11 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const balance = totalEarned - totalPaid;
 
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) setPaymentDate(selectedDate);
+  };
+
   const handleRecordPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       Alert.alert('Error', 'Please enter a valid amount');
@@ -101,7 +109,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           record.remoteId = '';
           record.employeeId = employee.remoteId;
           record.amount = amount;
-          record.date = new Date(paymentDate).getTime();
+          record.date = paymentDate.getTime();
           record.note = paymentNote.trim();
           record.isDeleted = false;
           record.updatedAt = Date.now();
@@ -112,6 +120,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       setPaymentModalVisible(false);
       setPaymentAmount('');
       setPaymentNote('');
+      setPaymentDate(new Date());
       syncAll().catch(() => {});
     } catch (err) {
       Alert.alert('Error', 'Failed to record payment locally');
@@ -232,39 +241,64 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       {/* Payment Modal */}
       <Modal visible={paymentModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Record Payment</Text>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#374151" />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Record Payment</Text>
+                <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.inputLabel}>Amount ($) *</Text>
+              <TextInput
+                style={styles.input}
+                value={paymentAmount}
+                onChangeText={setPaymentAmount}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+              />
+
+              <Text style={styles.inputLabel}>Date</Text>
+              <TouchableOpacity 
+                style={styles.dateSelector} 
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.dateSelectorText}>
+                  {paymentDate.toLocaleDateString('en-GB')}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#16a34a" />
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={paymentDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onDateChange}
+                />
+              )}
+
+              <Text style={styles.inputLabel}>Note</Text>
+              <TextInput
+                style={styles.input}
+                value={paymentNote}
+                onChangeText={setPaymentNote}
+                placeholder="Optional note..."
+              />
+
+              <TouchableOpacity
+                style={[styles.saveButton, savingPayment && styles.saveButtonDisabled]}
+                onPress={handleRecordPayment}
+                disabled={savingPayment}
+              >
+                {savingPayment ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Confirm Payment</Text>}
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.inputLabel}>Amount ($) *</Text>
-            <TextInput
-              style={styles.input}
-              value={paymentAmount}
-              onChangeText={setPaymentAmount}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-            />
-
-            <Text style={styles.inputLabel}>Note</Text>
-            <TextInput
-              style={styles.input}
-              value={paymentNote}
-              onChangeText={setPaymentNote}
-              placeholder="Optional note..."
-            />
-
-            <TouchableOpacity
-              style={[styles.saveButton, savingPayment && styles.saveButtonDisabled]}
-              onPress={handleRecordPayment}
-              disabled={savingPayment}
-            >
-              {savingPayment ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Confirm Payment</Text>}
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -273,6 +307,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
+  flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   errorText: { fontSize: 16, color: '#6b7280', marginBottom: 16 },
   backButton: { backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
@@ -309,11 +344,23 @@ const styles = StyleSheet.create({
   emptyText: { color: '#9ca3af', fontSize: 14 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  keyboardView: { width: '100%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16 },
+  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#fff' },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  dateSelectorText: { fontSize: 16, color: '#1a1a1a' },
   saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
