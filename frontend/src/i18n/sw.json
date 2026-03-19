@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "delete": "Futa",
+    "edit": "Hariri",
+    "loading": "Inapakia...",
+    "error": "Hitilafu",
+    "success": "Imefanikiwa",
+    "back": "Rudi",
+    "date": "Tarehe",
+    "notes": "Maelezo",
+    "optional": "Si lazima",
+    "required": "Lazima"
+  },
+  "dashboard": {
+    "title": "Dashibodi",
+    "profit_loss": "Faida / Hasara",
+    "revenue": "Mapato",
+    "total_budget": "Bajeti Jumla",
+    "total_spent": "Gharama Jumla",
+    "labor_cost": "Gharama ya Kibarua",
+    "remaining": "Iliyobaki",
+    "efficiency_metrics": "Vipimo vya Ufanisi",
+    "yield_acre": "Mazao / Ekari",
+    "cost_kg": "Gharama / KG",
+    "rev_kg": "Mapato / KG",
+    "budget_vs_actual": "Bajeti dhidi ya Halisi",
+    "spent": "Zilizotumika",
+    "budget": "Bajeti",
+    "labor_by_employee": "Kibarua kwa Mfanyakazi",
+    "labor_by_activity": "Kibarua kwa Shughuli",
+    "unpaid_labor": "Jumla ya Kibarua Ambacho Hakijalipwa",
+    "all_labor_paid": "Kibarua chote kimekulipwa",
+    "payments_pending": "Malipo yanayosubiri kwa wafanyakazi"
+  },
+  "projects": {
+    "title": "Miradi Yangu ya Shamba",
+    "tabs": {
+      "budget": "Bajeti",
+      "expenses": "Gharama",
+      "labor": "Kibarua",
+      "harvest": "Mavuno",
+      "sales": "Mauzo",
+      "timeline": "Ratiba"
+    },
+    "fields": {
+      "name": "Jina la Mradi",
+      "crop": "Zao",
+      "land_size": "Ukubwa wa Ardhi",
+      "unit": "Kipimo",
+      "expected_yield": "Mazao Yanayotarajiwa (kg)",
+      "start_date": "Tarehe ya Kuanza",
+      "status": "Hali"
+    },
+    "new_project": "Mradi Mpya",
+    "create_project": "Unda Mradi",
+    "empty_state": "Hakuna miradi bado",
+    "pull_to_sync": "Vuta chini ili kusawazisha kutoka kwenye seva."
+  },
+  "labor": {
+    "log_work": "Rekodi Kazi",
+    "employee": "Mfanyakazi",
+    "activity": "Shughuli",
+    "days_worked": "Siku Zilizofanya Kazi",
+    "rate_day": "Malipo kwa Siku ($)",
+    "hours_worked": "Saa Zilizofanya Kazi",
+    "photo_proof": "Picha ya Ushahidi",
+    "total_cost": "Gharama Jumla",
+    "status": {
+      "pending": "INASUBIRI",
+      "approved": "IMEIDHINISHWA",
+      "rejected": "IMEKATALIWA"
+    }
+  },
+  "settings": {
+    "title": "Mipangilio",
+    "language": "Lugha",
+    "logout": "Ondoka",
+    "profile": "Wasifu"
+  }
+}

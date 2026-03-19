@@ -7,8 +7,11 @@ export default class Expense extends Model {
   @nochange @text('remote_id')   remoteId;
   @text('project_id')  projectId;
   @text('category')    category;
+  @text('expense_type') expenseType;
   @field('amount')     amount;
   @field('date')       date;
+  @field('is_recurring') isRecurring;
+  @text('frequency')    frequency;
   @text('note')        note;
   @text('receipt_url') receiptUrl;
   @field('is_deleted') isDeleted;

@@ -11,6 +11,8 @@ const employeeRoutes = require('./src/routes/employee.routes');
 const paymentRoutes  = require('./src/routes/payment.routes');
 const inventoryRoutes = require('./src/routes/inventory.routes');
 const workEntryRoutes = require('./src/routes/workEntry.routes');
+const harvestRoutes   = require('./src/routes/harvest.routes');
+const saleRoutes      = require('./src/routes/sale.routes');
 const { authenticate } = require('./src/middleware/auth.middleware');
 
 const app = express();
@@ -35,6 +37,8 @@ app.use('/employees', employeeRoutes);
 app.use('/payments', paymentRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/work-entries', workEntryRoutes);
+app.use('/harvests', harvestRoutes);
+app.use('/sales', saleRoutes);
 
 // Protected routes
 app.get('/api/me', authenticate, (req, res) => {

@@ -7,6 +7,7 @@ const registerSchema = z.object({
     .min(7, 'Phone number too short')
     .regex(/^\+?[0-9\s\-()]+$/, 'Invalid phone number format'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  role: z.enum(['ADMIN', 'WORKER']).optional(),
 });
 
 const loginSchema = z.object({

@@ -20,7 +20,7 @@ const register = async (req, res) => {
     });
   }
 
-  const { name, phone, password } = result.data;
+  const { name, phone, password, role } = result.data;
 
   // Check for duplicate phone
   const existing = await prisma.user.findUnique({ where: { phone } });
@@ -33,8 +33,8 @@ const register = async (req, res) => {
 
   // Create user
   const user = await prisma.user.create({
-    data: { name, phone, password: hashedPassword },
-    select: { id: true, name: true, phone: true, currency: true, locale: true, createdAt: true },
+    data: { name, phone, password: hashedPassword, role: role || 'ADMIN' },
+    select: { id: true, name: true, phone: true, role: true, currency: true, locale: true, createdAt: true },
   });
 
   // Issue token

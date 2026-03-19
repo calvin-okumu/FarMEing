@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "back": "Back",
+    "date": "Date",
+    "notes": "Notes",
+    "optional": "Optional",
+    "required": "Required"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "profit_loss": "Net Profit / Loss",
+    "revenue": "Revenue",
+    "total_budget": "Total Budget",
+    "total_spent": "Total Spent",
+    "labor_cost": "Labor Cost",
+    "remaining": "Remaining",
+    "efficiency_metrics": "Efficiency Metrics",
+    "yield_acre": "Yield / Acre",
+    "cost_kg": "Cost / KG",
+    "rev_kg": "Rev / KG",
+    "budget_vs_actual": "Budget vs Actual",
+    "spent": "Spent",
+    "budget": "Budget",
+    "labor_by_employee": "Labor by Employee",
+    "labor_by_activity": "Labor by Activity",
+    "unpaid_labor": "Total Unpaid Labor",
+    "all_labor_paid": "All labor paid",
+    "payments_pending": "Payments pending to employees"
+  },
+  "projects": {
+    "title": "My Farm Projects",
+    "tabs": {
+      "budget": "Budget",
+      "expenses": "Expenses",
+      "labor": "Labor",
+      "harvest": "Harvest",
+      "sales": "Sales",
+      "timeline": "Timeline"
+    },
+    "fields": {
+      "name": "Project Name",
+      "crop": "Crop",
+      "land_size": "Land Size",
+      "unit": "Unit",
+      "expected_yield": "Expected Yield (kg)",
+      "start_date": "Start Date",
+      "status": "Status"
+    },
+    "new_project": "New Project",
+    "create_project": "Create Project",
+    "empty_state": "No projects yet",
+    "pull_to_sync": "Pull down to sync from the server."
+  },
+  "labor": {
+    "log_work": "Log Work Entry",
+    "employee": "Employee",
+    "activity": "Activity",
+    "days_worked": "Days Worked",
+    "rate_day": "Rate per Day ($)",
+    "hours_worked": "Hours Worked",
+    "photo_proof": "Photo Proof",
+    "total_cost": "Total Cost",
+    "status": {
+      "pending": "PENDING",
+      "approved": "APPROVED",
+      "rejected": "REJECTED"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "logout": "Logout",
+    "profile": "Profile"
+  }
+}

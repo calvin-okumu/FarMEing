@@ -10,16 +10,21 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
+import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 
-const ACTIVITIES = ['Planting', 'Weeding', 'Harvesting', 'Spraying', 'Other'];
+const ACTIVITIES = ['Planting', 'Weeding', 'Harvesting', 'Spraying', 'Irrigation', 'Other'];
+const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY'];
 
 export default function AddWorkEntryScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { projectId } = route.params; // project's remoteId
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,9 +34,13 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   const [activity, setActivity] = useState('Planting');
   const [daysWorked, setDaysWorked] = useState('1');
   const [ratePerDay, setRatePerDay] = useState('');
+  const [hoursWorked, setHoursWorked] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState('WEEKLY');
   const [notes, setNotes] = useState('');
+  const [photo, setPhoto] = useState(null);
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -50,6 +59,27 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
   const total = (parseFloat(daysWorked) || 0) * (parseFloat(ratePerDay) || 0);
 
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
+  };
+
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) setDate(selectedDate);
@@ -57,11 +87,11 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!selectedEmployee) {
-      Alert.alert('Error', 'Please select an employee');
+      Alert.alert(t('common.error'), 'Please select an employee');
       return;
     }
     if (!ratePerDay) {
-      Alert.alert('Error', 'Rate per day is required');
+      Alert.alert(t('common.error'), 'Rate per day is required');
       return;
     }
 
@@ -79,6 +109,11 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           record.daysWorked = parseFloat(daysWorked);
           record.ratePerDay = parseFloat(ratePerDay);
           record.totalCost = total;
+          record.hoursWorked = parseFloat(hoursWorked) || 0;
+          record.imageUrl = photo || '';
+          record.status = 'PENDING';
+          record.isRecurring = isRecurring;
+          record.frequency = isRecurring ? frequency : null;
           record.notes = notes.trim();
           record.isPaid = false;
           record.isDeleted = false;
@@ -92,7 +127,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       // 3. Return
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', 'Failed to save locally');
+      Alert.alert(t('common.error'), 'Failed to save locally');
     } finally {
       setSaving(false);
     }
@@ -113,7 +148,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Employee *</Text>
+        <Text style={styles.label}>{t('labor.employee')} *</Text>
         <View style={styles.employeeList}>
           {employees.length === 0 ? (
             <TouchableOpacity 
@@ -139,7 +174,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           )}
         </View>
 
-        <Text style={styles.label}>Activity</Text>
+        <Text style={styles.label}>{t('labor.activity')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
           {ACTIVITIES.map((act) => (
             <TouchableOpacity
@@ -156,7 +191,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <Text style={styles.label}>Days Worked *</Text>
+            <Text style={styles.label}>{t('labor.days_worked')} *</Text>
             <TextInput
               style={styles.input}
               value={daysWorked}
@@ -165,7 +200,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.half}>
-            <Text style={styles.label}>Rate per Day ($) *</Text>
+            <Text style={styles.label}>{t('labor.rate_day')} *</Text>
             <TextInput
               style={styles.input}
               value={ratePerDay}
@@ -176,16 +211,30 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </View>
 
-        <Text style={styles.label}>Date</Text>
-        <TouchableOpacity 
-          style={styles.dateSelector} 
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={styles.dateSelectorText}>
-            {date.toLocaleDateString('en-GB')}
-          </Text>
-          <Ionicons name="calendar-outline" size={20} color="#16a34a" />
-        </TouchableOpacity>
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <Text style={styles.label}>{t('labor.hours_worked')}</Text>
+            <TextInput
+              style={styles.input}
+              value={hoursWorked}
+              onChangeText={setHoursWorked}
+              placeholder="0"
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.half}>
+            <Text style={styles.label}>{t('common.date')}</Text>
+            <TouchableOpacity 
+              style={styles.dateSelector} 
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.dateSelectorText}>
+                {date.toLocaleDateString('en-GB')}
+              </Text>
+              <Ionicons name="calendar-outline" size={20} color="#16a34a" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {showDatePicker && (
           <DateTimePicker
@@ -196,7 +245,54 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           />
         )}
 
-        <Text style={styles.label}>Notes</Text>
+        <View style={styles.recurringRow}>
+          <Text style={styles.labelInline}>Is Recurring?</Text>
+          <TouchableOpacity 
+            style={[styles.toggle, isRecurring && styles.toggleActive]}
+            onPress={() => setIsRecurring(!isRecurring)}
+          >
+            <View style={[styles.toggleKnob, isRecurring && styles.toggleKnobActive]} />
+          </TouchableOpacity>
+        </View>
+
+        {isRecurring && (
+          <View style={styles.frequencyRow}>
+            {FREQUENCIES.map((freq) => (
+              <TouchableOpacity
+                key={freq}
+                style={[styles.freqChip, frequency === freq && styles.freqChipActive]}
+                onPress={() => setFrequency(freq)}
+              >
+                <Text style={[styles.freqText, frequency === freq && styles.freqTextActive]}>
+                  {freq}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <Text style={styles.label}>{t('labor.photo_proof')}</Text>
+        {photo ? (
+          <View style={styles.photoContainer}>
+            <Image source={{ uri: photo }} style={styles.photo} />
+            <TouchableOpacity style={styles.removePhoto} onPress={() => setPhoto(null)}>
+              <Ionicons name="close-circle" size={24} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.photoButtons}>
+            <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+              <Ionicons name="image-outline" size={24} color="#16a34a" />
+              <Text style={styles.photoButtonText}>Album</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
+              <Ionicons name="camera-outline" size={24} color="#16a34a" />
+              <Text style={styles.photoButtonText}>Camera</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <Text style={styles.label}>{t('common.notes')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={notes}
@@ -207,7 +303,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         />
 
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Cost:</Text>
+          <Text style={styles.totalLabel}>{t('labor.total_cost')}:</Text>
           <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
         </View>
 
@@ -219,7 +315,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Log Work Entry</Text>
+            <Text style={styles.saveButtonText}>{t('labor.log_work')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -239,11 +335,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, backgroundColor: '#fff'
   },
   dateSelectorText: { fontSize: 16, color: '#1a1a1a' },
   row: { flexDirection: 'row', gap: 12 },
@@ -258,6 +350,27 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 8, marginTop: 20, borderWidth: 1, borderColor: '#e5e7eb' },
   totalLabel: { fontSize: 16, color: '#6b7280' },
   totalValue: { fontSize: 18, fontWeight: '700', color: '#16a34a' },
+
+  recurringRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 8 },
+  labelInline: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  toggle: { width: 50, height: 28, borderRadius: 15, backgroundColor: '#e5e7eb', padding: 2 },
+  toggleActive: { backgroundColor: '#16a34a' },
+  toggleKnob: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff' },
+  toggleKnobActive: { alignSelf: 'flex-end' },
+
+  frequencyRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  freqChip: { flex: 1, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center', backgroundColor: '#fff' },
+  freqChipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  freqText: { fontSize: 12, color: '#374151', fontWeight: '600' },
+  freqTextActive: { color: '#fff' },
+
+  photoButtons: { flexDirection: 'row', gap: 12 },
+  photoButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 16 },
+  photoButtonText: { fontSize: 14, color: '#16a34a', fontWeight: '600' },
+  photoContainer: { position: 'relative' },
+  photo: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover' },
+  removePhoto: { position: 'absolute', top: 8, right: 8, backgroundColor: '#fff', borderRadius: 12 },
+
   saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24, marginBottom: 20 },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },

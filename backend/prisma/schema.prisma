@@ -15,6 +15,7 @@ model User {
   name      String
   phone     String   @unique
   password  String
+  role      String   @default("ADMIN") // ADMIN, WORKER
   currency  String   @default("TZS")
   locale    String   @default("sw-TZ")
   createdAt DateTime @default(now())
@@ -37,24 +38,28 @@ model Season {
 }
 
 model FarmProject {
-  id          String       @id @default(uuid())
-  userId      String
-  seasonId    String?
-  name        String
-  crop        String
-  landSize    Float
-  landUnit    String       @default("acres")
-  startDate   DateTime
-  endDate     DateTime?
-  notes       String?
-  isDeleted   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  user        User         @relation(fields: [userId], references: [id])
-  season      Season?      @relation(fields: [seasonId], references: [id])
-  budgetItems BudgetItem[]
-  expenses    Expense[]
-  workEntries WorkEntry[]
+  id            String       @id @default(uuid())
+  userId        String
+  seasonId      String?
+  name          String
+  crop          String
+  landSize      Float
+  landUnit      String       @default("acres")
+  startDate     DateTime
+  endDate       DateTime?
+  expectedYield Float?       @default(0)
+  status        String       @default("ACTIVE") // PLANNING, ACTIVE, HARVESTED, CLOSED
+  notes         String?
+  isDeleted     Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id])
+  season        Season?      @relation(fields: [seasonId], references: [id])
+  budgetItems   BudgetItem[]
+  expenses      Expense[]
+  workEntries   WorkEntry[]
+  harvests      Harvest[]
+  sales         Sale[]
 }
 
 model BudgetItem {
@@ -74,17 +79,20 @@ model BudgetItem {
 }
 
 model Expense {
-  id         String      @id @default(uuid())
-  projectId  String
-  category   String
-  amount     Float
-  date       DateTime
-  note       String?
-  receiptUrl String?
-  isDeleted  Boolean     @default(false)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  project    FarmProject @relation(fields: [projectId], references: [id])
+  id          String      @id @default(uuid())
+  projectId   String
+  category    String
+  expenseType String      @default("OPEX") // CAPEX, OPEX
+  amount      Float
+  date        DateTime
+  isRecurring Boolean     @default(false)
+  frequency   String?     // DAILY, WEEKLY, MONTHLY
+  note        String?
+  receiptUrl  String?
+  isDeleted   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  project     FarmProject @relation(fields: [projectId], references: [id])
 }
 
 model Employee {
@@ -102,21 +110,28 @@ model Employee {
 }
 
 model WorkEntry {
-  id         String      @id @default(uuid())
-  projectId  String
-  employeeId String
-  activity   String
-  date       DateTime
-  daysWorked Float
-  ratePerDay Float
-  totalCost  Float
-  notes      String?
-  isPaid     Boolean     @default(false)
-  isDeleted  Boolean     @default(false)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  project    FarmProject @relation(fields: [projectId], references: [id])
-  employee   Employee    @relation(fields: [employeeId], references: [id])
+  id          String      @id @default(uuid())
+  projectId   String
+  employeeId  String
+  activity    String
+  date        DateTime
+  daysWorked  Float
+  ratePerDay  Float
+  totalCost   Float
+  hoursWorked Float?
+  imageUrl    String?
+  locationLat Float?
+  locationLng Float?
+  status      String      @default("PENDING") // PENDING, APPROVED, REJECTED
+  isRecurring Boolean     @default(false)
+  frequency   String?     // DAILY, WEEKLY, MONTHLY
+  notes       String?
+  isPaid      Boolean     @default(false)
+  isDeleted   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  project     FarmProject @relation(fields: [projectId], references: [id])
+  employee    Employee    @relation(fields: [employeeId], references: [id])
 }
 
 model Payment {
@@ -128,6 +143,36 @@ model Payment {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   employee   Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Harvest {
+  id        String      @id @default(uuid())
+  projectId String
+  crop      String
+  date      DateTime
+  weight    Float
+  unit      String      @default("kg")
+  quality   String?
+  notes     String?
+  isDeleted Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  project   FarmProject @relation(fields: [projectId], references: [id])
+}
+
+model Sale {
+  id          String      @id @default(uuid())
+  projectId   String
+  date        DateTime
+  customer    String?
+  weightSold  Float
+  unitPrice   Float
+  totalAmount Float
+  notes       String?
+  isDeleted   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  project     FarmProject @relation(fields: [projectId], references: [id])
 }
 
 model InventoryItem {

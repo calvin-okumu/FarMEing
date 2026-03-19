@@ -5,6 +5,7 @@ const {
   listWorkEntries,
   updateWorkEntry,
   deleteWorkEntry,
+  approveWorkEntry,
   getWorkEntriesByEmployee,
   getWorkEntriesByActivity,
 } = require('../controllers/workEntry.controller');
@@ -18,6 +19,7 @@ router.get   ('/:projectId',             listWorkEntries);
 router.get   ('/:projectId/by-employee', getWorkEntriesByEmployee);
 router.get   ('/:projectId/by-activity', getWorkEntriesByActivity);
 router.put   ('/:id',                    updateWorkEntry);
+router.patch ('/:id/approve',            approveWorkEntry);
 router.delete('/:id',                    deleteWorkEntry);
 
 module.exports = router;

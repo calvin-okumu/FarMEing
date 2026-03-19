@@ -10,6 +10,8 @@ const PROJECT_SELECT = {
   landUnit: true,
   startDate: true,
   endDate: true,
+  expectedYield: true,
+  status: true,
   notes: true,
   isDeleted: true,
   createdAt: true,
@@ -155,32 +157,50 @@ const getProjectSummary = async (req, res) => {
   if (!owned) return;
 
   // Run aggregations in parallel
-  const [project, budgetAgg, expenseAgg, laborAgg] = await Promise.all([
+  const [project, budgetAgg, expenseAgg, laborAgg, harvestAgg, saleAgg, expenses, workEntries, harvests, sales] = await Promise.all([
     prisma.farmProject.findUnique({
       where:  { id: req.params.id },
       select: PROJECT_SELECT,
     }),
-    // Sum of all non-deleted budget items
     prisma.budgetItem.aggregate({
       where:  { projectId: req.params.id, isDeleted: false },
       _sum:   { total: true },
     }),
-    // Sum of all non-deleted expenses
     prisma.expense.aggregate({
       where:  { projectId: req.params.id, isDeleted: false },
       _sum:   { amount: true },
     }),
-    // Sum of all non-deleted work entries (labor)
     prisma.workEntry.aggregate({
-      where:  { projectId: req.params.id, isDeleted: false },
+      where:  { projectId: req.params.id, isDeleted: false, status: 'APPROVED' },
       _sum:   { totalCost: true },
     }),
+    prisma.harvest.aggregate({
+      where:  { projectId: req.params.id, isDeleted: false },
+      _sum:   { weight: true },
+    }),
+    prisma.sale.aggregate({
+      where:  { projectId: req.params.id, isDeleted: false },
+      _sum:   { totalAmount: true },
+    }),
+    prisma.expense.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
+    prisma.workEntry.findMany({ where: { projectId: req.params.id, isDeleted: false }, include: { employee: { select: { name: true } } } }),
+    prisma.harvest.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
+    prisma.sale.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
   ]);
 
   const totalBudget   = budgetAgg._sum.total     ?? 0;
   const totalExpenses = expenseAgg._sum.amount    ?? 0;
   const totalLabor    = laborAgg._sum.totalCost   ?? 0;
+  const totalHarvest  = harvestAgg._sum.weight    ?? 0;
+  const totalRevenue  = saleAgg._sum.totalAmount  ?? 0;
   const totalCost     = totalExpenses + totalLabor;
+
+  const timeline = [
+    ...expenses.map(e => ({ type: 'EXPENSE', date: e.date, label: e.category, amount: e.amount, icon: 'receipt-outline' })),
+    ...workEntries.map(w => ({ type: 'WORK', date: w.date, label: `${w.employee.name}: ${w.activity}`, amount: w.totalCost, icon: 'people-outline' })),
+    ...harvests.map(h => ({ type: 'HARVEST', date: h.date, label: `Harvest: ${h.weight}kg ${h.crop}`, amount: h.weight, icon: 'leaf-outline' })),
+    ...sales.map(s => ({ type: 'SALE', date: s.date, label: `Sale: ${s.customer || 'Cash'}`, amount: s.totalAmount, icon: 'cash-outline' })),
+  ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return res.json({
     project,
@@ -189,7 +209,11 @@ const getProjectSummary = async (req, res) => {
       totalExpenses,
       totalLaborCost: totalLabor,
       totalCost,
+      totalHarvest,
+      totalRevenue,
+      netProfit: totalRevenue - totalCost,
     },
+    timeline,
   });
 };
 

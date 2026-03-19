@@ -8,8 +8,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import RootNavigator from './src/navigation/RootNavigator';
 import useAuthStore  from './src/store/useAuthStore';
+import useSettingsStore from './src/store/useSettingsStore';
 import { database }  from './src/db';
 import { useSync }    from './src/hooks/useSync';
+import './src/i18n'; // Initialize i18n
+import i18n from './src/i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,11 +25,17 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const hydrate = useAuthStore((s) => s.hydrate);
+  const initializeLanguage = useSettingsStore((s) => s.initializeLanguage);
   useSync(); // Trigger sync on foreground when logged in
 
-  // Read token from SecureStore once on app start
+  // Initialize app state
   useEffect(() => {
-    hydrate();
+    async function init() {
+      const user = await hydrate();
+      const lang = await initializeLanguage(user);
+      i18n.changeLanguage(lang);
+    }
+    init();
   }, []);
 
   return (

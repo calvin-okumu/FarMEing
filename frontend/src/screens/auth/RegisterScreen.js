@@ -21,6 +21,7 @@ export default function RegisterScreen({ navigation }) {
   const [phone,    setPhone]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
+  const [role,     setRole]     = useState('ADMIN'); // ADMIN or WORKER
   const [showPw,   setShowPw]   = useState(false);
   const [loading,  setLoading]  = useState(false);
 
@@ -39,7 +40,7 @@ export default function RegisterScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      await register({ name: name.trim(), phone: phone.trim(), password });
+      await register({ name: name.trim(), phone: phone.trim(), password, role });
       // Navigation handled automatically by RootNavigator watching token
     } catch (err) {
       Alert.alert('Registration failed', err.message);
@@ -88,6 +89,22 @@ export default function RegisterScreen({ navigation }) {
               value={phone}
               onChangeText={setPhone}
             />
+          </View>
+
+          <Text style={styles.label}>Register as</Text>
+          <View style={styles.roleRow}>
+            <TouchableOpacity 
+              style={[styles.roleBtn, role === 'ADMIN' && styles.roleBtnActive]} 
+              onPress={() => setRole('ADMIN')}
+            >
+              <Text style={[styles.roleBtnText, role === 'ADMIN' && styles.roleBtnTextActive]}>Admin</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.roleBtn, role === 'WORKER' && styles.roleBtnActive]} 
+              onPress={() => setRole('WORKER')}
+            >
+              <Text style={[styles.roleBtnText, role === 'WORKER' && styles.roleBtnTextActive]}>Worker</Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.label}>Password</Text>
@@ -162,4 +179,10 @@ const styles = StyleSheet.create({
   footer:       { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
   footerText:   { color: '#6b7280', fontSize: 14 },
   footerLink:   { color: '#16a34a', fontWeight: '700', fontSize: 14 },
+
+  roleRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  roleBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', backgroundColor: '#f9fafb' },
+  roleBtnActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  roleBtnText: { fontSize: 14, fontWeight: '600', color: '#6b7280' },
+  roleBtnTextActive: { color: '#fff' },
 });

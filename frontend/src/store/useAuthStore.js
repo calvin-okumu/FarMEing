@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import api from '../lib/api';
+import useSettingsStore from './useSettingsStore';
+import i18n from '../i18n';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY  = 'auth_user';
@@ -20,15 +22,19 @@ const useAuthStore = create((set, get) => ({
       ]);
       const user = userJson ? JSON.parse(userJson) : null;
       set({ token: token ?? null, user, isLoading: false });
+      return user;
     } catch {
       set({ token: null, user: null, isLoading: false });
+      return null;
     }
   },
 
   // ── Register ──────────────────────────────────────────────────────────────
-  register: async ({ name, phone, password }) => {
-    const { data } = await api.post('/auth/register', { name, phone, password });
+  register: async ({ name, phone, password, role }) => {
+    const { data } = await api.post('/auth/register', { name, phone, password, role });
     await _persist(data.token, data.user);
+    const lang = await useSettingsStore.getState().initializeLanguage(data.user);
+    i18n.changeLanguage(lang);
     set({ token: data.token, user: data.user });
   },
 
@@ -36,6 +42,8 @@ const useAuthStore = create((set, get) => ({
   login: async ({ phone, password }) => {
     const { data } = await api.post('/auth/login', { phone, password });
     await _persist(data.token, data.user);
+    const lang = await useSettingsStore.getState().initializeLanguage(data.user);
+    i18n.changeLanguage(lang);
     set({ token: data.token, user: data.user });
   },
 

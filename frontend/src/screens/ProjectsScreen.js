@@ -18,25 +18,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { Swipeable } from 'react-native-gesture-handler';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll }   from '../services/syncService';
 import useAuthStore  from '../store/useAuthStore';
 import api           from '../lib/api';
 
 export default function ProjectsScreen({ navigation }) {
+  const { t } = useTranslation();
   const token    = useAuthStore((s) => s.token);
   const [projects,   setProjects]   = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: new Date() });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    crop: '', 
+    landSize: '', 
+    landUnit: 'acres', 
+    startDate: new Date(),
+    expectedYield: '',
+  });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // ── Create new project ─────────────────────────────────────────────────────
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Error', 'Project name is required');
+      Alert.alert(t('common.error'), 'Project name is required');
       return;
     }
     setSaving(true);
@@ -52,6 +61,8 @@ export default function ProjectsScreen({ navigation }) {
           record.landSize = parseFloat(formData.landSize) || 0;
           record.landUnit = formData.landUnit || 'acres';
           record.startDate = formData.startDate.getTime();
+          record.expectedYield = parseFloat(formData.expectedYield) || 0;
+          record.status = 'ACTIVE';
           record.isDeleted = false;
           record.createdAt = Date.now();
           record.updatedAt = Date.now();
@@ -63,9 +74,16 @@ export default function ProjectsScreen({ navigation }) {
 
       // 3. Close and Reset
       setModalVisible(false);
-      setFormData({ name: '', crop: '', landSize: '', landUnit: 'acres', startDate: new Date() });
+      setFormData({ 
+        name: '', 
+        crop: '', 
+        landSize: '', 
+        landUnit: 'acres', 
+        startDate: new Date(),
+        expectedYield: '',
+      });
     } catch (err) {
-      Alert.alert('Error', 'Failed to save project locally');
+      Alert.alert(t('common.error'), 'Failed to save project locally');
     } finally {
       setSaving(false);
     }
@@ -73,10 +91,10 @@ export default function ProjectsScreen({ navigation }) {
 
   // ── Soft delete project ────────────────────────────────────────────────────
   const handleDelete = (project) => {
-    Alert.alert('Delete Project', `Are you sure you want to delete "${project.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('common.delete'), `Are you sure you want to delete "${project.name}"?`, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -87,7 +105,7 @@ export default function ProjectsScreen({ navigation }) {
             });
             syncAll().catch(() => {});
           } catch (err) {
-            Alert.alert('Error', 'Failed to delete project');
+            Alert.alert(t('common.error'), 'Failed to delete project');
           }
         },
       },
@@ -163,7 +181,7 @@ export default function ProjectsScreen({ navigation }) {
       onPress={() => handleDelete(project)}
     >
       <Ionicons name="trash-outline" size={22} color="#fff" />
-      <Text style={styles.deleteText}>Delete</Text>
+      <Text style={styles.deleteText}>{t('common.delete')}</Text>
     </TouchableOpacity>
   );
 
@@ -196,8 +214,8 @@ export default function ProjectsScreen({ navigation }) {
       {projects.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="leaf-outline" size={48} color="#d1fae5" />
-          <Text style={styles.emptyTitle}>No projects yet</Text>
-          <Text style={styles.emptySubtitle}>Pull down to sync from the server.</Text>
+          <Text style={styles.emptyTitle}>{t('projects.empty_state')}</Text>
+          <Text style={styles.emptySubtitle}>{t('projects.pull_to_sync')}</Text>
         </View>
       ) : (
         <FlatList
@@ -237,14 +255,14 @@ export default function ProjectsScreen({ navigation }) {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>New Project</Text>
+                <Text style={styles.modalTitle}>{t('projects.new_project')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Ionicons name="close" size={24} color="#374151" />
                 </TouchableOpacity>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.inputLabel}>Project Name *</Text>
+                <Text style={styles.inputLabel}>{t('projects.fields.name')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.name}
@@ -253,7 +271,7 @@ export default function ProjectsScreen({ navigation }) {
                   placeholderTextColor="#9ca3af"
                 />
 
-                <Text style={styles.inputLabel}>Crop</Text>
+                <Text style={styles.inputLabel}>{t('projects.fields.crop')}</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.crop}
@@ -264,7 +282,7 @@ export default function ProjectsScreen({ navigation }) {
 
                 <View style={styles.row}>
                   <View style={styles.halfInput}>
-                    <Text style={styles.inputLabel}>Land Size</Text>
+                    <Text style={styles.inputLabel}>{t('projects.fields.land_size')}</Text>
                     <TextInput
                       style={styles.input}
                       value={formData.landSize}
@@ -275,7 +293,7 @@ export default function ProjectsScreen({ navigation }) {
                     />
                   </View>
                   <View style={styles.halfInput}>
-                    <Text style={styles.inputLabel}>Unit</Text>
+                    <Text style={styles.inputLabel}>{t('projects.fields.unit')}</Text>
                     <TextInput
                       style={styles.input}
                       value={formData.landUnit}
@@ -286,7 +304,17 @@ export default function ProjectsScreen({ navigation }) {
                   </View>
                 </View>
 
-                <Text style={styles.inputLabel}>Start Date</Text>
+                <Text style={styles.inputLabel}>{t('projects.fields.expected_yield')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.expectedYield}
+                  onChangeText={(t) => setFormData(p => ({ ...p, expectedYield: t }))}
+                  placeholder="e.g. 5000"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                />
+
+                <Text style={styles.inputLabel}>{t('projects.fields.start_date')}</Text>
                 <TouchableOpacity 
                   style={styles.dateSelector} 
                   onPress={() => setShowDatePicker(true)}
@@ -314,7 +342,7 @@ export default function ProjectsScreen({ navigation }) {
                   {saving ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Create Project</Text>
+                    <Text style={styles.saveButtonText}>{t('projects.create_project')}</Text>
                   )}
                 </TouchableOpacity>
               </ScrollView>
@@ -454,4 +482,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

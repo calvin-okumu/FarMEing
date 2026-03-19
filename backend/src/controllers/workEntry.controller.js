@@ -63,19 +63,23 @@ const createWorkEntry = async (req, res) => {
   const employee = await findOwnedEmployee(data.employeeId, req.user.id, res);
   if (!employee) return;
 
-  // Auto-calculate totalCost
-  const totalCost = parseFloat((data.daysWorked * data.ratePerDay).toFixed(2));
-
   const workEntry = await prisma.workEntry.create({
     data: {
-      projectId:  data.projectId,
-      employeeId: data.employeeId,
-      activity:   data.activity,
-      date:       new Date(data.date),
-      daysWorked: data.daysWorked,
-      ratePerDay: data.ratePerDay,
-      totalCost,
-      notes:      data.notes ?? null,
+      projectId:   data.projectId,
+      employeeId:  data.employeeId,
+      activity:    data.activity,
+      date:        new Date(data.date),
+      daysWorked:  data.daysWorked,
+      ratePerDay:  data.ratePerDay,
+      totalCost:   parseFloat((data.daysWorked * data.ratePerDay).toFixed(2)),
+      hoursWorked: data.hoursWorked ?? null,
+      imageUrl:    data.imageUrl ?? null,
+      locationLat: data.locationLat ?? null,
+      locationLng: data.locationLng ?? null,
+      status:      data.status ?? 'PENDING',
+      isRecurring: data.isRecurring ?? false,
+      frequency:   data.frequency ?? null,
+      notes:       data.notes ?? null,
     },
   });
 
@@ -106,20 +110,11 @@ const updateWorkEntry = async (req, res) => {
   const data = validate(updateWorkEntrySchema, req.body, res);
   if (!data) return;
 
-  // Recalculate total if either factor changed
-  let totalCost = entry.totalCost;
-  if (data.daysWorked !== undefined || data.ratePerDay !== undefined) {
-    const d = data.daysWorked ?? entry.daysWorked;
-    const r = data.ratePerDay ?? entry.ratePerDay;
-    totalCost = parseFloat((d * r).toFixed(2));
-  }
-
   const updated = await prisma.workEntry.update({
     where: { id: req.params.id },
     data: {
       ...data,
       date: data.date ? new Date(data.date) : undefined,
-      totalCost,
     },
   });
 
@@ -138,6 +133,23 @@ const deleteWorkEntry = async (req, res) => {
   });
 
   return res.json({ message: 'Work entry deleted' });
+};
+
+const approveWorkEntry = async (req, res) => {
+  const entry = await findOwnedEntry(req.params.id, req.user.id, res);
+  if (!entry) return;
+
+  const { status } = req.body;
+  if (!['APPROVED', 'REJECTED', 'PENDING'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  const updated = await prisma.workEntry.update({
+    where: { id: req.params.id },
+    data: { status },
+  });
+
+  return res.json({ workEntry: updated });
 };
 
 // ── GET /work-entries/:projectId/by-employee ──────────────────────────────────
@@ -201,6 +213,7 @@ module.exports = {
   listWorkEntries,
   updateWorkEntry,
   deleteWorkEntry,
+  approveWorkEntry,
   getWorkEntriesByEmployee,
   getWorkEntriesByActivity,
 };

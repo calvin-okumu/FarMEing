@@ -30,12 +30,17 @@ const CATEGORIES = [
   'Other',
 ];
 
+const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY'];
+
 export default function AddExpenseScreen({ route, navigation }) {
   const { projectId } = route.params; // project's remoteId
   const [category, setCategory] = useState('Other');
+  const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState('MONTHLY');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -81,8 +86,11 @@ export default function AddExpenseScreen({ route, navigation }) {
           record.remoteId = ''; // will be filled after sync
           record.projectId = projectId;
           record.category = category;
+          record.expenseType = expenseType;
           record.amount = parseFloat(amount);
           record.date = date.getTime();
+          record.isRecurring = isRecurring;
+          record.frequency = isRecurring ? frequency : null;
           record.note = note.trim();
           record.receiptUrl = photo || '';
           record.isDeleted = false;
@@ -124,6 +132,26 @@ export default function AddExpenseScreen({ route, navigation }) {
           ))}
         </ScrollView>
 
+        <Text style={styles.label}>Expense Type</Text>
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={[styles.typeButton, expenseType === 'OPEX' && styles.typeButtonActive]}
+            onPress={() => setExpenseType('OPEX')}
+          >
+            <Text style={[styles.typeButtonText, expenseType === 'OPEX' && styles.typeButtonTextActive]}>
+              OPEX (Operational)
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeButton, expenseType === 'CAPEX' && styles.typeButtonActive]}
+            onPress={() => setExpenseType('CAPEX')}
+          >
+            <Text style={[styles.typeButtonText, expenseType === 'CAPEX' && styles.typeButtonTextActive]}>
+              CAPEX (Capital)
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.label}>Amount ($) *</Text>
         <TextInput
           style={styles.input}
@@ -151,6 +179,32 @@ export default function AddExpenseScreen({ route, navigation }) {
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={onDateChange}
           />
+        )}
+
+        <View style={styles.recurringRow}>
+          <Text style={styles.labelInline}>Is Recurring?</Text>
+          <TouchableOpacity 
+            style={[styles.toggle, isRecurring && styles.toggleActive]}
+            onPress={() => setIsRecurring(!isRecurring)}
+          >
+            <View style={[styles.toggleKnob, isRecurring && styles.toggleKnobActive]} />
+          </TouchableOpacity>
+        </View>
+
+        {isRecurring && (
+          <View style={styles.frequencyRow}>
+            {FREQUENCIES.map((freq) => (
+              <TouchableOpacity
+                key={freq}
+                style={[styles.freqChip, frequency === freq && styles.freqChipActive]}
+                onPress={() => setFrequency(freq)}
+              >
+                <Text style={[styles.freqText, frequency === freq && styles.freqTextActive]}>
+                  {freq}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
 
         <Text style={styles.label}>Note</Text>
@@ -229,6 +283,26 @@ const styles = StyleSheet.create({
   photoContainer: { position: 'relative' },
   photo: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover' },
   removePhoto: { position: 'absolute', top: 8, right: 8, backgroundColor: '#fff', borderRadius: 12 },
+  
+  row: { flexDirection: 'row', gap: 12 },
+  typeButton: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center', backgroundColor: '#fff' },
+  typeButtonActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  typeButtonText: { fontSize: 14, color: '#374151', fontWeight: '600' },
+  typeButtonTextActive: { color: '#fff' },
+
+  recurringRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 8 },
+  labelInline: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  toggle: { width: 50, height: 28, borderRadius: 15, backgroundColor: '#e5e7eb', padding: 2 },
+  toggleActive: { backgroundColor: '#16a34a' },
+  toggleKnob: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff' },
+  toggleKnobActive: { alignSelf: 'flex-end' },
+
+  frequencyRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  freqChip: { flex: 1, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center', backgroundColor: '#fff' },
+  freqChipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  freqText: { fontSize: 12, color: '#374151', fontWeight: '600' },
+  freqTextActive: { color: '#fff' },
+
   saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24, marginBottom: 20 },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },

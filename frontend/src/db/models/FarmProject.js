@@ -13,6 +13,8 @@ export default class FarmProject extends Model {
   @text('land_unit')  landUnit;
   @field('start_date') startDate;
   @field('end_date')   endDate;
+  @field('expected_yield') expectedYield;
+  @text('status')     status;
   @text('notes')      notes;
   @field('is_deleted') isDeleted;
   @readonly @date('created_at') createdAt;

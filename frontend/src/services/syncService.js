@@ -52,6 +52,8 @@ const mappers = {
     record.landUnit = r.landUnit ?? 'acres';
     record.startDate = toMs(r.startDate);
     record.endDate = toMs(r.endDate) ?? null;
+    record.expectedYield = r.expectedYield ?? 0;
+    record.status = r.status ?? 'ACTIVE';
     record.notes = r.notes ?? '';
     record.isDeleted = r.isDeleted ?? false;
     record.updatedAt = toMs(r.updatedAt);
@@ -71,8 +73,11 @@ const mappers = {
     record.remoteId = r.id;
     record.projectId = r.projectId ?? '';
     record.category = r.category ?? '';
+    record.expenseType = r.expenseType ?? 'OPEX';
     record.amount = r.amount ?? 0;
     record.date = toMs(r.date);
+    record.isRecurring = r.isRecurring ?? false;
+    record.frequency = r.frequency ?? null;
     record.note = r.note ?? '';
     record.receiptUrl = r.receiptUrl ?? '';
     record.isDeleted = r.isDeleted ?? false;
@@ -87,6 +92,13 @@ const mappers = {
     record.daysWorked = r.daysWorked ?? 0;
     record.ratePerDay = r.ratePerDay ?? 0;
     record.totalCost = r.totalCost ?? 0;
+    record.hoursWorked = r.hoursWorked ?? 0;
+    record.imageUrl = r.imageUrl ?? '';
+    record.locationLat = r.locationLat ?? 0;
+    record.locationLng = r.locationLng ?? 0;
+    record.status = r.status ?? 'PENDING';
+    record.isRecurring = r.isRecurring ?? false;
+    record.frequency = r.frequency ?? null;
     record.notes = r.notes ?? '';
     record.isPaid = r.isPaid ?? false;
     record.isDeleted = r.isDeleted ?? false;
@@ -110,6 +122,30 @@ const mappers = {
     record.isDeleted = r.isDeleted ?? false;
     record.updatedAt = toMs(r.updatedAt);
   },
+  harvests: (record, r) => {
+    record.remoteId = r.id;
+    record.projectId = r.projectId ?? '';
+    record.crop = r.crop ?? '';
+    record.date = toMs(r.date);
+    record.weight = r.weight ?? 0;
+    record.unit = r.unit ?? 'kg';
+    record.quality = r.quality ?? '';
+    record.notes = r.notes ?? '';
+    record.isDeleted = r.isDeleted ?? false;
+    record.updatedAt = toMs(r.updatedAt);
+  },
+  sales: (record, r) => {
+    record.remoteId = r.id;
+    record.projectId = r.projectId ?? '';
+    record.date = toMs(r.date);
+    record.customer = r.customer ?? '';
+    record.weightSold = r.weightSold ?? 0;
+    record.unitPrice = r.unitPrice ?? 0;
+    record.totalAmount = r.totalAmount ?? 0;
+    record.notes = r.notes ?? '';
+    record.isDeleted = r.isDeleted ?? false;
+    record.updatedAt = toMs(r.updatedAt);
+  },
 };
 
 // ── PUSH: Local -> Server ─────────────────────────────────────────────────────
@@ -129,6 +165,8 @@ async function pushChanges() {
     landSize: r.landSize,
     landUnit: r.landUnit,
     startDate: new Date(r.startDate).toISOString().split('T')[0],
+    expectedYield: r.expectedYield,
+    status: r.status,
     notes: r.notes,
   }));
 
@@ -137,8 +175,11 @@ async function pushChanges() {
     pushCollection('expenses', '/expenses', (r) => ({
       projectId: r.projectId,
       category: r.category,
+      expenseType: r.expenseType,
       amount: r.amount,
       date: new Date(r.date).toISOString().split('T')[0],
+      isRecurring: r.isRecurring,
+      frequency: r.frequency,
       note: r.note,
     })),
     pushCollection('budget_items', '/budget', (r) => ({
@@ -156,6 +197,13 @@ async function pushChanges() {
       date: new Date(r.date).toISOString().split('T')[0],
       daysWorked: r.daysWorked,
       ratePerDay: r.ratePerDay,
+      hoursWorked: r.hoursWorked,
+      imageUrl: r.imageUrl,
+      locationLat: r.locationLat,
+      locationLng: r.locationLng,
+      status: r.status,
+      isRecurring: r.isRecurring,
+      frequency: r.frequency,
       notes: r.notes,
     })),
     pushCollection('payments', '/payments', (r) => ({
@@ -163,6 +211,24 @@ async function pushChanges() {
       amount: r.amount,
       date: new Date(r.date).toISOString().split('T')[0],
       note: r.note,
+    })),
+    pushCollection('harvests', '/harvests', (r) => ({
+      projectId: r.projectId,
+      crop: r.crop,
+      date: new Date(r.date).toISOString().split('T')[0],
+      weight: r.weight,
+      unit: r.unit,
+      quality: r.quality,
+      notes: r.notes,
+    })),
+    pushCollection('sales', '/sales', (r) => ({
+      projectId: r.projectId,
+      date: new Date(r.date).toISOString().split('T')[0],
+      customer: r.customer,
+      weightSold: r.weightSold,
+      unitPrice: r.unitPrice,
+      totalAmount: r.totalAmount,
+      notes: r.notes,
     })),
   ]);
 }
@@ -219,16 +285,20 @@ async function syncPayments() {
 
 async function syncProjectChildren(projectId) {
   try {
-    const [budgetRes, expenseRes, workRes] = await Promise.all([
+    const [budgetRes, expenseRes, workRes, harvestRes, saleRes] = await Promise.all([
       api.get(`/budget/${projectId}`),
       api.get(`/expenses/${projectId}`),
       api.get(`/work-entries/${projectId}`),
+      api.get(`/harvests/${projectId}`),
+      api.get(`/sales/${projectId}`),
     ]);
 
     await Promise.all([
       upsertCollection(database.get('budget_items'), budgetRes.data.budgetItems, mappers.budget_items),
       upsertCollection(database.get('expenses'), expenseRes.data.expenses, mappers.expenses),
       upsertCollection(database.get('work_entries'), workRes.data.workEntries, mappers.work_entries),
+      upsertCollection(database.get('harvests'), harvestRes.data.harvests, mappers.harvests),
+      upsertCollection(database.get('sales'), saleRes.data.sales, mappers.sales),
     ]);
   } catch (err) {
     // skip deleted projects
