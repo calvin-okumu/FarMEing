@@ -15,14 +15,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import useAuthStore from '../store/useAuthStore';
-import api from '../lib/api';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { formatAppDate } from '../utils/date';
+import { initializeLocalRecord } from '../utils/localRecord';
 
 export default function EmployeeDetailScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { employeeId } = route.params || {};
-  const token = useAuthStore((s) => s.token);
+  const currency = useSettingsStore((s) => s.currency);
   
   const [employee, setEmployee] = useState(null);
   const [workEntries, setWorkEntries] = useState([]);
@@ -59,21 +63,26 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   // 2. Subscriptions: Only start once we have the employee's remoteId
   useEffect(() => {
-    if (!employee?.remoteId) {
+    if (!employee) {
       setWorkEntries([]);
       setPayments([]);
       return;
     }
 
+    const employeeIds = [employee.id];
+    if (employee.remoteId) {
+      employeeIds.push(employee.remoteId);
+    }
+
     const workSub = database
       .get('work_entries')
-      .query(Q.where('employee_id', employee.remoteId), Q.where('is_deleted', false))
+      .query(Q.where('employee_id', Q.oneOf(employeeIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setWorkEntries);
 
     const paySub = database
       .get('payments')
-      .query(Q.where('employee_id', employee.remoteId), Q.where('is_deleted', false))
+      .query(Q.where('employee_id', Q.oneOf(employeeIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setPayments);
 
@@ -81,7 +90,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       workSub.unsubscribe();
       paySub.unsubscribe();
     };
-  }, [employee?.remoteId]);
+  }, [employee?.id, employee?.remoteId]);
 
   const totalEarned = workEntries.reduce((sum, w) => sum + (w.totalCost || 0), 0);
   const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -94,7 +103,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleRecordPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      Alert.alert(t('common.error'), t('payments.errors.amount_required'));
       return;
     }
 
@@ -105,14 +114,12 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       // 1. Save locally first (pending)
       await database.write(async () => {
         await database.get('payments').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = '';
-          record.employeeId = employee.remoteId;
+          initializeLocalRecord(record);
+          record.employeeId = employee.id;
           record.amount = amount;
           record.date = paymentDate.getTime();
           record.note = paymentNote.trim();
           record.isDeleted = false;
-          record.updatedAt = Date.now();
         });
       });
 
@@ -123,7 +130,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       setPaymentDate(new Date());
       syncAll().catch(() => {});
     } catch (err) {
-      Alert.alert('Error', 'Failed to record payment locally');
+      Alert.alert(t('common.error'), err.message || t('payments.errors.save_local'));
     } finally {
       setSavingPayment(false);
     }
@@ -140,9 +147,9 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   if (!employee) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Employee not found</Text>
+        <Text style={styles.errorText}>{t('employees.errors.not_found')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+          <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -164,9 +171,9 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       {/* Balance Card */}
       <View style={styles.balanceCard}>
         <View style={styles.balanceInfo}>
-          <Text style={styles.balanceLabel}>Outstanding Balance</Text>
+          <Text style={styles.balanceLabel}>{t('employees.outstanding_balance')}</Text>
           <Text style={[styles.balanceValue, balance > 0 ? styles.balancePositive : styles.balanceNeutral]}>
-            ${balance.toLocaleString()}
+            {formatCurrency(balance, currency)}
           </Text>
         </View>
         <TouchableOpacity
@@ -175,7 +182,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           disabled={balance <= 0}
         >
           <Ionicons name="cash-outline" size={20} color="#fff" />
-          <Text style={styles.payButtonText}>Pay Worker</Text>
+          <Text style={styles.payButtonText}>{t('payments.pay_worker')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -185,13 +192,13 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           style={[styles.tabButton, activeTab === 'work' && styles.tabButtonActive]}
           onPress={() => setActiveTab('work')}
         >
-          <Text style={[styles.tabText, activeTab === 'work' && styles.tabTextActive]}>Work history</Text>
+          <Text style={[styles.tabText, activeTab === 'work' && styles.tabTextActive]}>{t('employees.work_history')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'payments' && styles.tabButtonActive]}
           onPress={() => setActiveTab('payments')}
         >
-          <Text style={[styles.tabText, activeTab === 'payments' && styles.tabTextActive]}>Payments</Text>
+          <Text style={[styles.tabText, activeTab === 'payments' && styles.tabTextActive]}>{t('payments.title')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -200,17 +207,17 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         {activeTab === 'work' ? (
           workEntries.length === 0 ? (
             <View style={styles.emptySection}>
-              <Text style={styles.emptyText}>No work entries yet</Text>
+               <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
             </View>
           ) : (
             workEntries.map((entry) => (
               <View key={entry.id} style={styles.listItem}>
                 <View style={styles.listItemHeader}>
                   <Text style={styles.listItemTitle}>{entry.activity}</Text>
-                  <Text style={styles.listItemAmount}>${(entry.totalCost ?? 0).toLocaleString()}</Text>
+                   <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost ?? 0, currency)}</Text>
                 </View>
                 <Text style={styles.listItemMeta}>
-                  {entry.date ? new Date(entry.date).toLocaleDateString('en-GB') : ''} • {entry.daysWorked} days
+                  {entry.date ? formatAppDate(entry.date) : ''} • {entry.daysWorked} {t('labor.days')}
                 </Text>
               </View>
             ))
@@ -218,17 +225,17 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         ) : (
           payments.length === 0 ? (
             <View style={styles.emptySection}>
-              <Text style={styles.emptyText}>No payments yet</Text>
+               <Text style={styles.emptyText}>{t('payments.empty')}</Text>
             </View>
           ) : (
             payments.map((p) => (
               <View key={p.id} style={styles.listItem}>
                 <View style={styles.listItemHeader}>
-                  <Text style={styles.listItemTitle}>Payment</Text>
-                  <Text style={styles.listItemAmount}>${(p.amount ?? 0).toLocaleString()}</Text>
+                   <Text style={styles.listItemTitle}>{t('payments.title')}</Text>
+                   <Text style={styles.listItemAmount}>{formatCurrency(p.amount ?? 0, currency)}</Text>
                 </View>
                 <Text style={styles.listItemMeta}>
-                  {p.date ? new Date(p.date).toLocaleDateString('en-GB') : ''}
+                  {p.date ? formatAppDate(p.date) : ''}
                   {p.note ? ` • ${p.note}` : ''}
                 </Text>
               </View>
@@ -247,13 +254,13 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Record Payment</Text>
+                 <Text style={styles.modalTitle}>{t('payments.record')}</Text>
                 <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
                   <Ionicons name="close" size={24} color="#374151" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.inputLabel}>Amount ($) *</Text>
+               <Text style={styles.inputLabel}>{t('payments.fields.amount')} *</Text>
               <TextInput
                 style={styles.input}
                 value={paymentAmount}
@@ -262,7 +269,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 placeholder="0.00"
               />
 
-              <Text style={styles.inputLabel}>Date</Text>
+               <Text style={styles.inputLabel}>{t('common.date')}</Text>
               <TouchableOpacity 
                 style={styles.dateSelector} 
                 onPress={() => setShowDatePicker(true)}
@@ -282,12 +289,12 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 />
               )}
 
-              <Text style={styles.inputLabel}>Note</Text>
+               <Text style={styles.inputLabel}>{t('common.notes')}</Text>
               <TextInput
                 style={styles.input}
                 value={paymentNote}
                 onChangeText={setPaymentNote}
-                placeholder="Optional note..."
+                 placeholder={t('payments.placeholders.note')}
               />
 
               <TouchableOpacity
@@ -295,7 +302,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 onPress={handleRecordPayment}
                 disabled={savingPayment}
               >
-                {savingPayment ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Confirm Payment</Text>}
+                 {savingPayment ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{t('payments.confirm')}</Text>}
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

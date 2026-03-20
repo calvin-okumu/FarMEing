@@ -1,5 +1,5 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, date, text, readonly } from '@nozbe/watermelondb/decorators';
+import { field, text } from '@nozbe/watermelondb/decorators';
 
 export default class Harvest extends Model {
   static table = 'harvests';
@@ -7,12 +7,15 @@ export default class Harvest extends Model {
   @text('remote_id') remoteId;
   @text('project_id') projectId;
   @text('crop') crop;
-  @date('date') date;
+  @field('date') date;
   @field('weight') weight;
   @text('unit') unit;
   @text('quality') quality;
   @text('notes') notes;
   @field('is_deleted') isDeleted;
-  @readonly('created_at') createdAt;
-  @readonly('updated_at') updatedAt;
+  @field('created_at') createdAt;
+  @field('updated_at') updatedAt;
+  @text('sync_status') syncStatus;
+  @field('last_synced_at') lastSyncedAt;
+  @text('last_error') lastError;
 }

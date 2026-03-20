@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 
 const LANG_KEY = 'user_language';
+const CURRENCY_KEY = 'user_currency';
 
 const getSystemLanguage = () => {
   try {
@@ -19,19 +20,24 @@ const getSystemLanguage = () => {
 
 const useSettingsStore = create((set) => ({
   language: null, // 'en' or 'sw'
+  currency: 'USD',
   
   loadSettings: async () => {
     try {
-      let lang = await SecureStore.getItemAsync(LANG_KEY);
+      const [storedLang, storedCurrency] = await Promise.all([
+        SecureStore.getItemAsync(LANG_KEY),
+        SecureStore.getItemAsync(CURRENCY_KEY),
+      ]);
+      let lang = storedLang;
       if (!lang) {
         // Default to system language if available in our list, else 'en'
         const systemLang = getSystemLanguage();
         lang = ['en', 'sw'].includes(systemLang) ? systemLang : 'en';
       }
-      set({ language: lang });
+      set({ language: lang, currency: storedCurrency || 'USD' });
       return lang;
     } catch (err) {
-      set({ language: 'en' });
+      set({ language: 'en', currency: 'USD' });
       return 'en';
     }
   },
@@ -45,21 +51,37 @@ const useSettingsStore = create((set) => ({
     }
   },
 
+  setCurrency: async (currency) => {
+    try {
+      await SecureStore.setItemAsync(CURRENCY_KEY, currency);
+      set({ currency });
+    } catch (err) {
+      console.warn('Failed to save currency preference');
+    }
+  },
+
   initializeLanguage: async (user) => {
     try {
-      const storedLang = await SecureStore.getItemAsync(LANG_KEY);
+      const [storedLang, storedCurrency] = await Promise.all([
+        SecureStore.getItemAsync(LANG_KEY),
+        SecureStore.getItemAsync(CURRENCY_KEY),
+      ]);
       if (storedLang) {
-        set({ language: storedLang });
+        set({ language: storedLang, currency: storedCurrency || user?.currency || 'USD' });
         return storedLang;
       }
 
       // Default based on role if no preference stored
       const defaultLang = user?.role === 'WORKER' ? 'sw' : 'en';
-      await SecureStore.setItemAsync(LANG_KEY, defaultLang);
-      set({ language: defaultLang });
+      const defaultCurrency = storedCurrency || user?.currency || 'USD';
+      await Promise.all([
+        SecureStore.setItemAsync(LANG_KEY, defaultLang),
+        SecureStore.setItemAsync(CURRENCY_KEY, defaultCurrency),
+      ]);
+      set({ language: defaultLang, currency: defaultCurrency });
       return defaultLang;
     } catch (err) {
-      set({ language: 'en' });
+      set({ language: 'en', currency: user?.currency || 'USD' });
       return 'en';
     }
   },

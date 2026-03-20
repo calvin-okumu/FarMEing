@@ -10,11 +10,29 @@
     "back": "Back",
     "date": "Date",
     "notes": "Notes",
+    "recurring": "Is Recurring?",
+    "album": "Album",
+    "camera": "Camera",
     "optional": "Optional",
-    "required": "Required"
+    "required": "Required",
+    "zero": "0",
+    "frequencies": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "activities": {
+      "planting": "Planting",
+      "weeding": "Weeding",
+      "harvesting": "Harvesting",
+      "spraying": "Spraying",
+      "irrigation": "Irrigation",
+      "other": "Other"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
+    "active_project": "Active project",
     "profit_loss": "Net Profit / Loss",
     "revenue": "Revenue",
     "total_budget": "Total Budget",
@@ -24,7 +42,7 @@
     "efficiency_metrics": "Efficiency Metrics",
     "yield_acre": "Yield / Acre",
     "cost_kg": "Cost / KG",
-    "rev_kg": "Rev / KG",
+    "rev_kg": "Revenue / KG",
     "budget_vs_actual": "Budget vs Actual",
     "spent": "Spent",
     "budget": "Budget",
@@ -32,7 +50,31 @@
     "labor_by_activity": "Labor by Activity",
     "unpaid_labor": "Total Unpaid Labor",
     "all_labor_paid": "All labor paid",
-    "payments_pending": "Payments pending to employees"
+    "payments_pending": "Payments pending to employees",
+    "select_project": "Select project...",
+    "hero_label": "Profit / Loss",
+    "performance_up": "Shamba mkononi: performance is higher than last month.",
+    "performance_down": "Field pressure is up this month. Review costs and pending payouts.",
+    "weather_alerts": "Weather Alerts",
+    "weather_warning_title": "Rain Expected",
+    "weather_warning_body": "Heavy pressure on costs or unpaid labor. Prepare field work and check drainage plans.",
+    "weather_good_title": "Field Conditions Stable",
+    "weather_good_body": "Revenue is holding up well. Keep an eye on harvest timing and irrigation balance.",
+    "risk_high": "High",
+    "risk_watch": "Watch",
+    "target_hit": "Target Hit",
+    "needs_push": "Needs Push",
+    "harvest_total": "Harvest total (kg)",
+    "harvest_trend": "+2.4% vs prev. season",
+    "key_updates": "Key Updates",
+    "leading_activity": "leading",
+    "field_ready": "Maize Harvest Ready",
+    "field_ready_body": "Section B is close to harvest and field performance is trending above estimate.",
+    "top_worker_body": "{{name}} currently leads labor output at {{amount}}.",
+    "irrigation_alert": "Irrigation Alert",
+    "irrigation_alert_body": "Soil moisture in Sector C is trending low. Review pumps and field schedule.",
+    "irrigation_alert_warning": "Pending labor payouts are building up. Review operations before the next irrigation cycle.",
+    "run_action": "Run Action"
   },
   "projects": {
     "title": "My Farm Projects",
@@ -53,30 +95,302 @@
       "start_date": "Start Date",
       "status": "Status"
     },
+    "placeholders": {
+      "name": "e.g. North Field Wheat",
+      "crop": "e.g. Wheat, Corn",
+      "unit": "acres",
+      "expected_yield": "e.g. 5000"
+    },
     "new_project": "New Project",
     "create_project": "Create Project",
     "empty_state": "No projects yet",
-    "pull_to_sync": "Pull down to sync from the server."
+    "pull_to_sync": "Pull down to sync from the server.",
+    "day": "Day {{count}}",
+    "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
+    "errors": {
+      "save_local": "Failed to save project locally",
+      "delete_local": "Failed to delete project",
+      "not_found": "Project not found"
+    }
+  },
+  "budget": {
+    "fields": {
+      "category": "Category",
+      "name": "Item Name",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unit_price": "Unit Price"
+    },
+    "placeholders": {
+      "name": "e.g. Urea Fertilizer",
+      "unit": "kg, liters, etc."
+    },
+    "estimated_total": "Estimated Total:",
+    "add": "Add Budget Item",
+    "empty": "No budget items",
+    "categories": {
+      "seeds": "Seeds",
+      "fertilizer": "Fertilizer",
+      "pesticides": "Pesticides",
+      "labor": "Labor",
+      "equipment": "Equipment",
+      "fuel": "Fuel",
+      "irrigation": "Irrigation",
+      "other": "Other"
+    },
+    "errors": {
+      "name_required": "Item name is required",
+      "quantity_price_required": "Quantity and unit price are required",
+      "save_local": "Failed to save budget item locally"
+    }
+  },
+  "expenses": {
+    "fields": {
+      "category": "Category",
+      "type": "Expense Type",
+      "amount": "Amount",
+      "receipt": "Receipt Photo (Optional)"
+    },
+    "placeholders": {
+      "note": "Optional description..."
+    },
+    "empty": "No expenses",
+    "save": "Save Expense",
+    "categories": {
+      "seeds": "Seeds",
+      "fertilizer": "Fertilizer",
+      "pesticides": "Pesticides",
+      "labor": "Labor",
+      "equipment": "Equipment",
+      "fuel": "Fuel",
+      "irrigation": "Irrigation",
+      "transport": "Transport",
+      "other": "Other"
+    },
+    "types": {
+      "opex": "OPEX (Operational)",
+      "capex": "CAPEX (Capital)"
+    },
+    "errors": {
+      "amount_required": "Amount is required",
+      "save_local": "Failed to save expense locally"
+    }
+  },
+  "employees": {
+    "fields": {
+      "name": "Name",
+      "phone": "Phone",
+      "role": "Role"
+    },
+    "placeholders": {
+      "name": "e.g. John Doe",
+      "phone": "e.g. +1 234 567 8900",
+      "role": "e.g. Farm Worker, Supervisor"
+    },
+    "new_employee": "New Employee",
+    "add_employee": "Add Employee",
+    "delete_title": "Delete Employee",
+    "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
+    "empty_title": "No employees yet",
+    "empty_subtitle": "Pull down to sync or add a new employee.",
+    "earned": "Earned",
+    "paid": "Paid",
+    "settled": "Settled",
+    "outstanding_balance": "Outstanding Balance",
+    "work_history": "Work History",
+    "unknown": "Unknown Worker",
+    "errors": {
+      "name_required": "Employee name is required",
+      "save_local": "Failed to save employee locally",
+      "delete_local": "Failed to delete employee",
+      "not_found": "Employee not found"
+    }
   },
   "labor": {
     "log_work": "Log Work Entry",
     "employee": "Employee",
     "activity": "Activity",
     "days_worked": "Days Worked",
-    "rate_day": "Rate per Day ($)",
+    "rate_day": "Rate per Day",
     "hours_worked": "Hours Worked",
     "photo_proof": "Photo Proof",
     "total_cost": "Total Cost",
+    "empty_state": "No labor entries",
+    "add_employee_first": "+ Add New Employee first",
+    "days": "days",
+    "hours_short": "hrs",
+    "placeholders": {
+      "notes": "Optional details..."
+    },
     "status": {
       "pending": "PENDING",
       "approved": "APPROVED",
       "rejected": "REJECTED"
+    },
+    "errors": {
+      "employee_required": "Please select an employee",
+      "rate_required": "Rate per day is required",
+      "save_local": "Failed to save work entry locally"
+    }
+  },
+  "harvest": {
+    "fields": {
+      "crop": "Crop Name",
+      "weight": "Weight",
+      "unit": "Unit",
+      "quality": "Quality"
+    },
+    "placeholders": {
+      "crop": "e.g. Tomatoes",
+      "notes": "Optional notes..."
+    },
+    "record": "Record Harvest",
+    "empty": "No harvest records",
+    "default_quality": "Std",
+    "units": {
+      "kg": "kg",
+      "tons": "tons",
+      "bags": "bags",
+      "crates": "crates",
+      "pieces": "pieces"
+    },
+    "qualities": {
+      "grade_a": "Grade A",
+      "grade_b": "Grade B",
+      "grade_c": "Grade C",
+      "mixed": "Mixed"
+    },
+    "errors": {
+      "crop_required": "Crop name is required",
+      "weight_required": "Valid weight is required",
+      "save_local": "Failed to save harvest locally"
+    }
+  },
+  "sales": {
+    "fields": {
+      "customer": "Customer (Optional)",
+      "weight_sold": "Weight Sold (kg)",
+      "unit_price": "Unit Price"
+    },
+    "placeholders": {
+      "customer": "e.g. Market Vendor",
+      "notes": "Optional notes..."
+    },
+    "record": "Record Sale",
+    "cash_sale": "Cash Sale",
+    "total_revenue": "Total Revenue:",
+    "empty": "No sales records",
+    "errors": {
+      "weight_required": "Valid weight is required",
+      "unit_price_required": "Valid unit price is required",
+      "save_local": "Failed to save sale locally"
+    }
+  },
+  "payments": {
+    "title": "Payment",
+    "record": "Record Payment",
+    "confirm": "Confirm Payment",
+    "pay_worker": "Pay Worker",
+    "empty": "No payments yet",
+    "fields": {
+      "amount": "Amount"
+    },
+    "placeholders": {
+      "note": "Optional note..."
+    },
+    "errors": {
+      "amount_required": "Please enter a valid amount",
+      "save_local": "Failed to record payment locally"
+    }
+  },
+  "quick_entry": {
+    "fields": {
+      "project": "Project",
+      "employee": "Employee",
+      "activity": "Activity",
+      "workers": "Workers",
+      "days": "Days",
+      "rate": "Rate"
+    },
+    "placeholders": {
+      "employee": "Type name..."
+    },
+    "select_project": "Select project...",
+    "total": "Total",
+    "save": "SAVE ENTRY",
+    "success": "Work entry logged!",
+    "errors": {
+      "project_required": "Please select a project",
+      "employee_required": "Please enter employee name",
+      "rate_required": "Please enter a valid rate",
+      "save_local": "Failed to save entry locally"
     }
   },
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "currency": "Currency",
+    "languages": {
+      "en": "English",
+      "sw": "Kiswahili"
+    },
+    "sync_status": "Sync Status",
+    "sync_states": {
+      "idle": "Idle",
+      "syncing": "Syncing",
+      "success": "Up to date",
+      "error": "Needs attention"
+    },
+    "last_sync": "Last sync: {{date}}",
+    "never_synced": "Never synced yet",
+    "failed_items": "Failed items: {{count}}",
     "logout": "Logout",
-    "profile": "Profile"
+    "profile": "Profile",
+    "confirm_logout": "Are you sure?",
+    "version": "Version {{version}}"
+  },
+  "auth": {
+    "fields": {
+      "full_name": "Full name",
+      "phone": "Phone number",
+      "password": "Password",
+      "confirm_password": "Confirm password"
+    },
+    "placeholders": {
+      "password": "Enter your password",
+      "password_min": "At least 6 characters",
+      "confirm_password": "Repeat password"
+    },
+    "roles": {
+      "admin": "Admin",
+      "worker": "Worker"
+    },
+    "login": {
+      "tagline": "Smart farm management",
+      "submit": "Log in",
+      "no_account": "Don't have an account?",
+      "sign_up": "Sign up"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Start tracking your farm today",
+      "submit": "Create account",
+      "have_account": "Already have an account?",
+      "register_as": "Register as"
+    },
+    "errors": {
+      "missing_fields_title": "Missing fields",
+      "login_missing_fields": "Please enter your phone and password.",
+      "register_missing_fields": "Please fill in all required fields.",
+      "password_mismatch_title": "Password mismatch",
+      "password_mismatch": "Passwords do not match.",
+      "weak_password_title": "Weak password",
+      "weak_password": "Password must be at least 6 characters.",
+      "login_failed_title": "Login failed",
+      "registration_failed_title": "Registration failed"
+    }
+  },
+  "tab": {
+    "workers": "Workers"
   }
 }

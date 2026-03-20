@@ -13,18 +13,22 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import { initializeLocalRecord } from '../utils/localRecord';
+import { formatAppDate } from '../utils/date';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
-const QUALITIES = ['Grade A', 'Grade B', 'Grade C', 'Mixed'];
+const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
 
 export default function AddHarvestScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { projectId } = route.params; 
   const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState('kg');
-  const [quality, setQuality] = useState('Grade A');
+  const [quality, setQuality] = useState('grade_a');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
@@ -37,11 +41,11 @@ export default function AddHarvestScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!crop.trim()) {
-      Alert.alert('Error', 'Crop name is required');
+      Alert.alert(t('common.error'), t('harvest.errors.crop_required'));
       return;
     }
     if (!weight || parseFloat(weight) <= 0) {
-      Alert.alert('Error', 'Valid weight is required');
+      Alert.alert(t('common.error'), t('harvest.errors.weight_required'));
       return;
     }
 
@@ -49,8 +53,7 @@ export default function AddHarvestScreen({ route, navigation }) {
     try {
       await database.write(async () => {
         await database.get('harvests').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = '';
+          initializeLocalRecord(record);
           record.projectId = projectId;
           record.crop = crop.trim();
           record.weight = parseFloat(weight);
@@ -59,14 +62,13 @@ export default function AddHarvestScreen({ route, navigation }) {
           record.date = date.getTime();
           record.notes = notes.trim();
           record.isDeleted = false;
-          record.updatedAt = Date.now();
         });
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', 'Failed to save locally');
+      Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -80,18 +82,18 @@ export default function AddHarvestScreen({ route, navigation }) {
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         
-        <Text style={styles.label}>Crop Name *</Text>
+        <Text style={styles.label}>{t('harvest.fields.crop')} *</Text>
         <TextInput
           style={styles.input}
           value={crop}
           onChangeText={setCrop}
-          placeholder="e.g. Tomatoes"
+          placeholder={t('harvest.placeholders.crop')}
           placeholderTextColor="#9ca3af"
         />
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <Text style={styles.label}>Weight *</Text>
+        <Text style={styles.label}>{t('harvest.fields.weight')} *</Text>
             <TextInput
               style={styles.input}
               value={weight}
@@ -102,7 +104,7 @@ export default function AddHarvestScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.half}>
-            <Text style={styles.label}>Unit</Text>
+            <Text style={styles.label}>{t('harvest.fields.unit')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
               {UNITS.map((u) => (
                 <TouchableOpacity
@@ -110,14 +112,14 @@ export default function AddHarvestScreen({ route, navigation }) {
                   style={[styles.chip, unit === u && styles.chipActive]}
                   onPress={() => setUnit(u)}
                 >
-                  <Text style={[styles.chipText, unit === u && styles.chipTextActive]}>{u}</Text>
+                  <Text style={[styles.chipText, unit === u && styles.chipTextActive]}>{t(`harvest.units.${u}`)}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         </View>
 
-        <Text style={styles.label}>Quality</Text>
+        <Text style={styles.label}>{t('harvest.fields.quality')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
           {QUALITIES.map((q) => (
             <TouchableOpacity
@@ -125,18 +127,18 @@ export default function AddHarvestScreen({ route, navigation }) {
               style={[styles.chip, quality === q && styles.chipActive]}
               onPress={() => setQuality(q)}
             >
-              <Text style={[styles.chipText, quality === q && styles.chipTextActive]}>{q}</Text>
+              <Text style={[styles.chipText, quality === q && styles.chipTextActive]}>{t(`harvest.qualities.${q}`)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <Text style={styles.label}>Date</Text>
+        <Text style={styles.label}>{t('common.date')}</Text>
         <TouchableOpacity 
           style={styles.dateSelector} 
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={styles.dateSelectorText}>
-            {date.toLocaleDateString('en-GB')}
+            {formatAppDate(date)}
           </Text>
           <Ionicons name="calendar-outline" size={20} color="#16a34a" />
         </TouchableOpacity>
@@ -150,12 +152,12 @@ export default function AddHarvestScreen({ route, navigation }) {
           />
         )}
 
-        <Text style={styles.label}>Notes</Text>
+        <Text style={styles.label}>{t('common.notes')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={notes}
           onChangeText={setNotes}
-          placeholder="Optional notes..."
+          placeholder={t('harvest.placeholders.notes')}
           multiline
           numberOfLines={3}
           placeholderTextColor="#9ca3af"
@@ -169,7 +171,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Record Harvest</Text>
+            <Text style={styles.saveButtonText}>{t('harvest.record')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

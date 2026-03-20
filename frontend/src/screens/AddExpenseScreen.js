@@ -15,32 +15,36 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import { initializeLocalRecord } from '../utils/localRecord';
+import { formatAppDate } from '../utils/date';
 
 const CATEGORIES = [
-  'Seeds',
-  'Fertilizer',
-  'Pesticides',
-  'Labor',
-  'Equipment',
-  'Fuel',
-  'Irrigation',
-  'Transport',
-  'Other',
+  'seeds',
+  'fertilizer',
+  'pesticides',
+  'labor',
+  'equipment',
+  'fuel',
+  'irrigation',
+  'transport',
+  'other',
 ];
 
-const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY'];
+const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
 export default function AddExpenseScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { projectId } = route.params; // project's remoteId
-  const [category, setCategory] = useState('Other');
+  const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
-  const [frequency, setFrequency] = useState('MONTHLY');
+  const [frequency, setFrequency] = useState('monthly');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -73,7 +77,7 @@ export default function AddExpenseScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!amount) {
-      Alert.alert('Error', 'Amount is required');
+      Alert.alert(t('common.error'), t('expenses.errors.amount_required'));
       return;
     }
 
@@ -82,19 +86,17 @@ export default function AddExpenseScreen({ route, navigation }) {
       // 1. Save to local WatermelonDB first (Offline-first!)
       await database.write(async () => {
         await database.get('expenses').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = ''; // will be filled after sync
+          initializeLocalRecord(record);
           record.projectId = projectId;
           record.category = category;
           record.expenseType = expenseType;
           record.amount = parseFloat(amount);
           record.date = date.getTime();
           record.isRecurring = isRecurring;
-          record.frequency = isRecurring ? frequency : null;
+           record.frequency = isRecurring ? frequency.toUpperCase() : null;
           record.note = note.trim();
           record.receiptUrl = photo || '';
           record.isDeleted = false;
-          record.updatedAt = Date.now();
         });
       });
 
@@ -104,7 +106,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       // 3. Return immediately
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', 'Failed to save locally');
+      Alert.alert(t('common.error'), err.message || t('expenses.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -117,7 +119,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Category</Text>
+        <Text style={styles.label}>{t('expenses.fields.category')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
@@ -126,20 +128,20 @@ export default function AddExpenseScreen({ route, navigation }) {
               onPress={() => setCategory(cat)}
             >
               <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
-                {cat}
+                {t(`expenses.categories.${cat}`)}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <Text style={styles.label}>Expense Type</Text>
+        <Text style={styles.label}>{t('expenses.fields.type')}</Text>
         <View style={styles.row}>
           <TouchableOpacity
             style={[styles.typeButton, expenseType === 'OPEX' && styles.typeButtonActive]}
             onPress={() => setExpenseType('OPEX')}
           >
             <Text style={[styles.typeButtonText, expenseType === 'OPEX' && styles.typeButtonTextActive]}>
-              OPEX (Operational)
+               {t('expenses.types.opex')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -147,12 +149,12 @@ export default function AddExpenseScreen({ route, navigation }) {
             onPress={() => setExpenseType('CAPEX')}
           >
             <Text style={[styles.typeButtonText, expenseType === 'CAPEX' && styles.typeButtonTextActive]}>
-              CAPEX (Capital)
+               {t('expenses.types.capex')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>Amount ($) *</Text>
+        <Text style={styles.label}>{t('expenses.fields.amount')} *</Text>
         <TextInput
           style={styles.input}
           value={amount}
@@ -161,13 +163,13 @@ export default function AddExpenseScreen({ route, navigation }) {
           keyboardType="decimal-pad"
         />
 
-        <Text style={styles.label}>Date</Text>
+        <Text style={styles.label}>{t('common.date')}</Text>
         <TouchableOpacity 
           style={styles.dateSelector} 
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={styles.dateSelectorText}>
-            {date.toLocaleDateString('en-GB')}
+            {formatAppDate(date)}
           </Text>
           <Ionicons name="calendar-outline" size={20} color="#16a34a" />
         </TouchableOpacity>
@@ -182,7 +184,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         )}
 
         <View style={styles.recurringRow}>
-          <Text style={styles.labelInline}>Is Recurring?</Text>
+          <Text style={styles.labelInline}>{t('common.recurring')}</Text>
           <TouchableOpacity 
             style={[styles.toggle, isRecurring && styles.toggleActive]}
             onPress={() => setIsRecurring(!isRecurring)}
@@ -200,24 +202,24 @@ export default function AddExpenseScreen({ route, navigation }) {
                 onPress={() => setFrequency(freq)}
               >
                 <Text style={[styles.freqText, frequency === freq && styles.freqTextActive]}>
-                  {freq}
+                  {t(`common.frequencies.${freq}`)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
-        <Text style={styles.label}>Note</Text>
+        <Text style={styles.label}>{t('common.notes')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={note}
           onChangeText={setNote}
-          placeholder="Optional description..."
+          placeholder={t('expenses.placeholders.note')}
           multiline
           numberOfLines={3}
         />
 
-        <Text style={styles.label}>Receipt Photo (Optional)</Text>
+        <Text style={styles.label}>{t('expenses.fields.receipt')}</Text>
         {photo ? (
           <View style={styles.photoContainer}>
             <Image source={{ uri: photo }} style={styles.photo} />
@@ -229,11 +231,11 @@ export default function AddExpenseScreen({ route, navigation }) {
           <View style={styles.photoButtons}>
             <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
               <Ionicons name="image-outline" size={24} color="#16a34a" />
-              <Text style={styles.photoButtonText}>Album</Text>
+              <Text style={styles.photoButtonText}>{t('common.album')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
               <Ionicons name="camera-outline" size={24} color="#16a34a" />
-              <Text style={styles.photoButtonText}>Camera</Text>
+              <Text style={styles.photoButtonText}>{t('common.camera')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -246,7 +248,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Expense</Text>
+            <Text style={styles.saveButtonText}>{t('expenses.save')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

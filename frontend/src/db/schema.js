@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 5,
+  version: 6,
   tables: [
     // ── FarmProject ─────────────────────────────────────────────────────────
     tableSchema({
@@ -22,6 +22,9 @@ export default appSchema({
         { name: 'is_deleted',     type: 'boolean' },
         { name: 'created_at',     type: 'number' },
         { name: 'updated_at',     type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -39,6 +42,9 @@ export default appSchema({
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -59,6 +65,9 @@ export default appSchema({
         { name: 'is_deleted',   type: 'boolean' },
         { name: 'created_at',   type: 'number' },
         { name: 'updated_at',   type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -86,6 +95,9 @@ export default appSchema({
         { name: 'is_deleted',   type: 'boolean' },
         { name: 'created_at',   type: 'number' },
         { name: 'updated_at',   type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -101,6 +113,9 @@ export default appSchema({
         { name: 'is_deleted', type: 'boolean' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -116,6 +131,9 @@ export default appSchema({
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -134,6 +152,9 @@ export default appSchema({
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
 
@@ -152,6 +173,9 @@ export default appSchema({
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
+        { name: 'sync_status',    type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error',     type: 'string', isOptional: true },
       ],
     }),
   ],

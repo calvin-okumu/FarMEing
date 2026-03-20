@@ -11,14 +11,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
-import { syncAll } from '../services/syncService';
-import useAuthStore from '../store/useAuthStore';
 import api from '../lib/api';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { formatAppDate } from '../utils/date';
 
 export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId } = route.params || {};
-  const token = useAuthStore((s) => s.token);
+  const currency = useSettingsStore((s) => s.currency);
   
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -60,37 +61,42 @@ export default function ProjectDetailScreen({ route, navigation }) {
   useEffect(() => {
     if (!projectId) return;
 
+    const projectIds = [projectId];
+    if (project?.remoteId) {
+      projectIds.push(project.remoteId);
+    }
+
     const budgetSub = database
       .get('budget_items')
-      .query(Q.where('project_id', projectId), Q.where('is_deleted', false))
+      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setBudgetItems);
 
     const expenseSub = database
       .get('expenses')
-      .query(Q.where('project_id', projectId), Q.where('is_deleted', false))
+      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setExpenses);
 
     const workSub = database
       .get('work_entries')
-      .query(Q.where('project_id', projectId), Q.where('is_deleted', false))
+      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setWorkEntries);
 
     const harvestSub = database
       .get('harvests')
-      .query(Q.where('project_id', projectId), Q.where('is_deleted', false))
+      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setHarvests);
 
     const saleSub = database
       .get('sales')
-      .query(Q.where('project_id', projectId), Q.where('is_deleted', false))
+      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
       .observe()
       .subscribe(setSales);
 
-    const empSub = database.get('employees').query().observe().subscribe(setEmployees);
+      const empSub = database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees);
 
     return () => {
       budgetSub.unsubscribe();
@@ -100,7 +106,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       saleSub.unsubscribe();
       empSub.unsubscribe();
     };
-  }, [projectId]);
+  }, [projectId, project?.remoteId]);
 
   const totalBudget = budgetItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -124,7 +130,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   if (!project) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Project not found</Text>
+        <Text style={styles.errorText}>{t('projects.errors.not_found')}</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
@@ -162,19 +168,19 @@ export default function ProjectDetailScreen({ route, navigation }) {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>{t('dashboard.spent')}</Text>
           <Text style={[styles.summaryValue, totalSpent > totalBudget && styles.overBudget]}>
-            ${totalSpent.toLocaleString()}
+            {formatCurrency(totalSpent, currency)}
           </Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>{t('dashboard.revenue')}</Text>
           <Text style={[styles.summaryValue, { color: '#16a34a' }]}>
-            ${totalRevenue.toLocaleString()}
+            {formatCurrency(totalRevenue, currency)}
           </Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>{t('projects.tabs.harvest')}</Text>
           <Text style={styles.summaryValue}>
-            {totalHarvest.toLocaleString()} kg
+            {totalHarvest.toLocaleString()} {t('harvest.units.kg')}
           </Text>
         </View>
       </View>
@@ -202,12 +208,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
       {/* Content */}
       <ScrollView style={styles.content}>
         {activeTab === 'budget' && (
-          budgetItems.length === 0 ? <Text style={styles.emptyText}>No budget items</Text> :
+           budgetItems.length === 0 ? <Text style={styles.emptyText}>{t('budget.empty')}</Text> :
           budgetItems.map(item => (
             <View key={item.id} style={styles.listItem}>
               <View style={styles.listItemHeader}>
                 <Text style={styles.listItemTitle}>{item.name}</Text>
-                <Text style={styles.listItemAmount}>${(item.quantity * item.unitPrice).toLocaleString()}</Text>
+                 <Text style={styles.listItemAmount}>{formatCurrency(item.quantity * item.unitPrice, currency)}</Text>
               </View>
               <Text style={styles.listItemMeta}>{item.category} • {item.quantity} {item.unit}</Text>
             </View>
@@ -215,64 +221,64 @@ export default function ProjectDetailScreen({ route, navigation }) {
         )}
 
         {activeTab === 'expenses' && (
-          expenses.length === 0 ? <Text style={styles.emptyText}>No expenses</Text> :
+           expenses.length === 0 ? <Text style={styles.emptyText}>{t('expenses.empty')}</Text> :
           expenses.map(expense => (
             <View key={expense.id} style={styles.listItem}>
               <View style={styles.listItemHeader}>
                 <Text style={styles.listItemTitle}>{expense.category}</Text>
-                <Text style={styles.listItemAmount}>${expense.amount.toLocaleString()}</Text>
+                 <Text style={styles.listItemAmount}>{formatCurrency(expense.amount, currency)}</Text>
               </View>
               <Text style={styles.listItemMeta}>
-                {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : ''} • {expense.expenseType}
+                {expense.date ? formatAppDate(expense.date) : ''} • {expense.expenseType}
               </Text>
             </View>
           ))
         )}
 
         {activeTab === 'labor' && (
-          workEntries.length === 0 ? <Text style={styles.emptyText}>No labor entries</Text> :
+           workEntries.length === 0 ? <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> :
           workEntries.map(entry => (
             <View key={entry.id} style={styles.listItem}>
               <View style={styles.listItemHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.listItemTitle}>{employeeMap.get(entry.employeeId) || 'Unknown Worker'}</Text>
+                   <Text style={styles.listItemTitle}>{employeeMap.get(entry.employeeId) || t('employees.unknown')}</Text>
                   <View style={styles.badgeRow}>
                     <View style={[styles.statusBadge, { backgroundColor: entry.status === 'APPROVED' ? '#f0fdf4' : '#fff7ed' }]}>
-                      <Text style={[styles.statusText, { color: entry.status === 'APPROVED' ? '#16a34a' : '#c2410c' }]}>{entry.status}</Text>
+                      <Text style={[styles.statusText, { color: entry.status === 'APPROVED' ? '#16a34a' : '#c2410c' }]}>{t(`labor.status.${entry.status.toLowerCase()}`)}</Text>
                     </View>
                     {entry.imageUrl ? <Ionicons name="image-outline" size={14} color="#16a34a" /> : null}
                   </View>
                 </View>
-                <Text style={styles.listItemAmount}>${entry.totalCost.toLocaleString()}</Text>
+                 <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost, currency)}</Text>
               </View>
-              <Text style={styles.listItemMeta}>{entry.activity} • {entry.daysWorked} days {entry.hoursWorked ? `(${entry.hoursWorked} hrs)` : ''}</Text>
+               <Text style={styles.listItemMeta}>{entry.activity} • {entry.daysWorked} {t('labor.days')} {entry.hoursWorked ? `(${entry.hoursWorked} ${t('labor.hours_short')})` : ''}</Text>
             </View>
           ))
         )}
 
         {activeTab === 'harvest' && (
-          harvests.length === 0 ? <Text style={styles.emptyText}>No harvest records</Text> :
+           harvests.length === 0 ? <Text style={styles.emptyText}>{t('harvest.empty')}</Text> :
           harvests.map(h => (
             <View key={h.id} style={styles.listItem}>
               <View style={styles.listItemHeader}>
-                <Text style={styles.listItemTitle}>{h.crop} ({h.quality || 'Std'})</Text>
+                 <Text style={styles.listItemTitle}>{h.crop} ({h.quality ? (h.quality.includes('grade_') || h.quality === 'mixed' ? t(`harvest.qualities.${h.quality}`) : h.quality) : t('harvest.default_quality')})</Text>
                 <Text style={styles.listItemAmount}>{h.weight} {h.unit}</Text>
               </View>
-              <Text style={styles.listItemMeta}>{h.date ? new Date(h.date).toLocaleDateString('en-GB') : ''}</Text>
+               <Text style={styles.listItemMeta}>{h.date ? formatAppDate(h.date) : ''}</Text>
             </View>
           ))
         )}
 
         {activeTab === 'sales' && (
-          sales.length === 0 ? <Text style={styles.emptyText}>No sales records</Text> :
+           sales.length === 0 ? <Text style={styles.emptyText}>{t('sales.empty')}</Text> :
           sales.map(s => (
             <View key={s.id} style={styles.listItem}>
               <View style={styles.listItemHeader}>
-                <Text style={styles.listItemTitle}>{s.customer || 'Cash Sale'}</Text>
-                <Text style={[styles.listItemAmount, { color: '#16a34a' }]}>${s.totalAmount.toLocaleString()}</Text>
+                 <Text style={styles.listItemTitle}>{s.customer || t('sales.cash_sale')}</Text>
+                 <Text style={[styles.listItemAmount, { color: '#16a34a' }]}>{formatCurrency(s.totalAmount, currency)}</Text>
               </View>
               <Text style={styles.listItemMeta}>
-                {s.date ? new Date(s.date).toLocaleDateString('en-GB') : ''} • {s.weightSold} kg @ ${s.unitPrice}/kg
+                {s.date ? formatAppDate(s.date) : ''} • {s.weightSold} {t('harvest.units.kg')} @ {formatCurrency(s.unitPrice, currency)}/{t('harvest.units.kg')}
               </Text>
             </View>
           ))
@@ -285,7 +291,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             return (
               <View key={index} style={styles.timelineItem}>
                 <View style={styles.timelineLeft}>
-                  <Text style={styles.timelineDay}>Day {dayNum}</Text>
+                  <Text style={styles.timelineDay}>{t('projects.day', { count: dayNum })}</Text>
                   <View style={styles.timelineLine} />
                 </View>
                 <View style={styles.timelineCard}>
@@ -294,9 +300,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
                     <Text style={styles.timelineLabel}>{item.label}</Text>
                   </View>
                   <Text style={styles.timelineAmount}>
-                    {item.type === 'HARVEST' ? `${item.amount} kg` : `$${item.amount.toLocaleString()}`}
+                     {item.type === 'HARVEST' ? `${item.amount} ${t('harvest.units.kg')}` : formatCurrency(item.amount, currency)}
                   </Text>
-                  <Text style={styles.timelineDate}>{new Date(item.date).toLocaleDateString('en-GB')}</Text>
+                  <Text style={styles.timelineDate}>{formatAppDate(item.date)}</Text>
                 </View>
               </View>
             );
@@ -309,7 +315,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
-          const params = { projectId: project.remoteId || project.id };
+           const params = { projectId: project.id };
           if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
           else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
           else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);

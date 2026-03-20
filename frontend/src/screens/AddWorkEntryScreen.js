@@ -19,26 +19,31 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { formatAppDate } from '../utils/date';
+import { initializeLocalRecord } from '../utils/localRecord';
 
-const ACTIVITIES = ['Planting', 'Weeding', 'Harvesting', 'Spraying', 'Irrigation', 'Other'];
-const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY'];
+const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'irrigation', 'other'];
+const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
 export default function AddWorkEntryScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId } = route.params; // project's remoteId
+  const currency = useSettingsStore((s) => s.currency);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [activity, setActivity] = useState('Planting');
+  const [activity, setActivity] = useState('planting');
   const [daysWorked, setDaysWorked] = useState('1');
   const [ratePerDay, setRatePerDay] = useState('');
   const [hoursWorked, setHoursWorked] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
-  const [frequency, setFrequency] = useState('WEEKLY');
+  const [frequency, setFrequency] = useState('weekly');
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState(null);
 
@@ -87,11 +92,11 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!selectedEmployee) {
-      Alert.alert(t('common.error'), 'Please select an employee');
+      Alert.alert(t('common.error'), t('labor.errors.employee_required'));
       return;
     }
     if (!ratePerDay) {
-      Alert.alert(t('common.error'), 'Rate per day is required');
+      Alert.alert(t('common.error'), t('labor.errors.rate_required'));
       return;
     }
 
@@ -100,11 +105,10 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       // 1. Save locally (Offline-first!)
       await database.write(async () => {
         await database.get('work_entries').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = '';
+          initializeLocalRecord(record);
           record.projectId = projectId;
-          record.employeeId = selectedEmployee.remoteId;
-          record.activity = activity;
+          record.employeeId = selectedEmployee.id;
+          record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
           record.date = date.getTime();
           record.daysWorked = parseFloat(daysWorked);
           record.ratePerDay = parseFloat(ratePerDay);
@@ -113,11 +117,10 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           record.imageUrl = photo || '';
           record.status = 'PENDING';
           record.isRecurring = isRecurring;
-          record.frequency = isRecurring ? frequency : null;
+          record.frequency = isRecurring ? frequency.toUpperCase() : null;
           record.notes = notes.trim();
           record.isPaid = false;
           record.isDeleted = false;
-          record.updatedAt = Date.now();
         });
       });
 
@@ -127,7 +130,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       // 3. Return
       navigation.goBack();
     } catch (err) {
-      Alert.alert(t('common.error'), 'Failed to save locally');
+      Alert.alert(t('common.error'), err.message || t('labor.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -155,7 +158,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
               style={styles.emptyButton}
               onPress={() => navigation.navigate('Employees')}
             >
-              <Text style={styles.emptyButtonText}>+ Add New Employee first</Text>
+               <Text style={styles.emptyButtonText}>{t('labor.add_employee_first')}</Text>
             </TouchableOpacity>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
@@ -183,7 +186,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
               onPress={() => setActivity(act)}
             >
               <Text style={[styles.chipText, activity === act && styles.chipTextActive]}>
-                {act}
+                  {t(`common.activities.${act}`)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -229,7 +232,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
               onPress={() => setShowDatePicker(true)}
             >
               <Text style={styles.dateSelectorText}>
-                {date.toLocaleDateString('en-GB')}
+                {formatAppDate(date)}
               </Text>
               <Ionicons name="calendar-outline" size={20} color="#16a34a" />
             </TouchableOpacity>
@@ -246,7 +249,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         )}
 
         <View style={styles.recurringRow}>
-          <Text style={styles.labelInline}>Is Recurring?</Text>
+          <Text style={styles.labelInline}>{t('common.recurring')}</Text>
           <TouchableOpacity 
             style={[styles.toggle, isRecurring && styles.toggleActive]}
             onPress={() => setIsRecurring(!isRecurring)}
@@ -264,7 +267,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
                 onPress={() => setFrequency(freq)}
               >
                 <Text style={[styles.freqText, frequency === freq && styles.freqTextActive]}>
-                  {freq}
+                  {t(`common.frequencies.${freq}`)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -283,11 +286,11 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           <View style={styles.photoButtons}>
             <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
               <Ionicons name="image-outline" size={24} color="#16a34a" />
-              <Text style={styles.photoButtonText}>Album</Text>
+              <Text style={styles.photoButtonText}>{t('common.album')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
               <Ionicons name="camera-outline" size={24} color="#16a34a" />
-              <Text style={styles.photoButtonText}>Camera</Text>
+              <Text style={styles.photoButtonText}>{t('common.camera')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -297,14 +300,14 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           style={[styles.input, styles.textArea]}
           value={notes}
           onChangeText={setNotes}
-          placeholder="Optional details..."
+          placeholder={t('labor.placeholders.notes')}
           multiline
           numberOfLines={3}
         />
 
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>{t('labor.total_cost')}:</Text>
-          <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
+          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
         <TouchableOpacity

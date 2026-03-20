@@ -12,9 +12,11 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 
 export default function RegisterScreen({ navigation }) {
+  const { t } = useTranslation();
   const register = useAuthStore((s) => s.register);
 
   const [name,     setName]     = useState('');
@@ -27,15 +29,15 @@ export default function RegisterScreen({ navigation }) {
 
   const handleRegister = async () => {
     if (!name.trim() || !phone.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Please fill in all required fields.');
+      Alert.alert(t('auth.errors.missing_fields_title'), t('auth.errors.register_missing_fields'));
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Password mismatch', 'Passwords do not match.');
+      Alert.alert(t('auth.errors.password_mismatch_title'), t('auth.errors.password_mismatch'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      Alert.alert(t('auth.errors.weak_password_title'), t('auth.errors.weak_password'));
       return;
     }
     setLoading(true);
@@ -43,7 +45,7 @@ export default function RegisterScreen({ navigation }) {
       await register({ name: name.trim(), phone: phone.trim(), password, role });
       // Navigation handled automatically by RootNavigator watching token
     } catch (err) {
-      Alert.alert('Registration failed', err.message);
+      Alert.alert(t('auth.errors.registration_failed_title'), err.message);
     } finally {
       setLoading(false);
     }
@@ -58,13 +60,13 @@ export default function RegisterScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <Ionicons name="leaf" size={44} color="#16a34a" />
-          <Text style={styles.title}>Create account</Text>
-          <Text style={styles.subtitle}>Start tracking your farm today</Text>
+          <Text style={styles.title}>{t('auth.register.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
-          <Text style={styles.label}>Full name</Text>
+          <Text style={styles.label}>{t('auth.fields.full_name')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="person-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
             <TextInput
@@ -77,7 +79,7 @@ export default function RegisterScreen({ navigation }) {
             />
           </View>
 
-          <Text style={styles.label}>Phone number</Text>
+          <Text style={styles.label}>{t('auth.fields.phone')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="call-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
             <TextInput
@@ -91,28 +93,28 @@ export default function RegisterScreen({ navigation }) {
             />
           </View>
 
-          <Text style={styles.label}>Register as</Text>
+          <Text style={styles.label}>{t('auth.register.register_as')}</Text>
           <View style={styles.roleRow}>
             <TouchableOpacity 
               style={[styles.roleBtn, role === 'ADMIN' && styles.roleBtnActive]} 
               onPress={() => setRole('ADMIN')}
             >
-              <Text style={[styles.roleBtnText, role === 'ADMIN' && styles.roleBtnTextActive]}>Admin</Text>
+              <Text style={[styles.roleBtnText, role === 'ADMIN' && styles.roleBtnTextActive]}>{t('auth.roles.admin')}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.roleBtn, role === 'WORKER' && styles.roleBtnActive]} 
               onPress={() => setRole('WORKER')}
             >
-              <Text style={[styles.roleBtnText, role === 'WORKER' && styles.roleBtnTextActive]}>Worker</Text>
+              <Text style={[styles.roleBtnText, role === 'WORKER' && styles.roleBtnTextActive]}>{t('auth.roles.worker')}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>{t('auth.fields.password')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="At least 6 characters"
+              placeholder={t('auth.placeholders.password_min')}
               placeholderTextColor="#9ca3af"
               secureTextEntry={!showPw}
               value={password}
@@ -123,12 +125,12 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Confirm password</Text>
+          <Text style={styles.label}>{t('auth.fields.confirm_password')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Repeat password"
+              placeholder={t('auth.placeholders.confirm_password')}
               placeholderTextColor="#9ca3af"
               secureTextEntry={!showPw}
               value={confirm}
@@ -144,16 +146,16 @@ export default function RegisterScreen({ navigation }) {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Create account</Text>
+               : <Text style={styles.btnText}>{t('auth.register.submit')}</Text>
             }
           </TouchableOpacity>
         </View>
 
         {/* Login link */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={styles.footerText}>{t('auth.register.have_account')} </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.footerLink}>Log in</Text>
+            <Text style={styles.footerLink}>{t('auth.login.submit')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

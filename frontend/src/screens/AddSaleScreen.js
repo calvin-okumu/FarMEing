@@ -13,11 +13,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { formatAppDate } from '../utils/date';
+import { initializeLocalRecord } from '../utils/localRecord';
 
 export default function AddSaleScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { projectId } = route.params; 
+  const currency = useSettingsStore((s) => s.currency);
   const [customer, setCustomer] = useState('');
   const [weightSold, setWeightSold] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
@@ -35,11 +42,11 @@ export default function AddSaleScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!weightSold || parseFloat(weightSold) <= 0) {
-      Alert.alert('Error', 'Valid weight is required');
+      Alert.alert(t('common.error'), t('sales.errors.weight_required'));
       return;
     }
     if (!unitPrice || parseFloat(unitPrice) <= 0) {
-      Alert.alert('Error', 'Valid unit price is required');
+      Alert.alert(t('common.error'), t('sales.errors.unit_price_required'));
       return;
     }
 
@@ -47,8 +54,7 @@ export default function AddSaleScreen({ route, navigation }) {
     try {
       await database.write(async () => {
         await database.get('sales').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = '';
+          initializeLocalRecord(record);
           record.projectId = projectId;
           record.customer = customer.trim();
           record.weightSold = parseFloat(weightSold);
@@ -57,14 +63,13 @@ export default function AddSaleScreen({ route, navigation }) {
           record.date = date.getTime();
           record.notes = notes.trim();
           record.isDeleted = false;
-          record.updatedAt = Date.now();
         });
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', 'Failed to save locally');
+      Alert.alert(t('common.error'), err.message || t('sales.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -78,18 +83,18 @@ export default function AddSaleScreen({ route, navigation }) {
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         
-        <Text style={styles.label}>Customer (Optional)</Text>
+        <Text style={styles.label}>{t('sales.fields.customer')}</Text>
         <TextInput
           style={styles.input}
           value={customer}
           onChangeText={setCustomer}
-          placeholder="e.g. Market Vendor"
+              placeholder={t('sales.placeholders.customer')}
           placeholderTextColor="#9ca3af"
         />
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <Text style={styles.label}>Weight Sold (kg) *</Text>
+            <Text style={styles.label}>{t('sales.fields.weight_sold')} *</Text>
             <TextInput
               style={styles.input}
               value={weightSold}
@@ -100,7 +105,7 @@ export default function AddSaleScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.half}>
-            <Text style={styles.label}>Unit Price ($/kg) *</Text>
+            <Text style={styles.label}>{t('sales.fields.unit_price')} *</Text>
             <TextInput
               style={styles.input}
               value={unitPrice}
@@ -113,17 +118,17 @@ export default function AddSaleScreen({ route, navigation }) {
         </View>
 
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Revenue:</Text>
-          <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
+          <Text style={styles.totalLabel}>{t('sales.total_revenue')}</Text>
+          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
-        <Text style={styles.label}>Date</Text>
+        <Text style={styles.label}>{t('common.date')}</Text>
         <TouchableOpacity 
           style={styles.dateSelector} 
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={styles.dateSelectorText}>
-            {date.toLocaleDateString('en-GB')}
+            {formatAppDate(date)}
           </Text>
           <Ionicons name="calendar-outline" size={20} color="#16a34a" />
         </TouchableOpacity>
@@ -137,12 +142,12 @@ export default function AddSaleScreen({ route, navigation }) {
           />
         )}
 
-        <Text style={styles.label}>Notes</Text>
+        <Text style={styles.label}>{t('common.notes')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={notes}
           onChangeText={setNotes}
-          placeholder="Optional notes..."
+          placeholder={t('sales.placeholders.notes')}
           multiline
           numberOfLines={3}
           placeholderTextColor="#9ca3af"
@@ -156,7 +161,7 @@ export default function AddSaleScreen({ route, navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Record Sale</Text>
+            <Text style={styles.saveButtonText}>{t('sales.record')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

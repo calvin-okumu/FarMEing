@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll }   from '../services/syncService';
 import useAuthStore  from '../store/useAuthStore';
-import api           from '../lib/api';
+import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
 
 export default function ProjectsScreen({ navigation }) {
   const { t } = useTranslation();
@@ -45,16 +45,15 @@ export default function ProjectsScreen({ navigation }) {
   // ── Create new project ─────────────────────────────────────────────────────
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      Alert.alert(t('common.error'), 'Project name is required');
-      return;
+      Alert.alert(t('common.error'), `${t('projects.fields.name')} ${t('common.required').toLowerCase()}`);
+        return;
     }
     setSaving(true);
     try {
       // 1. Save to local WatermelonDB first (Offline-first!)
       await database.write(async () => {
         await database.get('farm_projects').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = ''; 
+          initializeLocalRecord(record);
           record.userId = ''; // will be filled by backend
           record.name = formData.name.trim();
           record.crop = formData.crop.trim();
@@ -64,8 +63,6 @@ export default function ProjectsScreen({ navigation }) {
           record.expectedYield = parseFloat(formData.expectedYield) || 0;
           record.status = 'ACTIVE';
           record.isDeleted = false;
-          record.createdAt = Date.now();
-          record.updatedAt = Date.now();
         });
       });
 
@@ -83,7 +80,7 @@ export default function ProjectsScreen({ navigation }) {
         expectedYield: '',
       });
     } catch (err) {
-      Alert.alert(t('common.error'), 'Failed to save project locally');
+      Alert.alert(t('common.error'), err.message || t('projects.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -91,7 +88,7 @@ export default function ProjectsScreen({ navigation }) {
 
   // ── Soft delete project ────────────────────────────────────────────────────
   const handleDelete = (project) => {
-    Alert.alert(t('common.delete'), `Are you sure you want to delete "${project.name}"?`, [
+    Alert.alert(t('common.delete'), t('projects.confirm_delete', { name: project.name }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -100,12 +97,12 @@ export default function ProjectsScreen({ navigation }) {
           try {
             await database.write(async () => {
               await project.update((r) => {
-                r.isDeleted = true;
+                markRecordDeleted(r);
               });
             });
             syncAll().catch(() => {});
           } catch (err) {
-            Alert.alert(t('common.error'), 'Failed to delete project');
+            Alert.alert(t('common.error'), t('projects.errors.delete_local'));
           }
         },
       },
@@ -267,7 +264,7 @@ export default function ProjectsScreen({ navigation }) {
                   style={styles.input}
                   value={formData.name}
                   onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
-                  placeholder="e.g. North Field Wheat"
+                   placeholder={t('projects.placeholders.name')}
                   placeholderTextColor="#9ca3af"
                 />
 
@@ -276,7 +273,7 @@ export default function ProjectsScreen({ navigation }) {
                   style={styles.input}
                   value={formData.crop}
                   onChangeText={(t) => setFormData(p => ({ ...p, crop: t }))}
-                  placeholder="e.g. Wheat, Corn"
+                   placeholder={t('projects.placeholders.crop')}
                   placeholderTextColor="#9ca3af"
                 />
 
@@ -287,7 +284,7 @@ export default function ProjectsScreen({ navigation }) {
                       style={styles.input}
                       value={formData.landSize}
                       onChangeText={(t) => setFormData(p => ({ ...p, landSize: t }))}
-                      placeholder="0"
+                       placeholder={t('common.zero')}
                       placeholderTextColor="#9ca3af"
                       keyboardType="numeric"
                     />
@@ -298,7 +295,7 @@ export default function ProjectsScreen({ navigation }) {
                       style={styles.input}
                       value={formData.landUnit}
                       onChangeText={(t) => setFormData(p => ({ ...p, landUnit: t }))}
-                      placeholder="acres"
+                       placeholder={t('projects.placeholders.unit')}
                       placeholderTextColor="#9ca3af"
                     />
                   </View>
@@ -309,7 +306,7 @@ export default function ProjectsScreen({ navigation }) {
                   style={styles.input}
                   value={formData.expectedYield}
                   onChangeText={(t) => setFormData(p => ({ ...p, expectedYield: t }))}
-                  placeholder="e.g. 5000"
+                   placeholder={t('projects.placeholders.expected_yield')}
                   placeholderTextColor="#9ca3af"
                   keyboardType="numeric"
                 />

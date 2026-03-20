@@ -16,13 +16,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useAuthStore from '../store/useAuthStore';
-import api from '../lib/api';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
 
 export default function EmployeesScreen({ navigation }) {
+  const { t } = useTranslation();
   const token = useAuthStore((s) => s.token);
+  const currency = useSettingsStore((s) => s.currency);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,10 +52,10 @@ export default function EmployeesScreen({ navigation }) {
         }
 
         const workEntries = await database.get('work_entries')
-          .query(Q.where('employee_id', emp.remoteId))
+          .query(Q.where('employee_id', Q.oneOf([emp.id, emp.remoteId].filter(Boolean))))
           .fetch();
         const payments = await database.get('payments')
-          .query(Q.where('employee_id', emp.remoteId))
+          .query(Q.where('employee_id', Q.oneOf([emp.id, emp.remoteId].filter(Boolean))))
           .fetch();
         
         const totalEarned = workEntries.reduce((sum, w) => sum + (w.totalCost || 0), 0);
@@ -102,21 +107,19 @@ export default function EmployeesScreen({ navigation }) {
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Error', 'Employee name is required');
+      Alert.alert(t('common.error'), t('employees.errors.name_required'));
       return;
     }
     setSaving(true);
     try {
       await database.write(async () => {
         await database.get('employees').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = '';
+          initializeLocalRecord(record);
+          record.userId = '';
           record.name = formData.name.trim();
           record.phone = formData.phone.trim() || '';
           record.role = formData.role.trim() || '';
           record.isDeleted = false;
-          record.createdAt = Date.now();
-          record.updatedAt = Date.now();
         });
       });
 
@@ -125,28 +128,28 @@ export default function EmployeesScreen({ navigation }) {
       setModalVisible(false);
       setFormData({ name: '', phone: '', role: '' });
     } catch (err) {
-      Alert.alert('Error', 'Failed to save employee locally');
+      Alert.alert(t('common.error'), err.message || t('employees.errors.save_local'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (employee) => {
-    Alert.alert('Delete Employee', `Are you sure you want to delete "${employee.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('employees.delete_title'), t('employees.confirm_delete', { name: employee.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await database.write(async () => {
               await employee.update((r) => {
-                r.isDeleted = true;
+                markRecordDeleted(r);
               });
             });
             syncAll().catch(() => {});
           } catch (err) {
-            Alert.alert('Error', 'Failed to delete employee');
+            Alert.alert(t('common.error'), t('employees.errors.delete_local'));
           }
         },
       },
@@ -159,7 +162,7 @@ export default function EmployeesScreen({ navigation }) {
       onPress={() => handleDelete(employee)}
     >
       <Ionicons name="trash-outline" size={22} color="#fff" />
-      <Text style={styles.deleteText}>Delete</Text>
+      <Text style={styles.deleteText}>{t('common.delete')}</Text>
     </TouchableOpacity>
   );
 
@@ -192,8 +195,8 @@ export default function EmployeesScreen({ navigation }) {
           </View>
           <View style={styles.balanceRow}>
             <View style={styles.balanceInfo}>
-              <Text style={styles.balanceLabel}>Earned: ${(item.totalEarned ?? 0).toLocaleString()}</Text>
-              <Text style={styles.balanceLabel}>Paid: ${(item.totalPaid ?? 0).toLocaleString()}</Text>
+               <Text style={styles.balanceLabel}>{t('employees.earned')}: {formatCurrency(item.totalEarned ?? 0, currency)}</Text>
+               <Text style={styles.balanceLabel}>{t('employees.paid')}: {formatCurrency(item.totalPaid ?? 0, currency)}</Text>
             </View>
             <View style={[
               styles.balanceBadge,
@@ -206,7 +209,7 @@ export default function EmployeesScreen({ navigation }) {
                 isPositive && styles.balanceTextPositive,
                 isNegative && styles.balanceTextNegative
               ]}>
-                {balance > 0 ? `+$${balance.toLocaleString()}` : balance < 0 ? `-$${Math.abs(balance).toLocaleString()}` : 'Settled'}
+                 {balance > 0 ? `+${formatCurrency(balance, currency)}` : balance < 0 ? `-${formatCurrency(Math.abs(balance), currency)}` : t('employees.settled')}
               </Text>
             </View>
           </View>
@@ -228,8 +231,8 @@ export default function EmployeesScreen({ navigation }) {
       {employees.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="people-outline" size={48} color="#d1fae5" />
-          <Text style={styles.emptyTitle}>No employees yet</Text>
-          <Text style={styles.emptySubtitle}>Pull down to sync or add a new employee.</Text>
+           <Text style={styles.emptyTitle}>{t('employees.empty_title')}</Text>
+           <Text style={styles.emptySubtitle}>{t('employees.empty_subtitle')}</Text>
         </View>
       ) : (
         <FlatList
@@ -267,37 +270,37 @@ export default function EmployeesScreen({ navigation }) {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>New Employee</Text>
+                 <Text style={styles.modalTitle}>{t('employees.new_employee')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Ionicons name="close" size={24} color="#374151" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.inputLabel}>Name *</Text>
+               <Text style={styles.inputLabel}>{t('employees.fields.name')} *</Text>
               <TextInput
                 style={styles.input}
                 value={formData.name}
                 onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
-                placeholder="e.g. John Doe"
+                 placeholder={t('employees.placeholders.name')}
                 placeholderTextColor="#9ca3af"
               />
 
-              <Text style={styles.inputLabel}>Phone</Text>
+               <Text style={styles.inputLabel}>{t('employees.fields.phone')}</Text>
               <TextInput
                 style={styles.input}
                 value={formData.phone}
                 onChangeText={(t) => setFormData(p => ({ ...p, phone: t }))}
-                placeholder="e.g. +1 234 567 8900"
+                 placeholder={t('employees.placeholders.phone')}
                 placeholderTextColor="#9ca3af"
                 keyboardType="phone-pad"
               />
 
-              <Text style={styles.inputLabel}>Role</Text>
+               <Text style={styles.inputLabel}>{t('employees.fields.role')}</Text>
               <TextInput
                 style={styles.input}
                 value={formData.role}
                 onChangeText={(t) => setFormData(p => ({ ...p, role: t }))}
-                placeholder="e.g. Farm Worker, Supervisor"
+                 placeholder={t('employees.placeholders.role')}
                 placeholderTextColor="#9ca3af"
               />
 
@@ -309,7 +312,7 @@ export default function EmployeesScreen({ navigation }) {
                 {saving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Add Employee</Text>
+                   <Text style={styles.saveButtonText}>{t('employees.add_employee')}</Text>
                 )}
               </TouchableOpacity>
             </View>

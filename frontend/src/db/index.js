@@ -2,6 +2,7 @@ import { Database } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 
 import schema      from './schema';
+import migrations from './migrations';
 import FarmProject from './models/FarmProject';
 import BudgetItem  from './models/BudgetItem';
 import Expense     from './models/Expense';
@@ -15,7 +16,7 @@ import Sale        from './models/Sale';
 const adapter = new SQLiteAdapter({
   schema,
   dbName: 'farmtrack',
-  // migrations: migrations,  // add when schema version bumps
+  migrations,
   jsi: false,   // JSI off for Expo Go compatibility
   onSetUpError: (error) => {
     console.error('[WatermelonDB] Setup error:', error);

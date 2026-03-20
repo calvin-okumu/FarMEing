@@ -11,24 +11,29 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { initializeLocalRecord } from '../utils/localRecord';
 
 const CATEGORIES = [
-  'Seeds',
-  'Fertilizer',
-  'Pesticides',
-  'Labor',
-  'Equipment',
-  'Fuel',
-  'Irrigation',
-  'Other',
+  'seeds',
+  'fertilizer',
+  'pesticides',
+  'labor',
+  'equipment',
+  'fuel',
+  'irrigation',
+  'other',
 ];
 
 export default function AddBudgetItemScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { projectId } = route.params; // project's remoteId
-  const [category, setCategory] = useState('Seeds');
+  const currency = useSettingsStore((s) => s.currency);
+  const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -39,11 +44,11 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Item name is required');
+      Alert.alert(t('common.error'), t('budget.errors.name_required'));
       return;
     }
     if (!quantity || !unitPrice) {
-      Alert.alert('Error', 'Quantity and unit price are required');
+      Alert.alert(t('common.error'), t('budget.errors.quantity_price_required'));
       return;
     }
 
@@ -52,8 +57,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       // 1. Save to local WatermelonDB first
       await database.write(async () => {
         await database.get('budget_items').create((record) => {
-          record._raw.id = `pending_${Date.now()}`;
-          record.remoteId = '';
+          initializeLocalRecord(record);
           record.projectId = projectId;
           record.category = category;
           record.name = name.trim();
@@ -61,7 +65,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           record.unit = unit.trim();
           record.unitPrice = parseFloat(unitPrice);
           record.isDeleted = false;
-          record.updatedAt = Date.now();
         });
       });
 
@@ -71,7 +74,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       // 3. Return immediately
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', 'Failed to save locally');
+      Alert.alert(t('common.error'), err.message || t('budget.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -84,7 +87,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Category</Text>
+        <Text style={styles.label}>{t('budget.fields.category')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
@@ -93,24 +96,24 @@ export default function AddBudgetItemScreen({ route, navigation }) {
               onPress={() => setCategory(cat)}
             >
               <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
-                {cat}
+                {t(`budget.categories.${cat}`)}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <Text style={styles.label}>Item Name *</Text>
+        <Text style={styles.label}>{t('budget.fields.name')} *</Text>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Urea Fertilizer"
+          placeholder={t('budget.placeholders.name')}
           placeholderTextColor="#9ca3af"
         />
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <Text style={styles.label}>Quantity *</Text>
+            <Text style={styles.label}>{t('budget.fields.quantity')} *</Text>
             <TextInput
               style={styles.input}
               value={quantity}
@@ -121,18 +124,18 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.half}>
-            <Text style={styles.label}>Unit</Text>
+            <Text style={styles.label}>{t('budget.fields.unit')}</Text>
             <TextInput
               style={styles.input}
               value={unit}
               onChangeText={setUnit}
-              placeholder="kg, liters, etc."
+              placeholder={t('budget.placeholders.unit')}
               placeholderTextColor="#9ca3af"
             />
           </View>
         </View>
 
-        <Text style={styles.label}>Unit Price ($) *</Text>
+        <Text style={styles.label}>{t('budget.fields.unit_price')} *</Text>
         <TextInput
           style={styles.input}
           value={unitPrice}
@@ -143,8 +146,8 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         />
 
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Estimated Total:</Text>
-          <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
+          <Text style={styles.totalLabel}>{t('budget.estimated_total')}</Text>
+          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
         <TouchableOpacity
@@ -155,7 +158,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Add Budget Item</Text>
+            <Text style={styles.saveButtonText}>{t('budget.add')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

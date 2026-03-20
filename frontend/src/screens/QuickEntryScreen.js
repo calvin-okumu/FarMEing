@@ -15,13 +15,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTranslation } from 'react-i18next';
 import { database } from '../db';
-import api from '../lib/api';
 import { syncAll } from '../services/syncService';
+import useSettingsStore from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
+import { formatAppDate } from '../utils/date';
+import { initializeLocalRecord } from '../utils/localRecord';
 
-const ACTIVITIES = ['Planting', 'Weeding', 'Harvesting', 'Spraying', 'Other'];
+const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
 
 export default function QuickEntryScreen() {
+  const { t } = useTranslation();
+  const currency = useSettingsStore((s) => s.currency);
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +40,7 @@ export default function QuickEntryScreen() {
   const [employeeDropdownVisible, setEmployeeDropdownVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   
-  const [activity, setActivity] = useState('Planting');
+  const [activity, setActivity] = useState('planting');
   const [workers, setWorkers] = useState('1');
   const [days, setDays] = useState('1');
   const [rate, setRate] = useState('');
@@ -78,15 +84,15 @@ export default function QuickEntryScreen() {
 
   const handleSave = async () => {
     if (!selectedProject) {
-      Alert.alert('Error', 'Please select a project');
+      Alert.alert(t('common.error'), t('quick_entry.errors.project_required'));
       return;
     }
     if (!employeeName.trim()) {
-      Alert.alert('Error', 'Please enter employee name');
+      Alert.alert(t('common.error'), t('quick_entry.errors.employee_required'));
       return;
     }
     if (!rate || parseFloat(rate) <= 0) {
-      Alert.alert('Error', 'Please enter a valid rate');
+      Alert.alert(t('common.error'), t('quick_entry.errors.rate_required'));
       return;
     }
 
@@ -100,7 +106,7 @@ export default function QuickEntryScreen() {
       // Reset form for next entry (keep project selected for speed)
       setEmployeeName('');
       setSelectedEmployee(null);
-      setActivity('Planting');
+      setActivity('planting');
       setWorkers('1');
       setDays('1');
       setRate('');
@@ -111,13 +117,13 @@ export default function QuickEntryScreen() {
         employeeInputRef.current?.focus();
       }, 100);
       
-      Alert.alert('Success', 'Work entry logged!');
+      Alert.alert(t('common.success'), t('quick_entry.success'));
       
       // Trigger sync in background
       syncAll().catch(() => {});
       
     } catch (err) {
-      Alert.alert('Error', 'Failed to save entry locally');
+      Alert.alert(t('common.error'), err.message || t('quick_entry.errors.save_local'));
     } finally {
       setSaving(false);
     }
@@ -125,27 +131,31 @@ export default function QuickEntryScreen() {
 
   const saveLocally = async () => {
     await database.write(async () => {
-      // 1. Handle Employee if new
-      let empId = selectedEmployee?.remoteId;
-      if (!empId) {
+      let employee = selectedEmployee;
+      if (!employee) {
         const existing = employees.find(e => 
           e.name?.toLowerCase() === employeeName.trim().toLowerCase()
         );
-        if (existing) {
-          empId = existing.remoteId;
-        } else {
-          // If totally new, we'll use the name and sync will handle employee creation
-          empId = `name_${employeeName.trim()}`;
-        }
+        employee = existing || null;
+      }
+
+      if (!employee) {
+        employee = await database.get('employees').create((record) => {
+          initializeLocalRecord(record);
+          record.userId = '';
+          record.name = employeeName.trim();
+          record.phone = '';
+          record.role = '';
+          record.isDeleted = false;
+        });
       }
 
       // 2. Create Work Entry
       await database.get('work_entries').create((record) => {
-        record._raw.id = `pending_${Date.now()}`;
-        record.remoteId = '';
-        record.projectId = selectedProject.remoteId;
-        record.employeeId = empId;
-        record.activity = activity;
+        initializeLocalRecord(record);
+        record.projectId = selectedProject.id;
+        record.employeeId = employee.id;
+        record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
         record.date = date.getTime();
         record.daysWorked = (parseFloat(workers) || 1) * (parseFloat(days) || 1);
         record.ratePerDay = parseFloat(rate) || 0;
@@ -153,7 +163,6 @@ export default function QuickEntryScreen() {
         record.notes = '';
         record.isPaid = false;
         record.isDeleted = false;
-        record.updatedAt = Date.now();
       });
     });
   };
@@ -182,13 +191,13 @@ export default function QuickEntryScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Project Selection - Quick tap */}
-        <Text style={styles.label}>Project *</Text>
+        <Text style={styles.label}>{t('quick_entry.fields.project')} *</Text>
         <TouchableOpacity
           style={[styles.dropdown, !selectedProject && styles.dropdownPlaceholder]}
           onPress={() => setProjectDropdownVisible(!projectDropdownVisible)}
         >
           <Text style={[styles.dropdownText, !selectedProject && styles.placeholder]}>
-            {selectedProject?.name || 'Select project...'}
+            {selectedProject?.name || t('quick_entry.select_project')}
           </Text>
           <Ionicons name="chevron-down" size={20} color="#6b7280" />
         </TouchableOpacity>
@@ -196,7 +205,7 @@ export default function QuickEntryScreen() {
         {projectDropdownVisible && (
           <View style={styles.dropdownMenu}>
             {projects.length === 0 ? (
-              <Text style={styles.dropdownEmpty}>No projects</Text>
+              <Text style={styles.dropdownEmpty}>{t('projects.empty_state')}</Text>
             ) : (
               projects.map((proj) => (
                 <TouchableOpacity
@@ -218,7 +227,7 @@ export default function QuickEntryScreen() {
         )}
 
         {/* Employee - Auto-focus on load */}
-        <Text style={styles.label}>Employee *</Text>
+        <Text style={styles.label}>{t('quick_entry.fields.employee')} *</Text>
         <TextInput
           ref={employeeInputRef}
           style={styles.input}
@@ -229,7 +238,7 @@ export default function QuickEntryScreen() {
             setEmployeeDropdownVisible(t.length > 0);
           }}
           onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
-          placeholder="Type name..."
+          placeholder={t('quick_entry.placeholders.employee')}
           placeholderTextColor="#9ca3af"
           autoCapitalize="words"
           returnKeyType="next"
@@ -254,7 +263,7 @@ export default function QuickEntryScreen() {
         )}
 
         {/* Activity - Horizontal scroll chips */}
-        <Text style={styles.label}>Activity</Text>
+        <Text style={styles.label}>{t('quick_entry.fields.activity')}</Text>
         <View style={styles.activityRow}>
           {ACTIVITIES.map((act) => (
             <TouchableOpacity
@@ -263,20 +272,20 @@ export default function QuickEntryScreen() {
               onPress={() => setActivity(act)}
             >
               <Text style={[styles.activityText, activity === act && styles.activityTextActive]}>
-                {act}
+                 {t(`common.activities.${act}`)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Date */}
-        <Text style={styles.label}>Date</Text>
+        <Text style={styles.label}>{t('common.date')}</Text>
         <TouchableOpacity 
           style={styles.dateSelector} 
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={styles.dateSelectorText}>
-            {date.toLocaleDateString('en-GB')}
+             {formatAppDate(date)}
           </Text>
           <Ionicons name="calendar-outline" size={20} color="#16a34a" />
         </TouchableOpacity>
@@ -293,7 +302,7 @@ export default function QuickEntryScreen() {
         {/* Workers, Days, Rate - Single row for speed */}
         <View style={styles.row}>
           <View style={styles.third}>
-            <Text style={styles.labelSmall}>Workers</Text>
+            <Text style={styles.labelSmall}>{t('quick_entry.fields.workers')}</Text>
             <TextInput
               style={[styles.input, styles.inputSmall]}
               value={workers}
@@ -302,7 +311,7 @@ export default function QuickEntryScreen() {
             />
           </View>
           <View style={styles.third}>
-            <Text style={styles.labelSmall}>Days</Text>
+            <Text style={styles.labelSmall}>{t('quick_entry.fields.days')}</Text>
             <TextInput
               style={[styles.input, styles.inputSmall]}
               value={days}
@@ -311,7 +320,7 @@ export default function QuickEntryScreen() {
             />
           </View>
           <View style={styles.third}>
-            <Text style={styles.labelSmall}>Rate ($)</Text>
+            <Text style={styles.labelSmall}>{t('quick_entry.fields.rate')}</Text>
             <TextInput
               ref={rateInputRef}
               style={[styles.input, styles.inputSmall]}
@@ -326,8 +335,8 @@ export default function QuickEntryScreen() {
 
         {/* Total Preview - Always visible */}
         <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>${total.toLocaleString()}</Text>
+          <Text style={styles.totalLabel}>{t('quick_entry.total')}</Text>
+          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
         {/* Save Button - Large, easy to tap */}
@@ -341,7 +350,7 @@ export default function QuickEntryScreen() {
           ) : (
             <>
               <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.saveButtonText}>SAVE ENTRY</Text>
+              <Text style={styles.saveButtonText}>{t('quick_entry.save')}</Text>
             </>
           )}
         </TouchableOpacity>

@@ -1,15 +1,18 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, date, readonly, text, nochange } from '@nozbe/watermelondb/decorators';
+import { field, text } from '@nozbe/watermelondb/decorators';
 
 export default class Payment extends Model {
   static table = 'payments';
 
-  @nochange @text('remote_id')   remoteId;
+  @text('remote_id')   remoteId;
   @text('employee_id')  employeeId;
   @field('amount')     amount;
   @field('date')       date;
   @text('note')        note;
   @field('is_deleted') isDeleted;
-  @readonly @date('created_at') createdAt;
-  @date('updated_at')  updatedAt;
+  @field('created_at') createdAt;
+  @field('updated_at') updatedAt;
+  @text('sync_status') syncStatus;
+  @field('last_synced_at') lastSyncedAt;
+  @text('last_error') lastError;
 }
