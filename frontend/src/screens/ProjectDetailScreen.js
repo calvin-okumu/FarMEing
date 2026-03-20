@@ -387,6 +387,18 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const totalRevenue = sales.reduce((sum, item) => sum + item.totalAmount, 0);
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const resourcesSyncing = budgetQuery.isFetching || expenseQuery.isFetching || workQuery.isFetching || harvestQuery.isFetching || salesQuery.isFetching;
+  const activeQueryError = activeTab === 'budget' ? budgetQuery.error
+    : activeTab === 'expenses' ? expenseQuery.error
+    : activeTab === 'labor' ? workQuery.error || laborByEmployeeQuery.error || laborByActivityQuery.error
+    : activeTab === 'harvest' ? harvestQuery.error
+    : activeTab === 'sales' ? salesQuery.error
+    : null;
+  const activeQueryLoading = activeTab === 'budget' ? budgetQuery.isLoading
+    : activeTab === 'expenses' ? expenseQuery.isLoading
+    : activeTab === 'labor' ? workQuery.isLoading || laborByEmployeeQuery.isLoading || laborByActivityQuery.isLoading
+    : activeTab === 'harvest' ? harvestQuery.isLoading
+    : activeTab === 'sales' ? salesQuery.isLoading
+    : false;
 
   const employeeMap = new Map();
   employees.forEach((employee) => {
@@ -672,6 +684,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
               <StitchChip label={t('resource.sort_amount')} active={sortMode === 'amount'} onPress={() => setSortMode('amount')} />
               {resourcesSyncing || syncStatus === 'syncing' ? <Text style={styles.syncHint}>{t('resource.syncing')}</Text> : null}
             </View>
+            {activeQueryLoading ? <StatusBanner tone="info" title={t('resource.loading_title')} message={t('resource.loading_body')} /> : null}
+            {activeQueryError ? <StatusBanner tone="error" title={t('common.error')} message={activeQueryError.message || t('resource.loading_error')} /> : null}
           </View>
         ) : null}
 

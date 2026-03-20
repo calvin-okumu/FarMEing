@@ -21,8 +21,11 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { stitchTheme } from '../theme/stitchTheme';
+import { createEmployee } from '../services/employeeService';
+import { createWorkEntry } from '../services/workEntryService';
+import StatusBanner from '../components/ui/StatusBanner';
 import {
   StitchChip,
   StitchDisplayTitle,
@@ -54,6 +57,7 @@ export default function QuickEntryScreen({ navigation }) {
   const [rate, setRate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [banner, setBanner] = useState(null);
 
   const employeeInputRef = useRef(null);
   const total = (parseFloat(workers) || 0) * (parseFloat(days) || 0) * (parseFloat(rate) || 0);
@@ -92,6 +96,14 @@ export default function QuickEntryScreen({ navigation }) {
       }
 
       if (!employee) {
+        let remoteEmployee = null;
+        try {
+          const response = await createEmployee({ name: employeeName.trim(), phone: '', role: '' });
+          remoteEmployee = response.employee || null;
+        } catch {
+          remoteEmployee = null;
+        }
+
         employee = await database.get('employees').create((record) => {
           initializeLocalRecord(record);
           record.userId = '';
@@ -99,7 +111,30 @@ export default function QuickEntryScreen({ navigation }) {
           record.phone = '';
           record.role = '';
           record.isDeleted = false;
+          if (remoteEmployee?.id) {
+            markRecordSynced(record, remoteEmployee.id);
+          }
         });
+      }
+
+      let remoteWorkEntry = null;
+      try {
+        const response = await createWorkEntry({
+          projectId: selectedProject.remoteId || selectedProject.id,
+          employeeId: employee.remoteId || employee.id,
+          activity: activity.charAt(0).toUpperCase() + activity.slice(1),
+          date,
+          daysWorked: (parseFloat(workers) || 1) * (parseFloat(days) || 1),
+          ratePerDay: parseFloat(rate) || 0,
+          hoursWorked: null,
+          imageUrl: null,
+          status: 'PENDING',
+          isRecurring: false,
+          notes: '',
+        });
+        remoteWorkEntry = response.workEntry || null;
+      } catch {
+        remoteWorkEntry = null;
       }
 
       await database.get('work_entries').create((record) => {
@@ -114,7 +149,14 @@ export default function QuickEntryScreen({ navigation }) {
         record.notes = '';
         record.isPaid = false;
         record.isDeleted = false;
+        if (remoteWorkEntry?.id) {
+          markRecordSynced(record, remoteWorkEntry.id);
+        }
       });
+
+      setBanner(remoteWorkEntry?.id
+        ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
+        : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
     });
   };
 
@@ -133,6 +175,7 @@ export default function QuickEntryScreen({ navigation }) {
     }
 
     setSaving(true);
+    setBanner(null);
     Keyboard.dismiss();
 
     try {
@@ -152,6 +195,7 @@ export default function QuickEntryScreen({ navigation }) {
       Alert.alert(t('common.success'), t('quick_entry.success'));
       syncAll().catch(() => {});
     } catch (err) {
+      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('quick_entry.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('quick_entry.errors.save_local'));
     } finally {
       setSaving(false);
@@ -178,6 +222,7 @@ export default function QuickEntryScreen({ navigation }) {
         <StitchTopBar title={t('quick_entry.save')} onBack={() => navigation.goBack()} />
         <StitchEyebrow>{t('quick_entry.fields.activity')}</StitchEyebrow>
         <StitchDisplayTitle>{t('quick_entry.save')}</StitchDisplayTitle>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.heroSurface}>
           <Text style={styles.heroLabel}>{t('quick_entry.total')}</Text>
@@ -297,6 +342,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  banner: { marginTop: 14 },
   heroSurface: { marginTop: 22 },
   heroLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: '800' },
   heroValue: { marginTop: 10, fontSize: 38, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },

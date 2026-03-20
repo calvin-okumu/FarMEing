@@ -550,7 +550,10 @@
     "search_in_tab": "Search this section",
     "sort_latest": "Latest",
     "sort_amount": "Amount",
-    "syncing": "Syncing..."
+    "syncing": "Syncing...",
+    "loading_title": "Refreshing",
+    "loading_body": "Loading the latest resource data from the server.",
+    "loading_error": "Could not load the latest resource data."
   },
   "feedback": {
     "created": "Created",

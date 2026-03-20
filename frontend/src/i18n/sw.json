@@ -550,7 +550,10 @@
     "search_in_tab": "Tafuta kwenye sehemu hii",
     "sort_latest": "Mpya",
     "sort_amount": "Kiasi",
-    "syncing": "Inasawazisha..."
+    "syncing": "Inasawazisha...",
+    "loading_title": "Inasasisha",
+    "loading_body": "Inapakua data mpya ya rasilimali kutoka kwenye seva.",
+    "loading_error": "Imeshindikana kupakia data mpya ya rasilimali."
   },
   "feedback": {
     "created": "Imeundwa",
