@@ -19,10 +19,10 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { updateSale } from '../services/saleService';
+import { createSale, updateSale } from '../services/saleService';
 import { updateLocalModel } from '../utils/resourceMutations';
 
 export default function AddSaleScreen({ route, navigation }) {
@@ -107,6 +107,14 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.notes = notes.trim();
           }, record.remoteId);
         } else {
+          let remoteSale = null;
+          try {
+            const response = await createSale({ projectId, customer, weightSold, unitPrice, date, notes });
+            remoteSale = response.sale || null;
+          } catch (error) {
+            remoteSale = null;
+          }
+
           await database.get('sales').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -117,6 +125,9 @@ export default function AddSaleScreen({ route, navigation }) {
             record.date = date.getTime();
             record.notes = notes.trim();
             record.isDeleted = false;
+            if (remoteSale?.id) {
+              markRecordSynced(record, remoteSale.id);
+            }
           });
         }
       });

@@ -15,8 +15,8 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
-import { initializeLocalRecord } from '../utils/localRecord';
-import { updateBudgetItem } from '../services/budgetService';
+import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
+import { createBudgetItem, updateBudgetItem } from '../services/budgetService';
 import { updateLocalModel } from '../utils/resourceMutations';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
@@ -89,6 +89,14 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             draft.unitPrice = parseFloat(unitPrice);
           }, record.remoteId);
         } else {
+          let remoteItem = null;
+          try {
+            const response = await createBudgetItem({ projectId, category, name, quantity, unit, unitPrice });
+            remoteItem = response.budgetItem || null;
+          } catch (error) {
+            remoteItem = null;
+          }
+
           await database.get('budget_items').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -98,6 +106,9 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             record.unit = unit.trim();
             record.unitPrice = parseFloat(unitPrice);
             record.isDeleted = false;
+            if (remoteItem?.id) {
+              markRecordSynced(record, remoteItem.id);
+            }
           });
         }
       });

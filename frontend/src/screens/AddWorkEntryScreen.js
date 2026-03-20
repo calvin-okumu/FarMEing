@@ -22,10 +22,10 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { updateWorkEntry } from '../services/workEntryService';
+import { createWorkEntry, updateWorkEntry } from '../services/workEntryService';
 import { updateLocalModel } from '../utils/resourceMutations';
 
 const ACTIVITIES = [
@@ -168,6 +168,27 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             draft.notes = notes.trim();
           }, record.remoteId);
         } else {
+          let remoteWorkEntry = null;
+          try {
+            const response = await createWorkEntry({
+              projectId,
+              employeeId: selectedEmployee.remoteId || selectedEmployee.id,
+              activity: activity.charAt(0).toUpperCase() + activity.slice(1),
+              date,
+              daysWorked,
+              ratePerDay,
+              hoursWorked,
+              imageUrl: photo,
+              status: 'PENDING',
+              isRecurring,
+              frequency: isRecurring ? frequency.toUpperCase() : null,
+              notes,
+            });
+            remoteWorkEntry = response.workEntry || null;
+          } catch (error) {
+            remoteWorkEntry = null;
+          }
+
           await database.get('work_entries').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -185,6 +206,9 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             record.notes = notes.trim();
             record.isPaid = false;
             record.isDeleted = false;
+            if (remoteWorkEntry?.id) {
+              markRecordSynced(record, remoteWorkEntry.id);
+            }
           });
         }
       });

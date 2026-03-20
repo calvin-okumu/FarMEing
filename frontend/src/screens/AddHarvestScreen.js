@@ -16,12 +16,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { updateHarvest } from '../services/harvestService';
+import { createHarvest, updateHarvest } from '../services/harvestService';
 import { updateLocalModel } from '../utils/resourceMutations';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
@@ -103,6 +103,14 @@ export default function AddHarvestScreen({ route, navigation }) {
             draft.notes = notes.trim();
           }, record.remoteId);
         } else {
+          let remoteHarvest = null;
+          try {
+            const response = await createHarvest({ projectId, crop, date, weight, unit, quality, notes });
+            remoteHarvest = response.harvest || null;
+          } catch (error) {
+            remoteHarvest = null;
+          }
+
           await database.get('harvests').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -113,6 +121,9 @@ export default function AddHarvestScreen({ route, navigation }) {
             record.date = date.getTime();
             record.notes = notes.trim();
             record.isDeleted = false;
+            if (remoteHarvest?.id) {
+              markRecordSynced(record, remoteHarvest.id);
+            }
           });
         }
       });

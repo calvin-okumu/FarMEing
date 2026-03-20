@@ -18,12 +18,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { updateExpense } from '../services/expenseService';
+import { createExpense, updateExpense } from '../services/expenseService';
 import { updateLocalModel } from '../utils/resourceMutations';
 
 const CATEGORIES = [
@@ -133,6 +133,14 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.receiptUrl = photo || '';
           }, record.remoteId);
         } else {
+          let remoteExpense = null;
+          try {
+            const response = await createExpense({ projectId, category, amount, date, note, receiptUrl: photo });
+            remoteExpense = response.expense || null;
+          } catch (error) {
+            remoteExpense = null;
+          }
+
           await database.get('expenses').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -145,6 +153,9 @@ export default function AddExpenseScreen({ route, navigation }) {
             record.note = note.trim();
             record.receiptUrl = photo || '';
             record.isDeleted = false;
+            if (remoteExpense?.id) {
+              markRecordSynced(record, remoteExpense.id);
+            }
           });
         }
       });
