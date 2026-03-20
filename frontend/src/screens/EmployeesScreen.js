@@ -23,6 +23,28 @@ import useAuthStore from '../store/useAuthStore';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+
+function PayrollBars({ values }) {
+  const maxValue = Math.max(...values, 1);
+
+  return (
+    <View style={styles.payrollBars}>
+      {values.map((value, index) => (
+        <View
+          key={`${value}-${index}`}
+          style={[
+            styles.payrollBar,
+            {
+              height: `${Math.max(24, (value / maxValue) * 100)}%`,
+              backgroundColor: index === 1 ? stitchTheme.colors.primarySoft : index === values.length - 1 ? stitchTheme.colors.primaryContainer : '#e6e2de',
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function EmployeesScreen({ navigation }) {
   const { t } = useTranslation();
@@ -230,7 +252,9 @@ export default function EmployeesScreen({ navigation }) {
     <View style={styles.container}>
       {employees.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="people-outline" size={48} color="#d1fae5" />
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="people-outline" size={42} color={stitchTheme.colors.primary} />
+          </View>
            <Text style={styles.emptyTitle}>{t('employees.empty_title')}</Text>
            <Text style={styles.emptySubtitle}>{t('employees.empty_subtitle')}</Text>
         </View>
@@ -240,11 +264,26 @@ export default function EmployeesScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View style={styles.heroCard}>
+              <View style={styles.heroTopRow}>
+                <View>
+                  <Text style={styles.heroEyebrow}>{t('tab.workers')}</Text>
+                  <Text style={styles.heroValue}>{employees.length}</Text>
+                  <Text style={styles.heroSubtext}>{t('employees.empty_subtitle')}</Text>
+                </View>
+                <View style={styles.heroBadge}>
+                  <Ionicons name="people" size={22} color={stitchTheme.colors.primary} />
+                </View>
+              </View>
+              <PayrollBars values={employees.slice(0, 5).map((item, index) => Math.max(1, item.totalEarned || item.totalPaid || index + 1))} />
+            </View>
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#16a34a"
+              tintColor={stitchTheme.colors.primaryContainer}
             />
           }
         />
@@ -254,7 +293,7 @@ export default function EmployeesScreen({ navigation }) {
         style={styles.fab}
         onPress={() => setModalVisible(true)}
       >
-        <Ionicons name="person-add" size={24} color="#fff" />
+        <Ionicons name="person-add" size={24} color={stitchTheme.colors.primary} />
       </TouchableOpacity>
 
       <Modal
@@ -272,7 +311,7 @@ export default function EmployeesScreen({ navigation }) {
               <View style={styles.modalHeader}>
                  <Text style={styles.modalTitle}>{t('employees.new_employee')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#374151" />
+                  <Ionicons name="close" size={24} color={stitchTheme.colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -282,7 +321,7 @@ export default function EmployeesScreen({ navigation }) {
                 value={formData.name}
                 onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
                  placeholder={t('employees.placeholders.name')}
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#8a9388"
               />
 
                <Text style={styles.inputLabel}>{t('employees.fields.phone')}</Text>
@@ -291,7 +330,7 @@ export default function EmployeesScreen({ navigation }) {
                 value={formData.phone}
                 onChangeText={(t) => setFormData(p => ({ ...p, phone: t }))}
                  placeholder={t('employees.placeholders.phone')}
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#8a9388"
                 keyboardType="phone-pad"
               />
 
@@ -301,7 +340,7 @@ export default function EmployeesScreen({ navigation }) {
                 value={formData.role}
                 onChangeText={(t) => setFormData(p => ({ ...p, role: t }))}
                  placeholder={t('employees.placeholders.role')}
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#8a9388"
               />
 
               <TouchableOpacity
@@ -324,18 +363,27 @@ export default function EmployeesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  list: { padding: 16, gap: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  list: { padding: 20, gap: 14, paddingBottom: 120 },
+  heroCard: { backgroundColor: '#fff', borderRadius: 32, padding: 22, marginBottom: 16, ...stitchShadows.card },
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroEyebrow: { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
+  heroValue: { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
+  heroSubtext: { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4, maxWidth: 220 },
+  heroBadge: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  payrollBars: { height: 88, flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 },
+  payrollBar: { flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: 20 },
+  card: { backgroundColor: '#fff', borderRadius: 28, padding: 18, ...stitchShadows.card },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#16a34a', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 20, fontWeight: '800' },
   cardContent: { flex: 1 },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-  cardRole: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#6b7280', marginTop: 16 },
-  emptySubtitle: { fontSize: 14, color: '#9ca3af', marginTop: 4, textAlign: 'center' },
+  cardTitle: { fontSize: 20, fontWeight: '800', color: stitchTheme.colors.text },
+  cardRole: { fontSize: 14, color: stitchTheme.colors.accentBrown, marginTop: 2, fontWeight: '600' },
+  emptyIconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: '#eef3ea', alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 24, fontWeight: '800', color: stitchTheme.colors.primary, marginTop: 18 },
+  emptySubtitle: { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 24 },
   fab: {
     position: 'absolute',
     bottom: 20,
@@ -343,48 +391,44 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#16a34a',
+    backgroundColor: stitchTheme.colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    ...stitchShadows.float,
   },
   deleteAction: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#a60a15',
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    borderRadius: 12,
+    borderRadius: 18,
     marginVertical: 1,
   },
-  deleteText: { color: '#fff', fontSize: 12, marginTop: 4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  deleteText: { color: '#fff', fontSize: 12, marginTop: 4, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    backgroundColor: stitchTheme.colors.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 22,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
-  inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a', backgroundColor: '#fff' },
-  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
+  modalTitle: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
+  inputLabel: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
+  input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
+  saveButton: { backgroundColor: stitchTheme.colors.primarySoft, borderRadius: 28, padding: 18, alignItems: 'center', marginTop: 24, ...stitchShadows.float },
   saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
+  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#f0ece7' },
   balanceInfo: { flexDirection: 'row', gap: 12 },
-  balanceLabel: { fontSize: 11, color: '#9ca3af' },
-  balanceBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  balanceLabel: { fontSize: 11, color: stitchTheme.colors.textMuted, fontWeight: '700' },
+  balanceBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   balancePositive: { backgroundColor: '#fef2f2' },
-  balanceNegative: { backgroundColor: '#f0fdf4' },
-  balanceZero: { backgroundColor: '#f3f4f6' },
-  balanceText: { fontSize: 12, fontWeight: '600' },
+  balanceNegative: { backgroundColor: '#eef7eb' },
+  balanceZero: { backgroundColor: '#f0ece7' },
+  balanceText: { fontSize: 12, fontWeight: '800' },
   balanceTextPositive: { color: '#ef4444' },
-  balanceTextNegative: { color: '#16a34a' },
+  balanceTextNegative: { color: stitchTheme.colors.primary },
 });

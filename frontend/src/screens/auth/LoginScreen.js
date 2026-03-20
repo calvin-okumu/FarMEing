@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
+import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
 
 export default function LoginScreen({ navigation }) {
   const { t } = useTranslation();
@@ -48,7 +49,9 @@ export default function LoginScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {/* Logo / Title */}
         <View style={styles.header}>
-          <Ionicons name="leaf" size={52} color="#16a34a" />
+          <View style={styles.logoBubble}>
+            <Ionicons name="leaf" size={42} color={stitchTheme.colors.primary} />
+          </View>
           <Text style={styles.appName}>FarmTrack</Text>
           <Text style={styles.tagline}>{t('auth.login.tagline')}</Text>
         </View>
@@ -61,7 +64,7 @@ export default function LoginScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="+255700000000"
-              placeholderTextColor="#9ca3af"
+               placeholderTextColor="#8a9388"
               keyboardType="phone-pad"
               autoCapitalize="none"
               value={phone}
@@ -75,7 +78,7 @@ export default function LoginScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder={t('auth.placeholders.password')}
-              placeholderTextColor="#9ca3af"
+               placeholderTextColor="#8a9388"
               secureTextEntry={!showPw}
               value={password}
               onChangeText={setPassword}
@@ -111,21 +114,22 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  flex:         { flex: 1, backgroundColor: '#f9fafb' },
+  flex:         { flex: 1, backgroundColor: stitchTheme.colors.background },
   container:    { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
   header:       { alignItems: 'center', marginBottom: 40 },
-  appName:      { fontSize: 32, fontWeight: '800', color: '#1a1a1a', marginTop: 12 },
-  tagline:      { fontSize: 15, color: '#6b7280', marginTop: 4 },
-  form:         { backgroundColor: '#fff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
-  label:        { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 14 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, backgroundColor: '#f9fafb', paddingHorizontal: 12 },
+  logoBubble:   { width: 88, height: 88, borderRadius: 30, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  appName:      { fontSize: 38, fontWeight: '900', color: stitchTheme.colors.primary, marginTop: 16 },
+  tagline:      { fontSize: 17, color: stitchTheme.colors.textMuted, marginTop: 6 },
+  form:         { backgroundColor: '#fff', borderRadius: 28, padding: 24, ...stitchShadows.card },
+  label:        { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, marginTop: 14, textTransform: 'uppercase', letterSpacing: 1.2 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 22, backgroundColor: '#e9e5e1', paddingHorizontal: 14 },
   inputIcon:    { marginRight: 8 },
-  input:        { flex: 1, height: 48, fontSize: 15, color: '#1a1a1a' },
+  input:        { flex: 1, height: 56, fontSize: 16, color: stitchTheme.colors.text },
   eyeBtn:       { padding: 4 },
-  btn:          { marginTop: 24, backgroundColor: '#16a34a', borderRadius: 10, height: 50, alignItems: 'center', justifyContent: 'center' },
+  btn:          { marginTop: 24, backgroundColor: stitchTheme.colors.primarySoft, borderRadius: 28, height: 64, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
   btnDisabled:  { opacity: 0.6 },
-  btnText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
+  btnText:      { color: stitchTheme.colors.primary, fontWeight: '900', fontSize: 18 },
   footer:       { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  footerText:   { color: '#6b7280', fontSize: 14 },
-  footerLink:   { color: '#16a34a', fontWeight: '700', fontSize: 14 },
+  footerText:   { color: stitchTheme.colors.textMuted, fontSize: 15 },
+  footerLink:   { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: 15 },
 });

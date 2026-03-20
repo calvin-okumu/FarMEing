@@ -22,6 +22,29 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+
+function BalanceBars({ earned, paid, balance }) {
+  const values = [earned || 1, paid || 1, Math.abs(balance) || 1];
+  const maxValue = Math.max(...values, 1);
+
+  return (
+    <View style={styles.balanceBars}>
+      {values.map((value, index) => (
+        <View
+          key={`${value}-${index}`}
+          style={[
+            styles.balanceBar,
+            {
+              height: `${Math.max(28, (value / maxValue) * 100)}%`,
+              backgroundColor: index === 0 ? stitchTheme.colors.primaryContainer : index === 1 ? stitchTheme.colors.primarySoft : '#e4ddd7',
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function EmployeeDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
@@ -166,6 +189,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         </View>
         <Text style={styles.employeeName}>{employee.name}</Text>
         {employee.role && <Text style={styles.employeeRole}>{employee.role}</Text>}
+        <BalanceBars earned={totalEarned} paid={totalPaid} balance={balance} />
       </View>
 
       {/* Balance Card */}
@@ -275,7 +299,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 onPress={() => setShowDatePicker(true)}
               >
                 <Text style={styles.dateSelectorText}>
-                  {paymentDate.toLocaleDateString('en-GB')}
+                  {formatAppDate(paymentDate)}
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#16a34a" />
               </TouchableOpacity>
@@ -313,62 +337,62 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  errorText: { fontSize: 16, color: '#6b7280', marginBottom: 16 },
-  backButton: { backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  backButtonText: { color: '#fff', fontWeight: '600' },
+  errorText: { fontSize: 16, color: stitchTheme.colors.textMuted, marginBottom: 16 },
+  backButton: { backgroundColor: stitchTheme.colors.primarySoft, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 999 },
+  backButtonText: { color: stitchTheme.colors.primary, fontWeight: '800' },
 
-  header: { backgroundColor: '#fff', padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  avatarLarge: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#16a34a', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  avatarTextLarge: { color: '#fff', fontSize: 28, fontWeight: '600' },
-  employeeName: { fontSize: 22, fontWeight: '700', color: '#1a1a1a' },
-  employeeRole: { fontSize: 14, color: '#6b7280', marginTop: 4 },
+  header: { backgroundColor: '#fff', padding: 22, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, ...stitchShadows.card },
+  avatarLarge: { width: 72, height: 72, borderRadius: 36, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  avatarTextLarge: { color: '#fff', fontSize: 30, fontWeight: '800' },
+  employeeName: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
+  employeeRole: { fontSize: 15, color: stitchTheme.colors.accentBrown, marginTop: 6, fontWeight: '600' },
+  balanceBars: { height: 72, flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 },
+  balanceBar: { width: 28, borderTopLeftRadius: 14, borderTopRightRadius: 14, minHeight: 18 },
 
-  balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', margin: 16, padding: 16, borderRadius: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8 },
-  balanceLabel: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
-  balanceValue: { fontSize: 24, fontWeight: '700' },
+  balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', margin: 20, padding: 18, borderRadius: 28, ...stitchShadows.card },
+  balanceLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, marginBottom: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.3 },
+  balanceValue: { fontSize: 30, fontWeight: '900' },
   balancePositive: { color: '#ef4444' },
-  balanceNeutral: { color: '#16a34a' },
-  payButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#16a34a', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  balanceNeutral: { color: stitchTheme.colors.primary },
+  payButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: stitchTheme.colors.primarySoft, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999 },
   payButtonDisabled: { backgroundColor: '#9ca3af' },
-  payButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  payButtonText: { color: stitchTheme.colors.primary, fontSize: 14, fontWeight: '800' },
 
-  tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  tabButton: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabButtonActive: { borderBottomColor: '#16a34a' },
-  tabText: { fontSize: 14, fontWeight: '600', color: '#6b7280' },
-  tabTextActive: { color: '#16a34a' },
+  tabs: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 8, backgroundColor: '#ece8e4', borderRadius: 24, padding: 6 },
+  tabButton: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 18 },
+  tabButtonActive: { backgroundColor: '#fff', ...stitchShadows.card },
+  tabText: { fontSize: 14, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  tabTextActive: { color: stitchTheme.colors.primary },
 
-  content: { flex: 1, padding: 16 },
-  listItem: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 8 },
+  content: { flex: 1, padding: 20 },
+  listItem: { backgroundColor: '#fff', borderRadius: 24, padding: 16, marginBottom: 12, ...stitchShadows.card },
   listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  listItemTitle: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-  listItemAmount: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-  listItemMeta: { fontSize: 12, color: '#9ca3af' },
+  listItemTitle: { fontSize: 17, fontWeight: '800', color: stitchTheme.colors.text },
+  listItemAmount: { fontSize: 16, fontWeight: '900', color: stitchTheme.colors.text },
+  listItemMeta: { fontSize: 13, color: stitchTheme.colors.textMuted },
   emptySection: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { color: '#9ca3af', fontSize: 14 },
+  emptyText: { color: stitchTheme.colors.textMuted, fontSize: 15 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
+  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 22, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
-  inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#fff' },
+  modalTitle: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
+  inputLabel: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, marginTop: 12, textTransform: 'uppercase', letterSpacing: 1.2 },
+  input: { borderRadius: 22, padding: 16, fontSize: 17, backgroundColor: '#e9e5e1', color: stitchTheme.colors.text },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 16,
+    backgroundColor: '#e9e5e1',
   },
-  dateSelectorText: { fontSize: 16, color: '#1a1a1a' },
-  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24 },
+  dateSelectorText: { fontSize: 17, color: stitchTheme.colors.text, fontWeight: '600' },
+  saveButton: { backgroundColor: stitchTheme.colors.primarySoft, borderRadius: 28, padding: 18, alignItems: 'center', marginTop: 24, ...stitchShadows.float },
   saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
 });

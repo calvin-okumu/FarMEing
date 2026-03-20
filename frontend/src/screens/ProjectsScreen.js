@@ -23,6 +23,32 @@ import { database } from '../db';
 import { syncAll }   from '../services/syncService';
 import useAuthStore  from '../store/useAuthStore';
 import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
+import { formatAppDate } from '../utils/date';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+
+function TrendBars({ values }) {
+  const maxValue = Math.max(...values, 1);
+
+  return (
+    <View style={styles.trendRow}>
+      {values.map((value, index) => {
+        const active = index === values.length - 1 || value === maxValue;
+        return (
+          <View
+            key={`${value}-${index}`}
+            style={[
+              styles.trendBar,
+              {
+                height: `${Math.max(24, (value / maxValue) * 100)}%`,
+                backgroundColor: active ? stitchTheme.colors.primaryContainer : '#dfe7db',
+              },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
 
 export default function ProjectsScreen({ navigation }) {
   const { t } = useTranslation();
@@ -198,7 +224,7 @@ export default function ProjectsScreen({ navigation }) {
           <Text style={styles.metaText}>{item.landSize} {item.landUnit}</Text>
           {item.startDate ? (
             <Text style={styles.metaText}>
-              {new Date(item.startDate).toLocaleDateString('en-GB')}
+              {formatAppDate(item.startDate)}
             </Text>
           ) : null}
         </View>
@@ -210,7 +236,9 @@ export default function ProjectsScreen({ navigation }) {
     <View style={styles.container}>
       {projects.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="leaf-outline" size={48} color="#d1fae5" />
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="leaf-outline" size={42} color={stitchTheme.colors.primary} />
+          </View>
           <Text style={styles.emptyTitle}>{t('projects.empty_state')}</Text>
           <Text style={styles.emptySubtitle}>{t('projects.pull_to_sync')}</Text>
         </View>
@@ -220,11 +248,26 @@ export default function ProjectsScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View style={styles.heroCard}>
+              <View style={styles.heroTopRow}>
+                <View>
+                  <Text style={styles.heroEyebrow}>{t('projects.title')}</Text>
+                  <Text style={styles.heroValue}>{projects.length}</Text>
+                  <Text style={styles.heroSubtext}>{t('projects.empty_state')}</Text>
+                </View>
+                <View style={styles.heroBadge}>
+                  <Ionicons name="leaf" size={22} color={stitchTheme.colors.primary} />
+                </View>
+              </View>
+              <TrendBars values={projects.slice(0, 6).map((project, index) => (project.landSize || 1) + index)} />
+            </View>
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#16a34a"
+              tintColor={stitchTheme.colors.primaryContainer}
             />
           }
         />
@@ -235,7 +278,7 @@ export default function ProjectsScreen({ navigation }) {
         style={styles.fab}
         onPress={() => setModalVisible(true)}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={28} color={stitchTheme.colors.primary} />
       </TouchableOpacity>
 
       {/* Create Modal */}
@@ -254,7 +297,7 @@ export default function ProjectsScreen({ navigation }) {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{t('projects.new_project')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#374151" />
+                  <Ionicons name="close" size={24} color={stitchTheme.colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -265,7 +308,7 @@ export default function ProjectsScreen({ navigation }) {
                   value={formData.name}
                   onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
                    placeholder={t('projects.placeholders.name')}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#8a9388"
                 />
 
                 <Text style={styles.inputLabel}>{t('projects.fields.crop')}</Text>
@@ -274,7 +317,7 @@ export default function ProjectsScreen({ navigation }) {
                   value={formData.crop}
                   onChangeText={(t) => setFormData(p => ({ ...p, crop: t }))}
                    placeholder={t('projects.placeholders.crop')}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#8a9388"
                 />
 
                 <View style={styles.row}>
@@ -285,7 +328,7 @@ export default function ProjectsScreen({ navigation }) {
                       value={formData.landSize}
                       onChangeText={(t) => setFormData(p => ({ ...p, landSize: t }))}
                        placeholder={t('common.zero')}
-                      placeholderTextColor="#9ca3af"
+                       placeholderTextColor="#8a9388"
                       keyboardType="numeric"
                     />
                   </View>
@@ -296,7 +339,7 @@ export default function ProjectsScreen({ navigation }) {
                       value={formData.landUnit}
                       onChangeText={(t) => setFormData(p => ({ ...p, landUnit: t }))}
                        placeholder={t('projects.placeholders.unit')}
-                      placeholderTextColor="#9ca3af"
+                       placeholderTextColor="#8a9388"
                     />
                   </View>
                 </View>
@@ -307,7 +350,7 @@ export default function ProjectsScreen({ navigation }) {
                   value={formData.expectedYield}
                   onChangeText={(t) => setFormData(p => ({ ...p, expectedYield: t }))}
                    placeholder={t('projects.placeholders.expected_yield')}
-                  placeholderTextColor="#9ca3af"
+                   placeholderTextColor="#8a9388"
                   keyboardType="numeric"
                 />
 
@@ -317,7 +360,7 @@ export default function ProjectsScreen({ navigation }) {
                   onPress={() => setShowDatePicker(true)}
                 >
                   <Text style={styles.dateSelectorText}>
-                    {formData.startDate.toLocaleDateString('en-GB')}
+                    {formatAppDate(formData.startDate)}
                   </Text>
                   <Ionicons name="calendar-outline" size={20} color="#16a34a" />
                 </TouchableOpacity>
@@ -352,17 +395,26 @@ export default function ProjectsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container:     { flex: 1, backgroundColor: '#f9fafb' },
-  center:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  list:          { padding: 16, gap: 12 },
-  card:          { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  cardHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  cardTitle:     { fontSize: 16, fontWeight: '700', color: '#1a1a1a', flex: 1 },
-  cardCrop:      { fontSize: 13, color: '#6b7280', marginBottom: 8 },
-  cardMeta:      { flexDirection: 'row', justifyContent: 'space-between' },
-  metaText:      { fontSize: 12, color: '#9ca3af' },
-  emptyTitle:    { fontSize: 18, fontWeight: '600', color: '#6b7280', marginTop: 16 },
-  emptySubtitle: { fontSize: 14, color: '#9ca3af', marginTop: 4, textAlign: 'center' },
+  container:     { flex: 1, backgroundColor: stitchTheme.colors.background },
+  center:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  list:          { padding: 20, gap: 14, paddingBottom: 120 },
+  heroCard:      { backgroundColor: '#fff', borderRadius: 32, padding: 22, marginBottom: 16, ...stitchShadows.card },
+  heroTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroEyebrow:   { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
+  heroValue:     { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
+  heroSubtext:   { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4 },
+  heroBadge:     { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  trendRow:      { height: 92, flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 },
+  trendBar:      { flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: 20 },
+  card:          { backgroundColor: '#fff', borderRadius: 28, padding: 20, ...stitchShadows.card },
+  cardHeader:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  cardTitle:     { fontSize: 20, fontWeight: '800', color: stitchTheme.colors.text, flex: 1 },
+  cardCrop:      { fontSize: 15, color: stitchTheme.colors.accentBrown, marginBottom: 12, fontWeight: '600' },
+  cardMeta:      { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  metaText:      { fontSize: 13, color: stitchTheme.colors.textMuted, fontWeight: '600' },
+  emptyIconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: '#eef3ea', alignItems: 'center', justifyContent: 'center' },
+  emptyTitle:    { fontSize: 24, fontWeight: '800', color: stitchTheme.colors.primary, marginTop: 20 },
+  emptySubtitle: { fontSize: 16, lineHeight: 24, color: stitchTheme.colors.textMuted, marginTop: 8, textAlign: 'center' },
 
   // FAB
   fab: {
@@ -372,45 +424,37 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#16a34a',
+    backgroundColor: stitchTheme.colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    ...stitchShadows.float,
   },
 
   // Swipe delete
   deleteAction: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#a60a15',
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    borderRadius: 12,
+    borderRadius: 18,
     marginVertical: 1,
   },
-  deleteText: {
-    color: '#fff',
-    fontSize: 12,
-    marginTop: 4,
-  },
+  deleteText: { color: '#fff', fontSize: 12, marginTop: 4, fontWeight: '700' },
 
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(12, 18, 12, 0.42)',
     justifyContent: 'flex-end',
   },
   keyboardView: {
     width: '100%',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    backgroundColor: stitchTheme.colors.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 22,
     maxHeight: '90%',
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
@@ -421,39 +465,38 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontSize: 28,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 13,
+    fontWeight: '800',
+    color: stitchTheme.colors.accentBrown,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
     marginBottom: 6,
     marginTop: 12,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 16,
+    fontSize: 17,
+    color: stitchTheme.colors.text,
+    backgroundColor: '#e9e5e1',
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 16,
+    backgroundColor: '#e9e5e1',
   },
   dateSelectorText: {
-    fontSize: 16,
-    color: '#1a1a1a',
+    fontSize: 17,
+    color: stitchTheme.colors.text,
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
@@ -463,19 +506,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   saveButton: {
-    backgroundColor: '#16a34a',
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: stitchTheme.colors.primarySoft,
+    borderRadius: 28,
+    padding: 18,
     alignItems: 'center',
     marginTop: 24,
     marginBottom: 20,
+    ...stitchShadows.float,
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: stitchTheme.colors.primary,
+    fontSize: 18,
+    fontWeight: '900',
   },
 });
