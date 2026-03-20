@@ -127,6 +127,7 @@
       "labor": "Kibarua",
       "harvest": "Mavuno",
       "sales": "Mauzo",
+      "inventory": "Inventory",
       "timeline": "Ratiba"
     },
     "fields": {
@@ -243,6 +244,12 @@
     "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
     "empty_title": "Hakuna wafanyakazi bado",
     "empty_subtitle": "Vuta chini kusawazisha au ongeza mfanyakazi mpya.",
+    "directory_subtitle": "Orodha ya API yenye mizania na vitendo.",
+    "search_placeholder": "Tafuta wafanyakazi, majukumu au simu",
+    "edit_title": "Hariri Mfanyakazi",
+    "role_unset": "Jukumu halijawekwa",
+    "no_phone": "Hakuna simu iliyohifadhiwa",
+    "api_live": "API Hai",
     "earned": "Alichopata",
     "paid": "Alicholipwa",
     "settled": "Amelipwa yote",
@@ -379,6 +386,28 @@
       "weight_required": "Uzito sahihi unahitajika",
       "unit_price_required": "Bei sahihi kwa kipimo inahitajika",
       "save_local": "Imeshindikana kuhifadhi mauzo"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "open": "Fungua",
+    "total_value": "Thamani ya Inventory",
+    "search_placeholder": "Tafuta vitu vya inventory",
+    "empty_title": "Hakuna inventory bado",
+    "empty_subtitle": "Ongeza mbegu, vifaa, na stock nyingine kwa mradi huu.",
+    "create_title": "Ongeza Kitu cha Inventory",
+    "edit_title": "Hariri Kitu cha Inventory",
+    "delete_title": "Futa Kitu cha Inventory",
+    "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "project_inventory_subtitle": "Dhibiti stock, matumizi, na gharama za kipimo kwa mradi huu.",
+    "used_qty": "Kilichotumika",
+    "fields": {
+      "name": "Jina la Kitu",
+      "category": "Kategoria",
+      "quantity": "Kiasi",
+      "unit": "Kipimo",
+      "unit_cost": "Gharama kwa Kipimo",
+      "used_qty": "Kiasi kilichotumika"
     }
   },
   "payments": {

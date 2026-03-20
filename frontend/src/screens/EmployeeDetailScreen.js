@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,21 +9,19 @@ import {
   Alert,
   Modal,
   TextInput,
-  Platform,
   KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Q } from '@nozbe/watermelondb';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
-import { database } from '../db';
-import { syncAll } from '../services/syncService';
-import useSettingsStore from '../store/useSettingsStore';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord } from '../utils/localRecord';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useDeleteEmployeeMutation, useEmployeeBalanceQuery, useUpdateEmployeeMutation } from '../hooks/api/useEmployeesApi';
+import { createPayment, listEmployeePayments } from '../services/paymentService';
+import { listWorkEntries } from '../services/workEntryService';
 
 function BalanceBars({ earned, paid, balance }) {
   const values = [earned || 1, paid || 1, Math.abs(balance) || 1];
@@ -50,131 +48,109 @@ function BalanceBars({ earned, paid, balance }) {
 export default function EmployeeDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { employeeId } = route.params || {};
-  const currency = useSettingsStore((s) => s.currency);
-  
-  const [employee, setEmployee] = useState(null);
+  const [activeTab, setActiveTab] = useState('work');
   const [workEntries, setWorkEntries] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('work');
-  
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentNote, setPaymentNote] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date());
+  const [loadingTabData, setLoadingTabData] = useState(true);
+  const [editVisible, setEditVisible] = useState(false);
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [paymentVisible, setPaymentVisible] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', role: '' });
+  const [paymentForm, setPaymentForm] = useState({ amount: '', note: '', date: new Date() });
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [savingPayment, setSavingPayment] = useState(false);
 
-  // 1. Initial Load: Get the employee record
+  const balanceQuery = useEmployeeBalanceQuery(employeeId);
+  const updateMutation = useUpdateEmployeeMutation();
+  const deleteMutation = useDeleteEmployeeMutation();
+
+  const employee = balanceQuery.data?.employee;
+  const balance = balanceQuery.data?.balance || { totalEarned: 0, totalPaid: 0, outstanding: 0 };
+
   useEffect(() => {
-    if (!employeeId) {
-      setLoading(false);
-      return;
-    }
-
-    const loadEmployee = async () => {
+    if (!employeeId) return;
+    const loadRelated = async () => {
       try {
-        const emp = await database.get('employees').find(employeeId);
-        setEmployee(emp);
-      } catch (err) {
-        console.warn('[EmployeeDetail] load error:', err.message);
+        setLoadingTabData(true);
+        const [paymentData, projectsData] = await Promise.all([
+          listEmployeePayments(employeeId),
+          import('../services/projectService').then((mod) => mod.listProjects()),
+        ]);
+        setPayments(paymentData.payments || []);
+
+        const projects = projectsData.projects || [];
+        const workLists = await Promise.all(
+          projects
+            .filter((project) => !project.isDeleted)
+            .map((project) => listWorkEntries(project.id).catch(() => ({ workEntries: [] })))
+        );
+        const allWorkEntries = workLists.flatMap((entry) => entry.workEntries || []);
+        setWorkEntries(allWorkEntries.filter((entry) => entry.employeeId === employeeId));
       } finally {
-        setLoading(false);
+        setLoadingTabData(false);
       }
     };
-    loadEmployee();
+
+    loadRelated();
   }, [employeeId]);
 
-  // 2. Subscriptions: Only start once we have the employee's remoteId
   useEffect(() => {
-    if (!employee) {
-      setWorkEntries([]);
-      setPayments([]);
-      return;
+    if (employee) {
+      setEditForm({
+        name: employee.name || '',
+        phone: employee.phone || '',
+        role: employee.role || '',
+      });
     }
+  }, [employee]);
 
-    const employeeIds = [employee.id];
-    if (employee.remoteId) {
-      employeeIds.push(employee.remoteId);
+  const handleUpdate = async () => {
+    try {
+      await updateMutation.mutateAsync({ id: employeeId, values: editForm });
+      await balanceQuery.refetch();
+      setEditVisible(false);
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
     }
+  };
 
-    const workSub = database
-      .get('work_entries')
-      .query(Q.where('employee_id', Q.oneOf(employeeIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setWorkEntries);
-
-    const paySub = database
-      .get('payments')
-      .query(Q.where('employee_id', Q.oneOf(employeeIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setPayments);
-
-    return () => {
-      workSub.unsubscribe();
-      paySub.unsubscribe();
-    };
-  }, [employee?.id, employee?.remoteId]);
-
-  const totalEarned = workEntries.reduce((sum, w) => sum + (w.totalCost || 0), 0);
-  const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const balance = totalEarned - totalPaid;
-
-  const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) setPaymentDate(selectedDate);
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(employeeId);
+      setDeleteVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
+    }
   };
 
   const handleRecordPayment = async () => {
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      Alert.alert(t('common.error'), t('payments.errors.amount_required'));
-      return;
-    }
-
-    const amount = parseFloat(paymentAmount);
-    setSavingPayment(true);
-
     try {
-      // 1. Save locally first (pending)
-      await database.write(async () => {
-        await database.get('payments').create((record) => {
-          initializeLocalRecord(record);
-          record.employeeId = employee.id;
-          record.amount = amount;
-          record.date = paymentDate.getTime();
-          record.note = paymentNote.trim();
-          record.isDeleted = false;
-        });
+      await createPayment({
+        employeeId,
+        amount: paymentForm.amount,
+        date: paymentForm.date,
+        note: paymentForm.note,
       });
-
-      // 2. Clear modal and trigger sync
-      setPaymentModalVisible(false);
-      setPaymentAmount('');
-      setPaymentNote('');
-      setPaymentDate(new Date());
-      syncAll().catch(() => {});
-    } catch (err) {
-      Alert.alert(t('common.error'), err.message || t('payments.errors.save_local'));
-    } finally {
-      setSavingPayment(false);
+      const paymentData = await listEmployeePayments(employeeId);
+      setPayments(paymentData.payments || []);
+      await balanceQuery.refetch();
+      setPaymentVisible(false);
+      setPaymentForm({ amount: '', note: '', date: new Date() });
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
     }
   };
 
+  const loading = balanceQuery.isLoading || loadingTabData;
+
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
+    return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
   }
 
   if (!employee) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>{t('employees.errors.not_found')}</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>{t('common.back')}</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -182,150 +158,82 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.topBarWrap}>
-        <StitchTopBar title={employee.name} onBack={() => navigation.goBack()} />
+        <StitchTopBar title={employee.name} onBack={() => navigation.goBack()} rightIcon="create-outline" onRightPress={() => setEditVisible(true)} />
       </View>
-      {/* Header */}
+
       <StitchSurface style={styles.header}>
-        <View style={styles.avatarLarge}>
-          <Text style={styles.avatarTextLarge}>
-            {(employee.name ?? '').charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <View style={styles.avatarLarge}><Text style={styles.avatarTextLarge}>{(employee.name || '?').charAt(0).toUpperCase()}</Text></View>
         <Text style={styles.employeeName}>{employee.name}</Text>
-        {employee.role && <Text style={styles.employeeRole}>{employee.role}</Text>}
-        <BalanceBars earned={totalEarned} paid={totalPaid} balance={balance} />
+        {employee.role ? <Text style={styles.employeeRole}>{employee.role}</Text> : null}
+        <BalanceBars earned={balance.totalEarned} paid={balance.totalPaid} balance={balance.outstanding} />
       </StitchSurface>
 
-      {/* Balance Card */}
       <View style={styles.balanceCard}>
-        <View style={styles.balanceInfo}>
+        <View>
           <Text style={styles.balanceLabel}>{t('employees.outstanding_balance')}</Text>
-          <Text style={[styles.balanceValue, balance > 0 ? styles.balancePositive : styles.balanceNeutral]}>
-            {formatCurrency(balance, currency)}
-          </Text>
+          <Text style={[styles.balanceValue, balance.outstanding > 0 ? styles.balancePositive : styles.balanceNeutral]}>{formatCurrency(balance.outstanding, employee.currency || 'USD')}</Text>
         </View>
-        <StitchPrimaryButton label={t('payments.pay_worker')} onPress={() => setPaymentModalVisible(true)} disabled={balance <= 0} icon="cash-outline" style={styles.payButton} />
+        <StitchPrimaryButton label={t('payments.pay_worker')} onPress={() => setPaymentVisible(true)} disabled={balance.outstanding <= 0} icon="cash-outline" style={styles.payButton} />
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
         <StitchChip label={t('employees.work_history')} active={activeTab === 'work'} onPress={() => setActiveTab('work')} style={styles.tabButton} />
         <StitchChip label={t('payments.title')} active={activeTab === 'payments'} onPress={() => setActiveTab('payments')} style={styles.tabButton} />
       </View>
 
-      {/* Content */}
       <ScrollView style={styles.content}>
-        {activeTab === 'work' ? (
-          workEntries.length === 0 ? (
-            <View style={styles.emptySection}>
-               <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
+        {(activeTab === 'work' ? workEntries : payments).map((item) => (
+          <View key={item.id} style={styles.listItem}>
+            <View style={styles.listItemHeader}>
+              <Text style={styles.listItemTitle}>{activeTab === 'work' ? item.activity : t('payments.title')}</Text>
+              <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, employee.currency || 'USD')}</Text>
             </View>
-          ) : (
-            workEntries.map((entry) => (
-              <View key={entry.id} style={styles.listItem}>
-                <View style={styles.listItemHeader}>
-                  <Text style={styles.listItemTitle}>{entry.activity}</Text>
-                   <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost ?? 0, currency)}</Text>
-                </View>
-                <Text style={styles.listItemMeta}>
-                  {entry.date ? formatAppDate(entry.date) : ''} • {entry.daysWorked} {t('labor.days')}
-                </Text>
-              </View>
-            ))
-          )
-        ) : (
-          payments.length === 0 ? (
-            <View style={styles.emptySection}>
-               <Text style={styles.emptyText}>{t('payments.empty')}</Text>
-            </View>
-          ) : (
-            payments.map((p) => (
-              <View key={p.id} style={styles.listItem}>
-                <View style={styles.listItemHeader}>
-                   <Text style={styles.listItemTitle}>{t('payments.title')}</Text>
-                   <Text style={styles.listItemAmount}>{formatCurrency(p.amount ?? 0, currency)}</Text>
-                </View>
-                <Text style={styles.listItemMeta}>
-                  {p.date ? formatAppDate(p.date) : ''}
-                  {p.note ? ` • ${p.note}` : ''}
-                </Text>
-              </View>
-            ))
-          )
-        )}
+            <Text style={styles.listItemMeta}>{formatAppDate(item.date)}{item.note ? ` • ${item.note}` : ''}</Text>
+          </View>
+        ))}
+        {activeTab === 'work' && !workEntries.length ? <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> : null}
+        {activeTab === 'payments' && !payments.length ? <Text style={styles.emptyText}>{t('payments.empty')}</Text> : null}
+        <TouchableOpacity style={styles.deleteTrigger} onPress={() => setDeleteVisible(true)} activeOpacity={0.88}>
+          <Ionicons name="trash-outline" size={18} color="#9c1111" />
+          <Text style={styles.deleteTriggerText}>{t('common.delete')}</Text>
+        </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Payment Modal */}
-      <Modal visible={paymentModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                 <Text style={styles.modalTitle}>{t('payments.record')}</Text>
-                <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#374151" />
-                </TouchableOpacity>
-              </View>
-
-               <StitchSectionLabel>{t('payments.fields.amount')} *</StitchSectionLabel>
-              <TextInput
-                style={styles.input}
-                value={paymentAmount}
-                onChangeText={setPaymentAmount}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-              />
-
-               <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
-              <TouchableOpacity 
-                style={styles.dateSelector} 
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.dateSelectorText}>
-                  {formatAppDate(paymentDate)}
-                </Text>
-                <Ionicons name="calendar-outline" size={20} color="#16a34a" />
-              </TouchableOpacity>
-
-              {showDatePicker && (
-                <DateTimePicker
-                  value={paymentDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onDateChange}
-                />
-              )}
-
-               <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
-              <TextInput
-                style={styles.input}
-                value={paymentNote}
-                onChangeText={setPaymentNote}
-                 placeholder={t('payments.placeholders.note')}
-              />
-
-              <StitchPrimaryButton label={t('payments.confirm')} onPress={handleRecordPayment} disabled={savingPayment} loading={savingPayment} icon="checkmark-circle" style={styles.saveButton} />
-            </View>
-          </KeyboardAvoidingView>
-        </View>
+      <Modal visible={editVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}><View style={styles.modalContent}>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          <StitchSectionLabel>{t('employees.fields.name')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={editForm.name} onChangeText={(name) => setEditForm((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
+          <StitchSectionLabel>{t('employees.fields.phone')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={editForm.phone} onChangeText={(phone) => setEditForm((p) => ({ ...p, phone }))} placeholderTextColor="#8a9388" />
+          <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={editForm.role} onChangeText={(role) => setEditForm((p) => ({ ...p, role }))} placeholderTextColor="#8a9388" />
+          <StitchPrimaryButton label={t('common.save')} onPress={handleUpdate} disabled={updateMutation.isPending} loading={updateMutation.isPending} icon="save-outline" style={styles.saveButton} />
+        </View></KeyboardAvoidingView></View>
       </Modal>
+
+      <Modal visible={paymentVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}><View style={styles.modalContent}>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          <StitchSectionLabel>{t('payments.fields.amount')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={paymentForm.amount} onChangeText={(amount) => setPaymentForm((p) => ({ ...p, amount }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+          <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={paymentForm.note} onChangeText={(note) => setPaymentForm((p) => ({ ...p, note }))} placeholderTextColor="#8a9388" />
+          <StitchPrimaryButton label={t('payments.confirm')} onPress={handleRecordPayment} icon="checkmark-circle" style={styles.saveButton} />
+        </View></KeyboardAvoidingView></View>
+      </Modal>
+
+      <ConfirmDialog visible={deleteVisible} title={t('employees.delete_title')} message={t('employees.confirm_delete', { name: employee.name })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteVisible(false)} onConfirm={handleDelete} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  errorText: { fontSize: 16, color: stitchTheme.colors.textMuted },
   topBarWrap: { paddingHorizontal: 20, paddingTop: 18 },
-  errorText: { fontSize: 16, color: stitchTheme.colors.textMuted, marginBottom: 16 },
-  backButton: { backgroundColor: stitchTheme.colors.primarySoft, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 999 },
-  backButtonText: { color: stitchTheme.colors.primary, fontWeight: '800' },
-
   header: { marginHorizontal: 20, padding: 22, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
   avatarLarge: { width: 72, height: 72, borderRadius: 36, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   avatarTextLarge: { color: '#fff', fontSize: 30, fontWeight: '800' },
@@ -333,40 +241,28 @@ const styles = StyleSheet.create({
   employeeRole: { fontSize: 15, color: stitchTheme.colors.accentBrown, marginTop: 6, fontWeight: '600' },
   balanceBars: { height: 72, flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 },
   balanceBar: { width: 28, borderTopLeftRadius: 14, borderTopRightRadius: 14, minHeight: 18 },
-
   balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', margin: 20, padding: 18, borderRadius: 28, ...stitchShadows.card },
   balanceLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, marginBottom: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.3 },
   balanceValue: { fontSize: 30, fontWeight: '900' },
   balancePositive: { color: '#ef4444' },
   balanceNeutral: { color: stitchTheme.colors.primary },
   payButton: { minHeight: 60, paddingHorizontal: 18 },
-
   tabs: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 8, backgroundColor: '#ece8e4', borderRadius: 24, padding: 6 },
   tabButton: { flex: 1 },
-
   content: { flex: 1, padding: 20 },
   listItem: { backgroundColor: '#fff', borderRadius: 24, padding: 16, marginBottom: 12, ...stitchShadows.card },
   listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   listItemTitle: { fontSize: 17, fontWeight: '800', color: stitchTheme.colors.text },
   listItemAmount: { fontSize: 16, fontWeight: '900', color: stitchTheme.colors.text },
   listItemMeta: { fontSize: 13, color: stitchTheme.colors.textMuted },
-  emptySection: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { color: stitchTheme.colors.textMuted, fontSize: 15 },
-
+  emptyText: { color: stitchTheme.colors.textMuted, fontSize: 15, textAlign: 'center', marginTop: 20 },
+  deleteTrigger: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  deleteTriggerText: { color: '#9c1111', fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 22, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
   input: { borderRadius: 22, padding: 16, fontSize: 17, backgroundColor: '#e9e5e1', color: stitchTheme.colors.text },
-  dateSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: '#e9e5e1',
-  },
-  dateSelectorText: { fontSize: 17, color: stitchTheme.colors.text, fontWeight: '600' },
   saveButton: { marginTop: 24 },
 });

@@ -127,6 +127,7 @@
       "labor": "Labor",
       "harvest": "Harvest",
       "sales": "Sales",
+      "inventory": "Inventory",
       "timeline": "Timeline"
     },
     "fields": {
@@ -243,6 +244,12 @@
     "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
     "empty_title": "No employees yet",
     "empty_subtitle": "Pull down to sync or add a new employee.",
+    "directory_subtitle": "API-backed directory with balances and actions.",
+    "search_placeholder": "Search workers, roles, or phone",
+    "edit_title": "Edit Employee",
+    "role_unset": "Role not set",
+    "no_phone": "No phone saved",
+    "api_live": "Live API",
     "earned": "Earned",
     "paid": "Paid",
     "settled": "Settled",
@@ -379,6 +386,28 @@
       "weight_required": "Valid weight is required",
       "unit_price_required": "Valid unit price is required",
       "save_local": "Failed to save sale locally"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "open": "Open",
+    "total_value": "Inventory Value",
+    "search_placeholder": "Search inventory items",
+    "empty_title": "No inventory yet",
+    "empty_subtitle": "Add seeds, tools, and other stock for this project.",
+    "create_title": "Add Inventory Item",
+    "edit_title": "Edit Inventory Item",
+    "delete_title": "Delete Inventory Item",
+    "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
+    "project_inventory_subtitle": "Manage stock, usage, and unit costs for this project.",
+    "used_qty": "Used",
+    "fields": {
+      "name": "Item Name",
+      "category": "Category",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unit_cost": "Unit Cost",
+      "used_qty": "Used Quantity"
     }
   },
   "payments": {

@@ -18,7 +18,7 @@ import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 
-const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'timeline'];
+const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
 
 function SummaryCard({ label, value, tone = 'default' }) {
   return (
@@ -302,6 +302,18 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         {activeTab === 'sales' ? sales.length ? sales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive')) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
 
+        {activeTab === 'inventory' ? (
+          <View style={styles.collectionCard}>
+            <View style={styles.collectionTopRow}>
+              <Text style={styles.collectionTitle}>{t('inventory.title')}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })} activeOpacity={0.88}>
+                <Text style={styles.inventoryLink}>{t('inventory.open')}</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.collectionMeta}>{t('inventory.project_inventory_subtitle')}</Text>
+          </View>
+        ) : null}
+
         {activeTab === 'timeline' ? (
           <View style={styles.timelineContainer}>
             <TimelineSection title={t('timeline.today')} tone="today" items={groupedTimeline.today} t={t} currency={currency} />
@@ -322,6 +334,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
           else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
           else if (activeTab === 'sales') navigation.navigate('AddSale', params);
+          else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
           else navigation.navigate('AddExpense', params);
         }}
         activeOpacity={0.9}
@@ -367,6 +380,7 @@ const styles = StyleSheet.create({
   collectionAmountPositive: { color: stitchTheme.colors.primary },
   collectionAmountNegative: { color: '#8b0e0e' },
   collectionMeta: { marginTop: 6, fontSize: 14, lineHeight: 20, color: stitchTheme.colors.textMuted },
+  inventoryLink: { color: stitchTheme.colors.primary, fontWeight: '800' },
   emptyText: { textAlign: 'center', marginTop: 34, color: stitchTheme.colors.textMuted, fontSize: 15 },
   timelineContainer: { gap: 6 },
   timelineSection: { marginBottom: 14 },

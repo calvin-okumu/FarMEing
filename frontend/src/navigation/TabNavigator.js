@@ -9,6 +9,7 @@ import AddExpenseScreen from '../screens/AddExpenseScreen';
 import AddWorkEntryScreen from '../screens/AddWorkEntryScreen';
 import AddHarvestScreen from '../screens/AddHarvestScreen';
 import AddSaleScreen from '../screens/AddSaleScreen';
+import InventoryScreen from '../screens/InventoryScreen';
 import EmployeesScreen from '../screens/EmployeesScreen';
 import EmployeeDetailScreen from '../screens/EmployeeDetailScreen';
 import QuickEntryScreen from '../screens/QuickEntryScreen';
@@ -68,6 +69,11 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="AddSale"
         component={AddSaleScreen}
+        options={{ headerShown: false }}
+      />
+      <ProjectStack.Screen
+        name="Inventory"
+        component={InventoryScreen}
         options={{ headerShown: false }}
       />
     </ProjectStack.Navigator>
