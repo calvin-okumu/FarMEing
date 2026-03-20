@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -19,25 +18,26 @@ import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
 import StatusBanner from '../components/ui/StatusBanner';
-import { deleteBudgetItem } from '../services/budgetService';
-import { deleteExpense } from '../services/expenseService';
-import { deleteWorkEntry } from '../services/workEntryService';
-import { deleteHarvest } from '../services/harvestService';
-import { deleteSale } from '../services/saleService';
-import { updateWorkEntryStatus, workEntriesByActivity, workEntriesByEmployee } from '../services/workEntryService';
+import { workEntriesByActivity, workEntriesByEmployee } from '../services/workEntryService';
 import { deleteLocalModel } from '../utils/resourceMutations';
 import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
 import {
-  PROJECT_RESOURCE_KEYS,
   useBudgetItemsQuery,
+  useDeleteBudgetItemMutation,
+  useDeleteExpenseMutation,
+  useDeleteHarvestMutation,
+  useDeleteSaleMutation,
+  useDeleteWorkEntryMutation,
   useExpensesQuery,
   useHarvestsQuery,
   useSalesQuery,
+  useUpdateWorkEntryStatusMutation,
   useWorkEntriesQuery,
   useWorkEntryActivityAnalyticsQuery,
   useWorkEntryEmployeeAnalyticsQuery,
@@ -128,7 +128,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const currency = useSettingsStore((s) => s.currency);
   const user = useAuthStore((s) => s.user);
   const syncStatus = useSyncStore((s) => s.status);
-  const queryClient = useQueryClient();
 
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -156,6 +155,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const salesQuery = useSalesQuery(remoteProjectId);
   const laborByEmployeeQuery = useWorkEntryEmployeeAnalyticsQuery(remoteProjectId);
   const laborByActivityQuery = useWorkEntryActivityAnalyticsQuery(remoteProjectId);
+  const deleteBudgetMutation = useDeleteBudgetItemMutation(remoteProjectId);
+  const deleteExpenseMutation = useDeleteExpenseMutation(remoteProjectId);
+  const deleteWorkEntryMutation = useDeleteWorkEntryMutation(remoteProjectId);
+  const deleteHarvestMutation = useDeleteHarvestMutation(remoteProjectId);
+  const deleteSaleMutation = useDeleteSaleMutation(remoteProjectId);
+  const updateWorkEntryStatusMutation = useUpdateWorkEntryStatusMutation(remoteProjectId);
 
   useEffect(() => {
     if (initialTab && TAB_ORDER.includes(initialTab)) {
@@ -540,11 +545,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
     try {
       if (item.remoteId) {
-        if (type === 'budget') await deleteBudgetItem(item.remoteId);
-        if (type === 'expenses') await deleteExpense(item.remoteId);
-        if (type === 'labor') await deleteWorkEntry(item.remoteId);
-        if (type === 'harvest') await deleteHarvest(item.remoteId);
-        if (type === 'sales') await deleteSale(item.remoteId);
+        if (type === 'budget') await deleteBudgetMutation.mutateAsync(item.remoteId);
+        if (type === 'expenses') await deleteExpenseMutation.mutateAsync(item.remoteId);
+        if (type === 'labor') await deleteWorkEntryMutation.mutateAsync(item.remoteId);
+        if (type === 'harvest') await deleteHarvestMutation.mutateAsync(item.remoteId);
+        if (type === 'sales') await deleteSaleMutation.mutateAsync(item.remoteId);
       }
 
       await database.write(async () => {
@@ -564,17 +569,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
       });
       setDeleteTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
-      if (project?.remoteId) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.budget(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.expenses(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.workEntries(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.harvests(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.sales(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByEmployee(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByActivity(project.remoteId) }),
-        ]);
-      }
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
       Alert.alert(t('common.error'), error.message || t('common.error'));
@@ -584,7 +578,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const handleStatusChange = async (item, status) => {
     try {
       if (item.remoteId) {
-        await updateWorkEntryStatus(item.remoteId, status);
+        await updateWorkEntryStatusMutation.mutateAsync({ id: item.remoteId, status });
       }
       await database.write(async () => {
         const record = await database.get('work_entries').find(item.id);
@@ -594,13 +588,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
         });
       });
       setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
-      if (project?.remoteId) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.workEntries(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByEmployee(project.remoteId) }),
-          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByActivity(project.remoteId) }),
-        ]);
-      }
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
       Alert.alert(t('common.error'), error.message || t('common.error'));
@@ -672,10 +659,19 @@ export default function ProjectDetailScreen({ route, navigation }) {
   return (
     <View style={styles.screen}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={project.name} onBack={() => navigation.goBack()} onRightPress={() => setActiveTab('timeline')} rightIcon="time-outline" />
-
-        <StitchEyebrow>{t('timeline.project_activity')}</StitchEyebrow>
-        <StitchDisplayTitle>{activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}</StitchDisplayTitle>
+        <StitchHeroHeader
+          eyebrow={t('timeline.project_activity')}
+          title={project.name}
+          subtitle={activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}
+          actionIcon='arrow-back'
+          onActionPress={() => navigation.goBack()}
+        >
+          <View style={styles.heroPills}>
+            <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' />
+            <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' />
+            <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' />
+          </View>
+        </StitchHeroHeader>
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.heroCard}>
@@ -765,14 +761,18 @@ export default function ProjectDetailScreen({ route, navigation }) {
         {activeTab === 'sales' ? visibleSales.length ? visibleSales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
 
         {activeTab === 'inventory' ? (
-          <View style={styles.collectionCard}>
+          <View style={[styles.collectionCard, styles.inventoryCard]}>
+            <View style={[styles.cardAccent, styles.cardAccentSage]} />
             <View style={styles.collectionTopRow}>
-              <Text style={styles.collectionTitle}>{t('inventory.title')}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })} activeOpacity={0.88}>
+              <View style={styles.inventoryCopy}>
+                <Text style={styles.collectionTitle}>{t('inventory.title')}</Text>
+                <Text style={styles.collectionMeta}>{t('inventory.project_inventory_subtitle')}</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })} activeOpacity={0.88} style={styles.inventoryOpenRow}>
                 <Text style={styles.inventoryLink}>{t('inventory.open')}</Text>
+                <Ionicons name='chevron-forward' size={12} color={stitchTheme.colors.primaryContainer} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.collectionMeta}>{t('inventory.project_inventory_subtitle')}</Text>
           </View>
         ) : null}
 
@@ -787,7 +787,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        <View style={{ height: 90 }} />
+        <View style={{ height: 140 }} />
       </ScrollView>
 
       <TouchableOpacity
@@ -823,98 +823,115 @@ export default function ProjectDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 40 },
-  banner: { marginTop: 14 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
-  errorText: { fontSize: 16, color: stitchTheme.colors.textMuted, marginBottom: 16 },
-  backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 160 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  banner: { marginTop: stitchTheme.spacing.sm },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
+  errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted, marginBottom: stitchTheme.spacing.md },
+  backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: stitchTheme.spacing.lg, paddingVertical: 10, borderRadius: stitchTheme.radius.pill },
   backButtonText: { color: '#fff', fontWeight: '700' },
-  heroCard: {},
-  overviewGrid: { flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 6 },
-  resourceOverviewCard: { flex: 1, borderRadius: 26, padding: 18, ...stitchShadows.card },
-  resourceOverviewCardSoft: { backgroundColor: '#f2efea' },
-  resourceOverviewCardAccent: { backgroundColor: stitchTheme.colors.primarySoft },
-  resourceOverviewEyebrow: { fontSize: 11, fontWeight: '800', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.4 },
-  resourceOverviewTitle: { marginTop: 8, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
-  resourceOverviewValue: { marginTop: 12, fontSize: 22, fontWeight: '900', color: stitchTheme.colors.primary },
-  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  heroMeta: { fontSize: 15, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
-  heroStatus: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
+  heroCard: { borderRadius: stitchTheme.radius.card },
+  overviewGrid: { flexDirection: 'row', gap: 8, marginTop: stitchTheme.spacing.xs, marginBottom: 12 },
+  resourceOverviewCard: { flex: 1, borderRadius: 15, padding: 12, borderWidth: 1.5, ...stitchShadows.soft },
+  resourceOverviewCardSoft: { backgroundColor: stitchTheme.colors.surface, borderColor: stitchTheme.colors.border },
+  resourceOverviewCardAccent: { backgroundColor: '#ecf9f2', borderColor: stitchTheme.colors.primarySoft },
+  resourceOverviewEyebrow: { fontSize: 7, lineHeight: 9, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  resourceOverviewTitle: { marginTop: 3, fontSize: 10.5, lineHeight: 13, fontWeight: '800', color: stitchTheme.colors.text },
+  resourceOverviewValue: { marginTop: 2, fontSize: 15, lineHeight: 18, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.5 },
+  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.sm },
+  heroMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
+  heroStatus: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
   heroStatusActive: { backgroundColor: stitchTheme.colors.primarySoft },
-  heroStatusMuted: { backgroundColor: '#ece8e4' },
-  heroStatusText: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  heroStatusMuted: { backgroundColor: stitchTheme.colors.surfaceMuted },
+  heroStatusText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', letterSpacing: 0.8 },
   heroStatusTextActive: { color: stitchTheme.colors.primary },
   heroStatusTextMuted: { color: stitchTheme.colors.accentBrown },
-  summaryRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  summaryCard: { flex: 1, borderRadius: 22, backgroundColor: '#f4f1ec', padding: 14 },
-  summaryCardAccent: { backgroundColor: '#eef7eb' },
-  summaryLabel: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.accentBrown, marginBottom: 6 },
-  summaryValue: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text },
+  summaryRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.md },
+  summaryCard: { flex: 1, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceSubtle, padding: stitchTheme.spacing.sm },
+  summaryCardAccent: { backgroundColor: stitchTheme.colors.successSurface },
+  summaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 },
+  summaryValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
   summaryValueAccent: { color: stitchTheme.colors.primary },
-  progressBarTrack: { height: 8, borderRadius: 999, backgroundColor: '#e6e3de', overflow: 'hidden', marginTop: 18 },
+  progressBarTrack: { height: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted, overflow: 'hidden', marginTop: stitchTheme.spacing.md },
   progressBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryContainer },
   progressBarFillDanger: { backgroundColor: '#9c1111' },
-  progressText: { marginTop: 8, fontSize: 12, color: stitchTheme.colors.textMuted, textAlign: 'right' },
-  tabsRow: { gap: 10, paddingVertical: 22 },
-  toolbarBlock: { gap: 12, marginBottom: 12 },
-  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  syncHint: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.textMuted },
-  collectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 12, ...stitchShadows.card },
-  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  collectionActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  collectionTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
-  collectionAmount: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text },
+  progressText: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, textAlign: 'right' },
+  tabsRow: { gap: 6, paddingBottom: 12, paddingTop: 4 },
+  toolbarBlock: { gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+  syncHint: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  collectionCard: { backgroundColor: stitchTheme.colors.surface, borderRadius: 17, padding: 15, marginBottom: 9, borderWidth: 1, borderColor: 'rgba(26,61,43,0.06)', ...stitchShadows.card, overflow: 'hidden' },
+  cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },
+  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.xs },
+  collectionActions: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
+  collectionTitle: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  collectionAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
   collectionAmountPositive: { color: stitchTheme.colors.primary },
   collectionAmountNegative: { color: '#8b0e0e' },
-  collectionMeta: { marginTop: 6, fontSize: 14, lineHeight: 20, color: stitchTheme.colors.textMuted },
-  inventoryLink: { color: stitchTheme.colors.primary, fontWeight: '800' },
-  analyticsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  collectionMeta: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted },
+  inventoryCard: { paddingHorizontal: 17 },
+  inventoryCopy: { flex: 1, paddingLeft: 8 },
+  inventoryOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  inventoryLink: { color: stitchTheme.colors.primaryContainer, fontWeight: '700', fontSize: 12, lineHeight: 14 },
+  analyticsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
   analyticsCard: { flex: 1 },
-  analyticsLabel: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.2 },
-  analyticsTitle: { marginTop: 8, fontSize: 16, fontWeight: '800', color: stitchTheme.colors.text },
-  analyticsValue: { marginTop: 8, fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary },
-  statusRow: { marginTop: 12 },
-  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  analyticsLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 0.8 },
+  analyticsTitle: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  analyticsValue: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  statusRow: { marginTop: stitchTheme.spacing.sm },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
   statusPending: { backgroundColor: '#f6ead9' },
-  statusApproved: { backgroundColor: '#e3f3de' },
+  statusApproved: { backgroundColor: stitchTheme.colors.successSurface },
   statusRejected: { backgroundColor: '#fde8e8' },
-  statusBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+  statusBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
   statusPendingText: { color: '#9b5c22' },
   statusApprovedText: { color: stitchTheme.colors.primary },
   statusRejectedText: { color: '#9c1111' },
-  statusActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  statusActionButton: { flex: 1, minHeight: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  statusActionApprove: { backgroundColor: '#edf7ea' },
+  statusActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
+  statusActionButton: { flex: 1, minHeight: 38, borderRadius: stitchTheme.radius.md, alignItems: 'center', justifyContent: 'center' },
+  statusActionApprove: { backgroundColor: stitchTheme.colors.successSurface },
   statusActionReject: { backgroundColor: '#fde8e8' },
-  statusActionApproveText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: 13 },
-  statusActionRejectText: { color: '#9c1111', fontWeight: '800', fontSize: 13 },
-  emptyText: { textAlign: 'center', marginTop: 34, color: stitchTheme.colors.textMuted, fontSize: 15 },
-  timelineContainer: { gap: 6 },
-  timelineHeaderBlock: { marginBottom: 10 },
-  timelineLead: { fontSize: 15, lineHeight: 23, color: stitchTheme.colors.accentBrown, maxWidth: 300 },
-  timelineSection: { marginBottom: 14 },
-  timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-  timelineSectionChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
+  statusActionApproveText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  statusActionRejectText: { color: '#9c1111', fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  emptyText: { textAlign: 'center', marginTop: stitchTheme.spacing.xl, color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  timelineContainer: { gap: stitchTheme.spacing.xs },
+  timelineHeaderBlock: { marginBottom: stitchTheme.spacing.sm },
+  timelineLead: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.accentBrown, maxWidth: 300 },
+  timelineSection: { marginBottom: stitchTheme.spacing.sm },
+  timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.md },
+  timelineSectionChip: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 7, borderRadius: stitchTheme.radius.pill },
   timelineSectionChipToday: { backgroundColor: stitchTheme.colors.primarySoft },
-  timelineSectionChipPast: { backgroundColor: '#e7e3df' },
-  timelineSectionChipText: { fontSize: 14, fontWeight: '800', color: stitchTheme.colors.text },
+  timelineSectionChipPast: { backgroundColor: stitchTheme.colors.surfaceMuted },
+  timelineSectionChipText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   timelineSectionChipTextToday: { color: stitchTheme.colors.primary },
-  timelineSectionLine: { flex: 1, height: 1, backgroundColor: 'rgba(192,201,187,0.45)' },
+  timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.border },
   timelineItemWrap: { flexDirection: 'row' },
-  timelineRail: { width: 38, alignItems: 'center' },
-  timelineDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  timelineVertical: { width: 2, flex: 1, backgroundColor: 'rgba(192,201,187,0.45)', marginTop: 4 },
-  timelineCard: { flex: 1, backgroundColor: '#fff', borderRadius: 28, padding: 18, marginBottom: 16, ...stitchShadows.card },
-  timelineTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  timelineTitle: { fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
+  timelineRail: { width: 34, alignItems: 'center' },
+  timelineDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  timelineVertical: { width: 2, flex: 1, backgroundColor: stitchTheme.colors.border, marginTop: 4 },
+  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surface, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border, ...stitchShadows.card },
+  timelineTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
+  timelineTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  timelineMetaText: { fontSize: 13, color: stitchTheme.colors.textMuted },
-  timelineBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  timelineBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
-  timelineAmountText: { fontSize: 18, fontWeight: '900', color: '#8b0e0e' },
-  timelineBody: { fontSize: 16, lineHeight: 27, color: stitchTheme.colors.text, marginBottom: 10 },
-  timelinePreviewRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  timelinePreview: { width: 92, height: 92, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  timelineFooterValue: { marginTop: 6, fontSize: 16, fontWeight: '900', color: stitchTheme.colors.primary },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 62, height: 62, borderRadius: 20, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
+  timelineMetaText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
+  timelineBadge: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
+  timelineBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  timelineAmountText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: '#8b0e0e' },
+  timelineBody: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.text, marginBottom: stitchTheme.spacing.xs },
+  timelinePreviewRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  timelinePreview: { width: 80, height: 80, borderRadius: stitchTheme.radius.lg, alignItems: 'center', justifyContent: 'center' },
+  timelineFooterValue: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  fab: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 118 : 104,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: stitchTheme.colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...stitchShadows.float,
+  },
 });

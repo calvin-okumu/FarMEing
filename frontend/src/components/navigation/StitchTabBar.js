@@ -1,19 +1,18 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
+import { stitchTheme } from '../../theme/stitchTheme';
 
 const TAB_META = {
   Dashboard: { icon: 'grid-outline' },
-  Projects: { icon: 'wallet-outline' },
+  Projects: { icon: 'home-outline' },
   Employees: { icon: 'people-outline' },
-  QuickEntry: { icon: 'leaf-outline' },
+  QuickEntry: { icon: 'flash-outline' },
   Settings: { icon: 'person-outline' },
 };
 
 export default function StitchTabBar({ state, descriptors, navigation }) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.ambientGlow} />
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -36,17 +35,16 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
           return (
             <TouchableOpacity
               key={route.key}
-              accessibilityRole="button"
+              accessibilityRole='button'
               accessibilityState={isFocused ? { selected: true } : {}}
               onPress={onPress}
               style={[styles.item, isFocused && styles.itemActive]}
-              activeOpacity={0.85}
+              activeOpacity={0.88}
             >
-              {isFocused ? <View style={styles.focusHalo} /> : null}
               <Ionicons
                 name={isFocused ? meta.icon.replace('-outline', '') : meta.icon}
-                size={20}
-                color={isFocused ? stitchTheme.colors.primary : stitchTheme.colors.text}
+                size={18}
+                color={isFocused ? stitchTheme.colors.primary : stitchTheme.colors.textMuted}
               />
               <Text style={[styles.label, isFocused && styles.labelActive]} numberOfLines={1}>
                 {label}
@@ -65,53 +63,36 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-  },
-  ambientGlow: {
-    position: 'absolute',
-    left: 28,
-    right: 28,
-    bottom: 8,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(0,69,13,0.08)',
+    backgroundColor: 'rgba(253,250,244,0.97)',
+    borderTopWidth: 1,
+    borderTopColor: stitchTheme.colors.sand,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 18,
+    paddingHorizontal: 8,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 34,
-    backgroundColor: stitchTheme.colors.surfaceGhost,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    ...stitchShadows.card,
+    justifyContent: 'space-around',
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    borderRadius: stitchTheme.radius.md,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    overflow: 'hidden',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 14,
   },
   itemActive: {
-    backgroundColor: 'rgba(163,246,156,0.72)',
-  },
-  focusHalo: {
-    position: 'absolute',
-    top: -10,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: stitchTheme.colors.mintLight,
   },
   label: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: stitchTheme.colors.text,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '600',
+    fontFamily: stitchTheme.fonts.label,
+    color: stitchTheme.colors.textMuted,
+    letterSpacing: 0.3,
   },
   labelActive: {
     color: stitchTheme.colors.primary,
