@@ -146,8 +146,11 @@
       "expected_yield": "e.g. 5000"
     },
     "new_project": "New Project",
+    "edit_title": "Edit Project",
     "create_project": "Create Project",
     "empty_state": "No projects yet",
+    "directory_subtitle": "Live project portfolio with editable farm records.",
+    "search_placeholder": "Search projects, crops, or status",
     "pull_to_sync": "Pull down to sync from the server.",
     "day": "Day {{count}}",
     "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",

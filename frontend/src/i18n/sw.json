@@ -146,8 +146,11 @@
       "expected_yield": "mf. 5000"
     },
     "new_project": "Mradi Mpya",
+    "edit_title": "Hariri Mradi",
     "create_project": "Unda Mradi",
     "empty_state": "Hakuna miradi bado",
+    "directory_subtitle": "Orodha hai ya miradi ya shamba yenye uwezo wa kuhariri.",
+    "search_placeholder": "Tafuta miradi, mazao au hali",
     "pull_to_sync": "Vuta chini ili kusawazisha kutoka kwenye seva.",
     "day": "Siku ya {{count}}",
     "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",

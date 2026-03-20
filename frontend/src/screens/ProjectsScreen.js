@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,460 +8,326 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  Modal,
   TextInput,
-  Platform,
-  KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
-import { Swipeable } from 'react-native-gesture-handler';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
-import { syncAll }   from '../services/syncService';
-import useAuthStore  from '../store/useAuthStore';
-import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import SearchBar from '../components/ui/SearchBar';
+import EmptyState from '../components/ui/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ResourceFormModal from '../components/ui/ResourceFormModal';
+import { markRecordSynced } from '../utils/localRecord';
+import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import {
+  useCreateProjectMutation,
+  useDeleteProjectMutation,
+  useProjectsQuery,
+  useUpdateProjectMutation,
+} from '../hooks/api/useProjectsApi';
+
+const DEFAULT_FORM = {
+  name: '',
+  crop: '',
+  landSize: '',
+  landUnit: 'acres',
+  startDate: new Date(),
+  expectedYield: '',
+};
 
 export default function ProjectsScreen({ navigation }) {
   const { t } = useTranslation();
-  const token    = useAuthStore((s) => s.token);
-  const [projects,   setProjects]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: remoteProjects = [], isLoading: queryLoading, isRefetching, refetch } = useProjectsQuery();
+  const createMutation = useCreateProjectMutation();
+  const updateMutation = useUpdateProjectMutation();
+  const deleteMutation = useDeleteProjectMutation();
+
+  const [projects, setProjects] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    crop: '', 
-    landSize: '', 
-    landUnit: 'acres', 
-    startDate: new Date(),
-    expectedYield: '',
-  });
+  const [editingProject, setEditingProject] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // ── Create new project ─────────────────────────────────────────────────────
-  const handleCreate = async () => {
-    if (!formData.name.trim()) {
-      Alert.alert(t('common.error'), `${t('projects.fields.name')} ${t('common.required').toLowerCase()}`);
-        return;
-    }
-    setSaving(true);
-    try {
-      // 1. Save to local WatermelonDB first (Offline-first!)
-      await database.write(async () => {
-        await database.get('farm_projects').create((record) => {
-          initializeLocalRecord(record);
-          record.userId = ''; // will be filled by backend
-          record.name = formData.name.trim();
-          record.crop = formData.crop.trim();
-          record.landSize = parseFloat(formData.landSize) || 0;
-          record.landUnit = formData.landUnit || 'acres';
-          record.startDate = formData.startDate.getTime();
-          record.expectedYield = parseFloat(formData.expectedYield) || 0;
-          record.status = 'ACTIVE';
-          record.isDeleted = false;
-        });
-      });
-
-      // 2. Trigger background sync
-      syncAll().catch(() => {});
-
-      // 3. Close and Reset
-      setModalVisible(false);
-      setFormData({ 
-        name: '', 
-        crop: '', 
-        landSize: '', 
-        landUnit: 'acres', 
-        startDate: new Date(),
-        expectedYield: '',
-      });
-    } catch (err) {
-      Alert.alert(t('common.error'), err.message || t('projects.errors.save_local'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ── Soft delete project ────────────────────────────────────────────────────
-  const handleDelete = (project) => {
-    Alert.alert(t('common.delete'), t('projects.confirm_delete', { name: project.name }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await database.write(async () => {
-              await project.update((r) => {
-                markRecordDeleted(r);
-              });
-            });
-            syncAll().catch(() => {});
-          } catch (err) {
-            Alert.alert(t('common.error'), t('projects.errors.delete_local'));
-          }
-        },
-      },
-    ]);
-  };
-
-  const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setFormData(p => ({ ...p, startDate: selectedDate }));
-    }
-  };
-
-  // ── Load from local DB ───────────────────────────────────────────────────
-  const loadLocal = async () => {
-    try {
-      const col = database.get('farm_projects');
-      const rows = await col
-        .query(Q.where('is_deleted', false))
-        .fetch();
-      // Sort newest first by startDate
-      rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
-      setProjects(rows);
-    } catch (err) {
-      console.warn('[ProjectsScreen] load error:', err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Pull-to-refresh: sync then reload ────────────────────────────────────
-  const handleRefresh = async () => {
-    if (!token) return;
-    setRefreshing(true);
-    try {
-      await syncAll();
-      await loadLocal();
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const [query, setQuery] = useState('');
+  const [formData, setFormData] = useState(DEFAULT_FORM);
 
   useEffect(() => {
+    const loadLocal = async () => {
+      const rows = await database.get('farm_projects').query(Q.where('is_deleted', false)).fetch();
+      rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
+      setProjects(rows);
+    };
+
     loadLocal();
 
-    // Subscribe to DB changes so list updates automatically after sync
-    const col          = database.get('farm_projects');
-    const subscription = col
+    const sub = database
+      .get('farm_projects')
       .query(Q.where('is_deleted', false))
       .observe()
       .subscribe((rows) => {
         rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
         setProjects(rows);
-        setLoading(false);
       });
 
-    return () => subscription.unsubscribe();
+    return () => sub.unsubscribe();
   }, []);
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
+  useEffect(() => {
+    if (!remoteProjects.length) return;
+
+    const syncProjects = async () => {
+      await database.write(async () => {
+        for (const item of remoteProjects) {
+          const matches = await database.get('farm_projects').query(Q.where('remote_id', item.id)).fetch();
+          const existing = matches[0] || null;
+
+          if (existing) {
+            await existing.update((record) => {
+              record.userId = item.userId || record.userId || '';
+              record.name = item.name || '';
+              record.crop = item.crop || '';
+              record.landSize = item.landSize || 0;
+              record.landUnit = item.landUnit || 'acres';
+              record.startDate = item.startDate ? new Date(item.startDate).getTime() : Date.now();
+              record.expectedYield = item.expectedYield || 0;
+              record.status = item.status || 'ACTIVE';
+              record.notes = item.notes || '';
+              record.isDeleted = !!item.isDeleted;
+              markRecordSynced(record, item.id);
+            });
+          } else {
+            await database.get('farm_projects').create((record) => {
+              record.userId = item.userId || '';
+              record.name = item.name || '';
+              record.crop = item.crop || '';
+              record.landSize = item.landSize || 0;
+              record.landUnit = item.landUnit || 'acres';
+              record.startDate = item.startDate ? new Date(item.startDate).getTime() : Date.now();
+              record.expectedYield = item.expectedYield || 0;
+              record.status = item.status || 'ACTIVE';
+              record.notes = item.notes || '';
+              record.isDeleted = !!item.isDeleted;
+              markRecordSynced(record, item.id);
+            });
+          }
+        }
+      });
+    };
+
+    syncProjects().catch((error) => console.warn('[ProjectsScreen] sync query projects failed:', error.message));
+  }, [remoteProjects]);
+
+  const filteredProjects = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return projects;
+    return projects.filter((project) => [project.name, project.crop, project.status].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
+  }, [projects, query]);
+
+  const openCreate = () => {
+    setEditingProject(null);
+    setFormData(DEFAULT_FORM);
+    setModalVisible(true);
+  };
+
+  const openEdit = (project) => {
+    setEditingProject(project);
+    setFormData({
+      name: project.name || '',
+      crop: project.crop || '',
+      landSize: String(project.landSize ?? ''),
+      landUnit: project.landUnit || 'acres',
+      startDate: project.startDate ? new Date(project.startDate) : new Date(),
+      expectedYield: String(project.expectedYield ?? ''),
+    });
+    setModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) return;
+
+    try {
+      if (editingProject) {
+        const { project } = await updateMutation.mutateAsync({
+          id: editingProject.remoteId || editingProject.id,
+          values: formData,
+        });
+        await database.write(async () => {
+          const record = await database.get('farm_projects').find(editingProject.id);
+          await updateLocalModel(record, (draft) => {
+            draft.name = project.name || formData.name.trim();
+            draft.crop = project.crop || formData.crop.trim();
+            draft.landSize = project.landSize || parseFloat(formData.landSize) || 0;
+            draft.landUnit = project.landUnit || formData.landUnit || 'acres';
+            draft.startDate = project.startDate ? new Date(project.startDate).getTime() : formData.startDate.getTime();
+            draft.expectedYield = project.expectedYield || parseFloat(formData.expectedYield) || 0;
+            draft.status = project.status || 'ACTIVE';
+          }, editingProject.remoteId || project.id);
+        });
+      } else {
+        const { project } = await createMutation.mutateAsync(formData);
+        await database.write(async () => {
+          await database.get('farm_projects').create((record) => {
+            record.userId = project.userId || '';
+            record.name = project.name || '';
+            record.crop = project.crop || '';
+            record.landSize = project.landSize || 0;
+            record.landUnit = project.landUnit || 'acres';
+            record.startDate = project.startDate ? new Date(project.startDate).getTime() : formData.startDate.getTime();
+            record.expectedYield = project.expectedYield || 0;
+            record.status = project.status || 'ACTIVE';
+            record.notes = project.notes || '';
+            record.isDeleted = false;
+            markRecordSynced(record, project.id);
+          });
+        });
+      }
+
+      setModalVisible(false);
+      setEditingProject(null);
+      setFormData(DEFAULT_FORM);
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.remoteId || deleteTarget.id);
+      await database.write(async () => {
+        const record = await database.get('farm_projects').find(deleteTarget.id);
+        if (deleteTarget.remoteId) {
+          await record.destroyPermanently();
+        } else {
+          await deleteLocalModel(record);
+        }
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
+    }
+  };
+
+  const chartValues = filteredProjects.slice(0, 6).map((project, index) => (project.landSize || 1) + index);
+
+  if (queryLoading && !projects.length) {
+    return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
   }
-
-  // ── Swipeable row ─────────────────────────────────────────────────────────
-  const renderRightActions = (project) => (
-    <TouchableOpacity
-      style={styles.deleteAction}
-      onPress={() => handleDelete(project)}
-    >
-      <Ionicons name="trash-outline" size={22} color="#fff" />
-      <Text style={styles.deleteText}>{t('common.delete')}</Text>
-    </TouchableOpacity>
-  );
-
-  const renderItem = ({ item }) => (
-    <Swipeable renderRightActions={() => renderRightActions(item)}>
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardHeader}>
-          <Ionicons name="leaf" size={18} color="#16a34a" />
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-        </View>
-        <Text style={styles.cardCrop}>{item.crop}</Text>
-        <View style={styles.cardMeta}>
-          <Text style={styles.metaText}>{item.landSize} {item.landUnit}</Text>
-          {item.startDate ? (
-            <Text style={styles.metaText}>
-              {formatAppDate(item.startDate)}
-            </Text>
-          ) : null}
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
-  );
 
   return (
     <View style={styles.container}>
-      {projects.length === 0 ? (
-        <View style={styles.center}>
-          <View style={styles.emptyIconWrap}>
-            <Ionicons name="leaf-outline" size={42} color={stitchTheme.colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>{t('projects.empty_state')}</Text>
-          <Text style={styles.emptySubtitle}>{t('projects.pull_to_sync')}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={projects}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
+      <FlatList
+        data={filteredProjects}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })} activeOpacity={0.88}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="leaf" size={18} color={stitchTheme.colors.primary} />
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+              <TouchableOpacity onPress={() => openEdit(item)} hitSlop={8}><Ionicons name="create-outline" size={18} color={stitchTheme.colors.primary} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setDeleteTarget(item)} hitSlop={8}><Ionicons name="trash-outline" size={18} color="#a60a15" /></TouchableOpacity>
+            </View>
+            <Text style={styles.cardCrop}>{item.crop}</Text>
+            <View style={styles.cardMeta}>
+              <Text style={styles.metaText}>{item.landSize} {item.landUnit}</Text>
+              {item.startDate ? <Text style={styles.metaText}>{formatAppDate(item.startDate)}</Text> : null}
+            </View>
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <>
             <StitchSurface style={styles.heroCard}>
               <View style={styles.heroTopRow}>
                 <View>
                   <Text style={styles.heroEyebrow}>{t('projects.title')}</Text>
-                  <Text style={styles.heroValue}>{projects.length}</Text>
-                  <Text style={styles.heroSubtext}>{t('projects.empty_state')}</Text>
+                  <Text style={styles.heroValue}>{filteredProjects.length}</Text>
+                  <Text style={styles.heroSubtext}>{t('projects.directory_subtitle')}</Text>
                 </View>
-                <View style={styles.heroBadge}>
-                  <Ionicons name="leaf" size={22} color={stitchTheme.colors.primary} />
-                </View>
+                <View style={styles.heroBadge}><Ionicons name="leaf" size={22} color={stitchTheme.colors.primary} /></View>
               </View>
-              <StitchMiniBars values={projects.slice(0, 6).map((project, index) => (project.landSize || 1) + index)} activeIndex={5} softIndex={2} style={styles.trendRow} />
+              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={2} style={styles.trendRow} />
             </StitchSurface>
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={stitchTheme.colors.primaryContainer}
-            />
-          }
-        />
-      )}
+            <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
+          </>
+        }
+        ListHeaderComponentStyle={styles.headerBlock}
+        ListEmptyComponent={<EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={stitchTheme.colors.primaryContainer} />}
+      />
 
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      >
+      <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.9}>
         <Ionicons name="add" size={28} color={stitchTheme.colors.primary} />
       </TouchableOpacity>
 
-      {/* Create Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('projects.new_project')}</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={stitchTheme.colors.text} />
-                </TouchableOpacity>
-              </View>
+      <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={() => setModalVisible(false)}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
+          <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('projects.placeholders.name')} placeholderTextColor="#8a9388" />
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                 <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
-                <TextInput
-                  style={styles.input}
-                  value={formData.name}
-                  onChangeText={(t) => setFormData(p => ({ ...p, name: t }))}
-                   placeholder={t('projects.placeholders.name')}
-                  placeholderTextColor="#8a9388"
-                />
+          <StitchSectionLabel>{t('projects.fields.crop')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={formData.crop} onChangeText={(crop) => setFormData((p) => ({ ...p, crop }))} placeholder={t('projects.placeholders.crop')} placeholderTextColor="#8a9388" />
 
-                 <StitchSectionLabel>{t('projects.fields.crop')}</StitchSectionLabel>
-                <TextInput
-                  style={styles.input}
-                  value={formData.crop}
-                  onChangeText={(t) => setFormData(p => ({ ...p, crop: t }))}
-                   placeholder={t('projects.placeholders.crop')}
-                  placeholderTextColor="#8a9388"
-                />
-
-                <View style={styles.row}>
-                  <View style={styles.halfInput}>
-                     <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionLabel>
-                    <TextInput
-                      style={styles.input}
-                      value={formData.landSize}
-                      onChangeText={(t) => setFormData(p => ({ ...p, landSize: t }))}
-                       placeholder={t('common.zero')}
-                       placeholderTextColor="#8a9388"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={styles.halfInput}>
-                     <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionLabel>
-                    <TextInput
-                      style={styles.input}
-                      value={formData.landUnit}
-                      onChangeText={(t) => setFormData(p => ({ ...p, landUnit: t }))}
-                       placeholder={t('projects.placeholders.unit')}
-                       placeholderTextColor="#8a9388"
-                    />
-                  </View>
-                </View>
-
-                 <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
-                <TextInput
-                  style={styles.input}
-                  value={formData.expectedYield}
-                  onChangeText={(t) => setFormData(p => ({ ...p, expectedYield: t }))}
-                   placeholder={t('projects.placeholders.expected_yield')}
-                   placeholderTextColor="#8a9388"
-                  keyboardType="numeric"
-                />
-
-                 <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
-                <TouchableOpacity 
-                  style={styles.dateSelector} 
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={styles.dateSelectorText}>
-                    {formatAppDate(formData.startDate)}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={20} color="#16a34a" />
-                </TouchableOpacity>
-
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={formData.startDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onDateChange}
-                  />
-                )}
-
-                <StitchPrimaryButton label={t('projects.create_project')} onPress={handleCreate} disabled={saving} loading={saving} icon="add-circle" style={styles.saveButton} />
-              </ScrollView>
+          <View style={styles.row}>
+            <View style={styles.halfInput}>
+              <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionLabel>
+              <TextInput style={styles.input} value={formData.landSize} onChangeText={(landSize) => setFormData((p) => ({ ...p, landSize }))} placeholder={t('common.zero')} placeholderTextColor="#8a9388" keyboardType="decimal-pad" />
             </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+            <View style={styles.halfInput}>
+              <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionLabel>
+              <TextInput style={styles.input} value={formData.landUnit} onChangeText={(landUnit) => setFormData((p) => ({ ...p, landUnit }))} placeholder={t('projects.placeholders.unit')} placeholderTextColor="#8a9388" />
+            </View>
+          </View>
+
+          <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
+          <TextInput style={styles.input} value={formData.expectedYield} onChangeText={(expectedYield) => setFormData((p) => ({ ...p, expectedYield }))} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor="#8a9388" keyboardType="decimal-pad" />
+
+          <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
+          <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
+            <Text style={styles.dateSelectorText}>{formatAppDate(formData.startDate)}</Text>
+            <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
+          </TouchableOpacity>
+
+          {showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(_event, selectedDate) => { setShowDatePicker(Platform.OS === 'ios'); if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
+
+          <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSave} disabled={createMutation.isPending || updateMutation.isPending} loading={createMutation.isPending || updateMutation.isPending} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
+        </ScrollView>
+      </ResourceFormModal>
+
+      <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('projects.confirm_delete', { name: deleteTarget?.name || '' })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:     { flex: 1, backgroundColor: stitchTheme.colors.background },
-  center:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  list:          { padding: 20, gap: 14, paddingBottom: 120 },
-  heroCard:      { marginBottom: 16 },
-  heroTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  heroEyebrow:   { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
-  heroValue:     { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
-  heroSubtext:   { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4 },
-  heroBadge:     { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  trendRow:      { marginTop: 18 },
-  card:          { backgroundColor: '#fff', borderRadius: 28, padding: 20, ...stitchShadows.card },
-  cardHeader:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  cardTitle:     { fontSize: 20, fontWeight: '800', color: stitchTheme.colors.text, flex: 1 },
-  cardCrop:      { fontSize: 15, color: stitchTheme.colors.accentBrown, marginBottom: 12, fontWeight: '600' },
-  cardMeta:      { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  metaText:      { fontSize: 13, color: stitchTheme.colors.textMuted, fontWeight: '600' },
-  emptyIconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: '#eef3ea', alignItems: 'center', justifyContent: 'center' },
-  emptyTitle:    { fontSize: 24, fontWeight: '800', color: stitchTheme.colors.primary, marginTop: 20 },
-  emptySubtitle: { fontSize: 16, lineHeight: 24, color: stitchTheme.colors.textMuted, marginTop: 8, textAlign: 'center' },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: stitchTheme.colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...stitchShadows.float,
-  },
-
-  // Swipe delete
-  deleteAction: {
-    backgroundColor: '#a60a15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    borderRadius: 18,
-    marginVertical: 1,
-  },
-  deleteText: { color: '#fff', fontSize: 12, marginTop: 4, fontWeight: '700' },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(12, 18, 12, 0.42)',
-    justifyContent: 'flex-end',
-  },
-  keyboardView: {
-    width: '100%',
-  },
-  modalContent: {
-    backgroundColor: stitchTheme.colors.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 22,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: stitchTheme.colors.primary,
-  },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  list: { padding: 20, paddingBottom: 120 },
+  headerBlock: { gap: 16, marginBottom: 16 },
+  heroCard: {},
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroEyebrow: { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
+  heroValue: { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
+  heroSubtext: { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4 },
+  heroBadge: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  trendRow: { marginTop: 18 },
+  card: { backgroundColor: '#fff', borderRadius: 28, padding: 20, marginBottom: 12, ...stitchShadows.card },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  cardTitle: { fontSize: 20, fontWeight: '800', color: stitchTheme.colors.text, flex: 1 },
+  cardCrop: { fontSize: 15, color: stitchTheme.colors.accentBrown, marginBottom: 12, fontWeight: '600' },
+  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  metaText: { fontSize: 13, color: stitchTheme.colors.textMuted, fontWeight: '600' },
+  fab: { position: 'absolute', bottom: 20, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
   compactLabel: { fontSize: 12 },
-  input: {
-    borderRadius: 22,
-    padding: 16,
-    fontSize: 17,
-    color: stitchTheme.colors.text,
-    backgroundColor: '#e9e5e1',
-  },
-  dateSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: '#e9e5e1',
-  },
-  dateSelectorText: {
-    fontSize: 17,
-    color: stitchTheme.colors.text,
-    fontWeight: '600',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  halfInput: {
-    flex: 1,
-  },
+  input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
+  dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 22, padding: 16, backgroundColor: '#e9e5e1' },
+  dateSelectorText: { fontSize: 17, color: stitchTheme.colors.text, fontWeight: '600' },
+  row: { flexDirection: 'row', gap: 12 },
+  halfInput: { flex: 1 },
   saveButton: { marginTop: 24, marginBottom: 20 },
 });
