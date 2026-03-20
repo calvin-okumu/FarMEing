@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import api from '../lib/api';
+import { getCurrentUser, loginUser, registerUser } from '../services/authService';
 import useSettingsStore from './useSettingsStore';
 import i18n from '../i18n';
 
@@ -20,9 +20,31 @@ const useAuthStore = create((set, get) => ({
         SecureStore.getItemAsync(TOKEN_KEY),
         SecureStore.getItemAsync(USER_KEY),
       ]);
-      const user = userJson ? JSON.parse(userJson) : null;
-      set({ token: token ?? null, user, isLoading: false });
-      return user;
+
+      if (!token) {
+        set({ token: null, user: null, isLoading: false });
+        return null;
+      }
+
+      const cachedUser = userJson ? JSON.parse(userJson) : null;
+      set({ token, user: cachedUser, isLoading: true });
+
+      try {
+        const data = await getCurrentUser();
+        const freshUser = data.user || cachedUser;
+        if (freshUser) {
+          await _persist(token, freshUser);
+        }
+        set({ token, user: freshUser, isLoading: false });
+        return freshUser;
+      } catch {
+        await Promise.all([
+          SecureStore.deleteItemAsync(TOKEN_KEY),
+          SecureStore.deleteItemAsync(USER_KEY),
+        ]);
+        set({ token: null, user: null, isLoading: false });
+        return null;
+      }
     } catch {
       set({ token: null, user: null, isLoading: false });
       return null;
@@ -31,7 +53,7 @@ const useAuthStore = create((set, get) => ({
 
   // ── Register ──────────────────────────────────────────────────────────────
   register: async ({ name, phone, password, role }) => {
-    const { data } = await api.post('/auth/register', { name, phone, password, role });
+    const data = await registerUser({ name, phone, password, role });
     await _persist(data.token, data.user);
     const lang = await useSettingsStore.getState().initializeLanguage(data.user);
     i18n.changeLanguage(lang);
@@ -40,7 +62,7 @@ const useAuthStore = create((set, get) => ({
 
   // ── Login ─────────────────────────────────────────────────────────────────
   login: async ({ phone, password }) => {
-    const { data } = await api.post('/auth/login', { phone, password });
+    const data = await loginUser({ phone, password });
     await _persist(data.token, data.user);
     const lang = await useSettingsStore.getState().initializeLanguage(data.user);
     i18n.changeLanguage(lang);
