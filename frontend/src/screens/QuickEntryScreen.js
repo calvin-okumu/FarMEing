@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -26,6 +27,8 @@ import { stitchTheme } from '../theme/stitchTheme';
 import { createEmployee } from '../services/employeeService';
 import { createWorkEntry } from '../services/workEntryService';
 import StatusBanner from '../components/ui/StatusBanner';
+import { EMPLOYEE_KEYS } from '../hooks/api/useEmployeesApi';
+import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 import {
   StitchChip,
   StitchDisplayTitle,
@@ -42,6 +45,7 @@ const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
 export default function QuickEntryScreen({ navigation }) {
   const { t } = useTranslation();
   const currency = useSettingsStore((s) => s.currency);
+  const queryClient = useQueryClient();
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -193,6 +197,15 @@ export default function QuickEntryScreen({ navigation }) {
       }, 100);
 
       Alert.alert(t('common.success'), t('quick_entry.success'));
+      if (selectedProject?.remoteId || selectedProject?.id) {
+        const targetProjectId = selectedProject.remoteId || selectedProject.id;
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: EMPLOYEE_KEYS.all }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.workEntries(targetProjectId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByEmployee(targetProjectId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByActivity(targetProjectId) }),
+        ]);
+      }
       syncAll().catch(() => {});
     } catch (err) {
       setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('quick_entry.errors.save_local') });

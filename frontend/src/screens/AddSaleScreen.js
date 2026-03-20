@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -25,11 +26,13 @@ import { StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLa
 import { createSale, updateSale } from '../services/saleService';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
+import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
+  const queryClient = useQueryClient();
   const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
   const [weightSold, setWeightSold] = useState('');
@@ -138,6 +141,8 @@ export default function AddSaleScreen({ route, navigation }) {
             : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
+
+      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.sales(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();

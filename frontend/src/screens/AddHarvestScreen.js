@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -24,6 +25,7 @@ import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel
 import { createHarvest, updateHarvest } from '../services/harvestService';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
+import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
 const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
@@ -32,6 +34,7 @@ export default function AddHarvestScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { language, setLanguage } = useSettingsStore();
+  const queryClient = useQueryClient();
   const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -134,6 +137,8 @@ export default function AddHarvestScreen({ route, navigation }) {
             : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
+
+      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.harvests(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();

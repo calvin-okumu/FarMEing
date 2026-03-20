@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -32,6 +33,7 @@ import { deleteLocalModel } from '../utils/resourceMutations';
 import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
 import {
+  PROJECT_RESOURCE_KEYS,
   useBudgetItemsQuery,
   useExpensesQuery,
   useHarvestsQuery,
@@ -116,6 +118,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const currency = useSettingsStore((s) => s.currency);
   const user = useAuthStore((s) => s.user);
   const syncStatus = useSyncStore((s) => s.status);
+  const queryClient = useQueryClient();
 
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -545,6 +548,17 @@ export default function ProjectDetailScreen({ route, navigation }) {
       });
       setDeleteTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
+      if (project?.remoteId) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.budget(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.expenses(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.workEntries(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.harvests(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.sales(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByEmployee(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByActivity(project.remoteId) }),
+        ]);
+      }
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
       Alert.alert(t('common.error'), error.message || t('common.error'));
@@ -565,12 +579,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
       });
       setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
       if (project?.remoteId) {
-        const [employeeData, activityData] = await Promise.all([
-          workEntriesByEmployee(project.remoteId).catch(() => ({ byEmployee: [] })),
-          workEntriesByActivity(project.remoteId).catch(() => ({ byActivity: [] })),
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.workEntries(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByEmployee(project.remoteId) }),
+          queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByActivity(project.remoteId) }),
         ]);
-        setLaborByEmployee(employeeData.byEmployee || []);
-        setLaborByActivity(activityData.byActivity || []);
       }
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });

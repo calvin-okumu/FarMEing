@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -28,6 +29,8 @@ import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel
 import { createWorkEntry, updateWorkEntry } from '../services/workEntryService';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
+import { EMPLOYEE_KEYS } from '../hooks/api/useEmployeesApi';
+import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 const ACTIVITIES = [
   { key: 'planting', icon: 'leaf-outline' },
@@ -44,6 +47,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
+  const queryClient = useQueryClient();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -219,6 +223,13 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.workEntries(projectId) }),
+        queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByEmployee(projectId) }),
+        queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.laborByActivity(projectId) }),
+        queryClient.invalidateQueries({ queryKey: EMPLOYEE_KEYS.all }),
+      ]);
 
       syncAll().catch(() => {});
       navigation.goBack();

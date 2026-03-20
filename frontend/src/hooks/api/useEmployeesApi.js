@@ -7,7 +7,7 @@ import {
   updateEmployee,
 } from '../../services/employeeService';
 
-const EMPLOYEE_KEYS = {
+export const EMPLOYEE_KEYS = {
   all: ['employees'],
   balance: (id) => ['employees', id, 'balance'],
 };

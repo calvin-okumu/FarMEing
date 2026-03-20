@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -19,6 +20,7 @@ import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { createBudgetItem, updateBudgetItem } from '../services/budgetService';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
+import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
   StitchChip,
@@ -37,6 +39,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, itemId } = route.params;
   const currency = useSettingsStore((s) => s.currency);
+  const queryClient = useQueryClient();
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -119,6 +122,8 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
+
+      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.budget(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();

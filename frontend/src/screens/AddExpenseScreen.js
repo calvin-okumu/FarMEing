@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -26,6 +27,7 @@ import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, Sti
 import { createExpense, updateExpense } from '../services/expenseService';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
+import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -44,6 +46,7 @@ export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
+  const queryClient = useQueryClient();
   const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
@@ -166,6 +169,8 @@ export default function AddExpenseScreen({ route, navigation }) {
             : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
+
+      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.expenses(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();
