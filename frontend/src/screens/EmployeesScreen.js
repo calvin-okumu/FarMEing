@@ -91,6 +91,15 @@ export default function EmployeesScreen({ navigation }) {
         )}
         ListHeaderComponent={
           <>
+            <View style={styles.listHeaderRow}>
+              <View>
+                <Text style={styles.pageKicker}>{t('tab.workers')}</Text>
+                <Text style={styles.pageTitle}>{t('employees.directory_title')}</Text>
+              </View>
+              <TouchableOpacity style={styles.pageAction} onPress={() => setModalVisible(true)} activeOpacity={0.88}>
+                <Ionicons name="person-add" size={18} color={stitchTheme.colors.primary} />
+              </TouchableOpacity>
+            </View>
             <StitchSurface style={styles.heroCard}>
               <View style={styles.heroTopRow}>
                 <View>
@@ -150,6 +159,10 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   list: { padding: 20, paddingBottom: 120 },
   headerBlock: { gap: 16, marginBottom: 16 },
+  listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  pageKicker: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.4 },
+  pageTitle: { marginTop: 8, fontSize: 34, lineHeight: 38, color: stitchTheme.colors.primary, fontWeight: '900', maxWidth: 220 },
+  pageAction: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...stitchShadows.card },
   heroCard: {},
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   heroEyebrow: { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },

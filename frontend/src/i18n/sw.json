@@ -148,6 +148,7 @@
   },
   "projects": {
     "title": "Miradi Yangu ya Shamba",
+    "portfolio_title": "Project Portfolio",
     "tabs": {
       "budget": "Bajeti",
       "expenses": "Gharama",
@@ -275,6 +276,7 @@
     "delete_title": "Futa Mfanyakazi",
     "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
     "empty_title": "Hakuna wafanyakazi bado",
+    "directory_title": "People & Payments",
     "empty_subtitle": "Vuta chini kusawazisha au ongeza mfanyakazi mpya.",
     "directory_subtitle": "Orodha ya API yenye mizania na vitendo.",
     "search_placeholder": "Tafuta wafanyakazi, majukumu au simu",

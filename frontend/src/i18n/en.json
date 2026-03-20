@@ -148,6 +148,7 @@
   },
   "projects": {
     "title": "My Farm Projects",
+    "portfolio_title": "Project Portfolio",
     "tabs": {
       "budget": "Budget",
       "expenses": "Expenses",
@@ -275,6 +276,7 @@
     "delete_title": "Delete Employee",
     "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
     "empty_title": "No employees yet",
+    "directory_title": "People & Payments",
     "empty_subtitle": "Pull down to sync or add a new employee.",
     "directory_subtitle": "API-backed directory with balances and actions.",
     "search_placeholder": "Search workers, roles, or phone",
