@@ -287,6 +287,8 @@
     "days_worked": "Siku Zilizofanya Kazi",
     "rate_day": "Malipo kwa Siku",
     "hours_worked": "Saa Zilizofanya Kazi",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
     "photo_proof": "Picha ya Ushahidi",
     "total_cost": "Gharama Jumla",
     "empty_state": "Hakuna rekodi za kazi",

@@ -287,6 +287,8 @@
     "days_worked": "Days Worked",
     "rate_day": "Rate per Day",
     "hours_worked": "Hours Worked",
+    "approve": "Approve",
+    "reject": "Reject",
     "photo_proof": "Photo Proof",
     "total_cost": "Total Cost",
     "empty_state": "No labor entries",

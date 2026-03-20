@@ -24,7 +24,9 @@ import { deleteExpense } from '../services/expenseService';
 import { deleteWorkEntry } from '../services/workEntryService';
 import { deleteHarvest } from '../services/harvestService';
 import { deleteSale } from '../services/saleService';
+import { updateWorkEntryStatus, workEntriesByActivity, workEntriesByEmployee } from '../services/workEntryService';
 import { deleteLocalModel } from '../utils/resourceMutations';
+import useAuthStore from '../store/useAuthStore';
 
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
 
@@ -99,6 +101,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
+  const user = useAuthStore((s) => s.user);
 
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -108,6 +111,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [sales, setSales] = useState([]);
   const [timeline, setTimeline] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [laborByEmployee, setLaborByEmployee] = useState([]);
+  const [laborByActivity, setLaborByActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -126,6 +131,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
         if (proj.remoteId) {
           const { data } = await api.get(`/projects/${proj.remoteId}/summary`);
           setTimeline(data.timeline || []);
+          const [employeeData, activityData] = await Promise.all([
+            workEntriesByEmployee(proj.remoteId).catch(() => ({ byEmployee: [] })),
+            workEntriesByActivity(proj.remoteId).catch(() => ({ byActivity: [] })),
+          ]);
+          setLaborByEmployee(employeeData.byEmployee || []);
+          setLaborByActivity(activityData.byActivity || []);
         }
       } catch (err) {
         console.warn('[ProjectDetail] load error:', err.message);
@@ -280,6 +291,31 @@ export default function ProjectDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleStatusChange = async (item, status) => {
+    try {
+      if (item.remoteId) {
+        await updateWorkEntryStatus(item.remoteId, status);
+      }
+      await database.write(async () => {
+        const record = await database.get('work_entries').find(item.id);
+        await record.update((draft) => {
+          draft.status = status;
+          draft.updatedAt = Date.now();
+        });
+      });
+      if (project?.remoteId) {
+        const [employeeData, activityData] = await Promise.all([
+          workEntriesByEmployee(project.remoteId).catch(() => ({ byEmployee: [] })),
+          workEntriesByActivity(project.remoteId).catch(() => ({ byActivity: [] })),
+        ]);
+        setLaborByEmployee(employeeData.byEmployee || []);
+        setLaborByActivity(activityData.byActivity || []);
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message || t('common.error'));
+    }
+  };
+
   const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => (
     <View style={styles.collectionCard}>
       <View style={styles.collectionTopRow}>
@@ -299,6 +335,27 @@ export default function ProjectDetailScreen({ route, navigation }) {
         </View>
       </View>
       <Text style={styles.collectionMeta}>{meta}</Text>
+      {type === 'labor' ? (
+        <>
+          <View style={styles.statusRow}>
+            <View style={[styles.statusBadge, item.status === 'APPROVED' ? styles.statusApproved : item.status === 'REJECTED' ? styles.statusRejected : styles.statusPending]}>
+              <Text style={[styles.statusBadgeText, item.status === 'APPROVED' ? styles.statusApprovedText : item.status === 'REJECTED' ? styles.statusRejectedText : styles.statusPendingText]}>
+                {t(`labor.status.${item.status.toLowerCase()}`)}
+              </Text>
+            </View>
+          </View>
+          {user?.role === 'ADMIN' ? (
+            <View style={styles.statusActions}>
+              <TouchableOpacity style={[styles.statusActionButton, styles.statusActionApprove]} onPress={() => handleStatusChange(item, 'APPROVED')} activeOpacity={0.88}>
+                <Text style={styles.statusActionApproveText}>{t('labor.approve')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.statusActionButton, styles.statusActionReject]} onPress={() => handleStatusChange(item, 'REJECTED')} activeOpacity={0.88}>
+                <Text style={styles.statusActionRejectText}>{t('labor.reject')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 
@@ -360,7 +417,27 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         {activeTab === 'expenses' ? expenses.length ? expenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
 
-        {activeTab === 'labor' ? workEntries.length ? workEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item)) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> : null}
+        {activeTab === 'labor' ? (
+          workEntries.length ? (
+            <>
+              {laborByEmployee.length ? (
+                <View style={styles.analyticsRow}>
+                  <StitchSurface style={styles.analyticsCard}>
+                    <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_employee')}</Text>
+                    <Text style={styles.analyticsTitle}>{laborByEmployee[0]?.employeeName || t('employees.unknown')}</Text>
+                    <Text style={styles.analyticsValue}>{formatCurrency(laborByEmployee[0]?.totalCost || 0, currency)}</Text>
+                  </StitchSurface>
+                  <StitchSurface style={styles.analyticsCard}>
+                    <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_activity')}</Text>
+                    <Text style={styles.analyticsTitle}>{laborByActivity[0]?.activity || t('common.activities.other')}</Text>
+                    <Text style={styles.analyticsValue}>{formatCurrency(laborByActivity[0]?.totalCost || 0, currency)}</Text>
+                  </StitchSurface>
+                </View>
+              ) : null}
+              {workEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
+            </>
+          ) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
+        ) : null}
 
         {activeTab === 'harvest' ? harvests.length ? harvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
 
@@ -456,6 +533,26 @@ const styles = StyleSheet.create({
   collectionAmountNegative: { color: '#8b0e0e' },
   collectionMeta: { marginTop: 6, fontSize: 14, lineHeight: 20, color: stitchTheme.colors.textMuted },
   inventoryLink: { color: stitchTheme.colors.primary, fontWeight: '800' },
+  analyticsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  analyticsCard: { flex: 1 },
+  analyticsLabel: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.2 },
+  analyticsTitle: { marginTop: 8, fontSize: 16, fontWeight: '800', color: stitchTheme.colors.text },
+  analyticsValue: { marginTop: 8, fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary },
+  statusRow: { marginTop: 12 },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  statusPending: { backgroundColor: '#f6ead9' },
+  statusApproved: { backgroundColor: '#e3f3de' },
+  statusRejected: { backgroundColor: '#fde8e8' },
+  statusBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+  statusPendingText: { color: '#9b5c22' },
+  statusApprovedText: { color: stitchTheme.colors.primary },
+  statusRejectedText: { color: '#9c1111' },
+  statusActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  statusActionButton: { flex: 1, minHeight: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  statusActionApprove: { backgroundColor: '#edf7ea' },
+  statusActionReject: { backgroundColor: '#fde8e8' },
+  statusActionApproveText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: 13 },
+  statusActionRejectText: { color: '#9c1111', fontWeight: '800', fontSize: 13 },
   emptyText: { textAlign: 'center', marginTop: 34, color: stitchTheme.colors.textMuted, fontSize: 15 },
   timelineContainer: { gap: 6 },
   timelineSection: { marginBottom: 14 },
