@@ -22,6 +22,7 @@ import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface 
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import StatusBanner from '../components/ui/StatusBanner';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
 import { markRecordSynced } from '../utils/localRecord';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
@@ -43,7 +44,7 @@ const DEFAULT_FORM = {
 
 export default function ProjectsScreen({ navigation }) {
   const { t } = useTranslation();
-  const { data: remoteProjects = [], isLoading: queryLoading, isRefetching, refetch } = useProjectsQuery();
+  const { data: remoteProjects = [], isLoading: queryLoading, isRefetching, refetch, error: queryError } = useProjectsQuery();
   const createMutation = useCreateProjectMutation();
   const updateMutation = useUpdateProjectMutation();
   const deleteMutation = useDeleteProjectMutation();
@@ -55,6 +56,7 @@ export default function ProjectsScreen({ navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [query, setQuery] = useState('');
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [banner, setBanner] = useState(null);
 
   useEffect(() => {
     const loadLocal = async () => {
@@ -151,6 +153,7 @@ export default function ProjectsScreen({ navigation }) {
     if (!formData.name.trim()) return;
 
     try {
+      setBanner(null);
       if (editingProject) {
         const { project } = await updateMutation.mutateAsync({
           id: editingProject.remoteId || editingProject.id,
@@ -168,6 +171,7 @@ export default function ProjectsScreen({ navigation }) {
             draft.status = project.status || 'ACTIVE';
           }, editingProject.remoteId || project.id);
         });
+        setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
       } else {
         const { project } = await createMutation.mutateAsync(formData);
         await database.write(async () => {
@@ -185,12 +189,14 @@ export default function ProjectsScreen({ navigation }) {
             markRecordSynced(record, project.id);
           });
         });
+        setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
       }
 
       setModalVisible(false);
       setEditingProject(null);
       setFormData(DEFAULT_FORM);
     } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
     }
   };
@@ -198,6 +204,7 @@ export default function ProjectsScreen({ navigation }) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
+      setBanner(null);
       await deleteMutation.mutateAsync(deleteTarget.remoteId || deleteTarget.id);
       await database.write(async () => {
         const record = await database.get('farm_projects').find(deleteTarget.id);
@@ -208,7 +215,9 @@ export default function ProjectsScreen({ navigation }) {
         }
       });
       setDeleteTarget(null);
+      setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
     } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
     }
   };
@@ -253,6 +262,8 @@ export default function ProjectsScreen({ navigation }) {
               </View>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={2} style={styles.trendRow} />
             </StitchSurface>
+            {queryError ? <StatusBanner tone="error" title={t('common.error')} message={queryError.message} /> : null}
+            <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
           </>
         }

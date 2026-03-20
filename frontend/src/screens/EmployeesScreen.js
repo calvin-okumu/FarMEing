@@ -19,15 +19,17 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
+import StatusBanner from '../components/ui/StatusBanner';
 import { useCreateEmployeeMutation, useEmployeesQuery } from '../hooks/api/useEmployeesApi';
 
 export default function EmployeesScreen({ navigation }) {
   const { t } = useTranslation();
-  const { data: employees = [], isLoading, isRefetching, refetch } = useEmployeesQuery();
+  const { data: employees = [], isLoading, isRefetching, refetch, error } = useEmployeesQuery();
   const createMutation = useCreateEmployeeMutation();
   const [modalVisible, setModalVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [formData, setFormData] = useState({ name: '', phone: '', role: '' });
+  const [banner, setBanner] = useState(null);
 
   const filteredEmployees = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -46,10 +48,13 @@ export default function EmployeesScreen({ navigation }) {
 
   const handleCreate = async () => {
     try {
+      setBanner(null);
       await createMutation.mutateAsync(formData);
       setModalVisible(false);
       setFormData({ name: '', phone: '', role: '' });
+      setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
     }
   };
@@ -97,6 +102,8 @@ export default function EmployeesScreen({ navigation }) {
               </View>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={1} style={styles.chartWrap} />
             </StitchSurface>
+            {error ? <StatusBanner tone="error" title={t('common.error')} message={error.message} /> : null}
+            <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />
           </>
         }

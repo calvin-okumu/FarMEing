@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
+import StatusBanner from '../../components/ui/StatusBanner';
 
 export default function LoginScreen({ navigation }) {
   const { t } = useTranslation();
@@ -24,6 +25,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
   const [loading,  setLoading]  = useState(false);
+  const [banner, setBanner] = useState(null);
 
   const handleLogin = async () => {
     if (!phone.trim() || !password.trim()) {
@@ -32,9 +34,11 @@ export default function LoginScreen({ navigation }) {
     }
     setLoading(true);
     try {
+      setBanner(null);
       await login({ phone: phone.trim(), password });
       // Navigation handled automatically by RootNavigator watching token
     } catch (err) {
+      setBanner({ tone: 'error', title: t('auth.errors.login_failed_title'), message: err.message });
       Alert.alert(t('auth.errors.login_failed_title'), err.message);
     } finally {
       setLoading(false);
@@ -58,6 +62,7 @@ export default function LoginScreen({ navigation }) {
 
         {/* Form */}
         <View style={styles.form}>
+          <StatusBanner {...banner} style={styles.banner} />
           <Text style={styles.label}>{t('auth.fields.phone')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="call-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
@@ -121,6 +126,7 @@ const styles = StyleSheet.create({
   appName:      { fontSize: 38, fontWeight: '900', color: stitchTheme.colors.primary, marginTop: 16 },
   tagline:      { fontSize: 17, color: stitchTheme.colors.textMuted, marginTop: 6 },
   form:         { backgroundColor: '#fff', borderRadius: 28, padding: 24, ...stitchShadows.card },
+  banner:       { marginBottom: 8 },
   label:        { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, marginTop: 14, textTransform: 'uppercase', letterSpacing: 1.2 },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 22, backgroundColor: '#e9e5e1', paddingHorizontal: 14 },
   inputIcon:    { marginRight: 8 },

@@ -43,7 +43,7 @@ export default function InventoryScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, projectName } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
-  const { data, isLoading, isRefetching, refetch } = useInventoryQuery(projectId);
+  const { data, isLoading, isRefetching, refetch, error } = useInventoryQuery(projectId);
   const createMutation = useCreateInventoryMutation(projectId);
   const updateMutation = useUpdateInventoryMutation(projectId);
   const deleteMutation = useDeleteInventoryMutation(projectId);
@@ -141,6 +141,7 @@ export default function InventoryScreen({ route, navigation }) {
               <Text style={styles.heroValue}>{formatCurrency(grandTotalCost, currency)}</Text>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={1} style={styles.chartWrap} />
             </StitchSurface>
+            {error ? <StatusBanner tone="error" title={t('common.error')} message={error.message} /> : null}
             <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
           </>
