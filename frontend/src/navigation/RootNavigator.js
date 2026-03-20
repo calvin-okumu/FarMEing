@@ -13,7 +13,7 @@ export default function RootNavigator() {
   useEffect(() => {
     let timeout;
     if (!isLoading) {
-      timeout = setTimeout(() => setHoldSplash(false), 1400);
+      timeout = setTimeout(() => setHoldSplash(false), 2200);
     }
     return () => {
       if (timeout) clearTimeout(timeout);

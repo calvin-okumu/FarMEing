@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -156,46 +157,48 @@ export default function InventoryScreen({ route, navigation }) {
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}>
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingItem ? t('inventory.edit_title') : t('inventory.create_title')}</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity>
-              </View>
-              <StitchSectionLabel>{t('inventory.fields.name')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
-              <StitchSectionLabel>{t('inventory.fields.category')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
-              <View style={styles.row}>
-                <View style={styles.half}>
-                  <StitchSectionLabel>{t('inventory.fields.quantity')}</StitchSectionLabel>
-                  <TextInput style={styles.input} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingItem ? t('inventory.edit_title') : t('inventory.create_title')}</Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={22} color={stitchTheme.colors.text} /></TouchableOpacity>
                 </View>
-                <View style={styles.half}>
-                  <StitchSectionLabel>{t('inventory.fields.unit')}</StitchSectionLabel>
-                  <TextInput style={styles.input} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} placeholderTextColor="#8a9388" />
+                <StitchSectionLabel>{t('inventory.fields.name')}</StitchSectionLabel>
+                <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
+                <StitchSectionLabel>{t('inventory.fields.category')}</StitchSectionLabel>
+                <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
+                <View style={styles.row}>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.quantity')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                  </View>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.unit')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} placeholderTextColor="#8a9388" />
+                  </View>
                 </View>
-              </View>
-              <View style={styles.row}>
-                <View style={styles.half}>
-                  <StitchSectionLabel>{t('inventory.fields.unit_cost')}</StitchSectionLabel>
-                  <TextInput style={styles.input} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                <View style={styles.row}>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.unit_cost')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                  </View>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.used_qty')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                  </View>
                 </View>
-                <View style={styles.half}>
-                  <StitchSectionLabel>{t('inventory.fields.used_qty')}</StitchSectionLabel>
-                  <TextInput style={styles.input} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
-                </View>
-              </View>
-              <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
-              <TextInput style={[styles.input, styles.notesInput]} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline placeholderTextColor="#8a9388" />
-              <StitchPrimaryButton
-                label={editingItem ? t('common.save') : t('inventory.create_title')}
-                onPress={handleSubmit}
-                disabled={createMutation.isPending || updateMutation.isPending || !formData.name.trim()}
-                loading={createMutation.isPending || updateMutation.isPending}
-                icon={editingItem ? 'save-outline' : 'add-circle'}
-                style={styles.saveButton}
-              />
+                <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+                <TextInput style={[styles.input, styles.notesInput]} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline placeholderTextColor="#8a9388" />
+                <StitchPrimaryButton
+                  label={editingItem ? t('common.save') : t('inventory.create_title')}
+                  onPress={handleSubmit}
+                  disabled={createMutation.isPending || updateMutation.isPending || !formData.name.trim()}
+                  loading={createMutation.isPending || updateMutation.isPending}
+                  icon={editingItem ? 'save-outline' : 'add-circle'}
+                  style={styles.saveButton}
+                />
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -235,20 +238,20 @@ const styles = StyleSheet.create({
   headerBlock: { gap: 16, marginBottom: 16 },
   heroCard: {},
   heroEyebrow: { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
-  heroValue: { fontSize: 38, lineHeight: 42, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
+  heroValue: { fontSize: 32, lineHeight: 36, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
   chartWrap: { marginTop: 18 },
   card: { backgroundColor: '#fff', borderRadius: 28, padding: 18, marginBottom: 12, ...stitchShadows.card },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
+  cardTitle: { fontSize: 16, fontWeight: '800', color: stitchTheme.colors.text },
   cardMeta: { fontSize: 13, color: stitchTheme.colors.textMuted, marginTop: 4 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#f0ece7' },
-  cardAmount: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary },
-  fab: { position: 'absolute', bottom: 20, right: 20, width: 58, height: 58, borderRadius: 29, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
+  cardAmount: { fontSize: 16, fontWeight: '900', color: stitchTheme.colors.primary },
+  fab: { position: 'absolute', bottom: 20, right: 20, width: 54, height: 54, borderRadius: 27, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 22, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
+  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
+  modalTitle: { fontSize: 24, fontWeight: '900', color: stitchTheme.colors.primary },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
   input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },

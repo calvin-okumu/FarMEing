@@ -49,8 +49,9 @@ export default function LoginScreen({ navigation }) {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.orbPrimary} />
         <View style={styles.orbSecondary} />
         <View style={styles.phoneFrame}>
@@ -158,10 +159,10 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   flex:         { flex: 1, backgroundColor: stitchTheme.colors.background },
-  container:    { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
+   container:    { flexGrow: 1, alignItems: 'center', justifyContent: 'flex-start', paddingVertical: 18, paddingBottom: 42 },
   orbPrimary:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(163,246,156,0.12)', top: 70, right: -70 },
   orbSecondary: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(253,205,188,0.14)', bottom: 100, left: -60 },
-  phoneFrame:   { width: '92%', maxWidth: 390, minHeight: 780, backgroundColor: stitchTheme.colors.background, borderRadius: 46, borderWidth: 8, borderColor: stitchTheme.colors.text, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 18, overflow: 'hidden' },
+   phoneFrame:   { width: '92%', maxWidth: 390, minHeight: 760, backgroundColor: stitchTheme.colors.background, borderRadius: 42, borderWidth: 8, borderColor: stitchTheme.colors.text, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 18, overflow: 'hidden' },
   statusRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 6, paddingTop: 4, paddingBottom: 8 },
   statusTime:   { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
   statusIcons:  { flexDirection: 'row', gap: 4, alignItems: 'center' },
@@ -171,18 +172,18 @@ const styles = StyleSheet.create({
   topSpacer:    { width: 44 },
   header:       { alignItems: 'flex-start', marginTop: 28, marginBottom: 26 },
   kicker:       { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.accentBrown, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 },
-  appName:      { fontSize: 44, lineHeight: 46, fontWeight: '900', color: stitchTheme.colors.primary },
-  tagline:      { fontSize: 16, lineHeight: 24, color: stitchTheme.colors.accentBrown, marginTop: 14, maxWidth: 260 },
+   appName:      { fontSize: 36, lineHeight: 38, fontWeight: '900', color: stitchTheme.colors.primary },
+   tagline:      { fontSize: 15, lineHeight: 22, color: stitchTheme.colors.accentBrown, marginTop: 12, maxWidth: 250 },
   form:         { backgroundColor: '#fff', borderRadius: 24, padding: 22, ...stitchShadows.card },
   banner:       { marginBottom: 8 },
   label:        { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, marginTop: 14, textTransform: 'uppercase', letterSpacing: 1.2 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, backgroundColor: '#f5f3f1', paddingHorizontal: 14, minHeight: 64 },
+   inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, backgroundColor: '#f5f3f1', paddingHorizontal: 14, minHeight: 58 },
   inputIcon:    { marginRight: 8 },
   input:        { flex: 1, height: 56, fontSize: 16, color: stitchTheme.colors.text },
   eyeBtn:       { padding: 4 },
   forgotRow:    { alignItems: 'flex-end', marginTop: 12 },
   forgotText:   { color: stitchTheme.colors.primary, fontWeight: '700', fontSize: 13, textDecorationLine: 'underline' },
-  btn:          { marginTop: 28, backgroundColor: stitchTheme.colors.primary, borderRadius: 18, height: 64, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, ...stitchShadows.float },
+   btn:          { marginTop: 24, backgroundColor: stitchTheme.colors.primary, borderRadius: 18, height: 58, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, ...stitchShadows.float },
   btnDisabled:  { opacity: 0.6 },
   btnText:      { color: '#fff', fontWeight: '900', fontSize: 18 },
   altWrap:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 28 },
