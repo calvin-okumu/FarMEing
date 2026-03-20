@@ -8,9 +8,10 @@ export default function AuthNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: false,       // full-screen auth pages, no header
+        headerShown: false,
         cardStyleInterpolator: ({ current, layouts }) => ({
           cardStyle: {
+            opacity: current.progress,
             transform: [
               {
                 translateX: current.progress.interpolate({

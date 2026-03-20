@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
+import StatusBanner from '../../components/ui/StatusBanner';
 
 export default function RegisterScreen({ navigation }) {
   const { t } = useTranslation();
@@ -27,6 +28,7 @@ export default function RegisterScreen({ navigation }) {
   const [role,     setRole]     = useState('ADMIN'); // ADMIN or WORKER
   const [showPw,   setShowPw]   = useState(false);
   const [loading,  setLoading]  = useState(false);
+  const [banner,   setBanner]   = useState(null);
 
   const handleRegister = async () => {
     if (!name.trim() || !phone.trim() || !password.trim()) {
@@ -43,9 +45,11 @@ export default function RegisterScreen({ navigation }) {
     }
     setLoading(true);
     try {
+      setBanner(null);
       await register({ name: name.trim(), phone: phone.trim(), password, role });
       // Navigation handled automatically by RootNavigator watching token
     } catch (err) {
+      setBanner({ tone: 'error', title: t('auth.errors.registration_failed_title'), message: err.message });
       Alert.alert(t('auth.errors.registration_failed_title'), err.message);
     } finally {
       setLoading(false);
@@ -58,20 +62,37 @@ export default function RegisterScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoBubble}>
-            <Ionicons name="leaf" size={40} color={stitchTheme.colors.primary} />
+        <View style={styles.orbPrimary} />
+        <View style={styles.orbSecondary} />
+        <View style={styles.phoneFrame}>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusTime}>9:41</Text>
+            <View style={styles.statusIcons}>
+              <Ionicons name="cellular" size={16} color={stitchTheme.colors.text} />
+              <Ionicons name="wifi" size={16} color={stitchTheme.colors.text} />
+              <Ionicons name="battery-full" size={16} color={stitchTheme.colors.text} />
+            </View>
           </View>
+
+          <View style={styles.topBarRow}>
+            <TouchableOpacity style={styles.topIcon} onPress={() => navigation.navigate('Login')} activeOpacity={0.86}>
+              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.topTitle}>FarmTrack</Text>
+            <View style={styles.topSpacer} />
+          </View>
+
+        <View style={styles.header}>
+          <Text style={styles.kicker}>{t('auth.register.kicker')}</Text>
           <Text style={styles.title}>{t('auth.register.title')}</Text>
           <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
+          <StatusBanner {...banner} style={styles.banner} />
           <Text style={styles.label}>{t('auth.fields.full_name')}</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={18} color="#7d867c" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Juma Mwangi"
@@ -84,12 +105,12 @@ export default function RegisterScreen({ navigation }) {
 
           <Text style={styles.label}>{t('auth.fields.phone')}</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="call-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={18} color="#7d867c" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="+255700000000"
+              placeholder={t('auth.placeholders.phone_email')}
                placeholderTextColor="#8a9388"
-              keyboardType="phone-pad"
+              keyboardType="email-address"
               autoCapitalize="none"
               value={phone}
               onChangeText={setPhone}
@@ -114,7 +135,7 @@ export default function RegisterScreen({ navigation }) {
 
           <Text style={styles.label}>{t('auth.fields.password')}</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={18} color="#7d867c" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder={t('auth.placeholders.password_min')}
@@ -124,13 +145,13 @@ export default function RegisterScreen({ navigation }) {
               onChangeText={setPassword}
             />
             <TouchableOpacity onPress={() => setShowPw((v) => !v)} style={styles.eyeBtn}>
-              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color="#9ca3af" />
+              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color="#7d867c" />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.label}>{t('auth.fields.confirm_password')}</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={18} color="#7d867c" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder={t('auth.placeholders.confirm_password')}
@@ -149,17 +170,21 @@ export default function RegisterScreen({ navigation }) {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-               : <Text style={styles.btnText}>{t('auth.register.submit')}</Text>
+               : <>
+                   <Text style={styles.btnText}>{t('auth.register.submit')}</Text>
+                   <Ionicons name="arrow-forward" size={20} color="#fff" />
+                 </>
             }
           </TouchableOpacity>
         </View>
 
-        {/* Login link */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>{t('auth.register.have_account')} </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
             <Text style={styles.footerLink}>{t('auth.login.submit')}</Text>
           </TouchableOpacity>
+        </View>
+          <View style={styles.homeIndicator} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -168,26 +193,38 @@ export default function RegisterScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   flex:         { flex: 1, backgroundColor: stitchTheme.colors.background },
-  container:    { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
-  header:       { alignItems: 'center', marginBottom: 32 },
-  logoBubble:   { width: 84, height: 84, borderRadius: 28, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  title:        { fontSize: 34, fontWeight: '900', color: stitchTheme.colors.primary, marginTop: 16 },
-  subtitle:     { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 6, textAlign: 'center' },
-  form:         { backgroundColor: '#fff', borderRadius: 28, padding: 24, ...stitchShadows.card },
+  container:    { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
+  orbPrimary:   { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(163,246,156,0.12)', top: 70, right: -70 },
+  orbSecondary: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(253,205,188,0.14)', bottom: 100, left: -60 },
+  phoneFrame:   { width: '92%', maxWidth: 390, minHeight: 812, backgroundColor: stitchTheme.colors.background, borderRadius: 46, borderWidth: 8, borderColor: stitchTheme.colors.text, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 18, overflow: 'hidden' },
+  statusRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 6, paddingTop: 4, paddingBottom: 8 },
+  statusTime:   { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
+  statusIcons:  { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  topBarRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 10 },
+  topIcon:      { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  topTitle:     { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text, marginRight: 44 },
+  topSpacer:    { width: 44 },
+  header:       { alignItems: 'flex-start', marginTop: 18, marginBottom: 24 },
+  kicker:       { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.accentBrown, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 },
+  title:        { fontSize: 40, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },
+  subtitle:     { fontSize: 16, lineHeight: 24, color: stitchTheme.colors.accentBrown, marginTop: 12, maxWidth: 280 },
+  form:         { backgroundColor: '#fff', borderRadius: 24, padding: 22, ...stitchShadows.card },
+  banner:       { marginBottom: 8 },
   label:        { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, marginTop: 14, textTransform: 'uppercase', letterSpacing: 1.2 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 22, backgroundColor: '#e9e5e1', paddingHorizontal: 14 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, backgroundColor: '#f5f3f1', paddingHorizontal: 14, minHeight: 64 },
   inputIcon:    { marginRight: 8 },
   input:        { flex: 1, height: 56, fontSize: 16, color: stitchTheme.colors.text },
   eyeBtn:       { padding: 4 },
-  btn:          { marginTop: 24, backgroundColor: stitchTheme.colors.primarySoft, borderRadius: 28, height: 64, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
+  btn:          { marginTop: 24, backgroundColor: stitchTheme.colors.primary, borderRadius: 18, height: 64, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, ...stitchShadows.float },
   btnDisabled:  { opacity: 0.6 },
-  btnText:      { color: stitchTheme.colors.primary, fontWeight: '900', fontSize: 18 },
+  btnText:      { color: '#fff', fontWeight: '900', fontSize: 18 },
   footer:       { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
   footerText:   { color: stitchTheme.colors.textMuted, fontSize: 15 },
   footerLink:   { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: 15 },
+  homeIndicator:{ alignSelf: 'center', width: 120, height: 5, borderRadius: 999, backgroundColor: 'rgba(18,23,20,0.18)', marginTop: 18 },
 
   roleRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  roleBtn: { flex: 1, paddingVertical: 14, borderRadius: 20, alignItems: 'center', backgroundColor: '#e9e5e1' },
+  roleBtn: { flex: 1, paddingVertical: 14, borderRadius: 18, alignItems: 'center', backgroundColor: '#f5f3f1' },
   roleBtnActive: { backgroundColor: stitchTheme.colors.primarySoft },
   roleBtnText: { fontSize: 14, fontWeight: '800', color: stitchTheme.colors.textMuted },
   roleBtnTextActive: { color: stitchTheme.colors.primary },
