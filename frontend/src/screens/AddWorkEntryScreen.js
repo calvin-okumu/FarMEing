@@ -25,6 +25,8 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchTopBar } from '../components/ui/StitchPrimitives';
+import { updateWorkEntry } from '../services/workEntryService';
+import { updateLocalModel } from '../utils/resourceMutations';
 
 const ACTIVITIES = [
   { key: 'planting', icon: 'leaf-outline' },
@@ -39,7 +41,7 @@ const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
 export default function AddWorkEntryScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId } = route.params;
+  const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,22 @@ export default function AddWorkEntryScreen({ route, navigation }) {
     };
     loadEmployees();
   }, []);
+
+  useEffect(() => {
+    if (!itemId || !employees.length) return;
+    database.get('work_entries').find(itemId).then((item) => {
+      setSelectedEmployee(employees.find((employee) => employee.id === item.employeeId || employee.remoteId === item.employeeId) || null);
+      setActivity((item.activity || 'Planting').toLowerCase());
+      setDaysWorked(String(item.daysWorked ?? '1'));
+      setRatePerDay(String(item.ratePerDay ?? ''));
+      setHoursWorked(String(item.hoursWorked ?? '8'));
+      setDate(item.date ? new Date(item.date) : new Date());
+      setIsRecurring(!!item.isRecurring);
+      setFrequency(item.frequency?.toLowerCase() || 'weekly');
+      setNotes(item.notes || '');
+      setPhoto(item.imageUrl || null);
+    }).catch(() => {});
+  }, [itemId, employees]);
 
   const total = (parseFloat(daysWorked) || 0) * (parseFloat(ratePerDay) || 0);
 
@@ -119,24 +137,56 @@ export default function AddWorkEntryScreen({ route, navigation }) {
     setSaving(true);
     try {
       await database.write(async () => {
-        await database.get('work_entries').create((record) => {
-          initializeLocalRecord(record);
-          record.projectId = projectId;
-          record.employeeId = selectedEmployee.id;
-          record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
-          record.date = date.getTime();
-          record.daysWorked = parseFloat(daysWorked);
-          record.ratePerDay = parseFloat(ratePerDay);
-          record.totalCost = total;
-          record.hoursWorked = parseFloat(hoursWorked) || 0;
-          record.imageUrl = photo || '';
-          record.status = 'PENDING';
-          record.isRecurring = isRecurring;
-          record.frequency = isRecurring ? frequency.toUpperCase() : null;
-          record.notes = notes.trim();
-          record.isPaid = false;
-          record.isDeleted = false;
-        });
+        if (itemId) {
+          const record = await database.get('work_entries').find(itemId);
+          if (record.remoteId) {
+            await updateWorkEntry(record.remoteId, {
+              employeeId: selectedEmployee.remoteId || selectedEmployee.id,
+              activity: activity.charAt(0).toUpperCase() + activity.slice(1),
+              date,
+              daysWorked,
+              ratePerDay,
+              hoursWorked,
+              imageUrl: photo,
+              status: record.status,
+              isRecurring,
+              frequency: isRecurring ? frequency.toUpperCase() : null,
+              notes,
+            });
+          }
+          await updateLocalModel(record, (draft) => {
+            draft.employeeId = selectedEmployee.id;
+            draft.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
+            draft.date = date.getTime();
+            draft.daysWorked = parseFloat(daysWorked);
+            draft.ratePerDay = parseFloat(ratePerDay);
+            draft.totalCost = total;
+            draft.hoursWorked = parseFloat(hoursWorked) || 0;
+            draft.imageUrl = photo || '';
+            draft.isRecurring = isRecurring;
+            draft.frequency = isRecurring ? frequency.toUpperCase() : null;
+            draft.notes = notes.trim();
+          }, record.remoteId);
+        } else {
+          await database.get('work_entries').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.employeeId = selectedEmployee.id;
+            record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
+            record.date = date.getTime();
+            record.daysWorked = parseFloat(daysWorked);
+            record.ratePerDay = parseFloat(ratePerDay);
+            record.totalCost = total;
+            record.hoursWorked = parseFloat(hoursWorked) || 0;
+            record.imageUrl = photo || '';
+            record.status = 'PENDING';
+            record.isRecurring = isRecurring;
+            record.frequency = isRecurring ? frequency.toUpperCase() : null;
+            record.notes = notes.trim();
+            record.isPaid = false;
+            record.isDeleted = false;
+          });
+        }
       });
 
       syncAll().catch(() => {});
@@ -163,9 +213,9 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={t('labor.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
+        <StitchTopBar title={itemId ? t('labor.edit_title') : t('labor.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
 
-        <StitchDisplayTitle>{t('labor.entry_title')}</StitchDisplayTitle>
+        <StitchDisplayTitle>{itemId ? t('labor.edit_title') : t('labor.entry_title')}</StitchDisplayTitle>
         <Text style={styles.subtitle}>{t('labor.entry_subtitle')}</Text>
 
         <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
@@ -315,7 +365,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
-        <StitchPrimaryButton label={t('labor.submit')} onPress={handleSave} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
+        <StitchPrimaryButton label={itemId ? t('common.save') : t('labor.submit')} onPress={handleSave} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

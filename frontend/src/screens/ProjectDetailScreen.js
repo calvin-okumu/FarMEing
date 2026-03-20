@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -17,6 +18,13 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { deleteBudgetItem } from '../services/budgetService';
+import { deleteExpense } from '../services/expenseService';
+import { deleteWorkEntry } from '../services/workEntryService';
+import { deleteHarvest } from '../services/harvestService';
+import { deleteSale } from '../services/saleService';
+import { deleteLocalModel } from '../utils/resourceMutations';
 
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
 
@@ -102,6 +110,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -228,11 +237,66 @@ export default function ProjectDetailScreen({ route, navigation }) {
     return { today, earlier };
   }, [mergedTimeline]);
 
-  const renderCollectionCard = (title, meta, amount, tone = 'default') => (
+  const handleEditItem = (type, item) => {
+    const params = { projectId: project.id, itemId: item.id };
+    if (type === 'budget') navigation.navigate('AddBudgetItem', params);
+    if (type === 'expenses') navigation.navigate('AddExpense', params);
+    if (type === 'labor') navigation.navigate('AddWorkEntry', params);
+    if (type === 'harvest') navigation.navigate('AddHarvest', params);
+    if (type === 'sales') navigation.navigate('AddSale', params);
+  };
+
+  const handleDeleteItem = async () => {
+    if (!deleteTarget) return;
+    const { type, item } = deleteTarget;
+
+    try {
+      if (item.remoteId) {
+        if (type === 'budget') await deleteBudgetItem(item.remoteId);
+        if (type === 'expenses') await deleteExpense(item.remoteId);
+        if (type === 'labor') await deleteWorkEntry(item.remoteId);
+        if (type === 'harvest') await deleteHarvest(item.remoteId);
+        if (type === 'sales') await deleteSale(item.remoteId);
+      }
+
+      await database.write(async () => {
+        const tableMap = {
+          budget: 'budget_items',
+          expenses: 'expenses',
+          labor: 'work_entries',
+          harvest: 'harvests',
+          sales: 'sales',
+        };
+        const record = await database.get(tableMap[type]).find(item.id);
+        if (item.remoteId) {
+          await record.destroyPermanently();
+        } else {
+          await deleteLocalModel(record);
+        }
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message || t('common.error'));
+    }
+  };
+
+  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => (
     <View style={styles.collectionCard}>
       <View style={styles.collectionTopRow}>
         <Text style={styles.collectionTitle}>{title}</Text>
-        <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
+        <View style={styles.collectionActions}>
+          <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
+          {type && item ? (
+            <>
+              <TouchableOpacity onPress={() => handleEditItem(type, item)} hitSlop={8}>
+                <Ionicons name="create-outline" size={18} color={stitchTheme.colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setDeleteTarget({ type, item })} hitSlop={8}>
+                <Ionicons name="trash-outline" size={18} color="#9c1111" />
+              </TouchableOpacity>
+            </>
+          ) : null}
+        </View>
       </View>
       <Text style={styles.collectionMeta}>{meta}</Text>
     </View>
@@ -292,15 +356,15 @@ export default function ProjectDetailScreen({ route, navigation }) {
           })}
         </ScrollView>
 
-        {activeTab === 'budget' ? budgetItems.length ? budgetItems.map((item) => renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency))) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
+        {activeTab === 'budget' ? budgetItems.length ? budgetItems.map((item) => renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'budget', item)) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
 
-        {activeTab === 'expenses' ? expenses.length ? expenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative')) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
+        {activeTab === 'expenses' ? expenses.length ? expenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
 
-        {activeTab === 'labor' ? workEntries.length ? workEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency))) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> : null}
+        {activeTab === 'labor' ? workEntries.length ? workEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item)) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> : null}
 
-        {activeTab === 'harvest' ? harvests.length ? harvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
+        {activeTab === 'harvest' ? harvests.length ? harvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
 
-        {activeTab === 'sales' ? sales.length ? sales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive')) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
+        {activeTab === 'sales' ? sales.length ? sales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
 
         {activeTab === 'inventory' ? (
           <View style={styles.collectionCard}>
@@ -341,6 +405,16 @@ export default function ProjectDetailScreen({ route, navigation }) {
       >
         <Ionicons name="add" size={30} color={stitchTheme.colors.primary} />
       </TouchableOpacity>
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title={t('common.delete')}
+        message={t('resource.confirm_delete_generic', { name: deleteTarget?.item?.name || deleteTarget?.item?.customer || deleteTarget?.item?.crop || deleteTarget?.item?.activity || '' })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteItem}
+      />
     </View>
   );
 }
@@ -375,6 +449,7 @@ const styles = StyleSheet.create({
   tabsRow: { gap: 10, paddingVertical: 22 },
   collectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 12, ...stitchShadows.card },
   collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  collectionActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   collectionTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
   collectionAmount: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text },
   collectionAmountPositive: { color: stitchTheme.colors.primary },

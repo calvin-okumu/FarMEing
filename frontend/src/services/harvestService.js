@@ -1,13 +1,15 @@
 import { deleteJson, getJson, postJson, putJson, toDateOnly, toNumber } from './http';
 
-const normalizeHarvest = (values) => ({
+const compact = (payload) => Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+
+const normalizeHarvest = (values) => compact({
   projectId: values.projectId,
   crop: values.crop?.trim(),
-  date: toDateOnly(values.date),
-  weight: toNumber(values.weight),
-  unit: values.unit || 'kg',
-  quality: values.quality || null,
-  notes: values.notes?.trim() || null,
+  date: values.date !== undefined ? toDateOnly(values.date) : undefined,
+  weight: values.weight !== undefined ? toNumber(values.weight) : undefined,
+  unit: values.unit !== undefined ? values.unit || 'kg' : undefined,
+  quality: values.quality !== undefined ? values.quality || null : undefined,
+  notes: values.notes !== undefined ? values.notes?.trim() || null : undefined,
 });
 
 export function listHarvests(projectId) { return getJson(`/harvests/${projectId}`); }

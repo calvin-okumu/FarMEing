@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord } from '../utils/localRecord';
+import { updateBudgetItem } from '../services/budgetService';
+import { updateLocalModel } from '../utils/resourceMutations';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
   StitchChip,
@@ -32,7 +34,7 @@ const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', '
 
 export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
-  const { projectId } = route.params;
+  const { projectId, itemId } = route.params;
   const currency = useSettingsStore((s) => s.currency);
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
@@ -40,6 +42,17 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const [unit, setUnit] = useState('kg');
   const [unitPrice, setUnitPrice] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!itemId) return;
+    database.get('budget_items').find(itemId).then((item) => {
+      setCategory(item.category || 'seeds');
+      setName(item.name || '');
+      setQuantity(String(item.quantity ?? ''));
+      setUnit(item.unit || 'kg');
+      setUnitPrice(String(item.unitPrice ?? ''));
+    }).catch(() => {});
+  }, [itemId]);
 
   const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
   const bars = useMemo(() => [1, parseFloat(quantity) || 1, parseFloat(unitPrice) || 1, total || 1], [quantity, unitPrice, total]);
@@ -57,16 +70,36 @@ export default function AddBudgetItemScreen({ route, navigation }) {
     setSaving(true);
     try {
       await database.write(async () => {
-        await database.get('budget_items').create((record) => {
-          initializeLocalRecord(record);
-          record.projectId = projectId;
-          record.category = category;
-          record.name = name.trim();
-          record.quantity = parseFloat(quantity);
-          record.unit = unit.trim();
-          record.unitPrice = parseFloat(unitPrice);
-          record.isDeleted = false;
-        });
+        if (itemId) {
+          const record = await database.get('budget_items').find(itemId);
+          if (record.remoteId) {
+            await updateBudgetItem(record.remoteId, {
+              category,
+              name: name.trim(),
+              quantity,
+              unit,
+              unitPrice,
+            });
+          }
+          await updateLocalModel(record, (draft) => {
+            draft.category = category;
+            draft.name = name.trim();
+            draft.quantity = parseFloat(quantity);
+            draft.unit = unit.trim();
+            draft.unitPrice = parseFloat(unitPrice);
+          }, record.remoteId);
+        } else {
+          await database.get('budget_items').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.category = category;
+            record.name = name.trim();
+            record.quantity = parseFloat(quantity);
+            record.unit = unit.trim();
+            record.unitPrice = parseFloat(unitPrice);
+            record.isDeleted = false;
+          });
+        }
       });
 
       syncAll().catch(() => {});
@@ -85,9 +118,9 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={t('budget.add')} onBack={() => navigation.goBack()} />
+        <StitchTopBar title={itemId ? t('budget.edit_title') : t('budget.add')} onBack={() => navigation.goBack()} />
         <StitchEyebrow>{t('budget.fields.category')}</StitchEyebrow>
-        <StitchDisplayTitle>{t('budget.add')}</StitchDisplayTitle>
+        <StitchDisplayTitle>{itemId ? t('budget.edit_title') : t('budget.add')}</StitchDisplayTitle>
 
         <StitchSurface style={styles.heroSurface}>
           <View style={styles.heroTopRow}>
@@ -150,10 +183,10 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         />
 
         <StitchPrimaryButton
-          label={saving ? '...' : t('budget.add')}
+          label={saving ? '...' : itemId ? t('common.save') : t('budget.add')}
           onPress={handleSave}
           disabled={saving}
-          icon={saving ? 'time-outline' : 'add-circle'}
+          icon={saving ? 'time-outline' : itemId ? 'save-outline' : 'add-circle'}
           style={styles.button}
         />
         {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}

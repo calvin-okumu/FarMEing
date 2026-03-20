@@ -158,6 +158,7 @@
     }
   },
   "budget": {
+    "edit_title": "Hariri Kipengee cha Bajeti",
     "fields": {
       "category": "Kategoria",
       "name": "Jina la Kipengee",
@@ -190,6 +191,7 @@
   },
   "expenses": {
     "screen_title": "Gharama Mpya",
+    "edit_title": "Hariri Gharama",
     "entry_eyebrow": "Transaction Entry",
     "entry_title": "Gharama Mpya",
     "category_heading": "Category / Aina ya Gharama",
@@ -265,6 +267,7 @@
   },
   "labor": {
     "screen_title": "Worker Activity",
+    "edit_title": "Hariri Rekodi ya Kazi",
     "entry_title": "Kazi za Wafanyakazi",
     "entry_subtitle": "Logging daily field progress",
     "select_task": "Select Task / Chagua Kazi",
@@ -311,6 +314,7 @@
   },
   "harvest": {
     "screen_title": "Harvest Log",
+    "edit_title": "Hariri Mavuno",
     "entry_title": "Kumbukumbu za Mavuno",
     "entry_subtitle": "Record your daily yield to track farm productivity and growth.",
     "crop_heading": "Crop Type / Aina ya Zao",
@@ -360,6 +364,7 @@
   },
   "sales": {
     "screen_title": "Record Sale",
+    "edit_title": "Hariri Mauzo",
     "entry_eyebrow": "Mauzo ya Leo",
     "entry_title": "Rekodi Mauzo Mapya",
     "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
@@ -534,5 +539,8 @@
   "tab": {
     "workers": "Wafanyakazi",
     "profile": "Profile"
+  },
+  "resource": {
+    "confirm_delete_generic": "Una uhakika unataka kufuta \"{{name}}\"?"
   }
 }

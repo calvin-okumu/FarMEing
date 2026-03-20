@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import { updateExpense } from '../services/expenseService';
+import { updateLocalModel } from '../utils/resourceMutations';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -39,7 +41,7 @@ const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId } = route.params;
+  const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
   const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
@@ -53,6 +55,20 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
 
   const draftId = useMemo(() => `#TRX-${String(date.getTime()).slice(-4)}`, [date]);
+
+  useEffect(() => {
+    if (!itemId) return;
+    database.get('expenses').find(itemId).then((item) => {
+      setCategory(item.category || 'other');
+      setExpenseType(item.expenseType || 'OPEX');
+      setAmount(String(item.amount ?? ''));
+      setDate(item.date ? new Date(item.date) : new Date());
+      setIsRecurring(!!item.isRecurring);
+      setFrequency(item.frequency?.toLowerCase() || 'monthly');
+      setNote(item.note || '');
+      setPhoto(item.receiptUrl || null);
+    }).catch(() => {});
+  }, [itemId]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -95,19 +111,42 @@ export default function AddExpenseScreen({ route, navigation }) {
     setSaving(true);
     try {
       await database.write(async () => {
-        await database.get('expenses').create((record) => {
-          initializeLocalRecord(record);
-          record.projectId = projectId;
-          record.category = category;
-          record.expenseType = expenseType;
-          record.amount = parseFloat(amount);
-          record.date = date.getTime();
-          record.isRecurring = isRecurring;
-          record.frequency = isRecurring ? frequency.toUpperCase() : null;
-          record.note = note.trim();
-          record.receiptUrl = photo || '';
-          record.isDeleted = false;
-        });
+        if (itemId) {
+          const record = await database.get('expenses').find(itemId);
+          if (record.remoteId) {
+            await updateExpense(record.remoteId, {
+              category,
+              amount,
+              date,
+              note,
+              receiptUrl: photo,
+            });
+          }
+          await updateLocalModel(record, (draft) => {
+            draft.category = category;
+            draft.expenseType = expenseType;
+            draft.amount = parseFloat(amount);
+            draft.date = date.getTime();
+            draft.isRecurring = isRecurring;
+            draft.frequency = isRecurring ? frequency.toUpperCase() : null;
+            draft.note = note.trim();
+            draft.receiptUrl = photo || '';
+          }, record.remoteId);
+        } else {
+          await database.get('expenses').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.category = category;
+            record.expenseType = expenseType;
+            record.amount = parseFloat(amount);
+            record.date = date.getTime();
+            record.isRecurring = isRecurring;
+            record.frequency = isRecurring ? frequency.toUpperCase() : null;
+            record.note = note.trim();
+            record.receiptUrl = photo || '';
+            record.isDeleted = false;
+          });
+        }
       });
 
       syncAll().catch(() => {});
@@ -126,10 +165,10 @@ export default function AddExpenseScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={t('expenses.screen_title')} subtitle={t('settings.brand_short')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
+        <StitchTopBar title={itemId ? t('expenses.edit_title') : t('expenses.screen_title')} subtitle={t('settings.brand_short')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
 
         <StitchEyebrow>{t('expenses.entry_eyebrow')}</StitchEyebrow>
-        <StitchDisplayTitle>{t('expenses.entry_title')}</StitchDisplayTitle>
+        <StitchDisplayTitle>{itemId ? t('expenses.edit_title') : t('expenses.entry_title')}</StitchDisplayTitle>
         <View style={styles.accentLine} />
 
         <StitchSurface style={styles.amountCard}>
@@ -273,7 +312,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        <StitchPrimaryButton label={t('expenses.save')} onPress={handleSave} disabled={saving} loading={saving} icon="save-outline" style={styles.saveButton} />
+        <StitchPrimaryButton label={itemId ? t('common.save') : t('expenses.save')} onPress={handleSave} disabled={saving} loading={saving} icon="save-outline" style={styles.saveButton} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

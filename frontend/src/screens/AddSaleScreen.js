@@ -22,10 +22,12 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import { updateSale } from '../services/saleService';
+import { updateLocalModel } from '../utils/resourceMutations';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId } = route.params;
+  const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
   const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
@@ -47,6 +49,17 @@ export default function AddSaleScreen({ route, navigation }) {
     };
     loadProject();
   }, [projectId]);
+
+  useEffect(() => {
+    if (!itemId) return;
+    database.get('sales').find(itemId).then((item) => {
+      setCustomer(item.customer || '');
+      setWeightSold(String(item.weightSold ?? ''));
+      setUnitPrice(String(item.unitPrice ?? ''));
+      setDate(item.date ? new Date(item.date) : new Date());
+      setNotes(item.notes || '');
+    }).catch(() => {});
+  }, [itemId]);
 
   const total = (parseFloat(weightSold) || 0) * (parseFloat(unitPrice) || 0);
 
@@ -74,17 +87,38 @@ export default function AddSaleScreen({ route, navigation }) {
     setSaving(true);
     try {
       await database.write(async () => {
-        await database.get('sales').create((record) => {
-          initializeLocalRecord(record);
-          record.projectId = projectId;
-          record.customer = customer.trim();
-          record.weightSold = parseFloat(weightSold);
-          record.unitPrice = parseFloat(unitPrice);
-          record.totalAmount = total;
-          record.date = date.getTime();
-          record.notes = notes.trim();
-          record.isDeleted = false;
-        });
+        if (itemId) {
+          const record = await database.get('sales').find(itemId);
+          if (record.remoteId) {
+            await updateSale(record.remoteId, {
+              customer,
+              weightSold,
+              unitPrice,
+              date,
+              notes,
+            });
+          }
+          await updateLocalModel(record, (draft) => {
+            draft.customer = customer.trim();
+            draft.weightSold = parseFloat(weightSold);
+            draft.unitPrice = parseFloat(unitPrice);
+            draft.totalAmount = total;
+            draft.date = date.getTime();
+            draft.notes = notes.trim();
+          }, record.remoteId);
+        } else {
+          await database.get('sales').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.customer = customer.trim();
+            record.weightSold = parseFloat(weightSold);
+            record.unitPrice = parseFloat(unitPrice);
+            record.totalAmount = total;
+            record.date = date.getTime();
+            record.notes = notes.trim();
+            record.isDeleted = false;
+          });
+        }
       });
 
       syncAll().catch(() => {});
@@ -103,10 +137,10 @@ export default function AddSaleScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={t('sales.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
+        <StitchTopBar title={itemId ? t('sales.edit_title') : t('sales.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
 
         <StitchEyebrow>{t('sales.entry_eyebrow')}</StitchEyebrow>
-        <StitchDisplayTitle>{t('sales.entry_title')}</StitchDisplayTitle>
+        <StitchDisplayTitle>{itemId ? t('sales.edit_title') : t('sales.entry_title')}</StitchDisplayTitle>
 
         <StitchSurface style={styles.panel}>
           <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
@@ -194,7 +228,7 @@ export default function AddSaleScreen({ route, navigation }) {
           />
         ) : null}
 
-        <StitchPrimaryButton label={t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
+        <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>

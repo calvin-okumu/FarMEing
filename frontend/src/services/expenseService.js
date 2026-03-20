@@ -1,12 +1,14 @@
 import { deleteJson, getJson, postJson, putJson, toDateOnly, toNumber } from './http';
 
-const normalizeExpense = (values) => ({
+const compact = (payload) => Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+
+const normalizeExpense = (values) => compact({
   projectId: values.projectId,
   category: values.category,
-  amount: toNumber(values.amount),
-  date: toDateOnly(values.date),
-  note: values.note?.trim() || null,
-  receiptUrl: values.receiptUrl || null,
+  amount: values.amount !== undefined ? toNumber(values.amount) : undefined,
+  date: values.date !== undefined ? toDateOnly(values.date) : undefined,
+  note: values.note !== undefined ? values.note?.trim() || null : undefined,
+  receiptUrl: values.receiptUrl !== undefined ? values.receiptUrl || null : undefined,
 });
 
 export function listExpenses(projectId) { return getJson(`/expenses/${projectId}`); }

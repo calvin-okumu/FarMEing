@@ -158,6 +158,7 @@
     }
   },
   "budget": {
+    "edit_title": "Edit Budget Item",
     "fields": {
       "category": "Category",
       "name": "Item Name",
@@ -190,6 +191,7 @@
   },
   "expenses": {
     "screen_title": "New Expense",
+    "edit_title": "Edit Expense",
     "entry_eyebrow": "Transaction Entry",
     "entry_title": "Gharama Mpya",
     "category_heading": "Category / Aina ya Gharama",
@@ -265,6 +267,7 @@
   },
   "labor": {
     "screen_title": "Worker Activity",
+    "edit_title": "Edit Work Entry",
     "entry_title": "Kazi za Wafanyakazi",
     "entry_subtitle": "Logging daily field progress",
     "select_task": "Select Task / Chagua Kazi",
@@ -311,6 +314,7 @@
   },
   "harvest": {
     "screen_title": "Harvest Log",
+    "edit_title": "Edit Harvest",
     "entry_title": "Kumbukumbu za Mavuno",
     "entry_subtitle": "Record your daily yield to track farm productivity and growth.",
     "crop_heading": "Crop Type / Aina ya Zao",
@@ -360,6 +364,7 @@
   },
   "sales": {
     "screen_title": "Record Sale",
+    "edit_title": "Edit Sale",
     "entry_eyebrow": "Mauzo ya Leo",
     "entry_title": "Rekodi Mauzo Mapya",
     "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
@@ -534,5 +539,8 @@
   "tab": {
     "workers": "Workers",
     "profile": "Profile"
+  },
+  "resource": {
+    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?"
   }
 }

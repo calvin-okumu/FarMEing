@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,13 +21,15 @@ import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import { updateHarvest } from '../services/harvestService';
+import { updateLocalModel } from '../utils/resourceMutations';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
 const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
 
 export default function AddHarvestScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId } = route.params;
+  const { projectId, itemId } = route.params;
   const { language, setLanguage } = useSettingsStore();
   const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
@@ -43,6 +45,18 @@ export default function AddHarvestScreen({ route, navigation }) {
     if (!value || Number.isNaN(value)) return `0 ${t(`harvest.units.${unit}`)}`;
     return `${value.toLocaleString()} ${t(`harvest.units.${unit}`)}`;
   }, [weight, unit, t]);
+
+  useEffect(() => {
+    if (!itemId) return;
+    database.get('harvests').find(itemId).then((item) => {
+      setCrop(item.crop || '');
+      setWeight(String(item.weight ?? ''));
+      setUnit(item.unit || 'kg');
+      setQuality(item.quality || 'grade_a');
+      setDate(item.date ? new Date(item.date) : new Date());
+      setNotes(item.notes || '');
+    }).catch(() => {});
+  }, [itemId]);
 
   const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -68,17 +82,39 @@ export default function AddHarvestScreen({ route, navigation }) {
     setSaving(true);
     try {
       await database.write(async () => {
-        await database.get('harvests').create((record) => {
-          initializeLocalRecord(record);
-          record.projectId = projectId;
-          record.crop = crop.trim();
-          record.weight = parseFloat(weight);
-          record.unit = unit;
-          record.quality = quality;
-          record.date = date.getTime();
-          record.notes = notes.trim();
-          record.isDeleted = false;
-        });
+        if (itemId) {
+          const record = await database.get('harvests').find(itemId);
+          if (record.remoteId) {
+            await updateHarvest(record.remoteId, {
+              crop,
+              date,
+              weight,
+              unit,
+              quality,
+              notes,
+            });
+          }
+          await updateLocalModel(record, (draft) => {
+            draft.crop = crop.trim();
+            draft.weight = parseFloat(weight);
+            draft.unit = unit;
+            draft.quality = quality;
+            draft.date = date.getTime();
+            draft.notes = notes.trim();
+          }, record.remoteId);
+        } else {
+          await database.get('harvests').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.crop = crop.trim();
+            record.weight = parseFloat(weight);
+            record.unit = unit;
+            record.quality = quality;
+            record.date = date.getTime();
+            record.notes = notes.trim();
+            record.isDeleted = false;
+          });
+        }
       });
 
       syncAll().catch(() => {});
@@ -97,9 +133,9 @@ export default function AddHarvestScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={t('harvest.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightLabel="EN / SW" />
+        <StitchTopBar title={itemId ? t('harvest.edit_title') : t('harvest.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightLabel="EN / SW" />
 
-        <StitchDisplayTitle>{t('harvest.entry_title')}</StitchDisplayTitle>
+        <StitchDisplayTitle>{itemId ? t('harvest.edit_title') : t('harvest.entry_title')}</StitchDisplayTitle>
         <Text style={styles.subtitle}>{t('harvest.entry_subtitle')}</Text>
 
         <StitchSectionLabel>{t('harvest.crop_heading')}</StitchSectionLabel>
@@ -194,7 +230,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           />
         </View>
 
-        <StitchPrimaryButton label={t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
+        <StitchPrimaryButton label={itemId ? t('common.save') : t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
 
         <Text style={styles.footerNote}>{t('harvest.footer_note')}</Text>
       </ScrollView>

@@ -1,20 +1,22 @@
 import { deleteJson, getJson, patchJson, postJson, putJson, toDateOnly, toNumber } from './http';
 
-const normalizeWorkEntry = (values) => ({
+const compact = (payload) => Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+
+const normalizeWorkEntry = (values) => compact({
   projectId: values.projectId,
   employeeId: values.employeeId,
   activity: values.activity,
-  date: toDateOnly(values.date),
-  daysWorked: toNumber(values.daysWorked),
-  ratePerDay: toNumber(values.ratePerDay),
-  hoursWorked: toNumber(values.hoursWorked),
-  imageUrl: values.imageUrl || null,
-  locationLat: values.locationLat ?? null,
-  locationLng: values.locationLng ?? null,
-  status: values.status || 'PENDING',
-  isRecurring: !!values.isRecurring,
-  frequency: values.frequency || null,
-  notes: values.notes?.trim() || null,
+  date: values.date !== undefined ? toDateOnly(values.date) : undefined,
+  daysWorked: values.daysWorked !== undefined ? toNumber(values.daysWorked) : undefined,
+  ratePerDay: values.ratePerDay !== undefined ? toNumber(values.ratePerDay) : undefined,
+  hoursWorked: values.hoursWorked !== undefined ? toNumber(values.hoursWorked) : undefined,
+  imageUrl: values.imageUrl !== undefined ? values.imageUrl || null : undefined,
+  locationLat: values.locationLat !== undefined ? values.locationLat ?? null : undefined,
+  locationLng: values.locationLng !== undefined ? values.locationLng ?? null : undefined,
+  status: values.status,
+  isRecurring: values.isRecurring !== undefined ? !!values.isRecurring : undefined,
+  frequency: values.frequency !== undefined ? values.frequency || null : undefined,
+  notes: values.notes !== undefined ? values.notes?.trim() || null : undefined,
 });
 
 export function listWorkEntries(projectId) { return getJson(`/work-entries/${projectId}`); }
