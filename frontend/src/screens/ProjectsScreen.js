@@ -42,7 +42,7 @@ const DEFAULT_FORM = {
   expectedYield: '',
 };
 
-export default function ProjectsScreen({ navigation }) {
+export default function ProjectsScreen({ navigation, route }) {
   const { t } = useTranslation();
   const { data: remoteProjects = [], isLoading: queryLoading, isRefetching, refetch, error: queryError } = useProjectsQuery();
   const createMutation = useCreateProjectMutation();
@@ -135,6 +135,13 @@ export default function ProjectsScreen({ navigation }) {
     setFormData(DEFAULT_FORM);
     setModalVisible(true);
   };
+
+  useEffect(() => {
+    if (route?.params?.openCreate) {
+      openCreate();
+      navigation.setParams({ openCreate: false });
+    }
+  }, [route?.params?.openCreate]);
 
   const openEdit = (project) => {
     setEditingProject(project);

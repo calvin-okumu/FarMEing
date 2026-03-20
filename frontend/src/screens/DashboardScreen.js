@@ -305,7 +305,7 @@ export default function DashboardScreen({ navigation }) {
               </Text>
               <TouchableOpacity
                 style={styles.heroAction}
-                onPress={() => navigation.navigate('QuickEntry')}
+                onPress={() => navigation.navigate('Projects', { screen: 'ProjectsList', params: { openCreate: true } })}
                 activeOpacity={0.9}
               >
                 <Ionicons name="add" size={34} color={stitchTheme.colors.primary} />
@@ -474,7 +474,7 @@ export default function DashboardScreen({ navigation }) {
         )}
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('QuickEntry')} activeOpacity={0.88}>
+      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('Projects', { screen: 'ProjectsList', params: { openCreate: true } })} activeOpacity={0.88}>
         <Ionicons name="add" size={30} color={stitchTheme.colors.primary} />
       </TouchableOpacity>
     </View>
