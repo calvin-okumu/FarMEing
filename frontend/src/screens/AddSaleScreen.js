@@ -21,6 +21,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
@@ -102,21 +103,13 @@ export default function AddSaleScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
-            <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('sales.screen_title')}</Text>
-          <TouchableOpacity style={styles.headerIcon} onPress={toggleLanguage} activeOpacity={0.86}>
-            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <StitchTopBar title={t('sales.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
 
-        <Text style={styles.eyebrow}>{t('sales.entry_eyebrow')}</Text>
-        <Text style={styles.displayTitle}>{t('sales.entry_title')}</Text>
+        <StitchEyebrow>{t('sales.entry_eyebrow')}</StitchEyebrow>
+        <StitchDisplayTitle>{t('sales.entry_title')}</StitchDisplayTitle>
 
-        <View style={styles.panel}>
-          <Text style={styles.sectionLabel}>{t('sales.quantity_heading')}</Text>
+        <StitchSurface style={styles.panel}>
+          <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
           <View style={styles.fieldLarge}>
             <TextInput
               style={styles.largeInput}
@@ -129,7 +122,7 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.unitBadge}>{t('harvest.units.kg')}</Text>
           </View>
 
-          <Text style={styles.sectionLabel}>{t('sales.price_heading')}</Text>
+          <StitchSectionLabel>{t('sales.price_heading')}</StitchSectionLabel>
           <View style={styles.fieldLarge}>
             <Text style={styles.currencyText}>{currency}</Text>
             <TextInput
@@ -147,7 +140,7 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
           </View>
 
-          <Text style={styles.sectionLabel}>{t('sales.buyer_heading')}</Text>
+          <StitchSectionLabel>{t('sales.buyer_heading')}</StitchSectionLabel>
           <View style={styles.fieldLarge}>
             <Ionicons name="person" size={20} color="#76806f" />
             <TextInput
@@ -190,7 +183,7 @@ export default function AddSaleScreen({ route, navigation }) {
             numberOfLines={4}
             placeholderTextColor="#76806f"
           />
-        </View>
+        </StitchSurface>
 
         {showDatePicker ? (
           <DateTimePicker
@@ -201,12 +194,7 @@ export default function AddSaleScreen({ route, navigation }) {
           />
         ) : null}
 
-        <TouchableOpacity style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving} activeOpacity={0.9}>
-          {saving ? <ActivityIndicator color={stitchTheme.colors.primary} /> : <>
-            <Ionicons name="checkmark-circle" size={22} color={stitchTheme.colors.primary} />
-            <Text style={styles.saveButtonText}>{t('sales.complete')}</Text>
-          </>}
-        </TouchableOpacity>
+        <StitchPrimaryButton label={t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -217,13 +205,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
-  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: stitchTheme.colors.primary },
-  eyebrow: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2, color: stitchTheme.colors.accentBrown },
-  displayTitle: { marginTop: 10, fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary },
-  panel: { marginTop: 20, borderRadius: 34, backgroundColor: '#fff', padding: 22, ...stitchShadows.card },
-  sectionLabel: { marginTop: 18, marginBottom: 10, fontSize: 16, fontWeight: '800', color: stitchTheme.colors.text },
+  panel: { marginTop: 20 },
   fieldLarge: { minHeight: 76, borderRadius: 16, backgroundColor: '#e3e0dd', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
   largeInput: { flex: 1, fontSize: 24, fontWeight: '700', color: stitchTheme.colors.text },
   mediumInput: { flex: 1, fontSize: 20, fontWeight: '600', color: stitchTheme.colors.text },
@@ -238,8 +220,6 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: '#6f786b' },
   infoValue: { marginTop: 4, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
   notesField: { marginTop: 18, minHeight: 96, borderRadius: 18, backgroundColor: '#f1ece7', paddingHorizontal: 18, paddingVertical: 16, fontSize: 16, lineHeight: 24, color: stitchTheme.colors.text, textAlignVertical: 'top' },
-  saveButton: { marginTop: 34, minHeight: 76, borderRadius: 30, backgroundColor: stitchTheme.colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, ...stitchShadows.float },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
+  saveButton: { marginTop: 34 },
   footerNote: { marginTop: 16, fontSize: 14, lineHeight: 22, color: '#6f786b' },
 });

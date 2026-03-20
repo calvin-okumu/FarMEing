@@ -22,6 +22,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -125,27 +126,14 @@ export default function AddExpenseScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
-              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.headerTitle}>{t('expenses.screen_title')}</Text>
-              <Text style={styles.brandText}>{t('settings.brand_short')}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.headerIcon} onPress={toggleLanguage} activeOpacity={0.86}>
-            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <StitchTopBar title={t('expenses.screen_title')} subtitle={t('settings.brand_short')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
 
-        <Text style={styles.eyebrow}>{t('expenses.entry_eyebrow')}</Text>
-        <Text style={styles.displayTitle}>{t('expenses.entry_title')}</Text>
+        <StitchEyebrow>{t('expenses.entry_eyebrow')}</StitchEyebrow>
+        <StitchDisplayTitle>{t('expenses.entry_title')}</StitchDisplayTitle>
         <View style={styles.accentLine} />
 
-        <View style={styles.amountCard}>
-          <Text style={styles.sectionLabel}>{t('expenses.fields.amount')}</Text>
+        <StitchSurface style={styles.amountCard}>
+          <StitchSectionLabel>{t('expenses.fields.amount')}</StitchSectionLabel>
           <View style={styles.amountRow}>
             <Text style={styles.amountCurrency}>{currency}</Text>
             <TextInput
@@ -157,9 +145,9 @@ export default function AddExpenseScreen({ route, navigation }) {
               placeholderTextColor="#d8d6d3"
             />
           </View>
-        </View>
+        </StitchSurface>
 
-        <Text style={styles.sectionLabel}>{t('expenses.category_heading')}</Text>
+        <StitchSectionLabel>{t('expenses.category_heading')}</StitchSectionLabel>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((item) => {
             const active = category === item.key;
@@ -177,7 +165,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           })}
         </View>
 
-        <Text style={styles.sectionLabel}>{t('common.date')}</Text>
+        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
         <TouchableOpacity style={styles.field} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
           <Text style={styles.fieldText}>{formatAppDate(date)}</Text>
           <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.text} />
@@ -192,12 +180,12 @@ export default function AddExpenseScreen({ route, navigation }) {
           />
         ) : null}
 
-        <Text style={styles.sectionLabel}>{t('expenses.reference_id')}</Text>
+        <StitchSectionLabel>{t('expenses.reference_id')}</StitchSectionLabel>
         <View style={styles.field}>
           <Text style={styles.fieldMuted}>{draftId}</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>{t('common.notes')}</Text>
+        <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
         <TextInput
           style={styles.noteField}
           value={note}
@@ -238,26 +226,26 @@ export default function AddExpenseScreen({ route, navigation }) {
         ) : null}
 
         <View style={styles.inlineRow}>
-          <Text style={styles.sectionLabel}>{t('expenses.fields.type')}</Text>
+          <StitchSectionLabel>{t('expenses.fields.type')}</StitchSectionLabel>
           <View style={styles.pillToggle}>
             {['OPEX', 'CAPEX'].map((type) => {
               const active = expenseType === type;
               return (
-                <TouchableOpacity
+                <StitchChip
                   key={type}
-                  style={[styles.smallPill, active && styles.smallPillActive]}
+                  style={styles.smallPill}
+                  active={active}
                   onPress={() => setExpenseType(type)}
-                  activeOpacity={0.9}
-                >
-                  <Text style={[styles.smallPillText, active && styles.smallPillTextActive]}>{t(`expenses.types.${type.toLowerCase()}`)}</Text>
-                </TouchableOpacity>
+                  label={t(`expenses.types.${type.toLowerCase()}`)}
+                  textStyle={styles.smallPillText}
+                />
               );
             })}
           </View>
         </View>
 
         <View style={styles.inlineRow}>
-          <Text style={styles.sectionLabel}>{t('common.recurring')}</Text>
+          <StitchSectionLabel>{t('common.recurring')}</StitchSectionLabel>
           <TouchableOpacity
             style={[styles.switchTrack, isRecurring && styles.switchTrackActive]}
             onPress={() => setIsRecurring((value) => !value)}
@@ -272,25 +260,20 @@ export default function AddExpenseScreen({ route, navigation }) {
             {FREQUENCIES.map((freq) => {
               const active = frequency === freq;
               return (
-                <TouchableOpacity
+                <StitchChip
                   key={freq}
-                  style={[styles.frequencyChip, active && styles.frequencyChipActive]}
+                  style={styles.frequencyChip}
+                  active={active}
                   onPress={() => setFrequency(freq)}
-                  activeOpacity={0.88}
-                >
-                  <Text style={[styles.frequencyText, active && styles.frequencyTextActive]}>{t(`common.frequencies.${freq}`)}</Text>
-                </TouchableOpacity>
+                  label={t(`common.frequencies.${freq}`)}
+                  textStyle={styles.frequencyText}
+                />
               );
             })}
           </View>
         ) : null}
 
-        <TouchableOpacity style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving} activeOpacity={0.9}>
-          {saving ? <ActivityIndicator color={stitchTheme.colors.primary} /> : <>
-            <Ionicons name="save-outline" size={22} color={stitchTheme.colors.primary} />
-            <Text style={styles.saveButtonText}>{t('expenses.save')}</Text>
-          </>}
-        </TouchableOpacity>
+        <StitchPrimaryButton label={t('expenses.save')} onPress={handleSave} disabled={saving} loading={saving} icon="save-outline" style={styles.saveButton} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -300,16 +283,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 28, lineHeight: 32, fontWeight: '800', color: stitchTheme.colors.primary },
-  brandText: { marginTop: 2, fontSize: 14, fontWeight: '700', color: stitchTheme.colors.primary },
-  eyebrow: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.8, color: stitchTheme.colors.accentBrown },
-  displayTitle: { marginTop: 10, fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary },
   accentLine: { width: 72, height: 6, borderRadius: 999, backgroundColor: stitchTheme.colors.primarySoft, marginTop: 18, marginBottom: 28 },
-  amountCard: { backgroundColor: '#fff', borderRadius: 30, padding: 26, ...stitchShadows.card },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: stitchTheme.colors.accentBrown, marginBottom: 12, marginTop: 22 },
+  amountCard: { padding: 26 },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   amountCurrency: { fontSize: 28, fontWeight: '800', color: stitchTheme.colors.primary },
   amountInput: { flex: 1, fontSize: 56, lineHeight: 62, fontWeight: '300', color: stitchTheme.colors.text, paddingVertical: 0 },
@@ -334,20 +309,13 @@ const styles = StyleSheet.create({
   removePhoto: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   inlineRow: { marginTop: 12 },
   pillToggle: { flexDirection: 'row', gap: 8 },
-  smallPill: { flex: 1, minHeight: 44, borderRadius: 18, backgroundColor: '#ece8e4', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  smallPillActive: { backgroundColor: stitchTheme.colors.primarySoft },
   smallPillText: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.accentBrown, textAlign: 'center' },
-  smallPillTextActive: { color: stitchTheme.colors.primary },
   switchTrack: { width: 58, height: 32, borderRadius: 20, backgroundColor: '#ddd8d2', padding: 3 },
   switchTrackActive: { backgroundColor: stitchTheme.colors.primarySoft },
   switchKnob: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff' },
   switchKnobActive: { alignSelf: 'flex-end' },
   frequencyRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  frequencyChip: { flex: 1, minHeight: 48, borderRadius: 20, backgroundColor: '#ece8e4', alignItems: 'center', justifyContent: 'center' },
-  frequencyChipActive: { backgroundColor: '#fff', ...stitchShadows.card },
+  frequencyChip: { flex: 1 },
   frequencyText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown },
-  frequencyTextActive: { color: stitchTheme.colors.primary },
-  saveButton: { marginTop: 26, minHeight: 90, borderRadius: 30, backgroundColor: stitchTheme.colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, ...stitchShadows.float },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
+  saveButton: { marginTop: 26 },
 });

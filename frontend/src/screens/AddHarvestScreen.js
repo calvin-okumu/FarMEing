@@ -20,6 +20,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
 const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
@@ -96,22 +97,12 @@ export default function AddHarvestScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
-              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('harvest.screen_title')}</Text>
-          </View>
-          <TouchableOpacity style={styles.langChip} onPress={toggleLanguage} activeOpacity={0.86}>
-            <Text style={styles.langChipText}>EN / SW</Text>
-          </TouchableOpacity>
-        </View>
+        <StitchTopBar title={t('harvest.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightLabel="EN / SW" />
 
-        <Text style={styles.displayTitle}>{t('harvest.entry_title')}</Text>
+        <StitchDisplayTitle>{t('harvest.entry_title')}</StitchDisplayTitle>
         <Text style={styles.subtitle}>{t('harvest.entry_subtitle')}</Text>
 
-        <Text style={styles.sectionHeading}>{t('harvest.crop_heading')}</Text>
+        <StitchSectionLabel>{t('harvest.crop_heading')}</StitchSectionLabel>
         <TextInput
           style={styles.field}
           value={crop}
@@ -120,7 +111,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           placeholderTextColor="#7a7b73"
         />
 
-        <Text style={styles.sectionHeading}>{t('harvest.quantity_heading')}</Text>
+        <StitchSectionLabel>{t('harvest.quantity_heading')}</StitchSectionLabel>
         <TextInput
           style={styles.quantityField}
           value={weight}
@@ -130,12 +121,12 @@ export default function AddHarvestScreen({ route, navigation }) {
           placeholderTextColor="#bcc7b6"
         />
 
-        <View style={styles.liveCard}>
+        <StitchSurface style={styles.liveCard}>
           <Text style={styles.liveLabel}>{t('harvest.live_total')}</Text>
           <Text style={styles.liveValue}>{liveTotal}</Text>
-        </View>
+        </StitchSurface>
 
-        <Text style={styles.sectionHeading}>{t('harvest.quality_heading')}</Text>
+        <StitchSectionLabel>{t('harvest.quality_heading')}</StitchSectionLabel>
         <View style={styles.qualityRow}>
           {QUALITIES.map((item) => {
             const active = quality === item;
@@ -153,24 +144,24 @@ export default function AddHarvestScreen({ route, navigation }) {
           })}
         </View>
 
-        <Text style={styles.sectionHeading}>{t('harvest.fields.unit')}</Text>
+        <StitchSectionLabel>{t('harvest.fields.unit')}</StitchSectionLabel>
         <View style={styles.unitRow}>
           {UNITS.map((item) => {
             const active = unit === item;
             return (
-              <TouchableOpacity
+              <StitchChip
                 key={item}
-                style={[styles.unitChip, active && styles.unitChipActive]}
+                style={styles.unitChip}
+                active={active}
                 onPress={() => setUnit(item)}
-                activeOpacity={0.88}
-              >
-                <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{t(`harvest.units.${item}`)}</Text>
-              </TouchableOpacity>
+                label={t(`harvest.units.${item}`)}
+                textStyle={styles.unitChipText}
+              />
             );
           })}
         </View>
 
-        <Text style={styles.sectionHeading}>{t('harvest.date_heading')}</Text>
+        <StitchSectionLabel>{t('harvest.date_heading')}</StitchSectionLabel>
         <TouchableOpacity style={styles.field} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
           <Text style={styles.fieldText}>{formatAppDate(date)}</Text>
           <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
@@ -203,12 +194,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           />
         </View>
 
-        <TouchableOpacity style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving} activeOpacity={0.9}>
-          {saving ? <ActivityIndicator color={stitchTheme.colors.primary} /> : <>
-            <Ionicons name="checkmark-circle" size={22} color={stitchTheme.colors.primary} />
-            <Text style={styles.saveButtonText}>{t('harvest.record')}</Text>
-          </>}
-        </TouchableOpacity>
+        <StitchPrimaryButton label={t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
 
         <Text style={styles.footerNote}>{t('harvest.footer_note')}</Text>
       </ScrollView>
@@ -220,19 +206,11 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: stitchTheme.colors.primary },
-  langChip: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 999 },
-  langChipText: { color: stitchTheme.colors.text, fontSize: 14, fontWeight: '700' },
-  displayTitle: { fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary },
   subtitle: { marginTop: 8, fontSize: 18, lineHeight: 28, color: stitchTheme.colors.text },
-  sectionHeading: { marginTop: 26, marginBottom: 12, fontSize: 16, fontWeight: '800', color: stitchTheme.colors.primary },
   field: { minHeight: 72, borderRadius: 24, backgroundColor: '#e6e3e0', paddingHorizontal: 22, justifyContent: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   fieldText: { fontSize: 18, fontWeight: '600', color: stitchTheme.colors.text },
   quantityField: { minHeight: 88, borderRadius: 28, backgroundColor: '#e6e3e0', paddingHorizontal: 24, fontSize: 32, fontWeight: '300', color: stitchTheme.colors.text },
-  liveCard: { marginTop: 18, minHeight: 88, borderRadius: 28, backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 24, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  liveCard: { marginTop: 18, minHeight: 88, paddingHorizontal: 24, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.primaryContainer },
   liveLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2.2, color: '#a9d89e' },
   liveValue: { fontSize: 24, fontWeight: '900', color: '#9ce58b' },
   qualityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
@@ -244,17 +222,13 @@ const styles = StyleSheet.create({
   qualityNote: { marginTop: 4, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', color: stitchTheme.colors.text },
   qualityNoteActive: { color: stitchTheme.colors.primary },
   unitRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  unitChip: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, backgroundColor: '#ebe7e3' },
-  unitChipActive: { backgroundColor: '#fff', ...stitchShadows.card },
+  unitChip: {},
   unitChipText: { color: stitchTheme.colors.accentBrown, fontWeight: '800', fontSize: 13 },
-  unitChipTextActive: { color: stitchTheme.colors.primary },
   notesCard: { marginTop: 28, borderRadius: 32, backgroundColor: '#f2efeb', padding: 18 },
   notesHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   notesIconWrap: { width: 42, height: 42, borderRadius: 21, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
   notesTitle: { fontSize: 18, fontWeight: '800', color: stitchTheme.colors.primary },
   notesInput: { minHeight: 120, fontSize: 16, lineHeight: 25, color: stitchTheme.colors.text, textAlignVertical: 'top' },
-  saveButton: { marginTop: 34, minHeight: 82, borderRadius: 30, backgroundColor: stitchTheme.colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, ...stitchShadows.float },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
+  saveButton: { marginTop: 34 },
   footerNote: { marginTop: 18, textAlign: 'center', fontSize: 12, fontWeight: '700', letterSpacing: 2.4, textTransform: 'uppercase', color: '#6f786b' },
 });

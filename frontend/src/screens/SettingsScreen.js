@@ -7,6 +7,7 @@ import useSyncStore from '../store/useSyncStore';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchChip, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 function DetailRow({ icon, title, subtitle, tint = '#eef1ec', iconColor = '#00450d', rightText }) {
   return (
@@ -51,19 +52,14 @@ export default function SettingsScreen({ navigation }) {
   return (
     <View style={styles.screen}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Dashboard')} activeOpacity={0.85}>
-              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('settings.heading')}</Text>
-          </View>
-          <TouchableOpacity style={styles.iconButton} onPress={() => changeLanguage(language === 'sw' ? 'en' : 'sw')} activeOpacity={0.85}>
-            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <StitchTopBar
+          title={t('settings.heading')}
+          onBack={() => navigation.navigate('Dashboard')}
+          onRightPress={() => changeLanguage(language === 'sw' ? 'en' : 'sw')}
+          rightIcon="language-outline"
+        />
 
-        <View style={styles.profileCard}>
+        <StitchSurface style={styles.profileCard}>
           <View style={styles.avatarShell}>
             <View style={styles.avatarCard}>
               <Ionicons name="person" size={42} color="#d7ffd1" />
@@ -80,10 +76,10 @@ export default function SettingsScreen({ navigation }) {
               <Text style={styles.planChipText}>{t('settings.premium_plan')}</Text>
             </View>
           </View>
-        </View>
+        </StitchSurface>
 
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>{t('settings.language_heading')}</Text>
+          <StitchSectionLabel style={styles.sectionTitleNoMargin}>{t('settings.language_heading')}</StitchSectionLabel>
           <Text style={styles.sectionHint}>{t('settings.preferred')}</Text>
         </View>
 
@@ -107,7 +103,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>{t('settings.account_details')}</Text>
+          <StitchSectionLabel style={styles.sectionTitleNoMargin}>{t('settings.account_details')}</StitchSectionLabel>
           <View style={styles.listCardStack}>
             <DetailRow
               icon="notifications"
@@ -142,14 +138,14 @@ export default function SettingsScreen({ navigation }) {
 
         <View style={styles.currencySection}>
           {SUPPORTED_CURRENCIES.map((code) => (
-            <TouchableOpacity
+            <StitchChip
               key={code}
-              style={[styles.currencyChip, currency === code && styles.currencyChipActive]}
+              style={styles.currencyChip}
+              active={currency === code}
               onPress={() => setCurrency(code)}
-              activeOpacity={0.9}
-            >
-              <Text style={[styles.currencyChipText, currency === code && styles.currencyChipTextActive]}>{code}</Text>
-            </TouchableOpacity>
+              label={code}
+              textStyle={styles.currencyChipText}
+            />
           ))}
         </View>
 
@@ -178,40 +174,10 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 132,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '800',
-    color: stitchTheme.colors.primary,
-  },
   profileCard: {
     flexDirection: 'row',
     gap: 18,
-    backgroundColor: '#fff',
-    borderRadius: 32,
-    padding: 18,
     marginBottom: 34,
-    ...stitchShadows.card,
   },
   avatarShell: {
     position: 'relative',
@@ -280,11 +246,9 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   sectionTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-    color: stitchTheme.colors.primary,
+    marginBottom: 0,
   },
+  sectionTitleNoMargin: { marginBottom: 0 },
   sectionHint: {
     fontSize: 12,
     fontWeight: '700',
@@ -367,24 +331,10 @@ const styles = StyleSheet.create({
     marginTop: 18,
     flexWrap: 'wrap',
   },
-  currencyChip: {
-    minWidth: 88,
-    borderRadius: 18,
-    backgroundColor: '#ece8e4',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  currencyChipActive: {
-    backgroundColor: stitchTheme.colors.primarySoft,
-  },
   currencyChipText: {
     fontSize: 14,
     fontWeight: '800',
     color: stitchTheme.colors.accentBrown,
-  },
-  currencyChipTextActive: {
-    color: stitchTheme.colors.primary,
   },
   logoutButton: {
     minHeight: 70,

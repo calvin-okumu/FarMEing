@@ -24,6 +24,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 const ACTIVITIES = [
   { key: 'planting', icon: 'leaf-outline' },
@@ -162,20 +163,12 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
-            <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('labor.screen_title')}</Text>
-          <TouchableOpacity style={styles.headerIcon} onPress={toggleLanguage} activeOpacity={0.86}>
-            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <StitchTopBar title={t('labor.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
 
-        <Text style={styles.displayTitle}>{t('labor.entry_title')}</Text>
+        <StitchDisplayTitle>{t('labor.entry_title')}</StitchDisplayTitle>
         <Text style={styles.subtitle}>{t('labor.entry_subtitle')}</Text>
 
-        <Text style={styles.sectionEyebrow}>{t('labor.select_task')}</Text>
+        <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
         <View style={styles.taskGrid}>
           {ACTIVITIES.map((item) => {
             const active = activity === item.key;
@@ -194,7 +187,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           })}
         </View>
 
-        <Text style={styles.sectionEyebrow}>{t('labor.employee')}</Text>
+        <StitchSectionLabel>{t('labor.employee')}</StitchSectionLabel>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.employeeRow}>
           {employees.length === 0 ? (
             <TouchableOpacity style={styles.employeeEmpty} onPress={() => navigation.navigate('Employees')} activeOpacity={0.88}>
@@ -215,7 +208,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           })}
         </ScrollView>
 
-        <Text style={styles.sectionEyebrow}>{t('labor.hours_counter')}</Text>
+        <StitchSectionLabel>{t('labor.hours_counter')}</StitchSectionLabel>
         <View style={styles.counterCard}>
           <TouchableOpacity style={styles.counterButton} onPress={() => adjustHours(-1)} activeOpacity={0.88}>
             <Ionicons name="remove" size={24} color={stitchTheme.colors.text} />
@@ -231,7 +224,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <View style={styles.fieldRow}>
           <View style={styles.fieldHalf}>
-            <Text style={styles.sectionEyebrow}>{t('labor.days_worked')}</Text>
+            <StitchSectionLabel style={styles.fieldLabel}>{t('labor.days_worked')}</StitchSectionLabel>
             <TextInput
               style={styles.fieldInput}
               value={daysWorked}
@@ -242,7 +235,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.fieldHalf}>
-            <Text style={styles.sectionEyebrow}>{t('labor.rate_day')}</Text>
+            <StitchSectionLabel style={styles.fieldLabel}>{t('labor.rate_day')}</StitchSectionLabel>
             <TextInput
               style={styles.fieldInput}
               value={ratePerDay}
@@ -254,7 +247,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </View>
 
-        <Text style={styles.sectionEyebrow}>{t('common.date')}</Text>
+        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
         <TouchableOpacity style={styles.dateField} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
           <Text style={styles.dateFieldText}>{formatAppDate(date)}</Text>
           <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
@@ -270,7 +263,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         ) : null}
 
         <View style={styles.sectionInline}>
-          <Text style={styles.sectionEyebrow}>{t('common.recurring')}</Text>
+          <StitchSectionLabel style={styles.sectionInlineLabel}>{t('common.recurring')}</StitchSectionLabel>
           <TouchableOpacity style={[styles.switchTrack, isRecurring && styles.switchTrackActive]} onPress={() => setIsRecurring((value) => !value)} activeOpacity={0.9}>
             <View style={[styles.switchKnob, isRecurring && styles.switchKnobActive]} />
           </TouchableOpacity>
@@ -281,20 +274,20 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             {FREQUENCIES.map((item) => {
               const active = frequency === item;
               return (
-                <TouchableOpacity
+                <StitchChip
                   key={item}
-                  style={[styles.frequencyChip, active && styles.frequencyChipActive]}
+                  style={styles.frequencyChip}
+                  active={active}
                   onPress={() => setFrequency(item)}
-                  activeOpacity={0.88}
-                >
-                  <Text style={[styles.frequencyText, active && styles.frequencyTextActive]}>{t(`common.frequencies.${item}`)}</Text>
-                </TouchableOpacity>
+                  label={t(`common.frequencies.${item}`)}
+                  textStyle={styles.frequencyText}
+                />
               );
             })}
           </View>
         ) : null}
 
-        <Text style={styles.sectionEyebrow}>{t('labor.evidence_heading')}</Text>
+        <StitchSectionLabel>{t('labor.evidence_heading')}</StitchSectionLabel>
         <TouchableOpacity style={styles.photoPanel} onPress={photo ? () => setPhoto(null) : takePhoto} activeOpacity={0.92}>
           {photo ? <Image source={{ uri: photo }} style={styles.photoBackground} /> : null}
           <View style={styles.photoOverlay}>
@@ -306,7 +299,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.sectionEyebrow}>{t('common.notes')}</Text>
+        <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
         <TextInput
           style={styles.notesField}
           value={notes}
@@ -322,12 +315,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
-        <TouchableOpacity style={[styles.submitButton, saving && styles.submitButtonDisabled]} onPress={handleSave} disabled={saving} activeOpacity={0.9}>
-          {saving ? <ActivityIndicator color={stitchTheme.colors.primarySoft} /> : <>
-            <Text style={styles.submitButtonText}>{t('labor.submit')}</Text>
-            <Ionicons name="arrow-forward" size={24} color={stitchTheme.colors.primarySoft} />
-          </>}
-        </TouchableOpacity>
+        <StitchPrimaryButton label={t('labor.submit')} onPress={handleSave} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -338,12 +326,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 26 },
-  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: stitchTheme.colors.primary },
-  displayTitle: { fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary },
   subtitle: { marginTop: 8, fontSize: 18, lineHeight: 28, color: stitchTheme.colors.accentBrown, fontStyle: 'italic' },
-  sectionEyebrow: { marginTop: 28, marginBottom: 14, fontSize: 12, fontWeight: '800', letterSpacing: 2.2, textTransform: 'uppercase', color: stitchTheme.colors.text },
   taskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   taskCard: { width: '47.5%', minHeight: 150, borderRadius: 30, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, ...stitchShadows.card },
   taskCardActive: { backgroundColor: '#f3fff0' },
@@ -364,19 +347,19 @@ const styles = StyleSheet.create({
   counterLabel: { marginTop: 4, fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase', color: stitchTheme.colors.accentBrown },
   fieldRow: { flexDirection: 'row', gap: 12 },
   fieldHalf: { flex: 1 },
+  fieldLabel: { fontSize: 12, marginBottom: 8 },
   fieldInput: { minHeight: 70, borderRadius: 24, backgroundColor: '#e4e1de', paddingHorizontal: 20, fontSize: 18, fontWeight: '600', color: stitchTheme.colors.text },
   dateField: { minHeight: 70, borderRadius: 24, backgroundColor: '#e4e1de', paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dateFieldText: { fontSize: 18, fontWeight: '600', color: stitchTheme.colors.text },
   sectionInline: { marginTop: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionInlineLabel: { marginBottom: 0 },
   switchTrack: { width: 58, height: 32, borderRadius: 20, backgroundColor: '#ddd8d2', padding: 3 },
   switchTrackActive: { backgroundColor: stitchTheme.colors.primarySoft },
   switchKnob: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff' },
   switchKnobActive: { alignSelf: 'flex-end' },
   frequencyRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  frequencyChip: { flex: 1, minHeight: 46, borderRadius: 18, backgroundColor: '#ebe6e1', alignItems: 'center', justifyContent: 'center' },
-  frequencyChipActive: { backgroundColor: '#fff', ...stitchShadows.card },
+  frequencyChip: { flex: 1 },
   frequencyText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown },
-  frequencyTextActive: { color: stitchTheme.colors.primary },
   photoPanel: { marginTop: 8, minHeight: 248, borderRadius: 34, overflow: 'hidden', backgroundColor: '#d9ddd6' },
   photoBackground: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'cover' },
   photoOverlay: { flex: 1, backgroundColor: 'rgba(248,247,242,0.72)', alignItems: 'center', justifyContent: 'center', padding: 18 },
@@ -387,7 +370,5 @@ const styles = StyleSheet.create({
   totalCard: { marginTop: 20, borderRadius: 26, backgroundColor: '#f3efe8', paddingHorizontal: 20, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalLabel: { fontSize: 16, fontWeight: '800', color: stitchTheme.colors.accentBrown },
   totalValue: { fontSize: 20, fontWeight: '900', color: stitchTheme.colors.primary },
-  submitButton: { marginTop: 30, minHeight: 70, borderRadius: 28, backgroundColor: stitchTheme.colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, ...stitchShadows.float },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: stitchTheme.colors.primarySoft, fontSize: 18, fontWeight: '900' },
+  submitButton: { marginTop: 30 },
 });
