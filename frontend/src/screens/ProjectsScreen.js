@@ -25,30 +25,7 @@ import useAuthStore  from '../store/useAuthStore';
 import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-
-function TrendBars({ values }) {
-  const maxValue = Math.max(...values, 1);
-
-  return (
-    <View style={styles.trendRow}>
-      {values.map((value, index) => {
-        const active = index === values.length - 1 || value === maxValue;
-        return (
-          <View
-            key={`${value}-${index}`}
-            style={[
-              styles.trendBar,
-              {
-                height: `${Math.max(24, (value / maxValue) * 100)}%`,
-                backgroundColor: active ? stitchTheme.colors.primaryContainer : '#dfe7db',
-              },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
+import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
 
 export default function ProjectsScreen({ navigation }) {
   const { t } = useTranslation();
@@ -249,7 +226,7 @@ export default function ProjectsScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            <View style={styles.heroCard}>
+            <StitchSurface style={styles.heroCard}>
               <View style={styles.heroTopRow}>
                 <View>
                   <Text style={styles.heroEyebrow}>{t('projects.title')}</Text>
@@ -260,8 +237,8 @@ export default function ProjectsScreen({ navigation }) {
                   <Ionicons name="leaf" size={22} color={stitchTheme.colors.primary} />
                 </View>
               </View>
-              <TrendBars values={projects.slice(0, 6).map((project, index) => (project.landSize || 1) + index)} />
-            </View>
+              <StitchMiniBars values={projects.slice(0, 6).map((project, index) => (project.landSize || 1) + index)} activeIndex={5} softIndex={2} style={styles.trendRow} />
+            </StitchSurface>
           }
           refreshControl={
             <RefreshControl
@@ -302,7 +279,7 @@ export default function ProjectsScreen({ navigation }) {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.inputLabel}>{t('projects.fields.name')} *</Text>
+                 <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
                 <TextInput
                   style={styles.input}
                   value={formData.name}
@@ -311,7 +288,7 @@ export default function ProjectsScreen({ navigation }) {
                   placeholderTextColor="#8a9388"
                 />
 
-                <Text style={styles.inputLabel}>{t('projects.fields.crop')}</Text>
+                 <StitchSectionLabel>{t('projects.fields.crop')}</StitchSectionLabel>
                 <TextInput
                   style={styles.input}
                   value={formData.crop}
@@ -322,7 +299,7 @@ export default function ProjectsScreen({ navigation }) {
 
                 <View style={styles.row}>
                   <View style={styles.halfInput}>
-                    <Text style={styles.inputLabel}>{t('projects.fields.land_size')}</Text>
+                     <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionLabel>
                     <TextInput
                       style={styles.input}
                       value={formData.landSize}
@@ -333,7 +310,7 @@ export default function ProjectsScreen({ navigation }) {
                     />
                   </View>
                   <View style={styles.halfInput}>
-                    <Text style={styles.inputLabel}>{t('projects.fields.unit')}</Text>
+                     <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionLabel>
                     <TextInput
                       style={styles.input}
                       value={formData.landUnit}
@@ -344,7 +321,7 @@ export default function ProjectsScreen({ navigation }) {
                   </View>
                 </View>
 
-                <Text style={styles.inputLabel}>{t('projects.fields.expected_yield')}</Text>
+                 <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
                 <TextInput
                   style={styles.input}
                   value={formData.expectedYield}
@@ -354,7 +331,7 @@ export default function ProjectsScreen({ navigation }) {
                   keyboardType="numeric"
                 />
 
-                <Text style={styles.inputLabel}>{t('projects.fields.start_date')}</Text>
+                 <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
                 <TouchableOpacity 
                   style={styles.dateSelector} 
                   onPress={() => setShowDatePicker(true)}
@@ -374,17 +351,7 @@ export default function ProjectsScreen({ navigation }) {
                   />
                 )}
 
-                <TouchableOpacity
-                  style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-                  onPress={handleCreate}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>{t('projects.create_project')}</Text>
-                  )}
-                </TouchableOpacity>
+                <StitchPrimaryButton label={t('projects.create_project')} onPress={handleCreate} disabled={saving} loading={saving} icon="add-circle" style={styles.saveButton} />
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
@@ -398,14 +365,13 @@ const styles = StyleSheet.create({
   container:     { flex: 1, backgroundColor: stitchTheme.colors.background },
   center:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   list:          { padding: 20, gap: 14, paddingBottom: 120 },
-  heroCard:      { backgroundColor: '#fff', borderRadius: 32, padding: 22, marginBottom: 16, ...stitchShadows.card },
+  heroCard:      { marginBottom: 16 },
   heroTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   heroEyebrow:   { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
   heroValue:     { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
   heroSubtext:   { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4 },
   heroBadge:     { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  trendRow:      { height: 92, flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 },
-  trendBar:      { flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: 20 },
+  trendRow:      { marginTop: 18 },
   card:          { backgroundColor: '#fff', borderRadius: 28, padding: 20, ...stitchShadows.card },
   cardHeader:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   cardTitle:     { fontSize: 20, fontWeight: '800', color: stitchTheme.colors.text, flex: 1 },
@@ -469,15 +435,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: stitchTheme.colors.primary,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: stitchTheme.colors.accentBrown,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-    marginTop: 12,
-  },
+  compactLabel: { fontSize: 12 },
   input: {
     borderRadius: 22,
     padding: 16,
@@ -505,21 +463,5 @@ const styles = StyleSheet.create({
   halfInput: {
     flex: 1,
   },
-  saveButton: {
-    backgroundColor: stitchTheme.colors.primarySoft,
-    borderRadius: 28,
-    padding: 18,
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 20,
-    ...stitchShadows.float,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: stitchTheme.colors.primary,
-    fontSize: 18,
-    fontWeight: '900',
-  },
+  saveButton: { marginTop: 24, marginBottom: 20 },
 });

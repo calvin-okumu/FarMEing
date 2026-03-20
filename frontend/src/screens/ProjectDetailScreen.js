@@ -16,6 +16,7 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'timeline'];
 
@@ -259,22 +260,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
   return (
     <View style={styles.screen}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
-              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{project.name}</Text>
-          </View>
-          <TouchableOpacity style={styles.headerIcon} onPress={() => setActiveTab('timeline')} activeOpacity={0.86}>
-            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <StitchTopBar title={project.name} onBack={() => navigation.goBack()} onRightPress={() => setActiveTab('timeline')} rightIcon="time-outline" />
 
-        <Text style={styles.headerEyebrow}>{t('timeline.project_activity')}</Text>
-        <Text style={styles.headerDisplay}>{activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}</Text>
+        <StitchEyebrow>{t('timeline.project_activity')}</StitchEyebrow>
+        <StitchDisplayTitle>{activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}</StitchDisplayTitle>
 
-        <View style={styles.heroCard}>
+        <StitchSurface style={styles.heroCard}>
           <View style={styles.heroRow}>
             <Text style={styles.heroMeta}>{project.crop} • {project.landSize} {project.landUnit}</Text>
             <View style={[styles.heroStatus, project.status === 'ACTIVE' ? styles.heroStatusActive : styles.heroStatusMuted]}>
@@ -290,15 +281,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={[styles.progressBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && styles.progressBarFillDanger]} />
           </View>
           <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.spent')}</Text>
-        </View>
+        </StitchSurface>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TAB_ORDER.map((tab) => {
             const active = activeTab === tab;
             return (
-              <TouchableOpacity key={tab} style={[styles.tabChip, active && styles.tabChipActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.88}>
-                <Text style={[styles.tabChipText, active && styles.tabChipTextActive]}>{t(`projects.tabs.${tab}`)}</Text>
-              </TouchableOpacity>
+              <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={active} onPress={() => setActiveTab(tab)} />
             );
           })}
         </ScrollView>
@@ -351,13 +340,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: stitchTheme.colors.textMuted, marginBottom: 16 },
   backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
   backButtonText: { color: '#fff', fontWeight: '700' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, fontSize: 28, fontWeight: '800', color: stitchTheme.colors.primary },
-  headerEyebrow: { fontSize: 16, color: stitchTheme.colors.accentBrown, marginBottom: 6 },
-  headerDisplay: { fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: 22 },
-  heroCard: { backgroundColor: '#fff', borderRadius: 32, padding: 22, ...stitchShadows.card },
+  heroCard: {},
   heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   heroMeta: { fontSize: 15, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
   heroStatus: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
@@ -377,10 +360,6 @@ const styles = StyleSheet.create({
   progressBarFillDanger: { backgroundColor: '#9c1111' },
   progressText: { marginTop: 8, fontSize: 12, color: stitchTheme.colors.textMuted, textAlign: 'right' },
   tabsRow: { gap: 10, paddingVertical: 22 },
-  tabChip: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999, backgroundColor: '#ece8e4' },
-  tabChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
-  tabChipText: { color: stitchTheme.colors.accentBrown, fontWeight: '700' },
-  tabChipTextActive: { color: stitchTheme.colors.primary },
   collectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 12, ...stitchShadows.card },
   collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   collectionTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },

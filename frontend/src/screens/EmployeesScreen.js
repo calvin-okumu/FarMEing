@@ -24,27 +24,7 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-
-function PayrollBars({ values }) {
-  const maxValue = Math.max(...values, 1);
-
-  return (
-    <View style={styles.payrollBars}>
-      {values.map((value, index) => (
-        <View
-          key={`${value}-${index}`}
-          style={[
-            styles.payrollBar,
-            {
-              height: `${Math.max(24, (value / maxValue) * 100)}%`,
-              backgroundColor: index === 1 ? stitchTheme.colors.primarySoft : index === values.length - 1 ? stitchTheme.colors.primaryContainer : '#e6e2de',
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
+import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
 
 export default function EmployeesScreen({ navigation }) {
   const { t } = useTranslation();
@@ -265,7 +245,7 @@ export default function EmployeesScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            <View style={styles.heroCard}>
+            <StitchSurface style={styles.heroCard}>
               <View style={styles.heroTopRow}>
                 <View>
                   <Text style={styles.heroEyebrow}>{t('tab.workers')}</Text>
@@ -276,8 +256,8 @@ export default function EmployeesScreen({ navigation }) {
                   <Ionicons name="people" size={22} color={stitchTheme.colors.primary} />
                 </View>
               </View>
-              <PayrollBars values={employees.slice(0, 5).map((item, index) => Math.max(1, item.totalEarned || item.totalPaid || index + 1))} />
-            </View>
+              <StitchMiniBars values={employees.slice(0, 5).map((item, index) => Math.max(1, item.totalEarned || item.totalPaid || index + 1))} activeIndex={4} softIndex={1} style={styles.payrollBars} />
+            </StitchSurface>
           }
           refreshControl={
             <RefreshControl
@@ -315,7 +295,7 @@ export default function EmployeesScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-               <Text style={styles.inputLabel}>{t('employees.fields.name')} *</Text>
+               <StitchSectionLabel>{t('employees.fields.name')} *</StitchSectionLabel>
               <TextInput
                 style={styles.input}
                 value={formData.name}
@@ -324,7 +304,7 @@ export default function EmployeesScreen({ navigation }) {
                 placeholderTextColor="#8a9388"
               />
 
-               <Text style={styles.inputLabel}>{t('employees.fields.phone')}</Text>
+               <StitchSectionLabel>{t('employees.fields.phone')}</StitchSectionLabel>
               <TextInput
                 style={styles.input}
                 value={formData.phone}
@@ -334,7 +314,7 @@ export default function EmployeesScreen({ navigation }) {
                 keyboardType="phone-pad"
               />
 
-               <Text style={styles.inputLabel}>{t('employees.fields.role')}</Text>
+               <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
               <TextInput
                 style={styles.input}
                 value={formData.role}
@@ -343,17 +323,7 @@ export default function EmployeesScreen({ navigation }) {
                 placeholderTextColor="#8a9388"
               />
 
-              <TouchableOpacity
-                style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-                onPress={handleCreate}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                   <Text style={styles.saveButtonText}>{t('employees.add_employee')}</Text>
-                )}
-              </TouchableOpacity>
+              <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleCreate} disabled={saving} loading={saving} icon="person-add" style={styles.saveButton} />
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -366,14 +336,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   list: { padding: 20, gap: 14, paddingBottom: 120 },
-  heroCard: { backgroundColor: '#fff', borderRadius: 32, padding: 22, marginBottom: 16, ...stitchShadows.card },
+  heroCard: { marginBottom: 16 },
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   heroEyebrow: { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
   heroValue: { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
   heroSubtext: { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4, maxWidth: 220 },
   heroBadge: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  payrollBars: { height: 88, flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 },
-  payrollBar: { flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, minHeight: 20 },
+  payrollBars: { marginTop: 18 },
   card: { backgroundColor: '#fff', borderRadius: 28, padding: 18, ...stitchShadows.card },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center' },
@@ -416,11 +385,8 @@ const styles = StyleSheet.create({
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
-  inputLabel: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
   input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
-  saveButton: { backgroundColor: stitchTheme.colors.primarySoft, borderRadius: 28, padding: 18, alignItems: 'center', marginTop: 24, ...stitchShadows.float },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
+  saveButton: { marginTop: 24 },
   balanceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#f0ece7' },
   balanceInfo: { flexDirection: 'row', gap: 12 },
   balanceLabel: { fontSize: 11, color: stitchTheme.colors.textMuted, fontWeight: '700' },

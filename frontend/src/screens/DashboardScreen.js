@@ -18,34 +18,7 @@ import useAuthStore from '../store/useAuthStore';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-
-function MiniBarChart({ values }) {
-  const maxValue = Math.max(...values, 1);
-
-  return (
-    <View style={styles.chartRow}>
-      {values.map((value, index) => {
-        const active = value === maxValue || index === 2;
-        return (
-          <View
-            key={`${value}-${index}`}
-            style={[
-              styles.chartBar,
-              {
-                height: `${Math.max(22, (value / maxValue) * 100)}%`,
-                backgroundColor: active
-                  ? index === 2
-                    ? stitchTheme.colors.primarySoft
-                    : stitchTheme.colors.primaryContainer
-                  : '#e9e5e1',
-              },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
+import { StitchChip, StitchDisplayTitle, StitchMiniBars, StitchTopBar } from '../components/ui/StitchPrimitives';
 
 function MetricCard({ label, value, icon, tone, progressLabel, progressValue }) {
   const toneStyles = {
@@ -291,22 +264,7 @@ export default function DashboardScreen({ navigation }) {
         }
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.85} onPress={() => navigation.navigate('Projects')}>
-              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('dashboard.title')}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.languageChip} onPress={toggleLanguage} activeOpacity={0.85}>
-              <Text style={styles.languageChipText}>EN | SW</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconButton} onPress={toggleLanguage} activeOpacity={0.85}>
-              <Ionicons name="language-outline" size={20} color={stitchTheme.colors.primary} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <StitchTopBar title={t('dashboard.title')} onBack={() => navigation.navigate('Projects')} rightLabel="EN | SW" onRightPress={toggleLanguage} />
 
         <TouchableOpacity style={styles.selector} onPress={() => setDropdownVisible((value) => !value)} activeOpacity={0.9}>
           <View>
@@ -355,7 +313,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
 
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>{t('dashboard.weather_alerts')}</Text>
+              <StitchDisplayTitle>{t('dashboard.weather_alerts')}</StitchDisplayTitle>
               <View style={styles.weatherCard}>
                 <View style={styles.weatherIconWrap}>
                   <Ionicons name={weatherTone === 'warning' ? 'rainy' : 'partly-sunny'} size={28} color="#fff" />
@@ -440,10 +398,8 @@ export default function DashboardScreen({ navigation }) {
 
             <View style={styles.sectionBlock}>
               <View style={styles.forecastHeadingRow}>
-                <Text style={styles.sectionTitle}>{t('weather.five_day_title')}</Text>
-                <View style={styles.weeklyChip}>
-                  <Text style={styles.weeklyChipText}>{t('weather.weekly_view')}</Text>
-                </View>
+                <StitchDisplayTitle>{t('weather.five_day_title')}</StitchDisplayTitle>
+                <StitchChip label={t('weather.weekly_view')} active />
               </View>
               <View style={styles.forecastList}>
                 {weatherForecast.map((item) => <ForecastRow key={item.short} item={item} />)}
@@ -475,11 +431,11 @@ export default function DashboardScreen({ navigation }) {
                 <Ionicons name="trending-up" size={14} color={stitchTheme.colors.primary} />
                 <Text style={styles.harvestTrendText}>{t('dashboard.harvest_trend')}</Text>
               </View>
-              <MiniBarChart values={chartValues} />
+              <StitchMiniBars values={chartValues} activeIndex={3} softIndex={2} style={styles.chartRow} />
             </View>
 
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>{t('dashboard.key_updates')}</Text>
+              <StitchDisplayTitle>{t('dashboard.key_updates')}</StitchDisplayTitle>
               <View style={styles.infoCard}>
                 <View style={styles.infoIconWrap}>
                   <Ionicons name="leaf" size={18} color={stitchTheme.colors.primarySoft} />
