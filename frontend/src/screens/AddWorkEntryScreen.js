@@ -27,6 +27,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchTopBar } from '../components/ui/StitchPrimitives';
 import { createWorkEntry, updateWorkEntry } from '../services/workEntryService';
 import { updateLocalModel } from '../utils/resourceMutations';
+import StatusBanner from '../components/ui/StatusBanner';
 
 const ACTIVITIES = [
   { key: 'planting', icon: 'leaf-outline' },
@@ -57,6 +58,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   const [frequency, setFrequency] = useState('weekly');
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState(null);
+  const [banner, setBanner] = useState(null);
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -135,6 +137,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
     }
 
     setSaving(true);
+    setBanner(null);
     try {
       await database.write(async () => {
         if (itemId) {
@@ -167,6 +170,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             draft.frequency = isRecurring ? frequency.toUpperCase() : null;
             draft.notes = notes.trim();
           }, record.remoteId);
+          setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
           let remoteWorkEntry = null;
           try {
@@ -210,12 +214,16 @@ export default function AddWorkEntryScreen({ route, navigation }) {
               markRecordSynced(record, remoteWorkEntry.id);
             }
           });
+          setBanner(remoteWorkEntry?.id
+            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
+            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
+      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('labor.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('labor.errors.save_local'));
     } finally {
       setSaving(false);
@@ -241,6 +249,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <StitchDisplayTitle>{itemId ? t('labor.edit_title') : t('labor.entry_title')}</StitchDisplayTitle>
         <Text style={styles.subtitle}>{t('labor.entry_subtitle')}</Text>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
         <View style={styles.taskGrid}>
@@ -400,6 +409,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
+  banner: { marginTop: 14 },
   subtitle: { marginTop: 8, fontSize: 18, lineHeight: 28, color: stitchTheme.colors.accentBrown, fontStyle: 'italic' },
   taskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   taskCard: { width: '47.5%', minHeight: 150, borderRadius: 30, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, ...stitchShadows.card },

@@ -25,6 +25,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import { createExpense, updateExpense } from '../services/expenseService';
 import { updateLocalModel } from '../utils/resourceMutations';
+import StatusBanner from '../components/ui/StatusBanner';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -53,6 +54,7 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState(null);
 
   const draftId = useMemo(() => `#TRX-${String(date.getTime()).slice(-4)}`, [date]);
 
@@ -109,6 +111,7 @@ export default function AddExpenseScreen({ route, navigation }) {
     }
 
     setSaving(true);
+    setBanner(null);
     try {
       await database.write(async () => {
         if (itemId) {
@@ -132,6 +135,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.note = note.trim();
             draft.receiptUrl = photo || '';
           }, record.remoteId);
+          setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
           let remoteExpense = null;
           try {
@@ -157,12 +161,16 @@ export default function AddExpenseScreen({ route, navigation }) {
               markRecordSynced(record, remoteExpense.id);
             }
           });
+          setBanner(remoteExpense?.id
+            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
+            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
+      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('expenses.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('expenses.errors.save_local'));
     } finally {
       setSaving(false);
@@ -196,6 +204,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             />
           </View>
         </StitchSurface>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('expenses.category_heading')}</StitchSectionLabel>
         <View style={styles.categoryGrid}>
@@ -333,6 +342,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  banner: { marginTop: 14 },
   accentLine: { width: 72, height: 6, borderRadius: 999, backgroundColor: stitchTheme.colors.primarySoft, marginTop: 18, marginBottom: 28 },
   amountCard: { padding: 26 },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

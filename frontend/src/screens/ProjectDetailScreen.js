@@ -21,6 +21,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
+import StatusBanner from '../components/ui/StatusBanner';
 import { deleteBudgetItem } from '../services/budgetService';
 import { deleteExpense } from '../services/expenseService';
 import { deleteWorkEntry } from '../services/workEntryService';
@@ -131,6 +132,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState('latest');
+  const [banner, setBanner] = useState(null);
 
   const remoteProjectId = project?.remoteId || null;
 
@@ -530,7 +532,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
         }
       });
       setDeleteTarget(null);
+      setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
     } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
       Alert.alert(t('common.error'), error.message || t('common.error'));
     }
   };
@@ -547,6 +551,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           draft.updatedAt = Date.now();
         });
       });
+      setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
       if (project?.remoteId) {
         const [employeeData, activityData] = await Promise.all([
           workEntriesByEmployee(project.remoteId).catch(() => ({ byEmployee: [] })),
@@ -556,6 +561,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         setLaborByActivity(activityData.byActivity || []);
       }
     } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
       Alert.alert(t('common.error'), error.message || t('common.error'));
     }
   };
@@ -629,6 +635,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         <StitchEyebrow>{t('timeline.project_activity')}</StitchEyebrow>
         <StitchDisplayTitle>{activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}</StitchDisplayTitle>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.heroCard}>
           <View style={styles.heroRow}>
@@ -755,6 +762,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 40 },
+  banner: { marginTop: 14 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
   errorText: { fontSize: 16, color: stitchTheme.colors.textMuted, marginBottom: 16 },
   backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },

@@ -19,6 +19,7 @@ import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface,
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import StatusBanner from '../components/ui/StatusBanner';
 import {
   useCreateInventoryMutation,
   useDeleteInventoryMutation,
@@ -51,6 +52,7 @@ export default function InventoryScreen({ route, navigation }) {
   const [editingItem, setEditingItem] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [banner, setBanner] = useState(null);
 
   const inventoryItems = data?.inventoryItems || [];
   const grandTotalCost = data?.grandTotalCost || 0;
@@ -83,16 +85,20 @@ export default function InventoryScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     try {
+      setBanner(null);
       const values = { ...formData, projectId };
       if (editingItem) {
         await updateMutation.mutateAsync({ id: editingItem.id, values });
+        setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
       } else {
         await createMutation.mutateAsync(values);
+        setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
       }
       setModalVisible(false);
       setEditingItem(null);
       setFormData(DEFAULT_FORM);
     } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
     }
   };
@@ -135,6 +141,7 @@ export default function InventoryScreen({ route, navigation }) {
               <Text style={styles.heroValue}>{formatCurrency(grandTotalCost, currency)}</Text>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={1} style={styles.chartWrap} />
             </StitchSurface>
+            <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
           </>
         }
@@ -204,7 +211,9 @@ export default function InventoryScreen({ route, navigation }) {
           try {
             await deleteMutation.mutateAsync(deleteTarget.id);
             setDeleteTarget(null);
+            setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
           } catch (error) {
+            setBanner({ tone: 'error', title: t('common.error'), message: error.message });
             Alert.alert(t('common.error'), error.message);
           }
         }}

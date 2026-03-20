@@ -551,5 +551,14 @@
     "sort_latest": "Mpya",
     "sort_amount": "Kiasi",
     "syncing": "Inasawazisha..."
+  },
+  "feedback": {
+    "created": "Imeundwa",
+    "updated": "Imehaririwa",
+    "deleted": "Imefutwa",
+    "saved_remote": "Imehifadhiwa kwenye seva na kusawazishwa ndani ya kifaa.",
+    "deleted_remote": "Imefutwa kwenye seva na kuondolewa ndani ya kifaa.",
+    "saved_local_title": "Imehifadhiwa Ndani ya Kifaa",
+    "saved_local_body": "Imehifadhiwa kwenye kifaa hiki. Itasawazishwa mara tu mtandao utakapopatikana."
   }
 }

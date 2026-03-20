@@ -18,6 +18,7 @@ import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { createBudgetItem, updateBudgetItem } from '../services/budgetService';
 import { updateLocalModel } from '../utils/resourceMutations';
+import StatusBanner from '../components/ui/StatusBanner';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
   StitchChip,
@@ -42,6 +43,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const [unit, setUnit] = useState('kg');
   const [unitPrice, setUnitPrice] = useState('');
   const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState(null);
 
   useEffect(() => {
     if (!itemId) return;
@@ -68,6 +70,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
     }
 
     setSaving(true);
+    setBanner(null);
     try {
       await database.write(async () => {
         if (itemId) {
@@ -88,6 +91,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             draft.unit = unit.trim();
             draft.unitPrice = parseFloat(unitPrice);
           }, record.remoteId);
+          setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
           let remoteItem = null;
           try {
@@ -110,12 +114,16 @@ export default function AddBudgetItemScreen({ route, navigation }) {
               markRecordSynced(record, remoteItem.id);
             }
           });
+          setBanner(remoteItem?.id
+            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
+            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
+      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('budget.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('budget.errors.save_local'));
     } finally {
       setSaving(false);
@@ -142,6 +150,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           </View>
           <StitchMiniBars values={bars} activeIndex={3} softIndex={1} style={{ marginTop: 18 }} />
         </StitchSurface>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('budget.fields.category')}</StitchSectionLabel>
         <View style={styles.chipsRow}>
@@ -211,6 +220,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
   heroSurface: { marginTop: 22 },
+  banner: { marginTop: 14 },
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   heroAmountLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: '800' },
   heroAmount: { marginTop: 10, fontSize: 38, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },

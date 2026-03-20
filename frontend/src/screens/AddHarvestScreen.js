@@ -23,6 +23,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import { createHarvest, updateHarvest } from '../services/harvestService';
 import { updateLocalModel } from '../utils/resourceMutations';
+import StatusBanner from '../components/ui/StatusBanner';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
 const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
@@ -39,6 +40,7 @@ export default function AddHarvestScreen({ route, navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState(null);
 
   const liveTotal = useMemo(() => {
     const value = parseFloat(weight);
@@ -80,6 +82,7 @@ export default function AddHarvestScreen({ route, navigation }) {
     }
 
     setSaving(true);
+    setBanner(null);
     try {
       await database.write(async () => {
         if (itemId) {
@@ -102,6 +105,7 @@ export default function AddHarvestScreen({ route, navigation }) {
             draft.date = date.getTime();
             draft.notes = notes.trim();
           }, record.remoteId);
+          setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
           let remoteHarvest = null;
           try {
@@ -125,12 +129,16 @@ export default function AddHarvestScreen({ route, navigation }) {
               markRecordSynced(record, remoteHarvest.id);
             }
           });
+          setBanner(remoteHarvest?.id
+            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
+            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
+      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('harvest.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
     } finally {
       setSaving(false);
@@ -148,6 +156,7 @@ export default function AddHarvestScreen({ route, navigation }) {
 
         <StitchDisplayTitle>{itemId ? t('harvest.edit_title') : t('harvest.entry_title')}</StitchDisplayTitle>
         <Text style={styles.subtitle}>{t('harvest.entry_subtitle')}</Text>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('harvest.crop_heading')}</StitchSectionLabel>
         <TextInput
@@ -253,6 +262,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  banner: { marginTop: 14 },
   subtitle: { marginTop: 8, fontSize: 18, lineHeight: 28, color: stitchTheme.colors.text },
   field: { minHeight: 72, borderRadius: 24, backgroundColor: '#e6e3e0', paddingHorizontal: 22, justifyContent: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   fieldText: { fontSize: 18, fontWeight: '600', color: stitchTheme.colors.text },

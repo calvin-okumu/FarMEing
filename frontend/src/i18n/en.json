@@ -551,5 +551,14 @@
     "sort_latest": "Latest",
     "sort_amount": "Amount",
     "syncing": "Syncing..."
+  },
+  "feedback": {
+    "created": "Created",
+    "updated": "Updated",
+    "deleted": "Deleted",
+    "saved_remote": "Saved to the server and synced locally.",
+    "deleted_remote": "Deleted on the server and removed locally.",
+    "saved_local_title": "Saved Locally",
+    "saved_local_body": "Saved on this device. It will sync when the connection is available."
   }
 }

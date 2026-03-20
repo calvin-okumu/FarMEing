@@ -24,6 +24,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import { createSale, updateSale } from '../services/saleService';
 import { updateLocalModel } from '../utils/resourceMutations';
+import StatusBanner from '../components/ui/StatusBanner';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
@@ -37,6 +38,7 @@ export default function AddSaleScreen({ route, navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState(null);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -85,6 +87,7 @@ export default function AddSaleScreen({ route, navigation }) {
     }
 
     setSaving(true);
+    setBanner(null);
     try {
       await database.write(async () => {
         if (itemId) {
@@ -106,6 +109,7 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.date = date.getTime();
             draft.notes = notes.trim();
           }, record.remoteId);
+          setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
           let remoteSale = null;
           try {
@@ -129,12 +133,16 @@ export default function AddSaleScreen({ route, navigation }) {
               markRecordSynced(record, remoteSale.id);
             }
           });
+          setBanner(remoteSale?.id
+            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
+            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 
       syncAll().catch(() => {});
       navigation.goBack();
     } catch (err) {
+      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('sales.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('sales.errors.save_local'));
     } finally {
       setSaving(false);
@@ -152,6 +160,7 @@ export default function AddSaleScreen({ route, navigation }) {
 
         <StitchEyebrow>{t('sales.entry_eyebrow')}</StitchEyebrow>
         <StitchDisplayTitle>{itemId ? t('sales.edit_title') : t('sales.entry_title')}</StitchDisplayTitle>
+        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.panel}>
           <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
@@ -250,6 +259,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  banner: { marginTop: 14 },
   panel: { marginTop: 20 },
   fieldLarge: { minHeight: 76, borderRadius: 16, backgroundColor: '#e3e0dd', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
   largeInput: { flex: 1, fontSize: 24, fontWeight: '700', color: stitchTheme.colors.text },
