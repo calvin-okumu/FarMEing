@@ -82,12 +82,12 @@ export default function LoginScreen({ navigation }) {
           <StatusBanner {...banner} style={styles.banner} />
           <Text style={styles.label}>{t('auth.fields.phone')}</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={18} color="#7d867c" style={styles.inputIcon} />
+            <Ionicons name="call-outline" size={18} color="#7d867c" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder={t('auth.placeholders.phone_email')}
+              placeholder={t('auth.placeholders.phone')}
                placeholderTextColor="#8a9388"
-              keyboardType="email-address"
+              keyboardType="phone-pad"
               autoCapitalize="none"
               value={phone}
               onChangeText={setPhone}

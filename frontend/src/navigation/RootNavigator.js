@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
 import AuthNavigator from './AuthNavigator';
@@ -7,9 +8,20 @@ import { stitchTheme } from '../theme/stitchTheme';
 export default function RootNavigator() {
   const token     = useAuthStore((s) => s.token);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const [holdSplash, setHoldSplash] = useState(true);
+
+  useEffect(() => {
+    let timeout;
+    if (!isLoading) {
+      timeout = setTimeout(() => setHoldSplash(false), 1400);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isLoading]);
 
   // Show splash/spinner while SecureStore is being read
-  if (isLoading) {
+  if (isLoading || holdSplash) {
     return (
       <View style={styles.splashScreen}>
         <View style={styles.splashGlowTop} />

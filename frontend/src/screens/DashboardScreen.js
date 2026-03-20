@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dashboardBrandTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     color: stitchTheme.colors.primary,
   },
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
   heroCard: {
     backgroundColor: stitchTheme.colors.primaryContainer,
     borderRadius: stitchTheme.radius.lg,
-    padding: 22,
+    padding: 20,
     overflow: 'hidden',
     ...stitchShadows.float,
   },
@@ -711,23 +711,23 @@ const styles = StyleSheet.create({
   },
   heroValue: {
     color: '#fff',
-    fontSize: 44,
-    lineHeight: 48,
+    fontSize: 38,
+    lineHeight: 42,
     fontWeight: '900',
-    maxWidth: 260,
+    maxWidth: 240,
   },
   heroMessage: {
     color: '#cae8c4',
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 15,
+    lineHeight: 22,
     marginTop: 12,
-    maxWidth: 280,
+    maxWidth: 250,
   },
   heroAction: {
     marginTop: 22,
     borderRadius: stitchTheme.radius.pill,
     backgroundColor: stitchTheme.colors.primarySoft,
-    minHeight: 94,
+    minHeight: 82,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -789,16 +789,16 @@ const styles = StyleSheet.create({
   },
   insightChip: {
     flex: 1,
-    minHeight: 62,
+    minHeight: 54,
     borderRadius: 999,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   insightChipText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   horizontalCardsRow: {
@@ -806,9 +806,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   revenueCard: {
-    width: 264,
+    width: 236,
     borderRadius: 28,
-    padding: 20,
+    padding: 18,
     ...stitchShadows.card,
   },
   revenueCardTop: {
@@ -829,13 +829,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   revenueTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: stitchTheme.colors.text,
   },
   revenueSubtitle: {
     marginTop: 4,
-    fontSize: 14,
+    fontSize: 13,
     color: stitchTheme.colors.accentBrown,
   },
   revenueProgressTrack: {
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
   },
   revenueMetaValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: stitchTheme.colors.primary,
     fontWeight: '900',
   },
@@ -873,9 +873,9 @@ const styles = StyleSheet.create({
   },
   bentoCard: {
     width: '47.8%',
-    minHeight: 172,
+    minHeight: 148,
     borderRadius: 28,
-    padding: 22,
+    padding: 18,
     justifyContent: 'space-between',
     ...stitchShadows.card,
   },
@@ -899,18 +899,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bentoTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: stitchTheme.colors.text,
   },
   bentoValue: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '900',
     color: stitchTheme.colors.text,
   },
   bentoCaption: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16,
     fontWeight: '800',
     color: stitchTheme.colors.accentBrown,
     letterSpacing: 1.2,
@@ -919,8 +919,8 @@ const styles = StyleSheet.create({
   marketCard: {
     width: '100%',
     borderRadius: 28,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     backgroundColor: '#ece8e4',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -940,19 +940,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   marketTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: stitchTheme.colors.text,
   },
   marketSubtitle: {
     marginTop: 4,
-    fontSize: 14,
+    fontSize: 13,
     color: stitchTheme.colors.accentBrown,
   },
   laborCostCard: {
-    width: 196,
+    width: 174,
     borderRadius: 28,
-    padding: 18,
+    padding: 16,
   },
   laborCostCardAccent: {
     backgroundColor: stitchTheme.colors.accentPeach,
@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
   },
   laborCostValue: {
     marginTop: 10,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     color: stitchTheme.colors.text,
   },
@@ -980,9 +980,9 @@ const styles = StyleSheet.create({
   },
   resourceCard: {
     width: '47.8%',
-    minHeight: 146,
+    minHeight: 132,
     borderRadius: 28,
-    padding: 18,
+    padding: 16,
     ...stitchShadows.card,
   },
   resourceIconWrap: {
@@ -994,14 +994,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   resourceTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: stitchTheme.colors.text,
   },
   resourceSubtitle: {
     marginTop: 6,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
     color: stitchTheme.colors.textMuted,
   },
   forecastHeroWrap: {

@@ -538,6 +538,7 @@
     },
     "placeholders": {
       "phone_email": "agronomist@farm.com",
+      "phone": "+255700000000",
       "password": "Enter your password",
       "password_min": "At least 6 characters",
       "confirm_password": "Repeat password"

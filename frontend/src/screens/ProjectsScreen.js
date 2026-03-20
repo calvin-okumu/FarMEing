@@ -10,6 +10,7 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';

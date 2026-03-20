@@ -538,6 +538,7 @@
     },
     "placeholders": {
       "phone_email": "agronomist@farm.com",
+      "phone": "+255700000000",
       "password": "Weka nenosiri lako",
       "password_min": "Angalau herufi 6",
       "confirm_password": "Rudia nenosiri"
