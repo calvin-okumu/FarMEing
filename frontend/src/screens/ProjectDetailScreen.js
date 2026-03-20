@@ -112,6 +112,16 @@ function TimelineSection({ title, tone, items, t, currency }) {
   );
 }
 
+function ResourceOverviewCard({ eyebrow, title, value, tone = 'soft' }) {
+  return (
+    <View style={[styles.resourceOverviewCard, tone === 'accent' ? styles.resourceOverviewCardAccent : styles.resourceOverviewCardSoft]}>
+      <Text style={styles.resourceOverviewEyebrow}>{eyebrow}</Text>
+      <Text style={styles.resourceOverviewTitle}>{title}</Text>
+      <Text style={styles.resourceOverviewValue}>{value}</Text>
+    </View>
+  );
+}
+
 export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, initialTab } = route.params || {};
@@ -686,6 +696,22 @@ export default function ProjectDetailScreen({ route, navigation }) {
           <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.spent')}</Text>
         </StitchSurface>
 
+        {activeTab !== 'timeline' ? (
+          <View style={styles.overviewGrid}>
+            <ResourceOverviewCard
+              eyebrow={t('dashboard.spent')}
+              title={project.crop || t('projects.fields.crop')}
+              value={formatCurrency(totalSpent, currency)}
+            />
+            <ResourceOverviewCard
+              eyebrow={t('dashboard.revenue')}
+              title={t('projects.tabs.sales')}
+              value={formatCurrency(totalRevenue, currency)}
+              tone="accent"
+            />
+          </View>
+        ) : null}
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TAB_ORDER.map((tab) => {
             const active = activeTab === tab;
@@ -752,6 +778,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         {activeTab === 'timeline' ? (
           <View style={styles.timelineContainer}>
+            <View style={styles.timelineHeaderBlock}>
+              <Text style={styles.timelineLead}>{t('timeline.lead_copy')}</Text>
+            </View>
             <TimelineSection title={t('timeline.today')} tone="today" items={groupedTimeline.today} t={t} currency={currency} />
             <TimelineSection title={t('timeline.yesterday')} tone="past" items={groupedTimeline.earlier} t={t} currency={currency} />
             {!groupedTimeline.today.length && !groupedTimeline.earlier.length ? <Text style={styles.emptyText}>{t('projects.pull_to_sync')}</Text> : null}
@@ -801,6 +830,13 @@ const styles = StyleSheet.create({
   backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
   backButtonText: { color: '#fff', fontWeight: '700' },
   heroCard: {},
+  overviewGrid: { flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 6 },
+  resourceOverviewCard: { flex: 1, borderRadius: 26, padding: 18, ...stitchShadows.card },
+  resourceOverviewCardSoft: { backgroundColor: '#f2efea' },
+  resourceOverviewCardAccent: { backgroundColor: stitchTheme.colors.primarySoft },
+  resourceOverviewEyebrow: { fontSize: 11, fontWeight: '800', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.4 },
+  resourceOverviewTitle: { marginTop: 8, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
+  resourceOverviewValue: { marginTop: 12, fontSize: 22, fontWeight: '900', color: stitchTheme.colors.primary },
   heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   heroMeta: { fontSize: 15, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
   heroStatus: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
@@ -854,6 +890,8 @@ const styles = StyleSheet.create({
   statusActionRejectText: { color: '#9c1111', fontWeight: '800', fontSize: 13 },
   emptyText: { textAlign: 'center', marginTop: 34, color: stitchTheme.colors.textMuted, fontSize: 15 },
   timelineContainer: { gap: 6 },
+  timelineHeaderBlock: { marginBottom: 10 },
+  timelineLead: { fontSize: 15, lineHeight: 23, color: stitchTheme.colors.accentBrown, maxWidth: 300 },
   timelineSection: { marginBottom: 14 },
   timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
   timelineSectionChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
