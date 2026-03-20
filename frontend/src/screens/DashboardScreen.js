@@ -92,6 +92,54 @@ function ResourceShortcutCard({ icon, title, subtitle, onPress, tone = 'soft' })
   );
 }
 
+function InsightChip({ icon, label, tone = 'neutral' }) {
+  const palette = tone === 'warning'
+    ? { bg: '#fde9e6', color: '#9c1111' }
+    : { bg: '#f2efea', color: stitchTheme.colors.accentBrown };
+
+  return (
+    <View style={[styles.insightChip, { backgroundColor: palette.bg }]}> 
+      <Ionicons name={icon} size={18} color={palette.color} />
+      <Text style={[styles.insightChipText, { color: palette.color }]} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+}
+
+function RevenueStreamCard({ title, subtitle, amount, progress, active, icon, tone = 'primary' }) {
+  const palette = tone === 'secondary'
+    ? { bg: '#fff', iconBg: '#f6ebe5', iconColor: stitchTheme.colors.accentBrown, progress: stitchTheme.colors.accentBrown, badge: '#8a9388' }
+    : { bg: '#fff', iconBg: '#eef8ea', iconColor: stitchTheme.colors.primary, progress: stitchTheme.colors.primaryContainer, badge: stitchTheme.colors.primaryDim };
+
+  return (
+    <View style={[styles.revenueCard, { backgroundColor: palette.bg }]}> 
+      <View style={styles.revenueCardTop}>
+        <View style={[styles.revenueIconWrap, { backgroundColor: palette.iconBg }]}>
+          <Ionicons name={icon} size={20} color={palette.iconColor} />
+        </View>
+        <Text style={[styles.revenueBadge, { color: active ? palette.badge : stitchTheme.colors.textMuted }]}>{active ? 'Active' : 'Standby'}</Text>
+      </View>
+      <Text style={styles.revenueTitle}>{title}</Text>
+      <Text style={styles.revenueSubtitle}>{subtitle}</Text>
+      <View style={styles.revenueProgressTrack}>
+        <View style={[styles.revenueProgressFill, { width: `${Math.max(12, Math.min(progress, 100))}%`, backgroundColor: palette.progress }]} />
+      </View>
+      <View style={styles.revenueMetaRow}>
+        <Text style={styles.revenueMetaLabel}>REVENUE</Text>
+        <Text style={styles.revenueMetaValue}>{amount}</Text>
+      </View>
+    </View>
+  );
+}
+
+function LaborCostCard({ title, amount, tone = 'soft' }) {
+  return (
+    <View style={[styles.laborCostCard, tone === 'accent' ? styles.laborCostCardAccent : styles.laborCostCardSoft]}>
+      <Text style={styles.laborCostLabel}>{title}</Text>
+      <Text style={styles.laborCostValue}>{amount}</Text>
+    </View>
+  );
+}
+
 export default function DashboardScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const token = useAuthStore((s) => s.token);
@@ -254,6 +302,8 @@ export default function DashboardScreen({ navigation }) {
     : t('dashboard.weather_good_body');
   const topWorker = laborByEmployee[0];
   const topActivity = laborByActivity[0];
+  const secondaryProject = projects.find((project) => project.id !== selectedProject?.id);
+  const activeLaborCount = laborByEmployee.length;
   const weatherForecast = [
     { day: t('weather.days.tue'), short: 'Tue', icon: 'sunny', iconColor: stitchTheme.colors.primary, condition: t('weather.conditions.sunny'), high: '31°', low: '19°' },
     { day: t('weather.days.wed'), short: 'Wed', icon: 'rainy', iconColor: '#3b82f6', condition: t('weather.conditions.rainy'), high: '24°', low: '17°' },
@@ -282,7 +332,17 @@ export default function DashboardScreen({ navigation }) {
         }
         showsVerticalScrollIndicator={false}
       >
-        <StitchTopBar title={t('dashboard.title')} onBack={() => navigation.navigate('Projects')} rightLabel="EN | SW" onRightPress={toggleLanguage} />
+        <View style={styles.dashboardTopBar}>
+          <View style={styles.dashboardBrandRow}>
+            <View style={styles.dashboardAvatar}>
+              <Ionicons name="person" size={20} color={stitchTheme.colors.primary} />
+            </View>
+            <Text style={styles.dashboardBrandTitle}>FarmTrack</Text>
+          </View>
+          <TouchableOpacity style={styles.dashboardBell} onPress={() => navigation.navigate('Settings')} activeOpacity={0.88}>
+            <Ionicons name="notifications" size={22} color={stitchTheme.colors.primary} />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.selector} onPress={() => setDropdownVisible((value) => !value)} activeOpacity={0.9}>
           <View>
@@ -330,17 +390,71 @@ export default function DashboardScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            <View style={styles.insightRow}>
+              <InsightChip icon="rainy-outline" label={t('dashboard.rain_expected')} />
+              <InsightChip icon="warning-outline" label={t('dashboard.pest_alert')} tone="warning" />
+              <InsightChip icon="flask-outline" label={t('dashboard.soil_scan_ready')} />
+            </View>
+
             <View style={styles.sectionBlock}>
-              <StitchDisplayTitle>{t('dashboard.weather_alerts')}</StitchDisplayTitle>
-              <View style={styles.weatherCard}>
-                <View style={styles.weatherIconWrap}>
-                  <Ionicons name={weatherTone === 'warning' ? 'rainy' : 'partly-sunny'} size={28} color="#fff" />
-                </View>
-                <View style={styles.weatherContent}>
-                  <Text style={styles.weatherTitle}>{weatherTitle}</Text>
-                  <Text style={styles.weatherText}>{weatherBody}</Text>
-                </View>
+              <View style={styles.sectionHeaderRow}>
+                <StitchDisplayTitle>{t('dashboard.revenue_streams')}</StitchDisplayTitle>
+                <Text style={styles.sectionActionText}>{t('dashboard.view_report')}</Text>
               </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalCardsRow}>
+                <RevenueStreamCard
+                  title={selectedProject?.crop || t('dashboard.primary_crop')}
+                  subtitle={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')} • ${selectedProject?.name || t('dashboard.primary_sector')}`}
+                  amount={formatCurrency(totalRevenue, currency)}
+                  progress={75}
+                  active
+                  icon="leaf-outline"
+                />
+                <RevenueStreamCard
+                  title={secondaryProject?.crop || t('dashboard.secondary_crop')}
+                  subtitle={`${secondaryProject?.landSize || 0} ${secondaryProject?.landUnit || ''} • ${secondaryProject?.name || t('dashboard.secondary_sector')}`}
+                  amount={formatCurrency(Math.max(totalRevenue * 0.4, 0), currency)}
+                  progress={40}
+                  icon="flower-outline"
+                  tone="secondary"
+                />
+              </ScrollView>
+            </View>
+
+            <View style={styles.bentoGrid}>
+              <View style={[styles.bentoCard, styles.bentoExpenseCard]}>
+                <Ionicons name="wallet-outline" size={22} color="#8b0e0e" />
+                <Text style={styles.bentoTitle}>{t('dashboard.expenses_short')}</Text>
+                <Text style={styles.bentoValue}>{formatCurrency(summary.totalCost, currency)}</Text>
+                <Text style={styles.bentoCaption}>{budgetUsed > 75 ? t('dashboard.budget_pressure') : t('dashboard.costs_stable')}</Text>
+              </View>
+              <View style={[styles.bentoCard, styles.bentoLaborCard]}>
+                <View style={styles.bentoLaborTop}>
+                  <Text style={styles.bentoTitle}>{t('dashboard.active_labor')}</Text>
+                  <View style={styles.bentoLaborIcon}><Ionicons name="people" size={16} color={stitchTheme.colors.primary} /></View>
+                </View>
+                <Text style={styles.bentoValue}>{activeLaborCount}</Text>
+                <Text style={styles.bentoCaption}>{t('dashboard.staff_on_field')}</Text>
+              </View>
+              <TouchableOpacity style={styles.marketCard} activeOpacity={0.88}>
+                <View style={styles.marketCardLeft}>
+                  <View style={styles.marketIconWrap}><Ionicons name="storefront-outline" size={20} color={stitchTheme.colors.primary} /></View>
+                  <View>
+                    <Text style={styles.marketTitle}>{t('dashboard.market_prices')}</Text>
+                    <Text style={styles.marketSubtitle}>{t('dashboard.market_prices_subtitle')}</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={stitchTheme.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <StitchDisplayTitle>{t('dashboard.labor_costs')}</StitchDisplayTitle>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalCardsRow}>
+                <LaborCostCard title={topActivity?.activity || t('dashboard.top_labor_activity')} amount={formatCurrency(topActivity?.cost || 0, currency)} tone="accent" />
+                <LaborCostCard title={topWorker?.name || t('dashboard.top_worker')} amount={formatCurrency(topWorker?.cost || 0, currency)} />
+                <LaborCostCard title={t('dashboard.unpaid_labor')} amount={formatCurrency(unpaidBalance, currency)} />
+              </ScrollView>
             </View>
 
             {selectedProject ? (
@@ -388,147 +502,6 @@ export default function DashboardScreen({ navigation }) {
                 </View>
               </View>
             ) : null}
-
-            <View style={styles.forecastHeroWrap}>
-              <View style={styles.forecastHeroMain}>
-                <View style={styles.forecastHeroCircle} />
-                <Text style={styles.forecastHeroEyebrow}>{t('weather.today')}</Text>
-                <Text style={styles.forecastHeroTemp}>28{t('weather.degree_unit')}</Text>
-                <Text style={styles.forecastHeroCondition}>{t('weather.today_condition')}</Text>
-                <View style={styles.forecastStatsRow}>
-                  <View style={styles.forecastStatItem}>
-                    <Ionicons name="water-outline" size={18} color={stitchTheme.colors.primarySoft} />
-                    <View>
-                      <Text style={styles.forecastStatLabel}>{t('weather.humidity')}</Text>
-                      <Text style={styles.forecastStatValue}>65%</Text>
-                    </View>
-                  </View>
-                  <View style={styles.forecastStatItem}>
-                    <Ionicons name="speedometer-outline" size={18} color={stitchTheme.colors.primarySoft} />
-                    <View>
-                      <Text style={styles.forecastStatLabel}>{t('weather.wind')}</Text>
-                      <Text style={styles.forecastStatValue}>12 km/h</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.forecastHeroSide}>
-                <Ionicons name="sunny-outline" size={38} color={stitchTheme.colors.accentBrown} />
-                <Text style={styles.forecastSideTitle}>{t('weather.sunset_title')}</Text>
-                <Text style={styles.forecastSideSubtitle}>{t('weather.sunset_subtitle')}</Text>
-                <Text style={styles.forecastSideTime}>18:42</Text>
-                <View style={styles.forecastSideDivider} />
-                <Text style={styles.forecastSideNote}>{t('weather.sunset_note')}</Text>
-              </View>
-            </View>
-
-            <View style={styles.weatherMetricsGrid}>
-              <View style={[styles.weatherMetricCard, styles.weatherMetricPrimary]}>
-                <View style={styles.weatherMetricTop}>
-                  <View>
-                    <Text style={styles.weatherMetricTitle}>{t('weather.et_title')}</Text>
-                    <Text style={styles.weatherMetricSubtitle}>{t('weather.et_subtitle')}</Text>
-                  </View>
-                  <Ionicons name="leaf-outline" size={28} color={stitchTheme.colors.primary} />
-                </View>
-                <View style={styles.weatherMetricValueRow}>
-                  <Text style={styles.weatherMetricValue}>4.2</Text>
-                  <Text style={styles.weatherMetricUnit}>mm/day</Text>
-                </View>
-                <View style={styles.weatherMetricTipGreen}>
-                  <Ionicons name="information-circle" size={14} color={stitchTheme.colors.primary} />
-                  <Text style={styles.weatherMetricTipText}>{t('weather.et_tip')}</Text>
-                </View>
-              </View>
-
-              <View style={[styles.weatherMetricCard, styles.weatherMetricSecondary]}>
-                <View style={styles.weatherMetricTop}>
-                  <View>
-                    <Text style={[styles.weatherMetricTitle, { color: stitchTheme.colors.accentBrown }]}>{t('weather.soil_temp_title')}</Text>
-                    <Text style={styles.weatherMetricSubtitle}>{t('weather.soil_temp_subtitle')}</Text>
-                  </View>
-                  <Ionicons name="thermometer-outline" size={28} color={stitchTheme.colors.accentBrown} />
-                </View>
-                <View style={styles.weatherMetricValueRow}>
-                  <Text style={styles.weatherMetricValue}>22.5</Text>
-                  <Text style={styles.weatherMetricUnit}>{t('weather.degree_unit')}</Text>
-                </View>
-                <View style={styles.weatherMetricTipPeach}>
-                  <Ionicons name="checkmark-circle" size={14} color={stitchTheme.colors.accentBrown} />
-                  <Text style={[styles.weatherMetricTipText, { color: stitchTheme.colors.accentBrown }]}>{t('weather.soil_temp_tip')}</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.sectionBlock}>
-              <View style={styles.forecastHeadingRow}>
-                <StitchDisplayTitle>{t('weather.five_day_title')}</StitchDisplayTitle>
-                <StitchChip label={t('weather.weekly_view')} active />
-              </View>
-              <View style={styles.forecastList}>
-                {weatherForecast.map((item) => <ForecastRow key={item.short} item={item} />)}
-              </View>
-            </View>
-
-            <MetricCard
-              label={t('dashboard.total_spent')}
-              value={formatCurrency(summary.totalCost, currency)}
-              icon="wallet-outline"
-              tone="red"
-              progressLabel={budgetUsed > 75 ? t('dashboard.risk_high') : t('dashboard.risk_watch')}
-              progressValue={Math.max(18, budgetUsed)}
-            />
-
-            <MetricCard
-              label={t('dashboard.revenue')}
-              value={formatCurrency(totalRevenue, currency)}
-              icon="cash-outline"
-              tone="green"
-              progressLabel={netProfit >= 0 ? t('dashboard.target_hit') : t('dashboard.needs_push')}
-              progressValue={netProfit >= 0 ? 100 : 54}
-            />
-
-            <View style={styles.harvestCard}>
-              <Text style={styles.metricLabel}>{t('dashboard.harvest_total')}</Text>
-              <Text style={styles.harvestValue}>{`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`}</Text>
-              <View style={styles.harvestTrendRow}>
-                <Ionicons name="trending-up" size={14} color={stitchTheme.colors.primary} />
-                <Text style={styles.harvestTrendText}>{t('dashboard.harvest_trend')}</Text>
-              </View>
-              <StitchMiniBars values={chartValues} activeIndex={3} softIndex={2} style={styles.chartRow} />
-            </View>
-
-            <View style={styles.sectionBlock}>
-              <StitchDisplayTitle>{t('dashboard.key_updates')}</StitchDisplayTitle>
-              <View style={styles.infoCard}>
-                <View style={styles.infoIconWrap}>
-                  <Ionicons name="leaf" size={18} color={stitchTheme.colors.primarySoft} />
-                </View>
-                <View style={styles.infoTextWrap}>
-                  <Text style={styles.infoTitle}>{topActivity ? `${topActivity.activity} ${t('dashboard.leading_activity')}` : t('dashboard.field_ready')}</Text>
-                  <Text style={styles.infoBody}>
-                    {topWorker
-                      ? t('dashboard.top_worker_body', { name: topWorker.name, amount: formatCurrency(topWorker.cost, currency) })
-                      : t('dashboard.field_ready_body')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.alertCard}>
-              <Ionicons name="water" size={34} color={stitchTheme.colors.accentBrown} />
-              <Text style={styles.alertTitle}>{t('dashboard.irrigation_alert')}</Text>
-              <Text style={styles.alertBody}>
-                {unpaidBalance > 0 ? t('dashboard.irrigation_alert_warning') : t('dashboard.irrigation_alert_body')}
-              </Text>
-              <TouchableOpacity
-                style={styles.alertButton}
-                onPress={() => navigation.navigate('Projects')}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.alertButtonText}>{t('dashboard.run_action')}</Text>
-              </TouchableOpacity>
-            </View>
           </>
         ) : (
           <View style={styles.emptyCard}>
@@ -577,6 +550,37 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 132,
     gap: 18,
+  },
+  dashboardTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  dashboardBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dashboardAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: stitchTheme.colors.accentPeach,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashboardBrandTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
+  },
+  dashboardBell: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   center: {
     flex: 1,
@@ -730,6 +734,18 @@ const styles = StyleSheet.create({
   sectionBlock: {
     gap: 12,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  sectionActionText: {
+    fontSize: 13,
+    color: stitchTheme.colors.accentBrown,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
   sectionTitle: {
     fontSize: 30,
     lineHeight: 34,
@@ -765,6 +781,197 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 27,
     color: '#153099',
+  },
+  insightRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingBottom: 2,
+  },
+  insightChip: {
+    flex: 1,
+    minHeight: 62,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  insightChipText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  horizontalCardsRow: {
+    gap: 14,
+    paddingVertical: 2,
+  },
+  revenueCard: {
+    width: 264,
+    borderRadius: 28,
+    padding: 20,
+    ...stitchShadows.card,
+  },
+  revenueCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  revenueIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revenueBadge: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  revenueTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  revenueSubtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: stitchTheme.colors.accentBrown,
+  },
+  revenueProgressTrack: {
+    marginTop: 18,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#ebe7e3',
+    overflow: 'hidden',
+  },
+  revenueProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  revenueMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  revenueMetaLabel: {
+    fontSize: 10,
+    color: stitchTheme.colors.textMuted,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  revenueMetaValue: {
+    fontSize: 16,
+    color: stitchTheme.colors.primary,
+    fontWeight: '900',
+  },
+  bentoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  bentoCard: {
+    width: '47.8%',
+    minHeight: 172,
+    borderRadius: 28,
+    padding: 22,
+    justifyContent: 'space-between',
+    ...stitchShadows.card,
+  },
+  bentoExpenseCard: {
+    backgroundColor: '#f2efea',
+  },
+  bentoLaborCard: {
+    backgroundColor: '#fff',
+  },
+  bentoLaborTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  bentoLaborIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(163,246,156,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bentoTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  bentoValue: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: stitchTheme.colors.text,
+  },
+  bentoCaption: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+    color: stitchTheme.colors.accentBrown,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  marketCard: {
+    width: '100%',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    backgroundColor: '#ece8e4',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  marketCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  marketIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marketTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  marketSubtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: stitchTheme.colors.accentBrown,
+  },
+  laborCostCard: {
+    width: 196,
+    borderRadius: 28,
+    padding: 18,
+  },
+  laborCostCardAccent: {
+    backgroundColor: stitchTheme.colors.accentPeach,
+  },
+  laborCostCardSoft: {
+    backgroundColor: '#ece8e4',
+  },
+  laborCostLabel: {
+    fontSize: 12,
+    color: stitchTheme.colors.accentBrown,
+    fontWeight: '800',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+  },
+  laborCostValue: {
+    marginTop: 10,
+    fontSize: 22,
+    fontWeight: '900',
+    color: stitchTheme.colors.text,
   },
   resourceGrid: {
     flexDirection: 'row',
