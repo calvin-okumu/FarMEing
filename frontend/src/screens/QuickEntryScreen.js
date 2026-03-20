@@ -1,16 +1,16 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -22,24 +22,32 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
+import { stitchTheme } from '../theme/stitchTheme';
+import {
+  StitchChip,
+  StitchDisplayTitle,
+  StitchEyebrow,
+  StitchMiniBars,
+  StitchPrimaryButton,
+  StitchSectionLabel,
+  StitchSurface,
+  StitchTopBar,
+} from '../components/ui/StitchPrimitives';
 
 const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
 
-export default function QuickEntryScreen() {
+export default function QuickEntryScreen({ navigation }) {
   const { t } = useTranslation();
   const currency = useSettingsStore((s) => s.currency);
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectDropdownVisible, setProjectDropdownVisible] = useState(false);
-  
   const [employeeName, setEmployeeName] = useState('');
   const [employeeDropdownVisible, setEmployeeDropdownVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  
   const [activity, setActivity] = useState('planting');
   const [workers, setWorkers] = useState('1');
   const [days, setDays] = useState('1');
@@ -48,38 +56,66 @@ export default function QuickEntryScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const employeeInputRef = useRef(null);
-  const rateInputRef = useRef(null);
+  const total = (parseFloat(workers) || 0) * (parseFloat(days) || 0) * (parseFloat(rate) || 0);
+  const graphValues = useMemo(() => [parseFloat(workers) || 1, parseFloat(days) || 1, parseFloat(rate) || 1, total || 1], [workers, days, rate, total]);
 
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        const projRows = await database.get('farm_projects').query(Q.where('is_deleted', false)).fetch();
+        setProjects(projRows);
+        if (projRows.length === 1) setSelectedProject(projRows[0]);
+
+        const empRows = await database.get('employees').query(Q.where('is_deleted', false)).fetch();
+        setEmployees(empRows);
+      } catch (err) {
+        console.warn('[QuickEntry] load error:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadData();
   }, []);
 
-  const loadData = async () => {
-    try {
-      const projCol = database.get('farm_projects');
-      const projRows = await projCol.query(Q.where('is_deleted', false)).fetch();
-      setProjects(projRows);
-      
-      // Auto-select first project if only one
-      if (projRows.length === 1) {
-        setSelectedProject(projRows[0]);
-      }
-
-      const empCol = database.get('employees');
-      const empRows = await empCol.query(Q.where('is_deleted', false)).fetch();
-      setEmployees(empRows);
-    } catch (err) {
-      console.warn('[QuickEntry] load error:', err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const total = (parseFloat(workers) || 0) * (parseFloat(days) || 0) * (parseFloat(rate) || 0);
-
-  const onDateChange = (event, selectedDate) => {
+  const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) setDate(selectedDate);
+  };
+
+  const saveLocally = async () => {
+    await database.write(async () => {
+      let employee = selectedEmployee;
+      if (!employee) {
+        const existing = employees.find((entry) => entry.name?.toLowerCase() === employeeName.trim().toLowerCase());
+        employee = existing || null;
+      }
+
+      if (!employee) {
+        employee = await database.get('employees').create((record) => {
+          initializeLocalRecord(record);
+          record.userId = '';
+          record.name = employeeName.trim();
+          record.phone = '';
+          record.role = '';
+          record.isDeleted = false;
+        });
+      }
+
+      await database.get('work_entries').create((record) => {
+        initializeLocalRecord(record);
+        record.projectId = selectedProject.id;
+        record.employeeId = employee.id;
+        record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
+        record.date = date.getTime();
+        record.daysWorked = (parseFloat(workers) || 1) * (parseFloat(days) || 1);
+        record.ratePerDay = parseFloat(rate) || 0;
+        record.totalCost = total;
+        record.notes = '';
+        record.isPaid = false;
+        record.isDeleted = false;
+      });
+    });
   };
 
   const handleSave = async () => {
@@ -100,10 +136,7 @@ export default function QuickEntryScreen() {
     Keyboard.dismiss();
 
     try {
-      // Offline-first: Save locally always
       await saveLocally();
-      
-      // Reset form for next entry (keep project selected for speed)
       setEmployeeName('');
       setSelectedEmployee(null);
       setActivity('planting');
@@ -111,17 +144,13 @@ export default function QuickEntryScreen() {
       setDays('1');
       setRate('');
       setDate(new Date());
-      
-      // Focus employee input for next entry
+
       setTimeout(() => {
         employeeInputRef.current?.focus();
       }, 100);
-      
+
       Alert.alert(t('common.success'), t('quick_entry.success'));
-      
-      // Trigger sync in background
       syncAll().catch(() => {});
-      
     } catch (err) {
       Alert.alert(t('common.error'), err.message || t('quick_entry.errors.save_local'));
     } finally {
@@ -129,52 +158,12 @@ export default function QuickEntryScreen() {
     }
   };
 
-  const saveLocally = async () => {
-    await database.write(async () => {
-      let employee = selectedEmployee;
-      if (!employee) {
-        const existing = employees.find(e => 
-          e.name?.toLowerCase() === employeeName.trim().toLowerCase()
-        );
-        employee = existing || null;
-      }
-
-      if (!employee) {
-        employee = await database.get('employees').create((record) => {
-          initializeLocalRecord(record);
-          record.userId = '';
-          record.name = employeeName.trim();
-          record.phone = '';
-          record.role = '';
-          record.isDeleted = false;
-        });
-      }
-
-      // 2. Create Work Entry
-      await database.get('work_entries').create((record) => {
-        initializeLocalRecord(record);
-        record.projectId = selectedProject.id;
-        record.employeeId = employee.id;
-        record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
-        record.date = date.getTime();
-        record.daysWorked = (parseFloat(workers) || 1) * (parseFloat(days) || 1);
-        record.ratePerDay = parseFloat(rate) || 0;
-        record.totalCost = total;
-        record.notes = '';
-        record.isPaid = false;
-        record.isDeleted = false;
-      });
-    });
-  };
-
-  const filteredEmployees = employees.filter(e => 
-    e.name?.toLowerCase().includes(employeeName.toLowerCase())
-  );
+  const filteredEmployees = employees.filter((employee) => employee.name?.toLowerCase().includes(employeeName.toLowerCase()));
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
+        <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
       </View>
     );
   }
@@ -183,177 +172,121 @@ export default function QuickEntryScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Project Selection - Quick tap */}
-        <Text style={styles.label}>{t('quick_entry.fields.project')} *</Text>
-        <TouchableOpacity
-          style={[styles.dropdown, !selectedProject && styles.dropdownPlaceholder]}
-          onPress={() => setProjectDropdownVisible(!projectDropdownVisible)}
-        >
-          <Text style={[styles.dropdownText, !selectedProject && styles.placeholder]}>
-            {selectedProject?.name || t('quick_entry.select_project')}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color="#6b7280" />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <StitchTopBar title={t('quick_entry.save')} onBack={() => navigation.goBack()} />
+        <StitchEyebrow>{t('quick_entry.fields.activity')}</StitchEyebrow>
+        <StitchDisplayTitle>{t('quick_entry.save')}</StitchDisplayTitle>
+
+        <StitchSurface style={styles.heroSurface}>
+          <Text style={styles.heroLabel}>{t('quick_entry.total')}</Text>
+          <Text style={styles.heroValue}>{formatCurrency(total, currency)}</Text>
+          <StitchMiniBars values={graphValues} activeIndex={3} softIndex={1} style={{ marginTop: 18 }} />
+        </StitchSurface>
+
+        <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
+        <TouchableOpacity style={styles.inputShell} onPress={() => setProjectDropdownVisible((value) => !value)} activeOpacity={0.88}>
+          <Text style={[styles.inputText, !selectedProject && styles.placeholder]}>{selectedProject?.name || t('quick_entry.select_project')}</Text>
+          <Ionicons name="chevron-down" size={20} color={stitchTheme.colors.textMuted} />
         </TouchableOpacity>
-        
-        {projectDropdownVisible && (
+
+        {projectDropdownVisible ? (
           <View style={styles.dropdownMenu}>
             {projects.length === 0 ? (
               <Text style={styles.dropdownEmpty}>{t('projects.empty_state')}</Text>
             ) : (
-              projects.map((proj) => (
+              projects.map((project) => (
                 <TouchableOpacity
-                  key={proj.id}
-                  style={[
-                    styles.dropdownItem,
-                    selectedProject?.id === proj.id && styles.dropdownItemActive
-                  ]}
+                  key={project.id}
+                  style={[styles.dropdownItem, selectedProject?.id === project.id && styles.dropdownItemActive]}
                   onPress={() => {
-                    setSelectedProject(proj);
+                    setSelectedProject(project);
                     setProjectDropdownVisible(false);
                   }}
+                  activeOpacity={0.88}
                 >
-                  <Text style={styles.dropdownItemText}>{proj.name}</Text>
+                  <Text style={styles.dropdownItemText}>{project.name}</Text>
                 </TouchableOpacity>
               ))
             )}
           </View>
-        )}
+        ) : null}
 
-        {/* Employee - Auto-focus on load */}
-        <Text style={styles.label}>{t('quick_entry.fields.employee')} *</Text>
+        <StitchSectionLabel>{t('quick_entry.fields.employee')} *</StitchSectionLabel>
         <TextInput
           ref={employeeInputRef}
-          style={styles.input}
+          style={styles.inputShell}
           value={employeeName}
-          onChangeText={(t) => {
-            setEmployeeName(t);
+          onChangeText={(value) => {
+            setEmployeeName(value);
             setSelectedEmployee(null);
-            setEmployeeDropdownVisible(t.length > 0);
+            setEmployeeDropdownVisible(value.length > 0);
           }}
           onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
           placeholder={t('quick_entry.placeholders.employee')}
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#8a9388"
           autoCapitalize="words"
-          returnKeyType="next"
         />
-        
-        {employeeDropdownVisible && filteredEmployees.length > 0 && (
-          <View style={styles.employeeDropdown}>
-            {filteredEmployees.slice(0, 3).map((emp) => (
+
+        {employeeDropdownVisible && filteredEmployees.length > 0 ? (
+          <View style={styles.dropdownMenu}>
+            {filteredEmployees.slice(0, 3).map((employee) => (
               <TouchableOpacity
-                key={emp.id}
-                style={styles.employeeItem}
+                key={employee.id}
+                style={styles.dropdownItem}
                 onPress={() => {
-                  setEmployeeName(emp.name);
-                  setSelectedEmployee(emp);
+                  setEmployeeName(employee.name);
+                  setSelectedEmployee(employee);
                   setEmployeeDropdownVisible(false);
                 }}
+                activeOpacity={0.88}
               >
-                <Text>{emp.name}</Text>
+                <Text style={styles.dropdownItemText}>{employee.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        )}
+        ) : null}
 
-        {/* Activity - Horizontal scroll chips */}
-        <Text style={styles.label}>{t('quick_entry.fields.activity')}</Text>
-        <View style={styles.activityRow}>
-          {ACTIVITIES.map((act) => (
-            <TouchableOpacity
-              key={act}
-              style={[styles.activityChip, activity === act && styles.activityChipActive]}
-              onPress={() => setActivity(act)}
-            >
-              <Text style={[styles.activityText, activity === act && styles.activityTextActive]}>
-                 {t(`common.activities.${act}`)}
-              </Text>
-            </TouchableOpacity>
+        <StitchSectionLabel>{t('quick_entry.fields.activity')}</StitchSectionLabel>
+        <View style={styles.chipsRow}>
+          {ACTIVITIES.map((item) => (
+            <StitchChip key={item} label={t(`common.activities.${item}`)} active={activity === item} onPress={() => setActivity(item)} style={styles.activityChip} />
           ))}
         </View>
 
-        {/* Date */}
-        <Text style={styles.label}>{t('common.date')}</Text>
-        <TouchableOpacity 
-          style={styles.dateSelector} 
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={styles.dateSelectorText}>
-             {formatAppDate(date)}
-          </Text>
-          <Ionicons name="calendar-outline" size={20} color="#16a34a" />
+        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
+        <TouchableOpacity style={styles.inputShell} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
+          <Text style={styles.inputText}>{formatAppDate(date)}</Text>
+          <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
         </TouchableOpacity>
 
-        {showDatePicker && (
+        {showDatePicker ? (
           <DateTimePicker
             value={date}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={onDateChange}
           />
-        )}
+        ) : null}
 
-        {/* Workers, Days, Rate - Single row for speed */}
         <View style={styles.row}>
           <View style={styles.third}>
-            <Text style={styles.labelSmall}>{t('quick_entry.fields.workers')}</Text>
-            <TextInput
-              style={[styles.input, styles.inputSmall]}
-              value={workers}
-              onChangeText={setWorkers}
-              keyboardType="numeric"
-            />
+            <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionLabel>
+            <TextInput style={styles.inputShell} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
           </View>
           <View style={styles.third}>
-            <Text style={styles.labelSmall}>{t('quick_entry.fields.days')}</Text>
-            <TextInput
-              style={[styles.input, styles.inputSmall]}
-              value={days}
-              onChangeText={setDays}
-              keyboardType="numeric"
-            />
+            <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionLabel>
+            <TextInput style={styles.inputShell} value={days} onChangeText={setDays} keyboardType="numeric" />
           </View>
           <View style={styles.third}>
-            <Text style={styles.labelSmall}>{t('quick_entry.fields.rate')}</Text>
-            <TextInput
-              ref={rateInputRef}
-              style={[styles.input, styles.inputSmall]}
-              value={rate}
-              onChangeText={setRate}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              placeholderTextColor="#9ca3af"
-            />
+            <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionLabel>
+            <TextInput style={styles.inputShell} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
           </View>
         </View>
 
-        {/* Total Preview - Always visible */}
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>{t('quick_entry.total')}</Text>
-          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
-        </View>
-
-        {/* Save Button - Large, easy to tap */}
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.saveButtonText}>{t('quick_entry.save')}</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <StitchPrimaryButton label={t('quick_entry.save')} onPress={handleSave} disabled={saving} icon="checkmark-circle" style={styles.button} />
+        {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -361,116 +294,25 @@ export default function QuickEntryScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 16, paddingBottom: 60 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  labelSmall: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#16a34a',
-    borderRadius: 8,
-    padding: 14,
-    backgroundColor: '#fff',
-  },
-  dropdownPlaceholder: { borderColor: '#d1d5db' },
-  dropdownText: { fontSize: 16, color: '#1a1a1a', fontWeight: '500' },
-  placeholder: { color: '#9ca3af' },
-  dropdownMenu: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    marginTop: 4,
-    maxHeight: 180,
-    zIndex: 10,
-  },
-  dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  dropdownItemActive: { backgroundColor: '#f0fdf4' },
-  dropdownItemText: { fontSize: 16, color: '#1a1a1a' },
-  dropdownEmpty: { padding: 14, color: '#9ca3af', textAlign: 'center' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 14,
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
-  },
-  inputSmall: {
-    paddingVertical: 10,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  dateSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 14,
-    backgroundColor: '#fff',
-  },
-  dateSelectorText: { fontSize: 16, color: '#1a1a1a' },
-  employeeDropdown: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    marginTop: 4,
-    maxHeight: 120,
-    zIndex: 10,
-  },
-  employeeItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  activityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  activityChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  activityChipActive: {
-    backgroundColor: '#16a34a',
-    borderColor: '#16a34a',
-  },
-  activityText: { fontSize: 14, color: '#6b7280', fontWeight: '500' },
-  activityTextActive: { color: '#fff' },
-  row: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  heroSurface: { marginTop: 22 },
+  heroLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: '800' },
+  heroValue: { marginTop: 10, fontSize: 38, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },
+  inputShell: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
+  inputText: { fontSize: 17, color: stitchTheme.colors.text, fontWeight: '600' },
+  placeholder: { color: '#8a9388' },
+  dropdownMenu: { backgroundColor: '#fff', borderRadius: 24, marginTop: 8, overflow: 'hidden' },
+  dropdownItem: { paddingHorizontal: 18, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#f0ece7' },
+  dropdownItemActive: { backgroundColor: '#eef7eb' },
+  dropdownItemText: { fontSize: 16, color: stitchTheme.colors.text, fontWeight: '700' },
+  dropdownEmpty: { padding: 16, color: stitchTheme.colors.textMuted, textAlign: 'center' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  activityChip: { marginBottom: 0 },
+  row: { flexDirection: 'row', gap: 12 },
   third: { flex: 1 },
-  totalContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#16a34a',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-  },
-  totalLabel: { fontSize: 18, color: '#fff', fontWeight: '600' },
-  totalValue: { fontSize: 32, color: '#fff', fontWeight: '700' },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#059669',
-    borderRadius: 12,
-    padding: 18,
-    marginTop: 16,
-    marginBottom: 40,
-  },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  smallLabel: { fontSize: 12 },
+  button: { marginTop: 28 },
+  loader: { marginTop: 12 },
 });

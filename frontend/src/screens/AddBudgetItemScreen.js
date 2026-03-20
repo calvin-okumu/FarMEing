@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -17,21 +16,23 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord } from '../utils/localRecord';
+import { stitchTheme } from '../theme/stitchTheme';
+import {
+  StitchChip,
+  StitchDisplayTitle,
+  StitchEyebrow,
+  StitchMiniBars,
+  StitchPrimaryButton,
+  StitchSectionLabel,
+  StitchSurface,
+  StitchTopBar,
+} from '../components/ui/StitchPrimitives';
 
-const CATEGORIES = [
-  'seeds',
-  'fertilizer',
-  'pesticides',
-  'labor',
-  'equipment',
-  'fuel',
-  'irrigation',
-  'other',
-];
+const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', 'fuel', 'irrigation', 'other'];
 
 export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
-  const { projectId } = route.params; // project's remoteId
+  const { projectId } = route.params;
   const currency = useSettingsStore((s) => s.currency);
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
@@ -41,6 +42,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
 
   const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
+  const bars = useMemo(() => [1, parseFloat(quantity) || 1, parseFloat(unitPrice) || 1, total || 1], [quantity, unitPrice, total]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -54,7 +56,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 
     setSaving(true);
     try {
-      // 1. Save to local WatermelonDB first
       await database.write(async () => {
         await database.get('budget_items').create((record) => {
           initializeLocalRecord(record);
@@ -68,10 +69,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         });
       });
 
-      // 2. Trigger background sync
       syncAll().catch(() => {});
-
-      // 3. Return immediately
       navigation.goBack();
     } catch (err) {
       Alert.alert(t('common.error'), err.message || t('budget.errors.save_local'));
@@ -84,83 +82,81 @@ export default function AddBudgetItemScreen({ route, navigation }) {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.label}>{t('budget.fields.category')}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
-              onPress={() => setCategory(cat)}
-            >
-              <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
-                {t(`budget.categories.${cat}`)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <StitchTopBar title={t('budget.add')} onBack={() => navigation.goBack()} />
+        <StitchEyebrow>{t('budget.fields.category')}</StitchEyebrow>
+        <StitchDisplayTitle>{t('budget.add')}</StitchDisplayTitle>
 
-        <Text style={styles.label}>{t('budget.fields.name')} *</Text>
+        <StitchSurface style={styles.heroSurface}>
+          <View style={styles.heroTopRow}>
+            <View>
+              <Text style={styles.heroAmountLabel}>{t('budget.estimated_total')}</Text>
+              <Text style={styles.heroAmount}>{formatCurrency(total, currency)}</Text>
+            </View>
+          </View>
+          <StitchMiniBars values={bars} activeIndex={3} softIndex={1} style={{ marginTop: 18 }} />
+        </StitchSurface>
+
+        <StitchSectionLabel>{t('budget.fields.category')}</StitchSectionLabel>
+        <View style={styles.chipsRow}>
+          {CATEGORIES.map((cat) => (
+            <StitchChip key={cat} label={t(`budget.categories.${cat}`)} active={category === cat} onPress={() => setCategory(cat)} style={styles.chipWrap} />
+          ))}
+        </View>
+
+        <StitchSectionLabel>{t('budget.fields.name')} *</StitchSectionLabel>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
           placeholder={t('budget.placeholders.name')}
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#8a9388"
         />
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <Text style={styles.label}>{t('budget.fields.quantity')} *</Text>
+            <StitchSectionLabel>{t('budget.fields.quantity')} *</StitchSectionLabel>
             <TextInput
               style={styles.input}
               value={quantity}
               onChangeText={setQuantity}
               placeholder="0"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#8a9388"
               keyboardType="numeric"
             />
           </View>
           <View style={styles.half}>
-            <Text style={styles.label}>{t('budget.fields.unit')}</Text>
+            <StitchSectionLabel>{t('budget.fields.unit')}</StitchSectionLabel>
             <TextInput
               style={styles.input}
               value={unit}
               onChangeText={setUnit}
               placeholder={t('budget.placeholders.unit')}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#8a9388"
             />
           </View>
         </View>
 
-        <Text style={styles.label}>{t('budget.fields.unit_price')} *</Text>
+        <StitchSectionLabel>{t('budget.fields.unit_price')} *</StitchSectionLabel>
         <TextInput
           style={styles.input}
           value={unitPrice}
           onChangeText={setUnitPrice}
           placeholder="0.00"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#8a9388"
           keyboardType="decimal-pad"
         />
 
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{t('budget.estimated_total')}</Text>
-          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+        <StitchPrimaryButton
+          label={saving ? '...' : t('budget.add')}
           onPress={handleSave}
           disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>{t('budget.add')}</Text>
-          )}
-        </TouchableOpacity>
+          icon={saving ? 'time-outline' : 'add-circle'}
+          style={styles.button}
+        />
+        {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -168,21 +164,17 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  content: { padding: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a', backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  heroSurface: { marginTop: 22 },
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroAmountLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: '800' },
+  heroAmount: { marginTop: 10, fontSize: 38, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  chipWrap: { marginBottom: 0 },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
-  categoryRow: { marginBottom: 4 },
-  categoryChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', marginRight: 8 },
-  categoryChipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
-  categoryText: { fontSize: 13, color: '#6b7280' },
-  categoryTextActive: { color: '#fff' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 8, marginTop: 20 },
-  totalLabel: { fontSize: 16, color: '#6b7280' },
-  totalValue: { fontSize: 18, fontWeight: '700', color: '#16a34a' },
-  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24, marginBottom: 20 },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
+  button: { marginTop: 28 },
+  loader: { marginTop: 12 },
 });
