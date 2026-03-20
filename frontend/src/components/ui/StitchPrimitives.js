@@ -44,7 +44,7 @@ export function StitchSectionLabel({ children, style }) {
 }
 
 export function StitchSurface({ children, style }) {
-  return <View style={[styles.surface, style]}>{children}</View>;
+  return <View style={[styles.surfaceGlow, style]}><View style={styles.surfaceInner}>{children}</View></View>;
 }
 
 export function StitchChip({ label, active, onPress, style, textStyle }) {
@@ -114,15 +114,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.52)',
   },
   topBarTitle: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: stitchTheme.typography.title.fontSize,
+    fontWeight: stitchTheme.typography.title.fontWeight,
     color: stitchTheme.colors.primary,
   },
   topBarSubtitle: {
@@ -132,10 +133,10 @@ const styles = StyleSheet.create({
     color: stitchTheme.colors.primary,
   },
   langChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: stitchTheme.colors.primarySoft,
+    backgroundColor: 'rgba(163,246,156,0.82)',
   },
   langChipText: {
     color: stitchTheme.colors.primary,
@@ -143,30 +144,34 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   eyebrow: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: stitchTheme.typography.label.fontSize,
+    fontWeight: stitchTheme.typography.label.fontWeight,
     letterSpacing: 1.8,
     textTransform: 'uppercase',
     color: stitchTheme.colors.accentBrown,
   },
   displayTitle: {
     marginTop: 10,
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '900',
+    fontSize: stitchTheme.typography.display.fontSize,
+    lineHeight: stitchTheme.typography.display.lineHeight,
+    fontWeight: stitchTheme.typography.display.fontWeight,
     color: stitchTheme.colors.primary,
   },
   sectionLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: stitchTheme.colors.accentBrown,
     marginBottom: 12,
   },
-  surface: {
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    padding: 22,
+  surfaceGlow: {
+    borderRadius: stitchTheme.radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     ...stitchShadows.card,
+  },
+  surfaceInner: {
+    backgroundColor: stitchTheme.colors.surface,
+    borderRadius: stitchTheme.radius.lg,
+    padding: 22,
   },
   chip: {
     paddingHorizontal: 16,

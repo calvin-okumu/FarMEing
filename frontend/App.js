@@ -40,7 +40,7 @@ function AppContent() {
 
   return (
     <NavigationContainer>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <RootNavigator />
     </NavigationContainer>
   );

@@ -12,7 +12,9 @@ export default function RootNavigator() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background }}>
-        <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
+        <View style={{ width: 120, height: 120, borderRadius: 38, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+          <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
+        </View>
       </View>
     );
   }

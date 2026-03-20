@@ -1,14 +1,18 @@
 export const stitchTheme = {
   colors: {
     background: '#fbf9f7',
+    backgroundElevated: '#f3efea',
     surface: '#ffffff',
     surfaceMuted: '#f3efea',
     surfaceSoft: '#eef5ff',
+    surfaceGhost: 'rgba(255,255,255,0.82)',
     text: '#121714',
     textMuted: '#6e6d68',
     textSoft: '#3f5442',
     primary: '#00450d',
     primaryContainer: '#0a6a19',
+    primaryGradientStart: '#00450d',
+    primaryGradientEnd: '#0a6a19',
     primarySoft: '#a3f69c',
     primaryDim: '#88d982',
     accentBlue: '#2f63ea',
@@ -21,14 +25,42 @@ export const stitchTheme = {
     shadowStrong: 'rgba(16, 34, 20, 0.16)',
   },
   radius: {
+    xs: 10,
     sm: 14,
     md: 22,
     lg: 30,
+    xl: 36,
     pill: 999,
   },
   spacing: {
+    xs: 8,
+    sm: 12,
+    md: 16,
     screen: 20,
     section: 24,
+    lg: 32,
+  },
+  typography: {
+    display: {
+      fontSize: 34,
+      lineHeight: 40,
+      fontWeight: '900',
+    },
+    title: {
+      fontSize: 28,
+      lineHeight: 32,
+      fontWeight: '800',
+    },
+    body: {
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: '500',
+    },
+    label: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '800',
+    },
   },
 };
 

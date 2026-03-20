@@ -13,6 +13,7 @@ const TAB_META = {
 export default function StitchTabBar({ state, descriptors, navigation }) {
   return (
     <View style={styles.wrap}>
+      <View style={styles.ambientGlow} />
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -41,6 +42,7 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
               style={[styles.item, isFocused && styles.itemActive]}
               activeOpacity={0.85}
             >
+              {isFocused ? <View style={styles.focusHalo} /> : null}
               <Ionicons
                 name={isFocused ? meta.icon.replace('-outline', '') : meta.icon}
                 size={20}
@@ -66,14 +68,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 16,
   },
+  ambientGlow: {
+    position: 'absolute',
+    left: 28,
+    right: 28,
+    bottom: 8,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0,69,13,0.08)',
+  },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 34,
+    backgroundColor: stitchTheme.colors.surfaceGhost,
     paddingHorizontal: 10,
     paddingVertical: 10,
     ...stitchShadows.card,
@@ -84,11 +93,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     borderRadius: stitchTheme.radius.md,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 4,
+    overflow: 'hidden',
   },
   itemActive: {
-    backgroundColor: stitchTheme.colors.primarySoft,
+    backgroundColor: 'rgba(163,246,156,0.72)',
+  },
+  focusHalo: {
+    position: 'absolute',
+    top: -10,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   label: {
     fontSize: 11,
