@@ -53,22 +53,22 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="AddExpense"
         component={AddExpenseScreen}
-        options={{ title: t('expenses.save') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="AddWorkEntry"
         component={AddWorkEntryScreen}
-        options={{ title: t('labor.log_work') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="AddHarvest"
         component={AddHarvestScreen}
-        options={{ title: t('harvest.record') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="AddSale"
         component={AddSaleScreen}
-        options={{ title: t('sales.record') }}
+        options={{ headerShown: false }}
       />
     </ProjectStack.Navigator>
   );
@@ -128,11 +128,7 @@ export default function TabNavigator() {
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{
-          title: t('settings.title'),
-          headerShown: true,
-          ...stitchHeaderOptions,
-        }}
+        options={{ title: t('tab.profile') }}
       />
     </Tab.Navigator>
   );

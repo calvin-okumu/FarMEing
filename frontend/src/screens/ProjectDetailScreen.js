@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,82 @@ import api from '../lib/api';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+
+const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'timeline'];
+
+function SummaryCard({ label, value, tone = 'default' }) {
+  return (
+    <View style={[styles.summaryCard, tone === 'accent' && styles.summaryCardAccent]}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={[styles.summaryValue, tone === 'accent' && styles.summaryValueAccent]}>{value}</Text>
+    </View>
+  );
+}
+
+function TimelineSection({ title, tone, items, t, currency }) {
+  if (!items.length) return null;
+
+  return (
+    <View style={styles.timelineSection}>
+      <View style={styles.timelineSectionHeader}>
+        <View style={[styles.timelineSectionChip, tone === 'today' ? styles.timelineSectionChipToday : styles.timelineSectionChipPast]}>
+          <Text style={[styles.timelineSectionChipText, tone === 'today' && styles.timelineSectionChipTextToday]}>{title}</Text>
+        </View>
+        <View style={styles.timelineSectionLine} />
+      </View>
+
+      {items.map((item, index) => (
+        <View key={`${title}-${index}`} style={styles.timelineItemWrap}>
+          <View style={styles.timelineRail}>
+            <View style={[styles.timelineDot, { backgroundColor: item.dotColor }]}>
+              <Ionicons name={item.icon} size={15} color={item.iconColor || '#fff'} />
+            </View>
+            {index !== items.length - 1 ? <View style={styles.timelineVertical} /> : null}
+          </View>
+          <View style={styles.timelineCard}>
+            <View style={styles.timelineTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.timelineTitle}>{item.title}</Text>
+                <View style={styles.timelineMetaRow}>
+                  <Ionicons name={item.timeIcon || 'time-outline'} size={13} color={stitchTheme.colors.textMuted} />
+                  <Text style={styles.timelineMetaText}>{item.timeLabel}</Text>
+                </View>
+              </View>
+              {item.badge ? (
+                <View style={[styles.timelineBadge, { backgroundColor: item.badgeBackground || '#e7f4e4' }]}>
+                  <Text style={[styles.timelineBadgeText, { color: item.badgeColor || stitchTheme.colors.primary }]}>{item.badge}</Text>
+                </View>
+              ) : null}
+              {item.amountLabel ? <Text style={styles.timelineAmountText}>{item.amountLabel}</Text> : null}
+            </View>
+            <Text style={styles.timelineBody}>{item.body}</Text>
+            {item.preview ? (
+              <View style={styles.timelinePreviewRow}>
+                {item.preview.map((previewItem, previewIndex) => (
+                  <View key={previewIndex} style={[styles.timelinePreview, { backgroundColor: previewItem.backgroundColor }]}> 
+                    <Ionicons name={previewItem.icon} size={28} color={previewItem.color} />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {item.type === 'HARVEST' ? (
+              <Text style={styles.timelineFooterValue}>{`${item.amount} ${t('harvest.units.kg')}`}</Text>
+            ) : item.type === 'SALE' || item.type === 'EXPENSE' ? (
+              <Text style={styles.timelineFooterValue}>{formatCurrency(item.amount || 0, currency)}</Text>
+            ) : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
-  
+
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -30,9 +100,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [timeline, setTimeline] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('budget');
+  const [activeTab, setActiveTab] = useState('timeline');
 
-  // 1. Load Project Record
   useEffect(() => {
     if (!projectId) {
       setLoading(false);
@@ -43,7 +112,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       try {
         const proj = await database.get('farm_projects').find(projectId);
         setProject(proj);
-        
+
         if (proj.remoteId) {
           const { data } = await api.get(`/projects/${proj.remoteId}/summary`);
           setTimeline(data.timeline || []);
@@ -57,46 +126,18 @@ export default function ProjectDetailScreen({ route, navigation }) {
     loadProject();
   }, [projectId]);
 
-  // 2. Subscriptions: Dependent on projectId
   useEffect(() => {
     if (!projectId) return;
 
     const projectIds = [projectId];
-    if (project?.remoteId) {
-      projectIds.push(project.remoteId);
-    }
+    if (project?.remoteId) projectIds.push(project.remoteId);
 
-    const budgetSub = database
-      .get('budget_items')
-      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setBudgetItems);
-
-    const expenseSub = database
-      .get('expenses')
-      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setExpenses);
-
-    const workSub = database
-      .get('work_entries')
-      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setWorkEntries);
-
-    const harvestSub = database
-      .get('harvests')
-      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setHarvests);
-
-    const saleSub = database
-      .get('sales')
-      .query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setSales);
-
-      const empSub = database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees);
+    const budgetSub = database.get('budget_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setBudgetItems);
+    const expenseSub = database.get('expenses').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setExpenses);
+    const workSub = database.get('work_entries').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setWorkEntries);
+    const harvestSub = database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests);
+    const saleSub = database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales);
+    const empSub = database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees);
 
     return () => {
       budgetSub.unsubscribe();
@@ -108,21 +149,98 @@ export default function ProjectDetailScreen({ route, navigation }) {
     };
   }, [projectId, project?.remoteId]);
 
-  const totalBudget = budgetItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalLabor = workEntries.filter(w => w.status === 'APPROVED').reduce((sum, w) => sum + w.totalCost, 0);
+  const totalBudget = budgetItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const totalLabor = workEntries.filter((item) => item.status === 'APPROVED').reduce((sum, item) => sum + item.totalCost, 0);
   const totalSpent = totalExpenses + totalLabor;
+  const totalHarvest = harvests.reduce((sum, item) => sum + item.weight, 0);
+  const totalRevenue = sales.reduce((sum, item) => sum + item.totalAmount, 0);
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-  
-  const totalHarvest = harvests.reduce((sum, h) => sum + h.weight, 0);
-  const totalRevenue = sales.reduce((sum, s) => sum + s.totalAmount, 0);
 
-  const employeeMap = new Map(employees.map(e => [e.remoteId, e.name]));
+  const employeeMap = new Map();
+  employees.forEach((employee) => {
+    employeeMap.set(employee.id, employee.name);
+    if (employee.remoteId) employeeMap.set(employee.remoteId, employee.name);
+  });
+
+  const localTimeline = useMemo(() => {
+    const workItems = workEntries.slice(0, 4).map((entry) => ({
+      type: 'WORK',
+      date: entry.date,
+      icon: entry.activity?.toLowerCase().includes('irrig') ? 'water-outline' : entry.activity?.toLowerCase().includes('spray') ? 'flask-outline' : 'leaf-outline',
+      title: `${entry.activity} / ${t(`labor.activity_notes.${entry.activity?.toLowerCase() || 'other'}`, { defaultValue: t('labor.activity_notes.other') })}`,
+      body: entry.notes || t('timeline.work_default_body', { employee: employeeMap.get(entry.employeeId) || t('employees.unknown') }),
+      badge: entry.status === 'APPROVED' ? t('timeline.completed') : t(`labor.status.${entry.status.toLowerCase()}`),
+      badgeBackground: entry.status === 'APPROVED' ? '#e3f3de' : '#f6ead9',
+      badgeColor: entry.status === 'APPROVED' ? stitchTheme.colors.primary : '#9b5c22',
+      timeIcon: 'time-outline',
+      timeLabel: formatAppDate(entry.date),
+      dotColor: entry.activity?.toLowerCase().includes('irrig') ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown,
+      amount: entry.totalCost,
+      preview: entry.imageUrl ? [{ icon: 'image-outline', backgroundColor: '#eae8e4', color: stitchTheme.colors.primary }] : null,
+    }));
+
+    const expenseItems = expenses.slice(0, 2).map((expense) => ({
+      type: 'EXPENSE',
+      date: expense.date,
+      icon: 'wallet-outline',
+      title: `${t('timeline.expense_title')} / ${t('expenses.categories.' + expense.category, { defaultValue: expense.category })}`,
+      body: expense.note || t('timeline.expense_default_body', { category: t(`expenses.categories.${expense.category}`, { defaultValue: expense.category }) }),
+      timeIcon: 'calendar-outline',
+      timeLabel: formatAppDate(expense.date),
+      dotColor: '#ffc8bf',
+      iconColor: stitchTheme.colors.accentBrown,
+      amount: -expense.amount,
+      amountLabel: `- ${formatCurrency(expense.amount, currency)}`,
+    }));
+
+    return [...workItems, ...expenseItems].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [workEntries, expenses, employeeMap, t, currency]);
+
+  const mergedTimeline = timeline.length ? timeline : localTimeline;
+
+  const groupedTimeline = useMemo(() => {
+    const today = [];
+    const earlier = [];
+    const now = new Date();
+
+    mergedTimeline.forEach((item) => {
+      const itemDate = new Date(item.date);
+      const normalized = {
+        ...item,
+        timeLabel: item.timeLabel || formatAppDate(item.date),
+        icon: item.icon || 'leaf-outline',
+        dotColor: item.dotColor || stitchTheme.colors.primary,
+      };
+
+      if (
+        itemDate.getDate() === now.getDate() &&
+        itemDate.getMonth() === now.getMonth() &&
+        itemDate.getFullYear() === now.getFullYear()
+      ) {
+        today.push(normalized);
+      } else {
+        earlier.push(normalized);
+      }
+    });
+
+    return { today, earlier };
+  }, [mergedTimeline]);
+
+  const renderCollectionCard = (title, meta, amount, tone = 'default') => (
+    <View style={styles.collectionCard}>
+      <View style={styles.collectionTopRow}>
+        <Text style={styles.collectionTitle}>{title}</Text>
+        <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
+      </View>
+      <Text style={styles.collectionMeta}>{meta}</Text>
+    </View>
+  );
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
+        <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
       </View>
     );
   }
@@ -138,248 +256,163 @@ export default function ProjectDetailScreen({ route, navigation }) {
     );
   }
 
-  const TabButton = ({ name, label }) => (
-    <TouchableOpacity
-      style={[styles.tabButton, activeTab === name && styles.tabButtonActive]}
-      onPress={() => setActiveTab(name)}
-    >
-      <Text style={[styles.tabText, activeTab === name && styles.tabTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Ionicons name="leaf" size={24} color="#16a34a" />
-          <Text style={styles.projectName}>{project.name}</Text>
-        </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{project.crop} • {project.landSize} {project.landUnit}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: project.status === 'ACTIVE' ? '#f0fdf4' : '#f3f4f6' }]}>
-            <Text style={[styles.statusText, { color: project.status === 'ACTIVE' ? '#16a34a' : '#6b7280' }]}>{project.status}</Text>
+    <View style={styles.screen}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
+              <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{project.name}</Text>
           </View>
+          <TouchableOpacity style={styles.headerIcon} onPress={() => setActiveTab('timeline')} activeOpacity={0.86}>
+            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
+          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Summary Cards */}
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t('dashboard.spent')}</Text>
-          <Text style={[styles.summaryValue, totalSpent > totalBudget && styles.overBudget]}>
-            {formatCurrency(totalSpent, currency)}
-          </Text>
+        <Text style={styles.headerEyebrow}>{t('timeline.project_activity')}</Text>
+        <Text style={styles.headerDisplay}>{activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}</Text>
+
+        <View style={styles.heroCard}>
+          <View style={styles.heroRow}>
+            <Text style={styles.heroMeta}>{project.crop} • {project.landSize} {project.landUnit}</Text>
+            <View style={[styles.heroStatus, project.status === 'ACTIVE' ? styles.heroStatusActive : styles.heroStatusMuted]}>
+              <Text style={[styles.heroStatusText, project.status === 'ACTIVE' ? styles.heroStatusTextActive : styles.heroStatusTextMuted]}>{project.status}</Text>
+            </View>
+          </View>
+          <View style={styles.summaryRow}>
+            <SummaryCard label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} />
+            <SummaryCard label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} tone="accent" />
+            <SummaryCard label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} />
+          </View>
+          <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && styles.progressBarFillDanger]} />
+          </View>
+          <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.spent')}</Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t('dashboard.revenue')}</Text>
-          <Text style={[styles.summaryValue, { color: '#16a34a' }]}>
-            {formatCurrency(totalRevenue, currency)}
-          </Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t('projects.tabs.harvest')}</Text>
-          <Text style={styles.summaryValue}>
-            {totalHarvest.toLocaleString()} {t('harvest.units.kg')}
-          </Text>
-        </View>
-      </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && { backgroundColor: '#ef4444' }]} />
-        </View>
-        <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.spent')}</Text>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TabButton name="budget" label={t('projects.tabs.budget')} />
-          <TabButton name="expenses" label={t('projects.tabs.expenses')} />
-          <TabButton name="labor" label={t('projects.tabs.labor')} />
-          <TabButton name="harvest" label={t('projects.tabs.harvest')} />
-          <TabButton name="sales" label={t('projects.tabs.sales')} />
-          <TabButton name="timeline" label={t('projects.tabs.timeline')} />
-        </ScrollView>
-      </View>
-
-      {/* Content */}
-      <ScrollView style={styles.content}>
-        {activeTab === 'budget' && (
-           budgetItems.length === 0 ? <Text style={styles.emptyText}>{t('budget.empty')}</Text> :
-          budgetItems.map(item => (
-            <View key={item.id} style={styles.listItem}>
-              <View style={styles.listItemHeader}>
-                <Text style={styles.listItemTitle}>{item.name}</Text>
-                 <Text style={styles.listItemAmount}>{formatCurrency(item.quantity * item.unitPrice, currency)}</Text>
-              </View>
-              <Text style={styles.listItemMeta}>{item.category} • {item.quantity} {item.unit}</Text>
-            </View>
-          ))
-        )}
-
-        {activeTab === 'expenses' && (
-           expenses.length === 0 ? <Text style={styles.emptyText}>{t('expenses.empty')}</Text> :
-          expenses.map(expense => (
-            <View key={expense.id} style={styles.listItem}>
-              <View style={styles.listItemHeader}>
-                <Text style={styles.listItemTitle}>{expense.category}</Text>
-                 <Text style={styles.listItemAmount}>{formatCurrency(expense.amount, currency)}</Text>
-              </View>
-              <Text style={styles.listItemMeta}>
-                {expense.date ? formatAppDate(expense.date) : ''} • {expense.expenseType}
-              </Text>
-            </View>
-          ))
-        )}
-
-        {activeTab === 'labor' && (
-           workEntries.length === 0 ? <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> :
-          workEntries.map(entry => (
-            <View key={entry.id} style={styles.listItem}>
-              <View style={styles.listItemHeader}>
-                <View style={{ flex: 1 }}>
-                   <Text style={styles.listItemTitle}>{employeeMap.get(entry.employeeId) || t('employees.unknown')}</Text>
-                  <View style={styles.badgeRow}>
-                    <View style={[styles.statusBadge, { backgroundColor: entry.status === 'APPROVED' ? '#f0fdf4' : '#fff7ed' }]}>
-                      <Text style={[styles.statusText, { color: entry.status === 'APPROVED' ? '#16a34a' : '#c2410c' }]}>{t(`labor.status.${entry.status.toLowerCase()}`)}</Text>
-                    </View>
-                    {entry.imageUrl ? <Ionicons name="image-outline" size={14} color="#16a34a" /> : null}
-                  </View>
-                </View>
-                 <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost, currency)}</Text>
-              </View>
-               <Text style={styles.listItemMeta}>{entry.activity} • {entry.daysWorked} {t('labor.days')} {entry.hoursWorked ? `(${entry.hoursWorked} ${t('labor.hours_short')})` : ''}</Text>
-            </View>
-          ))
-        )}
-
-        {activeTab === 'harvest' && (
-           harvests.length === 0 ? <Text style={styles.emptyText}>{t('harvest.empty')}</Text> :
-          harvests.map(h => (
-            <View key={h.id} style={styles.listItem}>
-              <View style={styles.listItemHeader}>
-                 <Text style={styles.listItemTitle}>{h.crop} ({h.quality ? (h.quality.includes('grade_') || h.quality === 'mixed' ? t(`harvest.qualities.${h.quality}`) : h.quality) : t('harvest.default_quality')})</Text>
-                <Text style={styles.listItemAmount}>{h.weight} {h.unit}</Text>
-              </View>
-               <Text style={styles.listItemMeta}>{h.date ? formatAppDate(h.date) : ''}</Text>
-            </View>
-          ))
-        )}
-
-        {activeTab === 'sales' && (
-           sales.length === 0 ? <Text style={styles.emptyText}>{t('sales.empty')}</Text> :
-          sales.map(s => (
-            <View key={s.id} style={styles.listItem}>
-              <View style={styles.listItemHeader}>
-                 <Text style={styles.listItemTitle}>{s.customer || t('sales.cash_sale')}</Text>
-                 <Text style={[styles.listItemAmount, { color: '#16a34a' }]}>{formatCurrency(s.totalAmount, currency)}</Text>
-              </View>
-              <Text style={styles.listItemMeta}>
-                {s.date ? formatAppDate(s.date) : ''} • {s.weightSold} {t('harvest.units.kg')} @ {formatCurrency(s.unitPrice, currency)}/{t('harvest.units.kg')}
-              </Text>
-            </View>
-          ))
-        )}
-
-        {activeTab === 'timeline' && (
-          timeline.length === 0 ? <Text style={styles.emptyText}>{t('projects.pull_to_sync')}</Text> :
-          timeline.map((item, index) => {
-            const dayNum = Math.floor((new Date(item.date) - new Date(project.startDate)) / (1000 * 60 * 60 * 24)) + 1;
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+          {TAB_ORDER.map((tab) => {
+            const active = activeTab === tab;
             return (
-              <View key={index} style={styles.timelineItem}>
-                <View style={styles.timelineLeft}>
-                  <Text style={styles.timelineDay}>{t('projects.day', { count: dayNum })}</Text>
-                  <View style={styles.timelineLine} />
-                </View>
-                <View style={styles.timelineCard}>
-                  <View style={styles.timelineHeader}>
-                    <Ionicons name={item.icon} size={18} color="#16a34a" />
-                    <Text style={styles.timelineLabel}>{item.label}</Text>
-                  </View>
-                  <Text style={styles.timelineAmount}>
-                     {item.type === 'HARVEST' ? `${item.amount} ${t('harvest.units.kg')}` : formatCurrency(item.amount, currency)}
-                  </Text>
-                  <Text style={styles.timelineDate}>{formatAppDate(item.date)}</Text>
-                </View>
-              </View>
+              <TouchableOpacity key={tab} style={[styles.tabChip, active && styles.tabChipActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.88}>
+                <Text style={[styles.tabChipText, active && styles.tabChipTextActive]}>{t(`projects.tabs.${tab}`)}</Text>
+              </TouchableOpacity>
             );
-          })
-        )}
-        <View style={{ height: 80 }} />
+          })}
+        </ScrollView>
+
+        {activeTab === 'budget' ? budgetItems.length ? budgetItems.map((item) => renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency))) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
+
+        {activeTab === 'expenses' ? expenses.length ? expenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative')) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
+
+        {activeTab === 'labor' ? workEntries.length ? workEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency))) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> : null}
+
+        {activeTab === 'harvest' ? harvests.length ? harvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
+
+        {activeTab === 'sales' ? sales.length ? sales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive')) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
+
+        {activeTab === 'timeline' ? (
+          <View style={styles.timelineContainer}>
+            <TimelineSection title={t('timeline.today')} tone="today" items={groupedTimeline.today} t={t} currency={currency} />
+            <TimelineSection title={t('timeline.yesterday')} tone="past" items={groupedTimeline.earlier} t={t} currency={currency} />
+            {!groupedTimeline.today.length && !groupedTimeline.earlier.length ? <Text style={styles.emptyText}>{t('projects.pull_to_sync')}</Text> : null}
+          </View>
+        ) : null}
+
+        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
-           const params = { projectId: project.id };
+          const params = { projectId: project.id };
           if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
           else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
           else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
           else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
           else if (activeTab === 'sales') navigation.navigate('AddSale', params);
-          else navigation.navigate('AddExpense', params); // default for timeline?
+          else navigation.navigate('AddExpense', params);
         }}
+        activeOpacity={0.9}
       >
-        <Ionicons name="add" size={32} color="#fff" />
+        <Ionicons name="add" size={30} color={stitchTheme.colors.primary} />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { fontSize: 16, color: '#6b7280', marginBottom: 16 },
-  backButton: { backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  backButtonText: { color: '#fff', fontWeight: '600' },
-
-  header: { backgroundColor: '#fff', padding: 16, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  projectName: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  metaText: { fontSize: 14, color: '#6b7280' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' },
-  statusText: { fontSize: 10, fontWeight: '700' },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-
-  summaryRow: { flexDirection: 'row', padding: 16, gap: 12 },
-  summaryCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 16, alignItems: 'center', elevation: 1 },
-  summaryLabel: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
-  summaryValue: { fontSize: 18, fontWeight: '700', color: '#1a1a1a' },
-  overBudget: { color: '#ef4444' },
-
-  progressContainer: { paddingHorizontal: 16, paddingBottom: 16 },
-  progressBar: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#16a34a', borderRadius: 4 },
-  progressText: { fontSize: 12, color: '#6b7280', marginTop: 4, textAlign: 'right' },
-
-  tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  tabButton: { paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabButtonActive: { borderBottomColor: '#16a34a' },
-  tabText: { fontSize: 14, fontWeight: '600', color: '#6b7280' },
-  tabTextActive: { color: '#16a34a' },
-
-  content: { flex: 1, padding: 16 },
-  listItem: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 8 },
-  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  listItemTitle: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-  listItemAmount: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-  listItemMeta: { fontSize: 12, color: '#9ca3af' },
-  emptyText: { textAlign: 'center', marginTop: 40, color: '#9ca3af' },
-
-  timelineItem: { flexDirection: 'row', marginBottom: 0 },
-  timelineLeft: { alignItems: 'center', width: 60 },
-  timelineDay: { fontSize: 12, fontWeight: '700', color: '#16a34a', backgroundColor: '#f0fdf4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  timelineLine: { width: 2, flex: 1, backgroundColor: '#d1fae5', marginVertical: 4 },
-  timelineCard: { flex: 1, backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16, marginLeft: 8, elevation: 1 },
-  timelineHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  timelineLabel: { fontSize: 14, fontWeight: '600', color: '#1a1a1a', flex: 1 },
-  timelineAmount: { fontSize: 16, fontWeight: '700', color: '#374151' },
-  timelineDate: { fontSize: 11, color: '#9ca3af', marginTop: 4 },
-
-  fab: { position: 'absolute', bottom: 24, right: 24, width: 64, height: 64, borderRadius: 32, backgroundColor: '#16a34a', alignItems: 'center', justifyContent: 'center', elevation: 5 },
+  screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 40 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
+  errorText: { fontSize: 16, color: stitchTheme.colors.textMuted, marginBottom: 16 },
+  backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  backButtonText: { color: '#fff', fontWeight: '700' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, fontSize: 28, fontWeight: '800', color: stitchTheme.colors.primary },
+  headerEyebrow: { fontSize: 16, color: stitchTheme.colors.accentBrown, marginBottom: 6 },
+  headerDisplay: { fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: 22 },
+  heroCard: { backgroundColor: '#fff', borderRadius: 32, padding: 22, ...stitchShadows.card },
+  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroMeta: { fontSize: 15, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
+  heroStatus: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
+  heroStatusActive: { backgroundColor: stitchTheme.colors.primarySoft },
+  heroStatusMuted: { backgroundColor: '#ece8e4' },
+  heroStatusText: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  heroStatusTextActive: { color: stitchTheme.colors.primary },
+  heroStatusTextMuted: { color: stitchTheme.colors.accentBrown },
+  summaryRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  summaryCard: { flex: 1, borderRadius: 22, backgroundColor: '#f4f1ec', padding: 14 },
+  summaryCardAccent: { backgroundColor: '#eef7eb' },
+  summaryLabel: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.accentBrown, marginBottom: 6 },
+  summaryValue: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text },
+  summaryValueAccent: { color: stitchTheme.colors.primary },
+  progressBarTrack: { height: 8, borderRadius: 999, backgroundColor: '#e6e3de', overflow: 'hidden', marginTop: 18 },
+  progressBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryContainer },
+  progressBarFillDanger: { backgroundColor: '#9c1111' },
+  progressText: { marginTop: 8, fontSize: 12, color: stitchTheme.colors.textMuted, textAlign: 'right' },
+  tabsRow: { gap: 10, paddingVertical: 22 },
+  tabChip: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999, backgroundColor: '#ece8e4' },
+  tabChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
+  tabChipText: { color: stitchTheme.colors.accentBrown, fontWeight: '700' },
+  tabChipTextActive: { color: stitchTheme.colors.primary },
+  collectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 12, ...stitchShadows.card },
+  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  collectionTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
+  collectionAmount: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text },
+  collectionAmountPositive: { color: stitchTheme.colors.primary },
+  collectionAmountNegative: { color: '#8b0e0e' },
+  collectionMeta: { marginTop: 6, fontSize: 14, lineHeight: 20, color: stitchTheme.colors.textMuted },
+  emptyText: { textAlign: 'center', marginTop: 34, color: stitchTheme.colors.textMuted, fontSize: 15 },
+  timelineContainer: { gap: 6 },
+  timelineSection: { marginBottom: 14 },
+  timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+  timelineSectionChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
+  timelineSectionChipToday: { backgroundColor: stitchTheme.colors.primarySoft },
+  timelineSectionChipPast: { backgroundColor: '#e7e3df' },
+  timelineSectionChipText: { fontSize: 14, fontWeight: '800', color: stitchTheme.colors.text },
+  timelineSectionChipTextToday: { color: stitchTheme.colors.primary },
+  timelineSectionLine: { flex: 1, height: 1, backgroundColor: 'rgba(192,201,187,0.45)' },
+  timelineItemWrap: { flexDirection: 'row' },
+  timelineRail: { width: 38, alignItems: 'center' },
+  timelineDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  timelineVertical: { width: 2, flex: 1, backgroundColor: 'rgba(192,201,187,0.45)', marginTop: 4 },
+  timelineCard: { flex: 1, backgroundColor: '#fff', borderRadius: 28, padding: 18, marginBottom: 16, ...stitchShadows.card },
+  timelineTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+  timelineTitle: { fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
+  timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  timelineMetaText: { fontSize: 13, color: stitchTheme.colors.textMuted },
+  timelineBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  timelineBadgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+  timelineAmountText: { fontSize: 18, fontWeight: '900', color: '#8b0e0e' },
+  timelineBody: { fontSize: 16, lineHeight: 27, color: stitchTheme.colors.text, marginBottom: 10 },
+  timelinePreviewRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  timelinePreview: { width: 92, height: 92, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  timelineFooterValue: { marginTop: 6, fontSize: 16, fontWeight: '900', color: stitchTheme.colors.primary },
+  fab: { position: 'absolute', bottom: 24, right: 20, width: 62, height: 62, borderRadius: 20, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
 });

@@ -7,7 +7,7 @@ const TAB_META = {
   Projects: { icon: 'wallet-outline' },
   Employees: { icon: 'people-outline' },
   QuickEntry: { icon: 'leaf-outline' },
-  Settings: { icon: 'cash-outline' },
+  Settings: { icon: 'person-outline' },
 };
 
 export default function StitchTabBar({ state, descriptors, navigation }) {

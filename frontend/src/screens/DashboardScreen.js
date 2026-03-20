@@ -82,6 +82,25 @@ function MetricCard({ label, value, icon, tone, progressLabel, progressValue }) 
   );
 }
 
+function ForecastRow({ item }) {
+  return (
+    <View style={styles.forecastRow}>
+      <View style={styles.forecastDayWrap}>
+        <Text style={styles.forecastDay}>{item.day}</Text>
+        <Text style={styles.forecastDayShort}>{item.short}</Text>
+      </View>
+      <View style={styles.forecastIconWrap}>
+        <Ionicons name={item.icon} size={24} color={item.iconColor} />
+        <Text style={styles.forecastCondition}>{item.condition}</Text>
+      </View>
+      <View style={styles.forecastTempWrap}>
+        <Text style={styles.forecastHigh}>{item.high}</Text>
+        <Text style={styles.forecastLow}>{item.low}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function DashboardScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const token = useAuthStore((s) => s.token);
@@ -244,6 +263,13 @@ export default function DashboardScreen({ navigation }) {
     : t('dashboard.weather_good_body');
   const topWorker = laborByEmployee[0];
   const topActivity = laborByActivity[0];
+  const weatherForecast = [
+    { day: t('weather.days.tue'), short: 'Tue', icon: 'sunny', iconColor: stitchTheme.colors.primary, condition: t('weather.conditions.sunny'), high: '31°', low: '19°' },
+    { day: t('weather.days.wed'), short: 'Wed', icon: 'rainy', iconColor: '#3b82f6', condition: t('weather.conditions.rainy'), high: '24°', low: '17°' },
+    { day: t('weather.days.thu'), short: 'Thu', icon: 'cloudy', iconColor: '#7a7a7a', condition: t('weather.conditions.cloudy'), high: '27°', low: '18°' },
+    { day: t('weather.days.fri'), short: 'Fri', icon: 'partly-sunny', iconColor: stitchTheme.colors.primary, condition: t('weather.conditions.mixed'), high: '29°', low: '20°' },
+    { day: t('weather.days.sat'), short: 'Sat', icon: 'sunny', iconColor: stitchTheme.colors.primary, condition: t('weather.conditions.sunny'), high: '32°', low: '21°' },
+  ];
 
   if (loading) {
     return (
@@ -255,6 +281,8 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.backgroundBlobOne} />
+      <View style={styles.backgroundBlobTwo} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -309,6 +337,8 @@ export default function DashboardScreen({ navigation }) {
         {summary ? (
           <>
             <View style={styles.heroCard}>
+              <View style={styles.heroGlowLarge} />
+              <View style={styles.heroGlowSmall} />
               <View style={styles.heroPattern} />
               <Text style={styles.heroEyebrow}>{t('dashboard.hero_label')}</Text>
               <Text style={styles.heroValue}>{formatCurrency(netProfit, currency)}</Text>
@@ -334,6 +364,89 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={styles.weatherTitle}>{weatherTitle}</Text>
                   <Text style={styles.weatherText}>{weatherBody}</Text>
                 </View>
+              </View>
+            </View>
+
+            <View style={styles.forecastHeroWrap}>
+              <View style={styles.forecastHeroMain}>
+                <View style={styles.forecastHeroCircle} />
+                <Text style={styles.forecastHeroEyebrow}>{t('weather.today')}</Text>
+                <Text style={styles.forecastHeroTemp}>28{t('weather.degree_unit')}</Text>
+                <Text style={styles.forecastHeroCondition}>{t('weather.today_condition')}</Text>
+                <View style={styles.forecastStatsRow}>
+                  <View style={styles.forecastStatItem}>
+                    <Ionicons name="water-outline" size={18} color={stitchTheme.colors.primarySoft} />
+                    <View>
+                      <Text style={styles.forecastStatLabel}>{t('weather.humidity')}</Text>
+                      <Text style={styles.forecastStatValue}>65%</Text>
+                    </View>
+                  </View>
+                  <View style={styles.forecastStatItem}>
+                    <Ionicons name="speedometer-outline" size={18} color={stitchTheme.colors.primarySoft} />
+                    <View>
+                      <Text style={styles.forecastStatLabel}>{t('weather.wind')}</Text>
+                      <Text style={styles.forecastStatValue}>12 km/h</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.forecastHeroSide}>
+                <Ionicons name="sunny-outline" size={38} color={stitchTheme.colors.accentBrown} />
+                <Text style={styles.forecastSideTitle}>{t('weather.sunset_title')}</Text>
+                <Text style={styles.forecastSideSubtitle}>{t('weather.sunset_subtitle')}</Text>
+                <Text style={styles.forecastSideTime}>18:42</Text>
+                <View style={styles.forecastSideDivider} />
+                <Text style={styles.forecastSideNote}>{t('weather.sunset_note')}</Text>
+              </View>
+            </View>
+
+            <View style={styles.weatherMetricsGrid}>
+              <View style={[styles.weatherMetricCard, styles.weatherMetricPrimary]}>
+                <View style={styles.weatherMetricTop}>
+                  <View>
+                    <Text style={styles.weatherMetricTitle}>{t('weather.et_title')}</Text>
+                    <Text style={styles.weatherMetricSubtitle}>{t('weather.et_subtitle')}</Text>
+                  </View>
+                  <Ionicons name="leaf-outline" size={28} color={stitchTheme.colors.primary} />
+                </View>
+                <View style={styles.weatherMetricValueRow}>
+                  <Text style={styles.weatherMetricValue}>4.2</Text>
+                  <Text style={styles.weatherMetricUnit}>mm/day</Text>
+                </View>
+                <View style={styles.weatherMetricTipGreen}>
+                  <Ionicons name="information-circle" size={14} color={stitchTheme.colors.primary} />
+                  <Text style={styles.weatherMetricTipText}>{t('weather.et_tip')}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.weatherMetricCard, styles.weatherMetricSecondary]}>
+                <View style={styles.weatherMetricTop}>
+                  <View>
+                    <Text style={[styles.weatherMetricTitle, { color: stitchTheme.colors.accentBrown }]}>{t('weather.soil_temp_title')}</Text>
+                    <Text style={styles.weatherMetricSubtitle}>{t('weather.soil_temp_subtitle')}</Text>
+                  </View>
+                  <Ionicons name="thermometer-outline" size={28} color={stitchTheme.colors.accentBrown} />
+                </View>
+                <View style={styles.weatherMetricValueRow}>
+                  <Text style={styles.weatherMetricValue}>22.5</Text>
+                  <Text style={styles.weatherMetricUnit}>{t('weather.degree_unit')}</Text>
+                </View>
+                <View style={styles.weatherMetricTipPeach}>
+                  <Ionicons name="checkmark-circle" size={14} color={stitchTheme.colors.accentBrown} />
+                  <Text style={[styles.weatherMetricTipText, { color: stitchTheme.colors.accentBrown }]}>{t('weather.soil_temp_tip')}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <View style={styles.forecastHeadingRow}>
+                <Text style={styles.sectionTitle}>{t('weather.five_day_title')}</Text>
+                <View style={styles.weeklyChip}>
+                  <Text style={styles.weeklyChipText}>{t('weather.weekly_view')}</Text>
+                </View>
+              </View>
+              <View style={styles.forecastList}>
+                {weatherForecast.map((item) => <ForecastRow key={item.short} item={item} />)}
               </View>
             </View>
 
@@ -416,6 +529,24 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: stitchTheme.colors.background,
+  },
+  backgroundBlobOne: {
+    position: 'absolute',
+    top: 110,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(163,246,156,0.16)',
+  },
+  backgroundBlobTwo: {
+    position: 'absolute',
+    top: 360,
+    left: -70,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(253,205,188,0.20)',
   },
   container: {
     flex: 1,
@@ -528,6 +659,24 @@ const styles = StyleSheet.create({
     opacity: 0.12,
     backgroundColor: 'transparent',
   },
+  heroGlowLarge: {
+    position: 'absolute',
+    top: -12,
+    right: -28,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(163,246,156,0.26)',
+  },
+  heroGlowSmall: {
+    position: 'absolute',
+    right: 24,
+    top: 74,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: 'rgba(163,246,156,0.16)',
+  },
   heroEyebrow: {
     color: '#b6e5b2',
     fontSize: 13,
@@ -596,6 +745,247 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 27,
     color: '#153099',
+  },
+  forecastHeroWrap: {
+    gap: 18,
+  },
+  forecastHeroMain: {
+    backgroundColor: stitchTheme.colors.primary,
+    borderRadius: 32,
+    padding: 24,
+    overflow: 'hidden',
+    ...stitchShadows.float,
+  },
+  forecastHeroCircle: {
+    position: 'absolute',
+    right: -10,
+    top: -12,
+    width: 122,
+    height: 122,
+    borderRadius: 61,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  forecastHeroEyebrow: {
+    color: stitchTheme.colors.primarySoft,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+  },
+  forecastHeroTemp: {
+    marginTop: 12,
+    color: '#fff',
+    fontSize: 56,
+    lineHeight: 62,
+    fontWeight: '900',
+  },
+  forecastHeroCondition: {
+    marginTop: 6,
+    color: '#fff',
+    fontSize: 22,
+    lineHeight: 30,
+    fontWeight: '600',
+    maxWidth: 220,
+  },
+  forecastStatsRow: {
+    flexDirection: 'row',
+    gap: 28,
+    marginTop: 24,
+  },
+  forecastStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  forecastStatLabel: {
+    fontSize: 12,
+    color: '#d2ebd0',
+  },
+  forecastStatValue: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '800',
+  },
+  forecastHeroSide: {
+    backgroundColor: stitchTheme.colors.accentPeach,
+    borderRadius: 32,
+    padding: 24,
+    alignItems: 'center',
+    ...stitchShadows.card,
+  },
+  forecastSideTitle: {
+    marginTop: 10,
+    fontSize: 26,
+    fontWeight: '800',
+    color: stitchTheme.colors.accentBrown,
+  },
+  forecastSideSubtitle: {
+    marginTop: 4,
+    fontSize: 18,
+    color: '#b98975',
+  },
+  forecastSideTime: {
+    marginTop: 14,
+    fontSize: 40,
+    fontWeight: '900',
+    color: stitchTheme.colors.accentBrown,
+  },
+  forecastSideDivider: {
+    marginTop: 18,
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(122,86,73,0.22)',
+  },
+  forecastSideNote: {
+    marginTop: 16,
+    fontSize: 16,
+    lineHeight: 24,
+    color: stitchTheme.colors.accentBrown,
+    textAlign: 'center',
+  },
+  weatherMetricsGrid: {
+    gap: 16,
+  },
+  weatherMetricCard: {
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    padding: 22,
+    ...stitchShadows.card,
+  },
+  weatherMetricPrimary: {
+    borderLeftWidth: 6,
+    borderLeftColor: stitchTheme.colors.primarySoft,
+  },
+  weatherMetricSecondary: {
+    borderLeftWidth: 6,
+    borderLeftColor: stitchTheme.colors.accentBrown,
+  },
+  weatherMetricTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  weatherMetricTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: stitchTheme.colors.primary,
+  },
+  weatherMetricSubtitle: {
+    marginTop: 4,
+    fontSize: 16,
+    color: stitchTheme.colors.textMuted,
+  },
+  weatherMetricValueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginTop: 22,
+  },
+  weatherMetricValue: {
+    fontSize: 48,
+    lineHeight: 54,
+    fontWeight: '900',
+    color: stitchTheme.colors.text,
+  },
+  weatherMetricUnit: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: stitchTheme.colors.textMuted,
+    marginBottom: 6,
+  },
+  weatherMetricTipGreen: {
+    marginTop: 16,
+    borderRadius: 18,
+    backgroundColor: '#edf7ea',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  weatherMetricTipPeach: {
+    marginTop: 16,
+    borderRadius: 18,
+    backgroundColor: '#f9ece7',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  weatherMetricTipText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    color: stitchTheme.colors.primary,
+    fontWeight: '600',
+  },
+  forecastHeadingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  weeklyChip: {
+    backgroundColor: stitchTheme.colors.primarySoft,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  weeklyChipText: {
+    color: stitchTheme.colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  forecastList: {
+    gap: 12,
+  },
+  forecastRow: {
+    backgroundColor: '#f2efea',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  forecastDayWrap: {
+    width: 88,
+    gap: 2,
+  },
+  forecastDay: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  forecastDayShort: {
+    fontSize: 14,
+    color: stitchTheme.colors.textMuted,
+  },
+  forecastIconWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  forecastCondition: {
+    fontSize: 15,
+    color: stitchTheme.colors.textMuted,
+    fontWeight: '600',
+  },
+  forecastTempWrap: {
+    width: 90,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 16,
+  },
+  forecastHigh: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: stitchTheme.colors.text,
+  },
+  forecastLow: {
+    fontSize: 20,
+    color: stitchTheme.colors.textMuted,
   },
   metricCard: {
     backgroundColor: stitchTheme.colors.surfaceMuted,

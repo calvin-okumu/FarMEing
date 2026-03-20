@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,11 +20,13 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 
 export default function AddSaleScreen({ route, navigation }) {
-  const { t } = useTranslation();
-  const { projectId } = route.params; 
-  const currency = useSettingsStore((s) => s.currency);
+  const { t, i18n } = useTranslation();
+  const { projectId } = route.params;
+  const { currency, language, setLanguage } = useSettingsStore();
+  const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
   const [weightSold, setWeightSold] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
@@ -33,11 +35,29 @@ export default function AddSaleScreen({ route, navigation }) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        const item = await database.get('farm_projects').find(projectId);
+        setProject(item);
+      } catch {
+        setProject(null);
+      }
+    };
+    loadProject();
+  }, [projectId]);
+
   const total = (parseFloat(weightSold) || 0) * (parseFloat(unitPrice) || 0);
 
-  const onDateChange = (event, selectedDate) => {
+  const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) setDate(selectedDate);
+  };
+
+  const toggleLanguage = async () => {
+    const nextLang = language === 'sw' ? 'en' : 'sw';
+    await setLanguage(nextLang);
+    await i18n.changeLanguage(nextLang);
   };
 
   const handleSave = async () => {
@@ -79,91 +99,115 @@ export default function AddSaleScreen({ route, navigation }) {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        
-        <Text style={styles.label}>{t('sales.fields.customer')}</Text>
-        <TextInput
-          style={styles.input}
-          value={customer}
-          onChangeText={setCustomer}
-              placeholder={t('sales.placeholders.customer')}
-          placeholderTextColor="#9ca3af"
-        />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
+            <Ionicons name="arrow-back" size={22} color={stitchTheme.colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('sales.screen_title')}</Text>
+          <TouchableOpacity style={styles.headerIcon} onPress={toggleLanguage} activeOpacity={0.86}>
+            <Ionicons name="language-outline" size={22} color={stitchTheme.colors.primary} />
+          </TouchableOpacity>
+        </View>
 
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>{t('sales.fields.weight_sold')} *</Text>
+        <Text style={styles.eyebrow}>{t('sales.entry_eyebrow')}</Text>
+        <Text style={styles.displayTitle}>{t('sales.entry_title')}</Text>
+
+        <View style={styles.panel}>
+          <Text style={styles.sectionLabel}>{t('sales.quantity_heading')}</Text>
+          <View style={styles.fieldLarge}>
             <TextInput
-              style={styles.input}
+              style={styles.largeInput}
               value={weightSold}
               onChangeText={setWeightSold}
-              placeholder="0.0"
+              placeholder="0.00"
               keyboardType="decimal-pad"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#6b7280"
             />
+            <Text style={styles.unitBadge}>{t('harvest.units.kg')}</Text>
           </View>
-          <View style={styles.half}>
-            <Text style={styles.label}>{t('sales.fields.unit_price')} *</Text>
+
+          <Text style={styles.sectionLabel}>{t('sales.price_heading')}</Text>
+          <View style={styles.fieldLarge}>
+            <Text style={styles.currencyText}>{currency}</Text>
             <TextInput
-              style={styles.input}
+              style={styles.mediumInput}
               value={unitPrice}
               onChangeText={setUnitPrice}
               placeholder="0.00"
               keyboardType="decimal-pad"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#6b7280"
             />
           </View>
+
+          <View style={styles.totalHero}>
+            <Text style={styles.totalHeroLabel}>{t('sales.total_revenue')}</Text>
+            <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
+          </View>
+
+          <Text style={styles.sectionLabel}>{t('sales.buyer_heading')}</Text>
+          <View style={styles.fieldLarge}>
+            <Ionicons name="person" size={20} color="#76806f" />
+            <TextInput
+              style={styles.mediumInput}
+              value={customer}
+              onChangeText={setCustomer}
+              placeholder={t('sales.placeholders.customer')}
+              placeholderTextColor="#76806f"
+            />
+          </View>
+
+          <View style={styles.infoCard}>
+            <View style={[styles.infoIcon, { backgroundColor: '#e1efda' }]}>
+              <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
+            </View>
+            <View style={styles.infoBody}>
+              <Text style={styles.infoLabel}>{t('sales.date_label')}</Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.86}>
+                <Text style={styles.infoValue}>{formatAppDate(date)}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.infoCard}>
+            <View style={[styles.infoIcon, { backgroundColor: '#f8e8e1' }]}>
+              <Ionicons name="cube-outline" size={20} color={stitchTheme.colors.accentBrown} />
+            </View>
+            <View style={styles.infoBody}>
+              <Text style={styles.infoLabel}>{t('sales.crop_category')}</Text>
+              <Text style={styles.infoValue}>{project?.crop || project?.name || t('projects.fields.crop')}</Text>
+            </View>
+          </View>
+
+          <TextInput
+            style={styles.notesField}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder={t('sales.placeholders.notes')}
+            multiline
+            numberOfLines={4}
+            placeholderTextColor="#76806f"
+          />
         </View>
 
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{t('sales.total_revenue')}</Text>
-          <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
-        </View>
-
-        <Text style={styles.label}>{t('common.date')}</Text>
-        <TouchableOpacity 
-          style={styles.dateSelector} 
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={styles.dateSelectorText}>
-            {formatAppDate(date)}
-          </Text>
-          <Ionicons name="calendar-outline" size={20} color="#16a34a" />
-        </TouchableOpacity>
-
-        {showDatePicker && (
+        {showDatePicker ? (
           <DateTimePicker
             value={date}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={onDateChange}
           />
-        )}
+        ) : null}
 
-        <Text style={styles.label}>{t('common.notes')}</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={notes}
-          onChangeText={setNotes}
-          placeholder={t('sales.placeholders.notes')}
-          multiline
-          numberOfLines={3}
-          placeholderTextColor="#9ca3af"
-        />
-
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>{t('sales.record')}</Text>
-          )}
+        <TouchableOpacity style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving} activeOpacity={0.9}>
+          {saving ? <ActivityIndicator color={stitchTheme.colors.primary} /> : <>
+            <Ionicons name="checkmark-circle" size={22} color={stitchTheme.colors.primary} />
+            <Text style={styles.saveButtonText}>{t('sales.complete')}</Text>
+          </>}
         </TouchableOpacity>
+        <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -171,19 +215,31 @@ export default function AddSaleScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  content: { padding: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, color: '#1a1a1a', backgroundColor: '#fff' },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', gap: 12 },
-  half: { flex: 1 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', padding: 16, borderRadius: 8, marginTop: 20, borderWidth: 1, borderColor: '#bbf7d0' },
-  totalLabel: { fontSize: 16, color: '#166534' },
-  totalValue: { fontSize: 18, fontWeight: '700', color: '#16a34a' },
-  dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
-  dateSelectorText: { fontSize: 16, color: '#1a1a1a' },
-  saveButton: { backgroundColor: '#16a34a', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 24, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
+  headerIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: stitchTheme.colors.primary },
+  eyebrow: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2, color: stitchTheme.colors.accentBrown },
+  displayTitle: { marginTop: 10, fontSize: 34, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primary },
+  panel: { marginTop: 20, borderRadius: 34, backgroundColor: '#fff', padding: 22, ...stitchShadows.card },
+  sectionLabel: { marginTop: 18, marginBottom: 10, fontSize: 16, fontWeight: '800', color: stitchTheme.colors.text },
+  fieldLarge: { minHeight: 76, borderRadius: 16, backgroundColor: '#e3e0dd', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  largeInput: { flex: 1, fontSize: 24, fontWeight: '700', color: stitchTheme.colors.text },
+  mediumInput: { flex: 1, fontSize: 20, fontWeight: '600', color: stitchTheme.colors.text },
+  unitBadge: { fontSize: 18, fontWeight: '700', color: '#6f786b' },
+  currencyText: { fontSize: 20, fontWeight: '900', color: '#6f786b' },
+  totalHero: { marginTop: 28, borderRadius: 30, backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 22, paddingVertical: 24, alignItems: 'center' },
+  totalHeroLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 2.2, textTransform: 'uppercase', color: '#a6d38f', textAlign: 'center' },
+  totalHeroValue: { marginTop: 12, fontSize: 36, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primarySoft, textAlign: 'center' },
+  infoCard: { marginTop: 18, borderRadius: 18, backgroundColor: '#f5f0eb', paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', gap: 14, alignItems: 'center' },
+  infoIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  infoBody: { flex: 1 },
+  infoLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: '#6f786b' },
+  infoValue: { marginTop: 4, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
+  notesField: { marginTop: 18, minHeight: 96, borderRadius: 18, backgroundColor: '#f1ece7', paddingHorizontal: 18, paddingVertical: 16, fontSize: 16, lineHeight: 24, color: stitchTheme.colors.text, textAlignVertical: 'top' },
+  saveButton: { marginTop: 34, minHeight: 76, borderRadius: 30, backgroundColor: stitchTheme.colors.primarySoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, ...stitchShadows.float },
   saveButtonDisabled: { opacity: 0.6 },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  saveButtonText: { color: stitchTheme.colors.primary, fontSize: 18, fontWeight: '900' },
+  footerNote: { marginTop: 16, fontSize: 14, lineHeight: 22, color: '#6f786b' },
 });

@@ -76,6 +76,49 @@
     "irrigation_alert_warning": "Pending labor payouts are building up. Review operations before the next irrigation cycle.",
     "run_action": "Run Action"
   },
+  "timeline": {
+    "project_activity": "Farm Activity",
+    "history_title": "Timeline History",
+    "overview": "Overview",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "completed": "Completed",
+    "expense_title": "Expense",
+    "expense_default_body": "Recorded {{category}} spending for the current farm cycle.",
+    "work_default_body": "Field work logged for {{employee}}.",
+    "manual": "Manual"
+  },
+  "weather": {
+    "today": "Leo / Today",
+    "today_condition": "Mawingu Kidogo / Partly Cloudy",
+    "humidity": "Unyevu / Humid",
+    "wind": "Upepo / Wind",
+    "sunset_title": "Kutua kwa Jua",
+    "sunset_subtitle": "Sunset",
+    "sunset_note": "Mchana mrefu kwa ukuaji / Long day for growth",
+    "et_title": "Evapotranspiration",
+    "et_subtitle": "Uvukizi wa Maji Ardhini",
+    "et_tip": "Umwagiliaji unapendekezwa kesho asubuhi.",
+    "soil_temp_title": "Soil Temperature",
+    "soil_temp_subtitle": "Joto la Udongo",
+    "soil_temp_tip": "Hali nzuri kwa upandaji wa mahindi.",
+    "five_day_title": "Utabiri wa Siku 5 / 5-Day Forecast",
+    "weekly_view": "Weekly View",
+    "degree_unit": "°C",
+    "conditions": {
+      "sunny": "Sunny",
+      "rainy": "Rainy",
+      "cloudy": "Cloudy",
+      "mixed": "Mixed"
+    },
+    "days": {
+      "tue": "Jumanne",
+      "wed": "Jumatano",
+      "thu": "Alhamisi",
+      "fri": "Ijumaa",
+      "sat": "Jumamosi"
+    }
+  },
   "projects": {
     "title": "My Farm Projects",
     "tabs": {
@@ -145,6 +188,13 @@
     }
   },
   "expenses": {
+    "screen_title": "New Expense",
+    "entry_eyebrow": "Transaction Entry",
+    "entry_title": "Gharama Mpya",
+    "category_heading": "Category / Aina ya Gharama",
+    "reference_id": "Reference ID",
+    "attach_receipt": "Attach Receipt",
+    "attach_receipt_subtitle": "Upload image or scan paper",
     "fields": {
       "category": "Category",
       "type": "Expense Type",
@@ -207,6 +257,17 @@
     }
   },
   "labor": {
+    "screen_title": "Worker Activity",
+    "entry_title": "Kazi za Wafanyakazi",
+    "entry_subtitle": "Logging daily field progress",
+    "select_task": "Select Task / Chagua Kazi",
+    "hours_counter": "Hours Worked / Saa za Kazi",
+    "hours_label": "Hours",
+    "evidence_heading": "Evidence / Picha ya Kazi",
+    "take_photo": "Take Photo",
+    "take_photo_sw": "Piga Picha",
+    "change_photo": "Update Photo",
+    "submit": "Wasilisha / Submit",
     "log_work": "Log Work Entry",
     "employee": "Employee",
     "activity": "Activity",
@@ -222,6 +283,14 @@
     "placeholders": {
       "notes": "Optional details..."
     },
+    "activity_notes": {
+      "planting": "Kupanda",
+      "irrigation": "Kumwagilia",
+      "spraying": "Kunyunyizia",
+      "harvesting": "Kuvuna",
+      "weeding": "Palizi",
+      "other": "Kazi nyingine"
+    },
     "status": {
       "pending": "PENDING",
       "approved": "APPROVED",
@@ -234,6 +303,16 @@
     }
   },
   "harvest": {
+    "screen_title": "Harvest Log",
+    "entry_title": "Kumbukumbu za Mavuno",
+    "entry_subtitle": "Record your daily yield to track farm productivity and growth.",
+    "crop_heading": "Crop Type / Aina ya Zao",
+    "quantity_heading": "Quantity (kg) / Kiasi (kg)",
+    "live_total": "Live Total",
+    "quality_heading": "Quality Grade / Ubora",
+    "date_heading": "Harvest Date / Tarehe",
+    "field_notes": "Field Notes",
+    "footer_note": "Last logged 4 hours ago by shamba lead",
     "fields": {
       "crop": "Crop Name",
       "weight": "Weight",
@@ -260,6 +339,12 @@
       "grade_c": "Grade C",
       "mixed": "Mixed"
     },
+    "quality_notes": {
+      "grade_a": "Premium",
+      "grade_b": "Standard",
+      "grade_c": "Processing",
+      "mixed": "Mixed batch"
+    },
     "errors": {
       "crop_required": "Crop name is required",
       "weight_required": "Valid weight is required",
@@ -267,6 +352,16 @@
     }
   },
   "sales": {
+    "screen_title": "Record Sale",
+    "entry_eyebrow": "Mauzo ya Leo",
+    "entry_title": "Rekodi Mauzo Mapya",
+    "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
+    "price_heading": "Price per kg / Bei kwa kg",
+    "buyer_heading": "Buyer Name / Jina la Mnunuzi",
+    "date_label": "Date of Sale",
+    "crop_category": "Crop Category",
+    "complete": "Complete Sale / Maliza Mauzo",
+    "footer_note": "By completing, this transaction will be recorded in your digital ledger.",
     "fields": {
       "customer": "Customer (Optional)",
       "weight_sold": "Weight Sold (kg)",
@@ -328,8 +423,23 @@
   },
   "settings": {
     "title": "Settings",
+    "brand_short": "The Tactile Earth",
+    "heading": "Settings / Mipangilio",
     "language": "Language",
     "currency": "Currency",
+    "language_heading": "Language / Lugha",
+    "preferred": "Preferred",
+    "account_details": "Account Details",
+    "notifications": "Notifications",
+    "notifications_subtitle": "Manage alerts and harvest reminders",
+    "help_support": "Help & Support",
+    "help_support_subtitle": "Documentation and chat support",
+    "terms": "Terms of Service",
+    "terms_subtitle": "Legal agreements and privacy policy",
+    "currency_subtitle": "Preferred sales and reporting currency",
+    "unknown_user": "Agronomist User",
+    "farm_id": "Farm ID: {{id}}",
+    "premium_plan": "Premium Plan",
     "languages": {
       "en": "English",
       "sw": "Kiswahili"
@@ -345,9 +455,11 @@
     "never_synced": "Never synced yet",
     "failed_items": "Failed items: {{count}}",
     "logout": "Logout",
+    "logout_action": "Logout / Toka",
     "profile": "Profile",
     "confirm_logout": "Are you sure?",
-    "version": "Version {{version}}"
+    "version": "Version {{version}}",
+    "brand_version": "The Tactile Earth v{{version}}"
   },
   "auth": {
     "fields": {
@@ -391,6 +503,7 @@
     }
   },
   "tab": {
-    "workers": "Workers"
+    "workers": "Workers",
+    "profile": "Profile"
   }
 }
