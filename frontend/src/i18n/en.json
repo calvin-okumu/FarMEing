@@ -546,6 +546,10 @@
     "profile": "Profile"
   },
   "resource": {
-    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?"
+    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?",
+    "search_in_tab": "Search this section",
+    "sort_latest": "Latest",
+    "sort_amount": "Amount",
+    "syncing": "Syncing..."
   }
 }

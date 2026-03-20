@@ -546,6 +546,10 @@
     "profile": "Profile"
   },
   "resource": {
-    "confirm_delete_generic": "Una uhakika unataka kufuta \"{{name}}\"?"
+    "confirm_delete_generic": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "search_in_tab": "Tafuta kwenye sehemu hii",
+    "sort_latest": "Mpya",
+    "sort_amount": "Kiasi",
+    "syncing": "Inasawazisha..."
   }
 }

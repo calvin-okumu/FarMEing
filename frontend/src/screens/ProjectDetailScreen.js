@@ -14,11 +14,13 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import api from '../lib/api';
 import useSettingsStore from '../store/useSettingsStore';
+import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import SearchBar from '../components/ui/SearchBar';
 import { deleteBudgetItem } from '../services/budgetService';
 import { deleteExpense } from '../services/expenseService';
 import { deleteWorkEntry } from '../services/workEntryService';
@@ -26,7 +28,17 @@ import { deleteHarvest } from '../services/harvestService';
 import { deleteSale } from '../services/saleService';
 import { updateWorkEntryStatus, workEntriesByActivity, workEntriesByEmployee } from '../services/workEntryService';
 import { deleteLocalModel } from '../utils/resourceMutations';
+import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
+import {
+  useBudgetItemsQuery,
+  useExpensesQuery,
+  useHarvestsQuery,
+  useSalesQuery,
+  useWorkEntriesQuery,
+  useWorkEntryActivityAnalyticsQuery,
+  useWorkEntryEmployeeAnalyticsQuery,
+} from '../hooks/api/useProjectResourcesApi';
 
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
 
@@ -102,6 +114,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const { projectId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
   const user = useAuthStore((s) => s.user);
+  const syncStatus = useSyncStore((s) => s.status);
 
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -116,6 +129,18 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState('latest');
+
+  const remoteProjectId = project?.remoteId || null;
+
+  const budgetQuery = useBudgetItemsQuery(remoteProjectId);
+  const expenseQuery = useExpensesQuery(remoteProjectId);
+  const workQuery = useWorkEntriesQuery(remoteProjectId);
+  const harvestQuery = useHarvestsQuery(remoteProjectId);
+  const salesQuery = useSalesQuery(remoteProjectId);
+  const laborByEmployeeQuery = useWorkEntryEmployeeAnalyticsQuery(remoteProjectId);
+  const laborByActivityQuery = useWorkEntryActivityAnalyticsQuery(remoteProjectId);
 
   useEffect(() => {
     if (!projectId) {
@@ -131,12 +156,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
         if (proj.remoteId) {
           const { data } = await api.get(`/projects/${proj.remoteId}/summary`);
           setTimeline(data.timeline || []);
-          const [employeeData, activityData] = await Promise.all([
-            workEntriesByEmployee(proj.remoteId).catch(() => ({ byEmployee: [] })),
-            workEntriesByActivity(proj.remoteId).catch(() => ({ byActivity: [] })),
-          ]);
-          setLaborByEmployee(employeeData.byEmployee || []);
-          setLaborByActivity(activityData.byActivity || []);
         }
       } catch (err) {
         console.warn('[ProjectDetail] load error:', err.message);
@@ -146,6 +165,194 @@ export default function ProjectDetailScreen({ route, navigation }) {
     };
     loadProject();
   }, [projectId]);
+
+  useEffect(() => {
+    if (laborByEmployeeQuery.data) {
+      setLaborByEmployee(laborByEmployeeQuery.data);
+    }
+  }, [laborByEmployeeQuery.data]);
+
+  useEffect(() => {
+    if (laborByActivityQuery.data) {
+      setLaborByActivity(laborByActivityQuery.data);
+    }
+  }, [laborByActivityQuery.data]);
+
+  useEffect(() => {
+    if (!projectId || !budgetQuery.data?.length) return;
+    database.write(async () => {
+      for (const item of budgetQuery.data) {
+        const existing = await database.get('budget_items').query(Q.where('remote_id', item.id)).fetch();
+        if (existing[0]) {
+          await existing[0].update((record) => {
+            record.projectId = projectId;
+            record.category = item.category || '';
+            record.name = item.name || '';
+            record.quantity = item.quantity || 0;
+            record.unit = item.unit || '';
+            record.unitPrice = item.unitPrice || 0;
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        } else {
+          await database.get('budget_items').create((record) => {
+            record.projectId = projectId;
+            record.category = item.category || '';
+            record.name = item.name || '';
+            record.quantity = item.quantity || 0;
+            record.unit = item.unit || '';
+            record.unitPrice = item.unitPrice || 0;
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        }
+      }
+    }).catch(() => {});
+  }, [projectId, budgetQuery.data]);
+
+  useEffect(() => {
+    if (!projectId || !expenseQuery.data?.length) return;
+    database.write(async () => {
+      for (const item of expenseQuery.data) {
+        const existing = await database.get('expenses').query(Q.where('remote_id', item.id)).fetch();
+        if (existing[0]) {
+          await existing[0].update((record) => {
+            record.projectId = projectId;
+            record.category = item.category || '';
+            record.expenseType = item.expenseType || 'OPEX';
+            record.amount = item.amount || 0;
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.note = item.note || '';
+            record.receiptUrl = item.receiptUrl || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        } else {
+          await database.get('expenses').create((record) => {
+            record.projectId = projectId;
+            record.category = item.category || '';
+            record.expenseType = item.expenseType || 'OPEX';
+            record.amount = item.amount || 0;
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.note = item.note || '';
+            record.receiptUrl = item.receiptUrl || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        }
+      }
+    }).catch(() => {});
+  }, [projectId, expenseQuery.data]);
+
+  useEffect(() => {
+    if (!projectId || !workQuery.data?.length) return;
+    database.write(async () => {
+      for (const item of workQuery.data) {
+        const existing = await database.get('work_entries').query(Q.where('remote_id', item.id)).fetch();
+        if (existing[0]) {
+          await existing[0].update((record) => {
+            record.projectId = projectId;
+            record.employeeId = item.employeeId || item.employee?.id || '';
+            record.activity = item.activity || '';
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.daysWorked = item.daysWorked || 0;
+            record.ratePerDay = item.ratePerDay || 0;
+            record.totalCost = item.totalCost || 0;
+            record.hoursWorked = item.hoursWorked || 0;
+            record.imageUrl = item.imageUrl || '';
+            record.status = item.status || 'PENDING';
+            record.notes = item.notes || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        } else {
+          await database.get('work_entries').create((record) => {
+            record.projectId = projectId;
+            record.employeeId = item.employeeId || item.employee?.id || '';
+            record.activity = item.activity || '';
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.daysWorked = item.daysWorked || 0;
+            record.ratePerDay = item.ratePerDay || 0;
+            record.totalCost = item.totalCost || 0;
+            record.hoursWorked = item.hoursWorked || 0;
+            record.imageUrl = item.imageUrl || '';
+            record.status = item.status || 'PENDING';
+            record.notes = item.notes || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        }
+      }
+    }).catch(() => {});
+  }, [projectId, workQuery.data]);
+
+  useEffect(() => {
+    if (!projectId || !harvestQuery.data?.length) return;
+    database.write(async () => {
+      for (const item of harvestQuery.data) {
+        const existing = await database.get('harvests').query(Q.where('remote_id', item.id)).fetch();
+        if (existing[0]) {
+          await existing[0].update((record) => {
+            record.projectId = projectId;
+            record.crop = item.crop || '';
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.weight = item.weight || 0;
+            record.unit = item.unit || 'kg';
+            record.quality = item.quality || '';
+            record.notes = item.notes || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        } else {
+          await database.get('harvests').create((record) => {
+            record.projectId = projectId;
+            record.crop = item.crop || '';
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.weight = item.weight || 0;
+            record.unit = item.unit || 'kg';
+            record.quality = item.quality || '';
+            record.notes = item.notes || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        }
+      }
+    }).catch(() => {});
+  }, [projectId, harvestQuery.data]);
+
+  useEffect(() => {
+    if (!projectId || !salesQuery.data?.length) return;
+    database.write(async () => {
+      for (const item of salesQuery.data) {
+        const existing = await database.get('sales').query(Q.where('remote_id', item.id)).fetch();
+        if (existing[0]) {
+          await existing[0].update((record) => {
+            record.projectId = projectId;
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.customer = item.customer || '';
+            record.weightSold = item.weightSold || 0;
+            record.unitPrice = item.unitPrice || 0;
+            record.totalAmount = item.totalAmount || 0;
+            record.notes = item.notes || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        } else {
+          await database.get('sales').create((record) => {
+            record.projectId = projectId;
+            record.date = item.date ? new Date(item.date).getTime() : Date.now();
+            record.customer = item.customer || '';
+            record.weightSold = item.weightSold || 0;
+            record.unitPrice = item.unitPrice || 0;
+            record.totalAmount = item.totalAmount || 0;
+            record.notes = item.notes || '';
+            record.isDeleted = !!item.isDeleted;
+            markRecordSynced(record, item.id);
+          });
+        }
+      }
+    }).catch(() => {});
+  }, [projectId, salesQuery.data]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -177,6 +384,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const totalHarvest = harvests.reduce((sum, item) => sum + item.weight, 0);
   const totalRevenue = sales.reduce((sum, item) => sum + item.totalAmount, 0);
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+  const resourcesSyncing = budgetQuery.isFetching || expenseQuery.isFetching || workQuery.isFetching || harvestQuery.isFetching || salesQuery.isFetching;
 
   const employeeMap = new Map();
   employees.forEach((employee) => {
@@ -247,6 +455,42 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
     return { today, earlier };
   }, [mergedTimeline]);
+
+  const sortItems = (items, amountAccessor) => {
+    const list = [...items];
+    if (sortMode === 'amount') {
+      return list.sort((a, b) => (amountAccessor(b) || 0) - (amountAccessor(a) || 0));
+    }
+    return list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  };
+
+  const textMatches = (value) => (value || '').toString().toLowerCase().includes(searchQuery.trim().toLowerCase());
+  const hasQuery = searchQuery.trim().length > 0;
+
+  const visibleBudgetItems = useMemo(() => {
+    const filtered = hasQuery ? budgetItems.filter((item) => textMatches(item.name) || textMatches(item.category) || textMatches(item.unit)) : budgetItems;
+    return sortItems(filtered, (item) => item.quantity * item.unitPrice);
+  }, [budgetItems, searchQuery, sortMode]);
+
+  const visibleExpenses = useMemo(() => {
+    const filtered = hasQuery ? expenses.filter((item) => textMatches(item.category) || textMatches(item.expenseType) || textMatches(item.note)) : expenses;
+    return sortItems(filtered, (item) => item.amount);
+  }, [expenses, searchQuery, sortMode]);
+
+  const visibleWorkEntries = useMemo(() => {
+    const filtered = hasQuery ? workEntries.filter((item) => textMatches(item.activity) || textMatches(item.status) || textMatches(employeeMap.get(item.employeeId))) : workEntries;
+    return sortItems(filtered, (item) => item.totalCost);
+  }, [workEntries, searchQuery, sortMode, employees]);
+
+  const visibleHarvests = useMemo(() => {
+    const filtered = hasQuery ? harvests.filter((item) => textMatches(item.crop) || textMatches(item.quality) || textMatches(item.unit)) : harvests;
+    return sortItems(filtered, (item) => item.weight);
+  }, [harvests, searchQuery, sortMode]);
+
+  const visibleSales = useMemo(() => {
+    const filtered = hasQuery ? sales.filter((item) => textMatches(item.customer) || textMatches(item.notes)) : sales;
+    return sortItems(filtered, (item) => item.totalAmount);
+  }, [sales, searchQuery, sortMode]);
 
   const handleEditItem = (type, item) => {
     const params = { projectId: project.id, itemId: item.id };
@@ -413,9 +657,20 @@ export default function ProjectDetailScreen({ route, navigation }) {
           })}
         </ScrollView>
 
-        {activeTab === 'budget' ? budgetItems.length ? budgetItems.map((item) => renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'budget', item)) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
+        {activeTab !== 'timeline' && activeTab !== 'inventory' ? (
+          <View style={styles.toolbarBlock}>
+            <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={t('resource.search_in_tab')} />
+            <View style={styles.sortRow}>
+              <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} />
+              <StitchChip label={t('resource.sort_amount')} active={sortMode === 'amount'} onPress={() => setSortMode('amount')} />
+              {resourcesSyncing || syncStatus === 'syncing' ? <Text style={styles.syncHint}>{t('resource.syncing')}</Text> : null}
+            </View>
+          </View>
+        ) : null}
 
-        {activeTab === 'expenses' ? expenses.length ? expenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
+        {activeTab === 'budget' ? visibleBudgetItems.length ? visibleBudgetItems.map((item) => renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'budget', item)) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
+
+        {activeTab === 'expenses' ? visibleExpenses.length ? visibleExpenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
 
         {activeTab === 'labor' ? (
           workEntries.length ? (
@@ -434,14 +689,14 @@ export default function ProjectDetailScreen({ route, navigation }) {
                   </StitchSurface>
                 </View>
               ) : null}
-              {workEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
+              {visibleWorkEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
             </>
           ) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
         ) : null}
 
-        {activeTab === 'harvest' ? harvests.length ? harvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
+        {activeTab === 'harvest' ? visibleHarvests.length ? visibleHarvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
 
-        {activeTab === 'sales' ? sales.length ? sales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
+        {activeTab === 'sales' ? visibleSales.length ? visibleSales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
 
         {activeTab === 'inventory' ? (
           <View style={styles.collectionCard}>
@@ -524,6 +779,9 @@ const styles = StyleSheet.create({
   progressBarFillDanger: { backgroundColor: '#9c1111' },
   progressText: { marginTop: 8, fontSize: 12, color: stitchTheme.colors.textMuted, textAlign: 'right' },
   tabsRow: { gap: 10, paddingVertical: 22 },
+  toolbarBlock: { gap: 12, marginBottom: 12 },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  syncHint: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.textMuted },
   collectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 12, ...stitchShadows.card },
   collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   collectionActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
