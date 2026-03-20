@@ -114,7 +114,7 @@ function TimelineSection({ title, tone, items, t, currency }) {
 
 export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
-  const { projectId } = route.params || {};
+  const { projectId, initialTab } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
   const user = useAuthStore((s) => s.user);
   const syncStatus = useSyncStore((s) => s.status);
@@ -146,6 +146,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const salesQuery = useSalesQuery(remoteProjectId);
   const laborByEmployeeQuery = useWorkEntryEmployeeAnalyticsQuery(remoteProjectId);
   const laborByActivityQuery = useWorkEntryActivityAnalyticsQuery(remoteProjectId);
+
+  useEffect(() => {
+    if (initialTab && TAB_ORDER.includes(initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     if (!projectId) {

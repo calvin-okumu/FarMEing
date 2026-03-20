@@ -74,6 +74,24 @@ function ForecastRow({ item }) {
   );
 }
 
+function ResourceShortcutCard({ icon, title, subtitle, onPress, tone = 'soft' }) {
+  const toneStyles = tone === 'accent'
+    ? { bg: stitchTheme.colors.primarySoft, iconBg: stitchTheme.colors.primary, iconColor: '#fff' }
+    : tone === 'warning'
+      ? { bg: '#f9ebe6', iconBg: stitchTheme.colors.accentBrown, iconColor: '#fff' }
+      : { bg: '#f2efea', iconBg: '#fff', iconColor: stitchTheme.colors.primary };
+
+  return (
+    <TouchableOpacity style={[styles.resourceCard, { backgroundColor: toneStyles.bg }]} onPress={onPress} activeOpacity={0.9}>
+      <View style={[styles.resourceIconWrap, { backgroundColor: toneStyles.iconBg }]}>
+        <Ionicons name={icon} size={20} color={toneStyles.iconColor} />
+      </View>
+      <Text style={styles.resourceTitle}>{title}</Text>
+      <Text style={styles.resourceSubtitle}>{subtitle}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function DashboardScreen({ navigation }) {
   const { t, i18n } = useTranslation();
   const token = useAuthStore((s) => s.token);
@@ -324,6 +342,52 @@ export default function DashboardScreen({ navigation }) {
                 </View>
               </View>
             </View>
+
+            {selectedProject ? (
+              <View style={styles.sectionBlock}>
+                <StitchDisplayTitle>{t('dashboard.manage_resources')}</StitchDisplayTitle>
+                <View style={styles.resourceGrid}>
+                  <ResourceShortcutCard
+                    icon="wallet-outline"
+                    title={t('projects.tabs.budget')}
+                    subtitle={t('dashboard.manage_budget')}
+                    onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: selectedProject.id, initialTab: 'budget' } })}
+                  />
+                  <ResourceShortcutCard
+                    icon="receipt-outline"
+                    title={t('projects.tabs.expenses')}
+                    subtitle={t('dashboard.manage_expenses')}
+                    onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: selectedProject.id, initialTab: 'expenses' } })}
+                    tone="warning"
+                  />
+                  <ResourceShortcutCard
+                    icon="people-outline"
+                    title={t('projects.tabs.labor')}
+                    subtitle={t('dashboard.manage_labor')}
+                    onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: selectedProject.id, initialTab: 'labor' } })}
+                  />
+                  <ResourceShortcutCard
+                    icon="leaf-outline"
+                    title={t('projects.tabs.harvest')}
+                    subtitle={t('dashboard.manage_harvest')}
+                    onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: selectedProject.id, initialTab: 'harvest' } })}
+                    tone="accent"
+                  />
+                  <ResourceShortcutCard
+                    icon="cash-outline"
+                    title={t('projects.tabs.sales')}
+                    subtitle={t('dashboard.manage_sales')}
+                    onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: selectedProject.id, initialTab: 'sales' } })}
+                  />
+                  <ResourceShortcutCard
+                    icon="cube-outline"
+                    title={t('projects.tabs.inventory')}
+                    subtitle={t('dashboard.manage_inventory')}
+                    onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: selectedProject.id, initialTab: 'inventory' } })}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.forecastHeroWrap}>
               <View style={styles.forecastHeroMain}>
@@ -701,6 +765,37 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 27,
     color: '#153099',
+  },
+  resourceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  resourceCard: {
+    width: '47.8%',
+    minHeight: 146,
+    borderRadius: 28,
+    padding: 18,
+    ...stitchShadows.card,
+  },
+  resourceIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  resourceTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  resourceSubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    color: stitchTheme.colors.textMuted,
   },
   forecastHeroWrap: {
     gap: 18,
