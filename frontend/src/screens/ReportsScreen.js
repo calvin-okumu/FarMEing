@@ -1,54 +1,245 @@
-import { Text, StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { stitchTheme } from '../theme/stitchTheme';
-import { StitchPageHeader, StitchScreen, StitchStatCard, StitchSurface } from '../components/ui/StitchPrimitives';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+
+const INSIGHT_CARDS = [
+  {
+    id: 'finance',
+    eyebrow: 'Finance',
+    title: 'Profit and cost views',
+    value: 'Ready',
+    icon: 'cash-outline',
+    accent: stitchTheme.colors.primaryDim,
+  },
+  {
+    id: 'labor',
+    eyebrow: 'Labor',
+    title: 'Worker and activity trends',
+    value: 'Ready',
+    icon: 'people-outline',
+    accent: stitchTheme.colors.accentBrown,
+  },
+];
+
+const REPORT_MODULES = [
+  {
+    id: 'seasonal',
+    title: 'Seasonal summaries',
+    desc: 'Compare budget, spend, harvest, and sales across projects.',
+    icon: 'stats-chart-outline',
+    dark: true,
+  },
+  {
+    id: 'performance',
+    title: 'Performance rollups',
+    desc: 'Surface strongest projects, labor hotspots, and yield patterns.',
+    icon: 'bar-chart-outline',
+  },
+  {
+    id: 'cashflow',
+    title: 'Cash flow reports',
+    desc: 'Track operating cost vs revenue with export-friendly snapshots.',
+    icon: 'wallet-outline',
+  },
+  {
+    id: 'exports',
+    title: 'Shareable exports',
+    desc: 'Generate clean printable views for farmers, staff, and partners.',
+    icon: 'download-outline',
+  },
+];
+
+function InsightCard({ card }) {
+  return (
+    <View style={styles.insightCard}>
+      <View style={[styles.cardAccent, { backgroundColor: card.accent }]} />
+      <View style={styles.insightInner}>
+        <View style={styles.insightTop}>
+          <Text style={styles.insightEyebrow}>{card.eyebrow}</Text>
+          <View style={styles.insightIconBox}>
+            <Ionicons name={card.icon} size={16} color={stitchTheme.colors.primary} />
+          </View>
+        </View>
+        <Text style={styles.insightTitle}>{card.title}</Text>
+        <Text style={styles.insightValue}>{card.value}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ModuleCard({ card }) {
+  return (
+    <TouchableOpacity activeOpacity={0.88} style={[styles.moduleCard, card.dark && styles.moduleCardDark]}>
+      <View style={[styles.moduleIconBox, card.dark && styles.moduleIconBoxDark]}>
+        <Ionicons name={card.icon} size={18} color={card.dark ? '#ffffff' : stitchTheme.colors.primary} />
+      </View>
+      <Text style={[styles.moduleTitle, card.dark && styles.moduleTitleDark]}>{card.title}</Text>
+      <Text style={[styles.moduleDesc, card.dark && styles.moduleDescDark]}>{card.desc}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function ReportsScreen() {
   return (
-    <StitchScreen scroll contentContainerStyle={styles.content}>
-      <StitchPageHeader
-        eyebrow='Insights'
-        title='Reports'
-        subtitle='Operational reporting and deeper financial views will live here.'
-        actionLabel='Soon'
-      />
-
-      <StitchSurface tone='muted' compact style={styles.heroCard}>
-        <View style={styles.heroRow}>
-          <View>
-            <Text style={styles.heroLabel}>Reporting Hub</Text>
-            <Text style={styles.heroValue}>Planned</Text>
-            <Text style={styles.heroText}>This screen is now aligned with the dashboard system and ready for real reports to be dropped in.</Text>
+    <StitchDashboardShell
+      hero={{
+        eyebrow: 'Insights',
+        title: 'Reports',
+        subtitle: 'The reporting surface follows the dashboard system and is ready for live financial and operational views.',
+        actionIcon: 'analytics-outline',
+        onActionPress: () => {},
+        children: (
+          <View style={styles.heroPills}>
+            <StitchHeroPill label='Status' value='Planned' icon='time-outline' style={styles.heroPillPrimary} />
+            <StitchHeroPill label='Mode' value='Dashboard-led' icon='grid-outline' style={styles.heroPillSecondary} />
           </View>
-          <View style={styles.heroIconWrap}>
-            <Ionicons name='bar-chart-outline' size={22} color={stitchTheme.colors.primary} />
-          </View>
-        </View>
-      </StitchSurface>
+        ),
+      }}
+      bodyContentStyle={styles.bodyContent}
+    >
+      <StitchDashboardSectionHeader title='Overview' subtitle='Reporting foundation' badgeLabel='Soon' />
 
-      <View style={styles.statsRow}>
-        <StitchStatCard title='Financial' value='Revenue, cost, profit' subtitle='Compact farm-level summaries' icon='cash-outline' />
-        <StitchStatCard title='Operations' value='Labor and harvest' subtitle='Project and worker rollups' icon='analytics-outline' />
+      <View style={styles.insightGrid}>
+        {INSIGHT_CARDS.map((card) => (
+          <InsightCard key={card.id} card={card} />
+        ))}
       </View>
 
-      <StitchSurface style={styles.noteCard} compact>
-        <Text style={styles.noteTitle}>Next step</Text>
-        <Text style={styles.noteBody}>Build this screen from the same shared cards, selectors, filters, and typography already used across dashboard, projects, employees, inventory, and settings.</Text>
-      </StitchSurface>
-    </StitchScreen>
+      <StitchDashboardSectionHeader title='Modules' subtitle='Planned views' actionLabel='Dashboard system' style={styles.sectionSpacing} />
+
+      <View style={styles.moduleGrid}>
+        {REPORT_MODULES.map((card) => (
+          <ModuleCard key={card.id} card={card} />
+        ))}
+      </View>
+    </StitchDashboardShell>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: stitchTheme.spacing.screen, paddingBottom: 120, gap: stitchTheme.spacing.md },
-  heroCard: { borderRadius: stitchTheme.radius.card },
-  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: stitchTheme.spacing.md },
-  heroLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
-  heroValue: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, fontWeight: stitchTheme.typography.hero.fontWeight, color: stitchTheme.colors.primary },
-  heroText: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.textMuted, maxWidth: 240 },
-  heroIconWrap: { width: 42, height: 42, borderRadius: 14, backgroundColor: stitchTheme.colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
-  statsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
-  noteCard: { borderRadius: stitchTheme.radius.card },
-  noteTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
-  noteBody: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.textMuted },
+  bodyContent: {
+    paddingBottom: 128,
+  },
+  heroPills: {
+    flexDirection: 'row',
+    gap: stitchTheme.spacing.xs,
+    marginTop: 2,
+  },
+  heroPillPrimary: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.24)',
+    borderWidth: 1,
+    ...stitchShadows.soft,
+  },
+  heroPillSecondary: {
+    backgroundColor: 'rgba(183,228,199,0.22)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+  },
+  sectionSpacing: {
+    marginTop: stitchTheme.spacing.lg,
+  },
+  insightGrid: {
+    flexDirection: 'row',
+    gap: stitchTheme.spacing.xs,
+  },
+  insightCard: {
+    flex: 1,
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    overflow: 'hidden',
+    ...stitchShadows.soft,
+  },
+  cardAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  insightInner: {
+    padding: stitchTheme.spacing.md,
+    paddingLeft: stitchTheme.spacing.lg,
+  },
+  insightTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  insightEyebrow: {
+    fontSize: stitchTheme.typography.bodySmall.fontSize,
+    fontWeight: '700',
+    color: stitchTheme.colors.textSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  insightIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: stitchTheme.colors.surfaceInset,
+  },
+  insightTitle: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    lineHeight: stitchTheme.typography.caption.lineHeight,
+    color: stitchTheme.colors.accentBrown,
+    fontWeight: '700',
+  },
+  insightValue: {
+    marginTop: 2,
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    fontWeight: '900',
+    color: stitchTheme.colors.text,
+  },
+  moduleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: stitchTheme.spacing.xs,
+  },
+  moduleCard: {
+    width: '48.5%',
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    padding: stitchTheme.spacing.md,
+    ...stitchShadows.soft,
+  },
+  moduleCardDark: {
+    backgroundColor: stitchTheme.colors.primary,
+  },
+  moduleIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    marginBottom: stitchTheme.spacing.sm,
+  },
+  moduleIconBoxDark: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  moduleTitle: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    color: stitchTheme.colors.text,
+    fontWeight: '800',
+  },
+  moduleTitleDark: {
+    color: '#ffffff',
+  },
+  moduleDesc: {
+    marginTop: 4,
+    fontSize: stitchTheme.typography.caption.fontSize,
+    lineHeight: 16,
+    color: stitchTheme.colors.textMuted,
+  },
+  moduleDescDark: {
+    color: 'rgba(255,255,255,0.72)',
+  },
 });

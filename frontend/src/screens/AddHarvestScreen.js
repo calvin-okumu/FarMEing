@@ -21,7 +21,8 @@ import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -129,19 +130,22 @@ export default function AddHarvestScreen({ route, navigation }) {
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchHeroHeader
-          eyebrow={t('harvest.entry_subtitle')}
-          title={itemId ? t('harvest.edit_title') : t('harvest.entry_title')}
-          subtitle={crop || t('harvest.placeholders.crop')}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
-        >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('harvest.live_total')} value={liveTotal} icon='leaf-outline' />
-            <StitchHeroPill label={t('harvest.fields.unit')} value={t(`harvest.units.${unit}`)} icon='scale-outline' />
-          </View>
-        </StitchHeroHeader>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('harvest.entry_subtitle'),
+          title: itemId ? t('harvest.edit_title') : t('harvest.entry_title'),
+          subtitle: crop || t('harvest.placeholders.crop'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('harvest.live_total')} value={liveTotal} icon='leaf-outline' />
+              <StitchHeroPill label={t('harvest.fields.unit')} value={t(`harvest.units.${unit}`)} icon='scale-outline' />
+            </View>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+      >
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('harvest.crop_heading')}</StitchSectionLabel>
@@ -239,7 +243,7 @@ export default function AddHarvestScreen({ route, navigation }) {
         <StitchPrimaryButton label={itemId ? t('common.save') : t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
 
         <Text style={styles.footerNote}>{t('harvest.footer_note')}</Text>
-      </ScrollView>
+      </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
 }

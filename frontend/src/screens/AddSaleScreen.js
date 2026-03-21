@@ -22,7 +22,8 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -134,19 +135,22 @@ export default function AddSaleScreen({ route, navigation }) {
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchHeroHeader
-          eyebrow={t('sales.entry_eyebrow')}
-          title={itemId ? t('sales.edit_title') : t('sales.entry_title')}
-          subtitle={project?.name || t('sales.screen_title')}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
-        >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('sales.total_revenue')} value={formatCurrency(total, currency)} icon='cash-outline' />
-            <StitchHeroPill label={t('sales.quantity_heading')} value={weightSold || '0'} icon='cube-outline' />
-          </View>
-        </StitchHeroHeader>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('sales.entry_eyebrow'),
+          title: itemId ? t('sales.edit_title') : t('sales.entry_title'),
+          subtitle: project?.name || t('sales.screen_title'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('sales.total_revenue')} value={formatCurrency(total, currency)} icon='cash-outline' />
+              <StitchHeroPill label={t('sales.quantity_heading')} value={weightSold || '0'} icon='cube-outline' />
+            </View>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+      >
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.panel}>
@@ -237,7 +241,7 @@ export default function AddSaleScreen({ route, navigation }) {
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
-      </ScrollView>
+      </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
 }

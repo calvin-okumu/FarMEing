@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -16,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
 import StatusBanner from '../../components/ui/StatusBanner';
+import StitchAuthShell from '../../components/ui/StitchAuthShell';
 
 export default function RegisterScreen({ navigation }) {
   const { t } = useTranslation();
@@ -62,32 +60,12 @@ export default function RegisterScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={styles.orbPrimary} />
-        <View style={styles.orbSecondary} />
-        <View style={styles.shell}>
-          <View style={styles.headerCard}>
-            <View style={styles.topBarRow}>
-              <TouchableOpacity style={styles.topIcon} onPress={() => navigation.navigate('Login')} activeOpacity={0.86}>
-                <Ionicons name="arrow-back" size={20} color={stitchTheme.colors.primary} />
-              </TouchableOpacity>
-              <View style={styles.brandRow}>
-                <View style={styles.brandBadge}>
-                  <Ionicons name="leaf-outline" size={18} color={stitchTheme.colors.primary} />
-                </View>
-                <Text style={styles.brandName}>FarmTrack</Text>
-              </View>
-              <View style={styles.topSpacer} />
-            </View>
-
-            <View style={styles.header}>
-              <Text style={styles.kicker}>{t('auth.register.kicker')}</Text>
-              <Text style={styles.title}>{t('auth.register.title')}</Text>
-              <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
-            </View>
-          </View>
-
-          <View style={styles.form}>
+      <StitchAuthShell
+        eyebrow={t('auth.register.kicker')}
+        title={t('auth.register.title')}
+        subtitle={t('auth.register.subtitle')}
+        onBack={() => navigation.navigate('Login')}
+      >
             <StatusBanner {...banner} style={styles.banner} />
             <Text style={styles.label}>{t('auth.fields.full_name')}</Text>
             <View style={styles.inputWrapper}>
@@ -182,31 +160,13 @@ export default function RegisterScreen({ navigation }) {
                 <Text style={styles.footerLink}>{t('auth.login.submit')}</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </ScrollView>
+      </StitchAuthShell>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: stitchTheme.spacing.xl, paddingBottom: 42 },
-  orbPrimary: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(163,246,156,0.12)', top: 44, right: -80 },
-  orbSecondary: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(253,205,188,0.16)', bottom: 60, left: -70 },
-  shell: { width: '92%', maxWidth: 420, gap: stitchTheme.spacing.md },
-  headerCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 30, padding: stitchTheme.spacing.xl, ...stitchShadows.card },
-  topBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: stitchTheme.spacing.sm },
-  topIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceInset },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
-  brandBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  brandName: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
-  topSpacer: { width: 40 },
-  header: { alignItems: 'flex-start', marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.lg },
-  kicker: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: stitchTheme.spacing.xs },
-  title: { fontSize: stitchTheme.typography.display.fontSize, lineHeight: stitchTheme.typography.display.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  subtitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.accentBrown, marginTop: stitchTheme.spacing.sm, maxWidth: 270 },
-  form: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 30, padding: stitchTheme.spacing.xl, ...stitchShadows.card },
   banner: { marginBottom: stitchTheme.spacing.xs },
   label: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, marginTop: stitchTheme.spacing.sm, textTransform: 'uppercase', letterSpacing: 1 },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.sm, minHeight: 54, borderWidth: 1, borderColor: stitchTheme.colors.border },

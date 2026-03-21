@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   Alert,
   Modal,
@@ -19,11 +18,14 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
 import { initializeLocalRecord } from '../utils/localRecord';
@@ -177,13 +179,31 @@ export default function InventoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={filteredItems}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('inventory.title'),
+          title: formatCurrency(grandTotalCost, currency),
+          subtitle: projectName || t('projects.title'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <>
+              <View style={styles.heroPills}>
+                <StitchHeroPill label={t('inventory.title')} value={String(filteredItems.length)} icon='cube-outline' />
+                <StitchHeroPill label={t('inventory.total_value')} value={formatCurrency(grandTotalCost, currency)} icon='cash-outline' />
+              </View>
+              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={1} style={styles.chartWrap} />
+            </>
+          ),
+        }}
+        bodyContentStyle={styles.list}
         refreshControl={<RefreshControlProxy refreshing={isRefreshing} onRefresh={handleRefresh} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
+      >
+        <StatusBanner {...banner} />
+        <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
+        <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel={String(filteredItems.length)} />
+        {filteredItems.length ? filteredItems.map((item) => (
+          <TouchableOpacity key={item.id} style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
             <View style={styles.cardTop}>
               <View>
                 <Text style={styles.cardTitle}>{item.name}</Text>
@@ -198,22 +218,8 @@ export default function InventoryScreen({ route, navigation }) {
               <Text style={styles.cardMeta}>{t('inventory.used_qty')}: {item.usedQty}</Text>
             </View>
           </TouchableOpacity>
-        )}
-        ListHeaderComponent={
-          <>
-            <StitchTopBar title={t('inventory.title')} subtitle={projectName || t('projects.title')} onBack={() => navigation.goBack()} />
-            <StitchSurface style={styles.heroCard}>
-              <Text style={styles.heroEyebrow}>{t('inventory.total_value')}</Text>
-              <Text style={styles.heroValue}>{formatCurrency(grandTotalCost, currency)}</Text>
-              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={1} style={styles.chartWrap} />
-            </StitchSurface>
-            <StatusBanner {...banner} />
-            <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
-          </>
-        }
-        ListHeaderComponentStyle={styles.headerBlock}
-        ListEmptyComponent={<EmptyState icon="cube-outline" title={t('inventory.empty_title')} subtitle={t('inventory.empty_subtitle')} />}
-      />
+        )) : <EmptyState icon="cube-outline" title={t('inventory.empty_title')} subtitle={t('inventory.empty_subtitle')} />}
+      </StitchDashboardShell>
 
       <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.9}>
         <Ionicons name="add" size={28} color={stitchTheme.colors.primary} />
@@ -301,11 +307,8 @@ function RefreshControlProxy({ refreshing, onRefresh }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
-  list: { padding: stitchTheme.spacing.screen, paddingBottom: 128 },
-  headerBlock: { gap: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.md },
-  heroCard: { borderRadius: stitchTheme.radius.card },
-  heroEyebrow: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.accentBrown, letterSpacing: 1.1, textTransform: 'uppercase', fontWeight: '800' },
-  heroValue: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, color: stitchTheme.colors.primary, fontWeight: stitchTheme.typography.hero.fontWeight },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
   chartWrap: { marginTop: stitchTheme.spacing.md },
   card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, alignItems: 'flex-start' },
@@ -316,7 +319,7 @@ const styles = StyleSheet.create({
   fab: { position: 'absolute', bottom: 20, right: 20, width: 50, height: 50, borderRadius: 25, backgroundColor: stitchTheme.colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.68)', ...stitchShadows.float },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
+  modalContent: { backgroundColor: stitchTheme.colors.backgroundAccent, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },

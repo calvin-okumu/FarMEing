@@ -25,7 +25,8 @@ import {
   StitchPrimaryButton,
   StitchSectionLabel,
 } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 
 const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', 'fuel', 'irrigation', 'other'];
 
@@ -111,20 +112,25 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchHeroHeader
-          eyebrow={t('budget.fields.category')}
-          title={itemId ? t('budget.edit_title') : t('budget.add')}
-          subtitle={name || t('budget.placeholders.name')}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
-        >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('budget.estimated_total')} value={formatCurrency(total, currency)} icon='cash-outline' />
-            <StitchHeroPill label={t('budget.fields.quantity')} value={quantity || '0'} icon='layers-outline' />
-          </View>
-          <StitchMiniBars values={bars} activeIndex={3} softIndex={1} style={styles.heroBars} />
-        </StitchHeroHeader>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('budget.fields.category'),
+          title: itemId ? t('budget.edit_title') : t('budget.add'),
+          subtitle: name || t('budget.placeholders.name'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <>
+              <View style={styles.heroPills}>
+                <StitchHeroPill label={t('budget.estimated_total')} value={formatCurrency(total, currency)} icon='cash-outline' />
+                <StitchHeroPill label={t('budget.fields.quantity')} value={quantity || '0'} icon='layers-outline' />
+              </View>
+              <StitchMiniBars values={bars} activeIndex={3} softIndex={1} style={styles.heroBars} />
+            </>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+      >
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('budget.fields.category')}</StitchSectionLabel>
@@ -185,15 +191,14 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           style={styles.button}
         />
         {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
-      </ScrollView>
+      </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 56, gap: stitchTheme.spacing.sm },
+  content: { paddingBottom: 56, gap: stitchTheme.spacing.sm },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
   banner: { marginTop: stitchTheme.spacing.xs },

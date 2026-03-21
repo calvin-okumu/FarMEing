@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
@@ -7,8 +7,10 @@ import useSyncStore from '../store/useSyncStore';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import { StitchBadge, StitchChip, StitchSectionHeader } from '../components/ui/StitchPrimitives';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import { StitchBadge, StitchChip } from '../components/ui/StitchPrimitives';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 
 function DetailRow({ icon, title, subtitle, tint = stitchTheme.colors.successSurface, iconColor = stitchTheme.colors.primary, rightText }) {
   return (
@@ -52,18 +54,20 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <StitchHeroHeader
-        eyebrow={t('settings.heading')}
-        title={user?.name || t('settings.unknown_user')}
-        subtitle={t('settings.farm_id', { id: user?.id || 'TTE-2024-8892' })}
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('settings.heading'),
+          title: user?.name || t('settings.unknown_user'),
+          subtitle: t('settings.farm_id', { id: user?.id || 'TTE-2024-8892' }),
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('settings.currency')} value={currency} icon='cash-outline' />
+              <StitchHeroPill label={t('settings.sync_status')} value={t(`settings.sync_states.${status}`)} icon='sync-outline' />
+            </View>
+          ),
+        }}
+        bodyContentStyle={styles.content}
       >
-        <View style={styles.heroPills}>
-          <StitchHeroPill label={t('settings.currency')} value={currency} icon='cash-outline' />
-          <StitchHeroPill label={t('settings.sync_status')} value={t(`settings.sync_states.${status}`)} icon='sync-outline' />
-        </View>
-      </StitchHeroHeader>
-
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
           <View style={styles.avatarShell}>
             <View style={styles.avatarCard}>
@@ -82,7 +86,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <StitchSectionHeader title={t('settings.language_heading')} action={t('settings.preferred')} />
+          <StitchDashboardSectionHeader title={t('settings.language_heading')} subtitle={t('settings.preferred')} />
           <View style={styles.toggleShell}>
             <TouchableOpacity
               style={[styles.toggleOption, language === 'en' && styles.toggleOptionActive]}
@@ -104,7 +108,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <StitchSectionHeader title={t('settings.account_details')} />
+          <StitchDashboardSectionHeader title={t('settings.account_details')} />
           <View style={styles.listCardStack}>
             <DetailRow icon='notifications' title={t('settings.notifications')} subtitle={t('settings.notifications_subtitle')} />
             <DetailRow icon='help-circle' title={t('settings.help_support')} subtitle={t('settings.help_support_subtitle')} tint={stitchTheme.colors.surfaceSubtle} />
@@ -115,7 +119,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <StitchSectionHeader title={t('settings.currency')} subtitle={t('settings.currency_subtitle')} />
+          <StitchDashboardSectionHeader title={t('settings.currency')} subtitle={t('settings.currency_subtitle')} />
           <View style={styles.currencySection}>
             {SUPPORTED_CURRENCIES.map((code) => (
               <StitchChip
@@ -136,15 +140,14 @@ export default function SettingsScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.versionText}>{t('settings.brand_version', { version: '2.4.1' })}</Text>
-      </ScrollView>
+      </StitchDashboardShell>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 132, gap: stitchTheme.spacing.md },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 28, gap: stitchTheme.spacing.md },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   profileCard: {
     flexDirection: 'row',

@@ -19,6 +19,8 @@ import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import {
   StitchBadge,
   StitchIconButton,
@@ -28,6 +30,7 @@ import {
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import StatusBanner from '../components/ui/StatusBanner';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
 
 function WorkerCard({ item, onPress, t }) {
@@ -167,47 +170,20 @@ export default function EmployeesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={filteredEmployees}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <WorkerCard
-            item={item}
-            t={t}
-            onPress={() => navigation.navigate('EmployeeDetail', { employeeId: item.id })}
-          />
-        )}
-        ListHeaderComponent={
-          <>
-            <View style={styles.header}>
-              <View style={styles.decCircle1} />
-              <View style={styles.decCircle2} />
-              <View style={styles.headerTop}>
-                <View>
-                  <Text style={styles.headerEyebrow}>{t('settings.brand_short')}</Text>
-                  <Text style={styles.headerTitle}>{t('employees.directory_title')}</Text>
-                </View>
-                <TouchableOpacity style={styles.settingsBtn} onPress={() => setModalVisible(true)} activeOpacity={0.88}>
-                  <Ionicons name='person-add' size={18} color={stitchTheme.colors.warmWhite} />
-                </TouchableOpacity>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('settings.brand_short'),
+          title: t('employees.directory_title'),
+          subtitle: t('employees.title'),
+          actionIcon: 'person-add',
+          onActionPress: () => setModalVisible(true),
+          children: (
+            <>
+              <View style={styles.heroPills}>
+                <StitchHeroPill label={t('employees.title')} value={String(employees.length)} icon='people-outline' />
+                <StitchHeroPill label={t('employees.api_live')} value={String(syncedEmployees)} icon='cloud-done-outline' />
+                <StitchHeroPill label={t('employees.fields.role')} value={String(rolesCount)} icon='briefcase-outline' />
               </View>
-
-              <View style={styles.statRow}>
-                <View style={[styles.statPill, styles.statPillActive]}>
-                  <Text style={styles.statNum}>{employees.length}</Text>
-                  <Text style={styles.statLabel}>{t('employees.title')}</Text>
-                </View>
-                <View style={styles.statPill}>
-                  <Text style={styles.statNum}>{syncedEmployees}</Text>
-                  <Text style={styles.statLabel}>{t('employees.api_live')}</Text>
-                </View>
-                <View style={styles.statPill}>
-                  <Text style={styles.statNum}>{rolesCount}</Text>
-                  <Text style={styles.statLabel}>{t('employees.fields.role')}</Text>
-                </View>
-              </View>
-
               <View style={styles.chartWrap}>
                 {(chartValues.length ? chartValues : [2, 3, 4, 5, 3, 4, 2]).map((value, index, values) => {
                   const maxValue = Math.max(...values, 1);
@@ -228,29 +204,31 @@ export default function EmployeesScreen({ navigation }) {
                   );
                 })}
               </View>
-            </View>
-
-            <View style={styles.bodyBlock}>
-              <StatusBanner {...banner} />
-              <View style={styles.searchRow}>
-                <View style={styles.searchWrap}>
-                  <SearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />
-                </View>
-                <TouchableOpacity style={styles.filterBtn} activeOpacity={0.88}>
-                  <Ionicons name='options-outline' size={16} color={stitchTheme.colors.warmWhite} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.sectionHead}>
-                <Text style={styles.sectionLabel}>{t('employees.title')}</Text>
-                <Text style={styles.seeAll}>{filteredEmployees.length}</Text>
-              </View>
-            </View>
-          </>
-        }
-        ListEmptyComponent={<EmptyState icon='people-outline' title={t('employees.empty_title')} subtitle={t('employees.empty_subtitle')} />}
+            </>
+          ),
+        }}
+        bodyContentStyle={styles.list}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
-      />
+      >
+        <StatusBanner {...banner} />
+        <View style={styles.searchRow}>
+          <View style={styles.searchWrap}>
+            <SearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />
+          </View>
+          <TouchableOpacity style={styles.filterBtn} activeOpacity={0.88}>
+            <Ionicons name='options-outline' size={16} color={stitchTheme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <StitchDashboardSectionHeader title={t('employees.title')} subtitle={t('employees.directory_title')} actionLabel={String(filteredEmployees.length)} />
+        {filteredEmployees.length ? filteredEmployees.map((item) => (
+          <WorkerCard
+            key={item.id}
+            item={item}
+            t={t}
+            onPress={() => navigation.navigate('EmployeeDetail', { employeeId: item.id })}
+          />
+        )) : <EmptyState icon='people-outline' title={t('employees.empty_title')} subtitle={t('employees.empty_subtitle')} />}
+      </StitchDashboardShell>
 
       <Modal visible={modalVisible} animationType='slide' transparent>
         <View style={styles.modalOverlay}>
@@ -282,98 +260,8 @@ export default function EmployeesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
-  list: { paddingBottom: 128 },
-  header: {
-    backgroundColor: stitchTheme.colors.forestDeep,
-    paddingTop: 18,
-    paddingHorizontal: 22,
-    paddingBottom: 20,
-    overflow: 'hidden',
-  },
-  decCircle1: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: stitchTheme.colors.primarySoft,
-  },
-  decCircle2: {
-    position: 'absolute',
-    bottom: -40,
-    left: 30,
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: stitchTheme.colors.surfaceTint,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  headerEyebrow: {
-    fontSize: stitchTheme.typography.label.fontSize,
-    lineHeight: stitchTheme.typography.label.lineHeight,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: stitchTheme.colors.primaryDim,
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: stitchTheme.typography.display.fontSize,
-    lineHeight: stitchTheme.typography.display.lineHeight,
-    fontWeight: '800',
-    color: stitchTheme.colors.warmWhite,
-    letterSpacing: -0.5,
-  },
-  settingsBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: stitchTheme.colors.surfaceGhost,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 18,
-  },
-  statPill: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-    backgroundColor: stitchTheme.colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.26)',
-    alignItems: 'center',
-  },
-  statPillActive: {
-    backgroundColor: stitchTheme.colors.primaryDim,
-    borderColor: stitchTheme.colors.primaryDim,
-  },
-  statNum: {
-    fontSize: stitchTheme.typography.title.fontSize,
-    lineHeight: stitchTheme.typography.title.lineHeight,
-    fontWeight: '800',
-    color: stitchTheme.colors.warmWhite,
-  },
-  statLabel: {
-    fontSize: stitchTheme.typography.caption.fontSize,
-    lineHeight: stitchTheme.typography.caption.lineHeight,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: stitchTheme.colors.textMuted,
-    marginTop: 2,
-  },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
   chartWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -383,12 +271,6 @@ const styles = StyleSheet.create({
   bar: {
     flex: 1,
     borderRadius: 5,
-  },
-  bodyBlock: {
-    backgroundColor: stitchTheme.colors.background,
-    paddingHorizontal: stitchTheme.spacing.screen,
-    paddingTop: stitchTheme.spacing.lg,
-    paddingBottom: stitchTheme.spacing.xs,
   },
   searchRow: {
     flexDirection: 'row',
@@ -409,31 +291,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.68)',
     ...stitchShadows.float,
   },
-  sectionHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionLabel: {
-    fontSize: stitchTheme.typography.label.fontSize,
-    lineHeight: stitchTheme.typography.label.lineHeight,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: stitchTheme.colors.textMuted,
-  },
-  seeAll: {
-    fontSize: stitchTheme.typography.bodySmall.fontSize,
-    lineHeight: stitchTheme.typography.bodySmall.lineHeight,
-    fontWeight: '700',
-    color: stitchTheme.colors.primaryContainer,
-  },
   card: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
     padding: 18,
-    marginHorizontal: 18,
     marginBottom: 12,
     overflow: 'hidden',
     ...stitchShadows.card,

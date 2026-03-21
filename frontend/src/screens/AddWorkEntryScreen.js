@@ -25,7 +25,8 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -204,19 +205,22 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchHeroHeader
-          eyebrow={t('labor.entry_subtitle')}
-          title={itemId ? t('labor.edit_title') : t('labor.entry_title')}
-          subtitle={selectedEmployee?.name || t('labor.select_employee')}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
-        >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(total, currency)} icon='cash-outline' />
-            <StitchHeroPill label={t('labor.days')} value={daysWorked || '0'} icon='calendar-outline' />
-          </View>
-        </StitchHeroHeader>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('labor.entry_subtitle'),
+          title: itemId ? t('labor.edit_title') : t('labor.entry_title'),
+          subtitle: selectedEmployee?.name || t('labor.select_employee'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(total, currency)} icon='cash-outline' />
+              <StitchHeroPill label={t('labor.days')} value={daysWorked || '0'} icon='calendar-outline' />
+            </View>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+      >
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
@@ -367,7 +371,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         </View>
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('labor.submit')} onPress={handleSave} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
-      </ScrollView>
+      </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
 }

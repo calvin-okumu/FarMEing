@@ -1,16 +1,14 @@
 import React, { useRef, useEffect } from 'react';
 import {
-  StatusBar,
-  ScrollView,
   Animated,
   StyleSheet,
   View,
   Text,
   TouchableOpacity
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 
 const colors = stitchTheme.colors;
@@ -176,102 +174,51 @@ export default function DashboardScreen() {
   }, [headerAnim]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle='light-content' backgroundColor={colors.forestDeep} />
-      <Animated.View
-        style={[
-          styles.heroWrapper,
-          {
-            opacity: headerAnim,
-            transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
-          },
-        ]}
-      >
-        <StitchHeroHeader
-          eyebrow='Shamba Mkononi'
-          title='Ksh 0.00'
-          subtitle='Live totals update as field, labor, and sales records are logged'
-          actionIcon='ellipsis-horizontal'
-          onActionPress={() => {}}
-        >
+    <StitchDashboardShell
+      hero={{
+        eyebrow: 'Shamba Mkononi',
+        title: 'Ksh 0.00',
+        subtitle: 'Live totals update as field, labor, and sales records are logged',
+        actionIcon: 'ellipsis-horizontal',
+        onActionPress: () => {},
+        wrapperStyle: {
+          opacity: headerAnim,
+          transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+        },
+        children: (
           <View style={styles.heroPills}>
             <StitchHeroPill label='Sales' value='Ksh 0.00' icon='cash-outline' style={styles.heroPillPrimary} />
             <StitchHeroPill label='Harvest' value='0 kg' icon='leaf-outline' style={styles.heroPillSecondary} />
           </View>
-        </StitchHeroHeader>
-      </Animated.View>
+        ),
+      }}
+    >
+      <StitchDashboardSectionHeader title='Overview' subtitle='This season' badgeLabel='Live' />
 
-      <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.sectionHead}>
-          <View>
-            <Text style={styles.sectionTitle}>Overview</Text>
-            <Text style={styles.sectionSub}>This season</Text>
-          </View>
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>Live</Text>
-          </View>
-        </View>
+      <View style={styles.overviewGrid}>
+        {OVERVIEW_CARDS.map((card) => (
+          <OverviewCard key={card.id} card={card} />
+        ))}
+      </View>
 
-        <View style={styles.overviewGrid}>
-          {OVERVIEW_CARDS.map((card) => (
-            <OverviewCard key={card.id} card={card} />
-          ))}
-        </View>
+      <StitchDashboardSectionHeader title='Manage Resources' subtitle='Quick access' actionLabel='See all' style={styles.sectionSpacing} />
 
-        <View style={[styles.sectionHead, styles.sectionSpacing]}>
-          <View>
-            <Text style={styles.sectionTitle}>Manage Resources</Text>
-            <Text style={styles.sectionSub}>Quick access</Text>
-          </View>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See all</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.resourceGrid}>
+        {RESOURCE_CARDS.map((card) => (
+          <ResourceCard key={card.id} card={card} />
+        ))}
+      </View>
 
-        <View style={styles.resourceGrid}>
-          {RESOURCE_CARDS.map((card) => (
-            <ResourceCard key={card.id} card={card} />
-          ))}
-        </View>
-
-        <View style={styles.fabRow}>
-          <TouchableOpacity style={styles.fab} activeOpacity={0.9}>
-            <Ionicons name='add' size={22} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <View style={styles.fabRow}>
+        <TouchableOpacity style={styles.fab} activeOpacity={0.9}>
+          <Ionicons name='add' size={22} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+    </StitchDashboardShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.forestDeep,
-  },
-  heroWrapper: {
-    overflow: 'hidden',
-    paddingBottom: spacing.xs,
-    backgroundColor: colors.forestDeep,
-  },
-  body: {
-    flex: 1,
-    backgroundColor: colors.background,
-    marginTop: -spacing.xs,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-  },
-  bodyContent: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: 144,
-    gap: spacing.sm,
-  },
   heroPills: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -288,53 +235,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
   },
-  sectionHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
   sectionSpacing: {
     marginTop: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: type.section.fontSize,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  sectionSub: {
-    fontSize: type.caption.fontSize,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  seeAll: {
-    fontSize: type.bodySmall.fontSize,
-    fontWeight: '700',
-    color: colors.primaryContainer,
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.mintLight,
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primaryDim,
-  },
-  liveText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.primaryContainer,
   },
   overviewGrid: {
     flexDirection: 'row',

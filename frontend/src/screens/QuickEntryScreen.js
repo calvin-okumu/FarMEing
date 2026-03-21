@@ -27,7 +27,9 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import StatusBanner from '../components/ui/StatusBanner';
 import { EMPLOYEE_KEYS } from '../hooks/api/useEmployeesApi';
 import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import {
   StitchChip,
   StitchMiniBars,
@@ -191,22 +193,27 @@ export default function QuickEntryScreen({ navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <View style={styles.container}>
-        <StitchHeroHeader
-          eyebrow={t('quick_entry.fields.activity')}
-          title={t('quick_entry.save')}
-          subtitle={selectedProject?.name || t('quick_entry.select_project')}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
+        <StitchDashboardShell
+          hero={{
+            eyebrow: t('quick_entry.fields.activity'),
+            title: t('quick_entry.save'),
+            subtitle: selectedProject?.name || t('quick_entry.select_project'),
+            actionIcon: 'arrow-back',
+            onActionPress: () => navigation.goBack(),
+            children: (
+              <>
+                <View style={styles.heroPills}>
+                  <StitchHeroPill label={t('quick_entry.total')} value={formatCurrency(total, currency)} icon='cash-outline' />
+                  <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' />
+                </View>
+                <StitchMiniBars values={graphValues} activeIndex={3} softIndex={1} style={styles.heroBars} />
+              </>
+            ),
+          }}
+          bodyContentStyle={styles.content}
         >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('quick_entry.total')} value={formatCurrency(total, currency)} icon='cash-outline' />
-            <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' />
-          </View>
-          <StitchMiniBars values={graphValues} activeIndex={3} softIndex={1} style={styles.heroBars} />
-        </StitchHeroHeader>
-
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <StatusBanner {...banner} style={styles.banner} />
+          <StitchDashboardSectionHeader title={t('quick_entry.save')} subtitle={t('quick_entry.fields.project')} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <View style={styles.formCard}>
             <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
@@ -317,7 +324,7 @@ export default function QuickEntryScreen({ navigation }) {
             <StitchPrimaryButton label={t('quick_entry.save')} onPress={handleSave} disabled={saving} icon="checkmark-circle" style={styles.button} />
             {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
           </View>
-        </ScrollView>
+        </StitchDashboardShell>
       </View>
     </KeyboardAvoidingView>
   );
@@ -326,9 +333,8 @@ export default function QuickEntryScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  scroll: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
-  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 64 },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
   banner: { marginBottom: stitchTheme.spacing.md },

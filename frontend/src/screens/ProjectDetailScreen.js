@@ -21,7 +21,9 @@ import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell from '../components/ui/StitchDashboardShell';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
 import StatusBanner from '../components/ui/StatusBanner';
@@ -655,20 +657,23 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchHeroHeader
-          eyebrow={t('timeline.project_activity')}
-          title={project.name}
-          subtitle={activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
-        >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' />
-            <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' />
-            <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' />
-          </View>
-        </StitchHeroHeader>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('timeline.project_activity'),
+          title: project.name,
+          subtitle: activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`,
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' />
+              <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' />
+              <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' />
+            </View>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+      >
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.heroCard}>
@@ -805,7 +810,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         ) : null}
 
         <View style={{ height: 140 }} />
-      </ScrollView>
+      </StitchDashboardShell>
 
       <TouchableOpacity
         style={styles.fab}
@@ -839,10 +844,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 160 },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 64 },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
-  banner: { marginTop: stitchTheme.spacing.sm },
+  banner: { marginTop: stitchTheme.spacing.xs },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted, marginBottom: stitchTheme.spacing.md },
   backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: stitchTheme.spacing.lg, paddingVertical: 10, borderRadius: stitchTheme.radius.pill },

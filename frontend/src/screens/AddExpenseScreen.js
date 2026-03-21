@@ -23,7 +23,8 @@ import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -162,19 +163,22 @@ export default function AddExpenseScreen({ route, navigation }) {
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchHeroHeader
-          eyebrow={t('expenses.entry_eyebrow')}
-          title={itemId ? t('expenses.edit_title') : t('expenses.entry_title')}
-          subtitle={note || t('settings.brand_short')}
-          actionIcon='arrow-back'
-          onActionPress={() => navigation.goBack()}
-        >
-          <View style={styles.heroPills}>
-            <StitchHeroPill label={t('expenses.fields.amount')} value={amount ? `${currency} ${amount}` : `${currency} 0.00`} icon='cash-outline' />
-            <StitchHeroPill label={t('expenses.category_heading')} value={t(`expenses.categories.${category}`)} icon='receipt-outline' />
-          </View>
-        </StitchHeroHeader>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('expenses.entry_eyebrow'),
+          title: itemId ? t('expenses.edit_title') : t('expenses.entry_title'),
+          subtitle: note || t('settings.brand_short'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('expenses.fields.amount')} value={amount ? `${currency} ${amount}` : `${currency} 0.00`} icon='cash-outline' />
+              <StitchHeroPill label={t('expenses.category_heading')} value={t(`expenses.categories.${category}`)} icon='receipt-outline' />
+            </View>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+      >
 
         <StitchSurface style={styles.amountCard}>
           <StitchSectionLabel>{t('expenses.fields.amount')}</StitchSectionLabel>
@@ -319,7 +323,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         ) : null}
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('expenses.save')} onPress={handleSave} disabled={saving} loading={saving} icon="save-outline" style={styles.saveButton} />
-      </ScrollView>
+      </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
 }

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -21,12 +20,14 @@ import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchBadge, StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
-import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
 
@@ -199,16 +200,44 @@ export default function ProjectsScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={filteredProjects}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => {
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('projects.title'),
+          title: String(filteredProjects.length),
+          subtitle: t('projects.directory_subtitle'),
+          actionIcon: 'add',
+          onActionPress: openCreate,
+          children: (
+            <>
+              <View style={styles.heroStatsRow}>
+                <StitchHeroPill
+                  label={t('projects.fields.land_size')}
+                  value={`${totalLand.toLocaleString()} ${formData.landUnit}`}
+                  icon='resize-outline'
+                />
+                <StitchHeroPill
+                  label={t('projects.title')}
+                  value={String(filteredProjects.length)}
+                  icon='leaf-outline'
+                />
+              </View>
+              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={2} style={styles.heroBars} />
+            </>
+          ),
+        }}
+        bodyContentStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
+      >
+        <StatusBanner {...banner} />
+        <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
+        <StitchDashboardSectionHeader title={t('projects.title')} subtitle={t('projects.directory_subtitle')} actionLabel={String(filteredProjects.length)} />
+        {filteredProjects.length ? filteredProjects.map((item, index) => {
           const accentStyle = index % 2 === 0 ? styles.cardAccentSage : styles.cardAccentAmber;
           const avatarStyle = index % 2 === 0 ? styles.cardAvatarForest : styles.cardAvatarWarm;
           const avatarIconColor = index % 2 === 0 ? stitchTheme.colors.primaryDim : stitchTheme.colors.accentBrown;
 
           return (
-            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })} activeOpacity={0.9}>
+            <TouchableOpacity key={item.id} style={styles.card} onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })} activeOpacity={0.9}>
               <View style={[styles.cardAccent, accentStyle]} />
               <View style={styles.cardTopRow}>
                 <View style={[styles.cardIconWrap, avatarStyle]}>
@@ -243,39 +272,8 @@ export default function ProjectsScreen({ navigation, route }) {
               </View>
             </TouchableOpacity>
           );
-        }}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <>
-            <StitchHeroHeader
-              eyebrow={t('projects.title')}
-              title={String(filteredProjects.length)}
-              subtitle={t('projects.directory_subtitle')}
-              actionIcon='add'
-              onActionPress={openCreate}
-            >
-              <View style={styles.heroStatsRow}>
-                <StitchHeroPill
-                  label={t('projects.fields.land_size')}
-                  value={`${totalLand.toLocaleString()} ${formData.landUnit}`}
-                  icon='resize-outline'
-                />
-                <StitchHeroPill
-                  label={t('projects.title')}
-                  value={String(filteredProjects.length)}
-                  icon='leaf-outline'
-                />
-              </View>
-              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={2} style={styles.heroBars} />
-            </StitchHeroHeader>
-            <StatusBanner {...banner} />
-            <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
-          </>
-        }
-        ListHeaderComponentStyle={styles.headerBlock}
-        ListEmptyComponent={<EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
-      />
+        }) : <EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
+      </StitchDashboardShell>
 
       <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.9}>
         <Ionicons name="add" size={28} color={stitchTheme.colors.primary} />
@@ -323,12 +321,8 @@ export default function ProjectsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
-  list: { padding: stitchTheme.spacing.screen, paddingBottom: 128 },
-  headerBlock: { gap: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.md },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
   heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
-  heroStatPill: { flex: 1 },
-  heroStatLabel: {},
-  heroStatValue: {},
   heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
   card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', ...stitchShadows.soft },
   cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },

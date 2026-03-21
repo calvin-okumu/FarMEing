@@ -1,6 +1,9 @@
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Keyboard } from 'react-native';
+import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchTheme } from '../../theme/stitchTheme';
+
+export const STITCH_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 126 : 112;
 
 const TAB_META = {
   Dashboard: { icon: 'grid-outline' },
@@ -11,6 +14,24 @@ const TAB_META = {
 };
 
 export default function StitchTabBar({ state, descriptors, navigation }) {
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  if (keyboardVisible) {
+    return null;
+  }
+
   return (
     <View style={styles.wrap}>
       <View style={styles.bar}>
@@ -72,6 +93,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    minHeight: STITCH_TAB_BAR_HEIGHT - (Platform.OS === 'ios' ? 56 : 42),
     backgroundColor: stitchTheme.colors.navTrack,
     borderRadius: 30,
     paddingHorizontal: 8,
