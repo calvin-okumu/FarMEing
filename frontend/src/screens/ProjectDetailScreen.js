@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -70,7 +71,7 @@ function TimelineSection({ title, tone, items, t, currency }) {
         <View key={`${title}-${index}`} style={styles.timelineItemWrap}>
           <View style={styles.timelineRail}>
             <View style={[styles.timelineDot, { backgroundColor: item.dotColor }]}>
-              <Ionicons name={item.icon} size={15} color={item.iconColor || '#fff'} />
+              <Ionicons name={item.icon} size={15} color={item.iconColor || '#ffffff'} />
             </View>
             {index !== items.length - 1 ? <View style={styles.timelineVertical} /> : null}
           </View>
@@ -84,7 +85,7 @@ function TimelineSection({ title, tone, items, t, currency }) {
                 </View>
               </View>
               {item.badge ? (
-                <View style={[styles.timelineBadge, { backgroundColor: item.badgeBackground || '#e7f4e4' }]}>
+                <View style={[styles.timelineBadge, { backgroundColor: item.badgeBackground || stitchTheme.colors.successSurface }]}>
                   <Text style={[styles.timelineBadgeText, { color: item.badgeColor || stitchTheme.colors.primary }]}>{item.badge}</Text>
                 </View>
               ) : null}
@@ -438,13 +439,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
       title: `${entry.activity} / ${t(`labor.activity_notes.${entry.activity?.toLowerCase() || 'other'}`, { defaultValue: t('labor.activity_notes.other') })}`,
       body: entry.notes || t('timeline.work_default_body', { employee: employeeMap.get(entry.employeeId) || t('employees.unknown') }),
       badge: entry.status === 'APPROVED' ? t('timeline.completed') : t(`labor.status.${entry.status.toLowerCase()}`),
-      badgeBackground: entry.status === 'APPROVED' ? '#e3f3de' : '#f6ead9',
-      badgeColor: entry.status === 'APPROVED' ? stitchTheme.colors.primary : '#9b5c22',
+      badgeBackground: entry.status === 'APPROVED' ? stitchTheme.colors.successSurface : stitchTheme.colors.warningSurface,
+      badgeColor: entry.status === 'APPROVED' ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown,
       timeIcon: 'time-outline',
       timeLabel: formatAppDate(entry.date),
       dotColor: entry.activity?.toLowerCase().includes('irrig') ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown,
       amount: entry.totalCost,
-      preview: entry.imageUrl ? [{ icon: 'image-outline', backgroundColor: '#eae8e4', color: stitchTheme.colors.primary }] : null,
+      preview: entry.imageUrl ? [{ icon: 'image-outline', backgroundColor: stitchTheme.colors.surfaceMuted, color: stitchTheme.colors.primary }] : null,
     }));
 
     const expenseItems = expenses.slice(0, 2).map((expense) => ({
@@ -455,7 +456,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       body: expense.note || t('timeline.expense_default_body', { category: t(`expenses.categories.${expense.category}`, { defaultValue: expense.category }) }),
       timeIcon: 'calendar-outline',
       timeLabel: formatAppDate(expense.date),
-      dotColor: '#ffc8bf',
+      dotColor: stitchTheme.colors.accentPeach,
       iconColor: stitchTheme.colors.accentBrown,
       amount: -expense.amount,
       amountLabel: `- ${formatCurrency(expense.amount, currency)}`,
@@ -598,21 +599,21 @@ export default function ProjectDetailScreen({ route, navigation }) {
     <View style={styles.collectionCard}>
       <View style={styles.collectionTopRow}>
         <Text style={styles.collectionTitle}>{title}</Text>
-        <View style={styles.collectionActions}>
-          <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
-          {type && item ? (
-            <>
-              <TouchableOpacity onPress={() => handleEditItem(type, item)} hitSlop={8}>
-                <Ionicons name="create-outline" size={18} color={stitchTheme.colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setDeleteTarget({ type, item })} hitSlop={8}>
-                <Ionicons name="trash-outline" size={18} color="#9c1111" />
-              </TouchableOpacity>
-            </>
-          ) : null}
-        </View>
+        <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
       </View>
       <Text style={styles.collectionMeta}>{meta}</Text>
+      {type && item ? (
+        <View style={styles.collectionActionRow}>
+          <TouchableOpacity style={styles.collectionActionButton} onPress={() => handleEditItem(type, item)} activeOpacity={0.88}>
+            <Ionicons name="create-outline" size={16} color={stitchTheme.colors.primary} />
+            <Text style={styles.collectionActionText}>{t('common.edit')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.collectionActionButton, styles.collectionActionButtonDanger]} onPress={() => setDeleteTarget({ type, item })} activeOpacity={0.88}>
+            <Ionicons name="trash-outline" size={16} color={stitchTheme.colors.accentRed} />
+            <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
       {type === 'labor' ? (
         <>
           <View style={styles.statusRow}>
@@ -829,15 +830,15 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted, marginBottom: stitchTheme.spacing.md },
   backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: stitchTheme.spacing.lg, paddingVertical: 10, borderRadius: stitchTheme.radius.pill },
-  backButtonText: { color: '#fff', fontWeight: '700' },
+  backButtonText: { color: '#ffffff', fontWeight: '700' },
   heroCard: { borderRadius: stitchTheme.radius.card },
   overviewGrid: { flexDirection: 'row', gap: 8, marginTop: stitchTheme.spacing.xs, marginBottom: 12 },
-  resourceOverviewCard: { flex: 1, borderRadius: 15, padding: 12, borderWidth: 1.5, ...stitchShadows.soft },
-  resourceOverviewCardSoft: { backgroundColor: stitchTheme.colors.surface, borderColor: stitchTheme.colors.border },
-  resourceOverviewCardAccent: { backgroundColor: '#ecf9f2', borderColor: stitchTheme.colors.primarySoft },
-  resourceOverviewEyebrow: { fontSize: 7, lineHeight: 9, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
-  resourceOverviewTitle: { marginTop: 3, fontSize: 10.5, lineHeight: 13, fontWeight: '800', color: stitchTheme.colors.text },
-  resourceOverviewValue: { marginTop: 2, fontSize: 15, lineHeight: 18, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.5 },
+  resourceOverviewCard: { flex: 1, borderRadius: 15, padding: 12, ...stitchShadows.soft },
+  resourceOverviewCardSoft: { backgroundColor: stitchTheme.colors.surfaceHighlight },
+  resourceOverviewCardAccent: { backgroundColor: stitchTheme.colors.surfaceTint },
+  resourceOverviewEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  resourceOverviewTitle: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  resourceOverviewValue: { marginTop: 2, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.5 },
   heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.sm },
   heroMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
   heroStatus: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
@@ -847,33 +848,37 @@ const styles = StyleSheet.create({
   heroStatusTextActive: { color: stitchTheme.colors.primary },
   heroStatusTextMuted: { color: stitchTheme.colors.accentBrown },
   summaryRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.md },
-  summaryCard: { flex: 1, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceSubtle, padding: stitchTheme.spacing.sm },
+  summaryCard: { flex: 1, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, padding: stitchTheme.spacing.sm },
   summaryCardAccent: { backgroundColor: stitchTheme.colors.successSurface },
   summaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 },
   summaryValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
   summaryValueAccent: { color: stitchTheme.colors.primary },
   progressBarTrack: { height: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted, overflow: 'hidden', marginTop: stitchTheme.spacing.md },
   progressBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryContainer },
-  progressBarFillDanger: { backgroundColor: '#9c1111' },
+  progressBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
   progressText: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, textAlign: 'right' },
   tabsRow: { gap: 6, paddingBottom: 12, paddingTop: 4 },
   toolbarBlock: { gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
   sortRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
   syncHint: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted },
-  collectionCard: { backgroundColor: stitchTheme.colors.surface, borderRadius: 17, padding: 15, marginBottom: 9, borderWidth: 1, borderColor: 'rgba(26,61,43,0.06)', ...stitchShadows.card, overflow: 'hidden' },
+  collectionCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card, overflow: 'hidden' },
   cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },
   collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.xs },
-  collectionActions: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   collectionTitle: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   collectionAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
   collectionAmountPositive: { color: stitchTheme.colors.primary },
-  collectionAmountNegative: { color: '#8b0e0e' },
+  collectionAmountNegative: { color: stitchTheme.colors.accentRed },
   collectionMeta: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted },
+  collectionActionRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
+  collectionActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
+  collectionActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
+  collectionActionText: { color: stitchTheme.colors.primary, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },
+  collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },
   inventoryCard: { paddingHorizontal: 17 },
   inventoryCopy: { flex: 1, paddingLeft: 8 },
   inventoryOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  inventoryLink: { color: stitchTheme.colors.primaryContainer, fontWeight: '700', fontSize: 12, lineHeight: 14 },
+  inventoryLink: { color: stitchTheme.colors.primaryContainer, fontWeight: '700', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
   analyticsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
   analyticsCard: { flex: 1 },
   analyticsLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 0.8 },
@@ -881,19 +886,19 @@ const styles = StyleSheet.create({
   analyticsValue: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   statusRow: { marginTop: stitchTheme.spacing.sm },
   statusBadge: { alignSelf: 'flex-start', paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
-  statusPending: { backgroundColor: '#f6ead9' },
+  statusPending: { backgroundColor: stitchTheme.colors.warningSurface },
   statusApproved: { backgroundColor: stitchTheme.colors.successSurface },
-  statusRejected: { backgroundColor: '#fde8e8' },
+  statusRejected: { backgroundColor: stitchTheme.colors.dangerSurface },
   statusBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  statusPendingText: { color: '#9b5c22' },
+  statusPendingText: { color: stitchTheme.colors.accentBrown },
   statusApprovedText: { color: stitchTheme.colors.primary },
-  statusRejectedText: { color: '#9c1111' },
+  statusRejectedText: { color: stitchTheme.colors.accentRed },
   statusActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
   statusActionButton: { flex: 1, minHeight: 38, borderRadius: stitchTheme.radius.md, alignItems: 'center', justifyContent: 'center' },
   statusActionApprove: { backgroundColor: stitchTheme.colors.successSurface },
-  statusActionReject: { backgroundColor: '#fde8e8' },
+  statusActionReject: { backgroundColor: stitchTheme.colors.dangerSurface },
   statusActionApproveText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
-  statusActionRejectText: { color: '#9c1111', fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  statusActionRejectText: { color: stitchTheme.colors.accentRed, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
   emptyText: { textAlign: 'center', marginTop: stitchTheme.spacing.xl, color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
   timelineContainer: { gap: stitchTheme.spacing.xs },
   timelineHeaderBlock: { marginBottom: stitchTheme.spacing.sm },
@@ -905,26 +910,26 @@ const styles = StyleSheet.create({
   timelineSectionChipPast: { backgroundColor: stitchTheme.colors.surfaceMuted },
   timelineSectionChipText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   timelineSectionChipTextToday: { color: stitchTheme.colors.primary },
-  timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.border },
+  timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.line },
   timelineItemWrap: { flexDirection: 'row' },
   timelineRail: { width: 34, alignItems: 'center' },
   timelineDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  timelineVertical: { width: 2, flex: 1, backgroundColor: stitchTheme.colors.border, marginTop: 4 },
-  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surface, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border, ...stitchShadows.card },
+  timelineVertical: { width: 2, flex: 1, backgroundColor: stitchTheme.colors.line, marginTop: 4 },
+  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
   timelineTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   timelineTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   timelineMetaText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
   timelineBadge: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
   timelineBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  timelineAmountText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: '#8b0e0e' },
+  timelineAmountText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.accentRed },
   timelineBody: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.text, marginBottom: stitchTheme.spacing.xs },
   timelinePreviewRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
   timelinePreview: { width: 80, height: 80, borderRadius: stitchTheme.radius.lg, alignItems: 'center', justifyContent: 'center' },
   timelineFooterValue: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   fab: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 118 : 104,
+    bottom: Platform.OS === 'ios' ? 112 : 96,
     right: 20,
     width: 52,
     height: 52,

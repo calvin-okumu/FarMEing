@@ -1,34 +1,22 @@
 import React, { useRef, useEffect } from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Animated,
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
-  Platform,
+  TouchableOpacity
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { StitchHeroHeader, StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import { stitchTheme } from '../theme/stitchTheme';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 
-const C = {
-  forest: '#1a3d2b',
-  forestDeep: '#112a1e',
-  moss: '#2d6a4f',
-  sage: '#52b788',
-  mint: '#b7e4c7',
-  mintLight: '#d8f3e4',
-  cream: '#f5f0e8',
-  warmWhite: '#fdfaf4',
-  sand: '#e4d9c5',
-  amber: '#c97d2e',
-  amberLight: '#fde8c8',
-  textDark: '#1a1a18',
-  textLight: '#8a9280',
-};
+const colors = stitchTheme.colors;
+const spacing = stitchTheme.spacing;
+const radius = stitchTheme.radius;
+const type = stitchTheme.typography;
 
 const OVERVIEW_CARDS = [
   {
@@ -36,10 +24,10 @@ const OVERVIEW_CARDS = [
     title: 'Expenses',
     value: 'Ksh 0.00',
     tag: 'COSTS STABLE',
-    tagColor: C.moss,
-    accentColor: C.sage,
-    iconBg: C.mintLight,
-    iconStroke: C.moss,
+    tagColor: colors.primaryContainer,
+    accentColor: colors.primaryDim,
+    iconBg: colors.mintLight,
+    iconStroke: colors.primaryContainer,
     icon: 'card',
   },
   {
@@ -47,10 +35,10 @@ const OVERVIEW_CARDS = [
     title: 'Active Labor',
     value: '0',
     tag: 'MAINTENANCE',
-    tagColor: C.amber,
-    accentColor: C.sage,
-    iconBg: C.mintLight,
-    iconStroke: C.moss,
+    tagColor: colors.accentBrown,
+    accentColor: colors.primaryDim,
+    iconBg: colors.mintLight,
+    iconStroke: colors.primaryContainer,
     icon: 'users',
   },
   {
@@ -58,9 +46,9 @@ const OVERVIEW_CARDS = [
     title: 'Harvest Team',
     value: 'Other',
     tag: 'KSH 0.00',
-    tagColor: C.amber,
-    accentColor: C.amber,
-    iconBg: C.amberLight,
+    tagColor: colors.accentBrown,
+    accentColor: colors.accentBrown,
+    iconBg: colors.accentPeach,
     iconStroke: '#7a3d10',
     icon: 'tool',
   },
@@ -69,10 +57,10 @@ const OVERVIEW_CARDS = [
     title: 'Unpaid Labor',
     value: 'Ksh 0.00',
     tag: 'ALL CLEARED',
-    tagColor: C.moss,
-    accentColor: C.sage,
-    iconBg: C.mintLight,
-    iconStroke: C.moss,
+    tagColor: colors.primaryContainer,
+    accentColor: colors.primaryDim,
+    iconBg: colors.mintLight,
+    iconStroke: colors.primaryContainer,
     icon: 'bag',
   },
 ];
@@ -83,8 +71,8 @@ const RESOURCE_CARDS = [
     title: 'Budget',
     desc: 'Plan project inputs and allocations',
     icon: 'card',
-    iconBg: C.mintLight,
-    iconStroke: C.moss,
+    iconBg: colors.mintLight,
+    iconStroke: colors.primaryContainer,
     dark: false,
   },
   {
@@ -92,7 +80,7 @@ const RESOURCE_CARDS = [
     title: 'Expenses',
     desc: 'Track cost records and receipts',
     icon: 'clipboard',
-    iconBg: C.amberLight,
+    iconBg: colors.accentPeach,
     iconStroke: '#7a3d10',
     dark: false,
   },
@@ -101,8 +89,8 @@ const RESOURCE_CARDS = [
     title: 'Labor',
     desc: 'Approve and manage work logs',
     icon: 'users',
-    iconBg: C.mintLight,
-    iconStroke: C.moss,
+    iconBg: colors.mintLight,
+    iconStroke: colors.primaryContainer,
     dark: false,
   },
   {
@@ -110,8 +98,8 @@ const RESOURCE_CARDS = [
     title: 'Harvest',
     desc: 'Record field yield and quality',
     icon: 'leaf',
-    iconBg: 'rgba(82,183,136,0.2)',
-    iconStroke: C.sage,
+    iconBg: colors.primarySoft,
+    iconStroke: colors.primaryDim,
     dark: true,
   },
   {
@@ -119,8 +107,8 @@ const RESOURCE_CARDS = [
     title: 'Sales',
     desc: 'Track produce sales and revenue',
     icon: 'dollar',
-    iconBg: C.mintLight,
-    iconStroke: C.moss,
+    iconBg: colors.mintLight,
+    iconStroke: colors.primaryContainer,
     dark: false,
   },
   {
@@ -128,7 +116,7 @@ const RESOURCE_CARDS = [
     title: 'Inventory',
     desc: 'Monitor stock and input usage',
     icon: 'box',
-    iconBg: C.amberLight,
+    iconBg: colors.accentPeach,
     iconStroke: '#7a3d10',
     dark: false,
   },
@@ -189,7 +177,7 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle='light-content' backgroundColor={C.forestDeep} />
+      <StatusBar barStyle='light-content' backgroundColor={colors.forestDeep} />
       <Animated.View
         style={[
           styles.heroWrapper,
@@ -202,13 +190,13 @@ export default function DashboardScreen() {
         <StitchHeroHeader
           eyebrow='Shamba Mkononi'
           title='Ksh 0.00'
-          subtitle='Performance is higher than last month'
+          subtitle='Live totals update as field, labor, and sales records are logged'
           actionIcon='ellipsis-horizontal'
           onActionPress={() => {}}
         >
           <View style={styles.heroPills}>
-            <StitchHeroPill label='Sales' value='Ksh 0.00' />
-            <StitchHeroPill label='Harvest' value='0 kg' />
+            <StitchHeroPill label='Sales' value='Ksh 0.00' icon='cash-outline' style={styles.heroPillPrimary} />
+            <StitchHeroPill label='Harvest' value='0 kg' icon='leaf-outline' style={styles.heroPillSecondary} />
           </View>
         </StitchHeroHeader>
       </Animated.View>
@@ -253,7 +241,7 @@ export default function DashboardScreen() {
 
         <View style={styles.fabRow}>
           <TouchableOpacity style={styles.fab} activeOpacity={0.9}>
-            <Ionicons name='add' size={22} color={C.forest} />
+            <Ionicons name='add' size={22} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -264,81 +252,101 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.forestDeep,
+    backgroundColor: colors.forestDeep,
   },
   heroWrapper: {
     overflow: 'hidden',
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.forestDeep,
   },
   body: {
     flex: 1,
-    backgroundColor: C.cream,
+    backgroundColor: colors.background,
+    marginTop: -spacing.xs,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
   },
   bodyContent: {
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 160,
-    gap: 16,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: 144,
+    gap: spacing.sm,
+  },
+  heroPills: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
+  heroPillPrimary: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.24)',
+    borderWidth: 1,
+    ...stitchShadows.soft,
+  },
+  heroPillSecondary: {
+    backgroundColor: 'rgba(183,228,199,0.22)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
   },
   sectionHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: spacing.xs,
   },
   sectionSpacing: {
-    marginTop: 24,
+    marginTop: spacing.lg,
   },
   sectionTitle: {
-    fontSize: stitchTheme.typography.section.fontSize,
+    fontSize: type.section.fontSize,
     fontWeight: '800',
-    color: C.textDark,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   sectionSub: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: type.caption.fontSize,
+    fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    color: C.textLight,
+    color: colors.textMuted,
     marginTop: 2,
   },
   seeAll: {
-    fontSize: 11,
+    fontSize: type.bodySmall.fontSize,
     fontWeight: '700',
-    color: C.moss,
+    color: colors.primaryContainer,
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: C.mintLight,
-    paddingHorizontal: 10,
+    backgroundColor: colors.mintLight,
+    paddingHorizontal: spacing.xs + 2,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: radius.pill,
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: C.sage,
+    backgroundColor: colors.primaryDim,
   },
   liveText: {
     fontSize: 10,
     fontWeight: '700',
-    color: C.moss,
+    color: colors.primaryContainer,
   },
   overviewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.xs,
   },
   overviewCard: {
-    backgroundColor: C.warmWhite,
+    backgroundColor: colors.surfaceHighlight,
     minWidth: '47%',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(26,61,43,0.06)',
+    borderRadius: radius.card,
     overflow: 'hidden',
+    ...stitchShadows.soft,
   },
   cardAccent: {
     position: 'absolute',
@@ -348,57 +356,57 @@ const styles = StyleSheet.create({
     width: 4,
   },
   overviewCardInner: {
-    padding: 16,
-    paddingLeft: 20,
+    padding: spacing.md,
+    paddingLeft: spacing.lg,
   },
   overviewCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   overviewCardTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: C.textLight,
+    fontSize: type.bodySmall.fontSize,
+    fontWeight: '700',
+    color: colors.textSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   iconBox: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   overviewCardValue: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: C.textDark,
+    fontSize: type.title.fontSize,
+    fontWeight: '900',
+    color: colors.text,
     letterSpacing: -0.2,
     marginBottom: 4,
   },
   overviewCardTag: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: type.caption.fontSize,
+    fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   resourceGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.xs,
   },
   resourceCard: {
-    backgroundColor: C.warmWhite,
+    backgroundColor: colors.surfaceHighlight,
     minWidth: '47%',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(26,61,43,0.06)',
+    borderRadius: radius.card,
+    padding: spacing.md,
     overflow: 'hidden',
+    ...stitchShadows.soft,
   },
   resourceCardDark: {
-    backgroundColor: C.forest,
-    borderColor: 'transparent',
+    backgroundColor: colors.primary,
   },
   resourceCardCircle: {
     position: 'absolute',
@@ -407,29 +415,29 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: 'rgba(82,183,136,0.15)',
+    backgroundColor: colors.primarySoft,
   },
   resourceIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   resourceTitle: {
-    fontSize: 13.5,
+    fontSize: type.cardTitle.fontSize,
     fontWeight: '800',
-    color: C.textDark,
+    color: colors.text,
     marginBottom: 4,
     letterSpacing: -0.2,
   },
   resourceTitleDark: {
-    color: C.white,
+    color: '#ffffff',
   },
   resourceDesc: {
-    fontSize: 10.5,
-    color: C.textLight,
+    fontSize: type.caption.fontSize,
+    color: colors.textMuted,
     lineHeight: 16,
   },
   resourceDescDark: {
@@ -437,19 +445,17 @@ const styles = StyleSheet.create({
   },
   fabRow: {
     alignItems: 'flex-end',
-    marginTop: 14,
+    marginTop: spacing.xs,
   },
   fab: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: C.sage,
+    backgroundColor: colors.surfaceHighlight,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: C.forest,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.68)',
+    ...stitchShadows.float,
   },
 });

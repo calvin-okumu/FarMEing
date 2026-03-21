@@ -7,19 +7,20 @@ import useSyncStore from '../store/useSyncStore';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchBadge, StitchChip, StitchSectionHeader } from '../components/ui/StitchPrimitives';
 
-function DetailRow({ icon, title, subtitle, tint = '#eef1ec', iconColor = '#00450d', rightText }) {
+function DetailRow({ icon, title, subtitle, tint = stitchTheme.colors.successSurface, iconColor = stitchTheme.colors.primary, rightText }) {
   return (
     <View style={styles.detailRow}>
       <View style={[styles.detailIconWrap, { backgroundColor: tint }]}>
-        <Ionicons name={icon} size={20} color={iconColor} />
+        <Ionicons name={icon} size={18} color={iconColor} />
       </View>
       <View style={styles.detailBody}>
         <Text style={styles.detailTitle}>{title}</Text>
         <Text style={styles.detailSubtitle}>{subtitle}</Text>
       </View>
-      {rightText ? <Text style={styles.detailValue}>{rightText}</Text> : <Ionicons name="chevron-forward" size={22} color="#bcc4b7" />}
+      {rightText ? <Text style={styles.detailValue}>{rightText}</Text> : <Ionicons name='chevron-forward' size={20} color={stitchTheme.colors.textMuted} />}
     </View>
   );
 }
@@ -51,106 +52,86 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar
-          title={t('settings.heading')}
-          onBack={() => navigation.navigate('Dashboard')}
-          onRightPress={() => changeLanguage(language === 'sw' ? 'en' : 'sw')}
-          rightIcon="language-outline"
-        />
+      <StitchHeroHeader
+        eyebrow={t('settings.heading')}
+        title={user?.name || t('settings.unknown_user')}
+        subtitle={t('settings.farm_id', { id: user?.id || 'TTE-2024-8892' })}
+      >
+        <View style={styles.heroPills}>
+          <StitchHeroPill label={t('settings.currency')} value={currency} icon='cash-outline' />
+          <StitchHeroPill label={t('settings.sync_status')} value={t(`settings.sync_states.${status}`)} icon='sync-outline' />
+        </View>
+      </StitchHeroHeader>
 
-        <StitchSurface style={styles.profileCard}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileCard}>
           <View style={styles.avatarShell}>
             <View style={styles.avatarCard}>
-              <Ionicons name="person" size={42} color="#d7ffd1" />
+              <Ionicons name='person' size={38} color='#d7ffd1' />
             </View>
             <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={20} color={stitchTheme.colors.primary} />
+              <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primary} />
             </View>
           </View>
 
           <View style={styles.profileTextWrap}>
             <Text style={styles.profileName}>{user?.name || t('settings.unknown_user')}</Text>
-            <Text style={styles.profileMeta}>{t('settings.farm_id', { id: user?.id || 'TTE-2024-8892' })}</Text>
-            <View style={styles.planChip}>
-              <Text style={styles.planChipText}>{t('settings.premium_plan')}</Text>
-            </View>
+            <Text style={styles.profileMeta}>{syncSummary}</Text>
+            <StitchBadge label={t('settings.premium_plan')} tone='success' style={styles.planBadge} />
           </View>
-        </StitchSurface>
-
-        <View style={styles.sectionHead}>
-          <StitchSectionLabel style={styles.sectionTitleNoMargin}>{t('settings.language_heading')}</StitchSectionLabel>
-          <Text style={styles.sectionHint}>{t('settings.preferred')}</Text>
-        </View>
-
-        <View style={styles.toggleShell}>
-          <TouchableOpacity
-            style={[styles.toggleOption, language === 'en' && styles.toggleOptionActive]}
-            onPress={() => changeLanguage('en')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="language" size={20} color={language === 'en' ? stitchTheme.colors.text : stitchTheme.colors.accentBrown} />
-            <Text style={[styles.toggleText, language === 'en' && styles.toggleTextActive]}>{t('settings.languages.en')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleOption, language === 'sw' && styles.toggleOptionActive]}
-            onPress={() => changeLanguage('sw')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="earth-outline" size={20} color={language === 'sw' ? stitchTheme.colors.text : stitchTheme.colors.accentBrown} />
-            <Text style={[styles.toggleText, language === 'sw' && styles.toggleTextActive]}>{t('settings.languages.sw')}</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.sectionBlock}>
-          <StitchSectionLabel style={styles.sectionTitleNoMargin}>{t('settings.account_details')}</StitchSectionLabel>
-          <View style={styles.listCardStack}>
-            <DetailRow
-              icon="notifications"
-              title={t('settings.notifications')}
-              subtitle={t('settings.notifications_subtitle')}
-            />
-            <DetailRow
-              icon="help-circle"
-              title={t('settings.help_support')}
-              subtitle={t('settings.help_support_subtitle')}
-              tint="#eef4ec"
-            />
-            <DetailRow
-              icon="document-text"
-              title={t('settings.terms')}
-              subtitle={t('settings.terms_subtitle')}
-            />
-            <DetailRow
-              icon="cash-outline"
-              title={t('settings.currency')}
-              subtitle={t('settings.currency_subtitle')}
-              rightText={currency}
-            />
-            <DetailRow
-              icon="sync"
-              title={t('settings.sync_status')}
-              subtitle={syncSummary}
-              rightText={t(`settings.sync_states.${status}`)}
-            />
+          <StitchSectionHeader title={t('settings.language_heading')} action={t('settings.preferred')} />
+          <View style={styles.toggleShell}>
+            <TouchableOpacity
+              style={[styles.toggleOption, language === 'en' && styles.toggleOptionActive]}
+              onPress={() => changeLanguage('en')}
+              activeOpacity={0.9}
+            >
+              <Ionicons name='language' size={18} color={language === 'en' ? stitchTheme.colors.text : stitchTheme.colors.accentBrown} />
+              <Text style={[styles.toggleText, language === 'en' && styles.toggleTextActive]}>{t('settings.languages.en')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleOption, language === 'sw' && styles.toggleOptionActive]}
+              onPress={() => changeLanguage('sw')}
+              activeOpacity={0.9}
+            >
+              <Ionicons name='earth-outline' size={18} color={language === 'sw' ? stitchTheme.colors.text : stitchTheme.colors.accentBrown} />
+              <Text style={[styles.toggleText, language === 'sw' && styles.toggleTextActive]}>{t('settings.languages.sw')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.currencySection}>
-          {SUPPORTED_CURRENCIES.map((code) => (
-            <StitchChip
-              key={code}
-              style={styles.currencyChip}
-              active={currency === code}
-              onPress={() => setCurrency(code)}
-              label={code}
-              textStyle={styles.currencyChipText}
-            />
-          ))}
+        <View style={styles.sectionBlock}>
+          <StitchSectionHeader title={t('settings.account_details')} />
+          <View style={styles.listCardStack}>
+            <DetailRow icon='notifications' title={t('settings.notifications')} subtitle={t('settings.notifications_subtitle')} />
+            <DetailRow icon='help-circle' title={t('settings.help_support')} subtitle={t('settings.help_support_subtitle')} tint={stitchTheme.colors.surfaceSubtle} />
+            <DetailRow icon='document-text' title={t('settings.terms')} subtitle={t('settings.terms_subtitle')} />
+            <DetailRow icon='cash-outline' title={t('settings.currency')} subtitle={t('settings.currency_subtitle')} rightText={currency} />
+            <DetailRow icon='sync' title={t('settings.sync_status')} subtitle={syncSummary} rightText={t(`settings.sync_states.${status}`)} />
+          </View>
+        </View>
+
+        <View style={styles.sectionBlock}>
+          <StitchSectionHeader title={t('settings.currency')} subtitle={t('settings.currency_subtitle')} />
+          <View style={styles.currencySection}>
+            {SUPPORTED_CURRENCIES.map((code) => (
+              <StitchChip
+                key={code}
+                style={styles.currencyChip}
+                active={currency === code}
+                onPress={() => setCurrency(code)}
+                label={code}
+                textStyle={styles.currencyChipText}
+              />
+            ))}
+          </View>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.92}>
-          <Ionicons name="log-out-outline" size={20} color="#8b0e0e" />
+          <Ionicons name='log-out-outline' size={18} color='#8b0e0e' />
           <Text style={styles.logoutButtonText}>{t('settings.logout_action')}</Text>
         </TouchableOpacity>
 
@@ -161,203 +142,42 @@ export default function SettingsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: stitchTheme.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: stitchTheme.colors.background,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 132,
-  },
+  screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 132, gap: stitchTheme.spacing.md },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   profileCard: {
     flexDirection: 'row',
-    gap: 18,
-    marginBottom: 34,
-  },
-  avatarShell: {
-    position: 'relative',
-    width: 96,
-    alignItems: 'center',
-  },
-  avatarCard: {
-    width: 92,
-    height: 112,
-    borderRadius: 28,
-    backgroundColor: '#5f9a41',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    right: 0,
-    bottom: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: stitchTheme.colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  profileTextWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 2,
-  },
-  profileName: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '800',
-    color: stitchTheme.colors.text,
-  },
-  profileMeta: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: stitchTheme.colors.accentBrown,
-    fontWeight: '600',
-  },
-  planChip: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    borderRadius: 999,
-    backgroundColor: '#eef0ea',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  planChipText: {
-    color: stitchTheme.colors.primary,
-    fontWeight: '800',
-    fontSize: 11,
-    letterSpacing: 1.3,
-  },
-  sectionHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionBlock: {
-    marginTop: 28,
-  },
-  sectionTitle: {
-    marginBottom: 0,
-  },
-  sectionTitleNoMargin: { marginBottom: 0 },
-  sectionHint: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: stitchTheme.colors.accentBrown,
-    letterSpacing: 2.1,
-    textTransform: 'uppercase',
-  },
-  toggleShell: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: '#efece8',
-    borderRadius: 28,
-    padding: 8,
-  },
-  toggleOption: {
-    flex: 1,
-    minHeight: 68,
-    borderRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  toggleOptionActive: {
-    backgroundColor: '#fff',
+    gap: stitchTheme.spacing.md,
+    borderRadius: stitchTheme.radius.card,
+    padding: stitchTheme.spacing.md,
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
     ...stitchShadows.card,
   },
-  toggleText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: stitchTheme.colors.accentBrown,
-  },
-  toggleTextActive: {
-    color: stitchTheme.colors.text,
-  },
-  listCardStack: {
-    gap: 14,
-    marginTop: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    ...stitchShadows.card,
-  },
-  detailIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailBody: {
-    flex: 1,
-  },
-  detailTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: stitchTheme.colors.text,
-  },
-  detailSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
-    lineHeight: 18,
-    color: stitchTheme.colors.accentBrown,
-  },
-  detailValue: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: stitchTheme.colors.primary,
-    textTransform: 'uppercase',
-  },
-  currencySection: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-    flexWrap: 'wrap',
-  },
-  currencyChipText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: stitchTheme.colors.accentBrown,
-  },
-  logoutButton: {
-    minHeight: 70,
-    borderRadius: 28,
-    marginTop: 40,
-    backgroundColor: '#e7e3df',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  logoutButtonText: {
-    color: '#8b0e0e',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  versionText: {
-    textAlign: 'center',
-    marginTop: 28,
-    color: '#6f786b',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2.3,
-    textTransform: 'uppercase',
-  },
+  avatarShell: { position: 'relative', width: 82, alignItems: 'center' },
+  avatarCard: { width: 76, height: 92, borderRadius: stitchTheme.radius.xl, backgroundColor: stitchTheme.colors.primaryContainer, alignItems: 'center', justifyContent: 'center', ...stitchShadows.soft },
+  verifiedBadge: { position: 'absolute', right: 0, bottom: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  profileTextWrap: { flex: 1, justifyContent: 'center', gap: 4 },
+  profileName: { fontSize: stitchTheme.typography.section.fontSize, lineHeight: stitchTheme.typography.section.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, fontFamily: stitchTheme.fonts.heading },
+  profileMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
+  planBadge: { marginTop: stitchTheme.spacing.xs },
+  sectionBlock: { gap: stitchTheme.spacing.sm },
+  toggleShell: { flexDirection: 'row', gap: stitchTheme.spacing.xs, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.xxs },
+  toggleOption: { flex: 1, minHeight: 52, borderRadius: stitchTheme.radius.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.sm },
+  toggleOptionActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, ...stitchShadows.soft },
+  toggleText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '700', color: stitchTheme.colors.accentBrown },
+  toggleTextActive: { color: stitchTheme.colors.text },
+  listCardStack: { gap: stitchTheme.spacing.sm },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 15, ...stitchShadows.soft },
+  detailIconWrap: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  detailBody: { flex: 1 },
+  detailTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, fontFamily: stitchTheme.fonts.heading },
+  detailSubtitle: { marginTop: 2, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown },
+  detailValue: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary, textTransform: 'uppercase' },
+  currencySection: { flexDirection: 'row', gap: stitchTheme.spacing.xs, flexWrap: 'wrap' },
+  currencyChip: { minWidth: 72, alignItems: 'center' },
+  currencyChipText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },
+  logoutButton: { minHeight: 52, borderRadius: stitchTheme.radius.card, marginTop: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.warningSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, ...stitchShadows.soft },
+  logoutButtonText: { color: '#8b0e0e', fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800' },
+  versionText: { textAlign: 'center', marginTop: stitchTheme.spacing.md, color: '#6f786b', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
 });

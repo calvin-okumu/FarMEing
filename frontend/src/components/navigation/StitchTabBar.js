@@ -4,7 +4,7 @@ import { stitchTheme } from '../../theme/stitchTheme';
 
 const TAB_META = {
   Dashboard: { icon: 'grid-outline' },
-  Projects: { icon: 'home-outline' },
+  Projects: { icon: 'albums-outline' },
   Employees: { icon: 'people-outline' },
   QuickEntry: { icon: 'flash-outline' },
   Settings: { icon: 'person-outline' },
@@ -41,9 +41,10 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
               style={[styles.item, isFocused && styles.itemActive]}
               activeOpacity={0.88}
             >
+              {isFocused ? <View style={styles.itemGlow} /> : null}
               <Ionicons
                 name={isFocused ? meta.icon.replace('-outline', '') : meta.icon}
-                size={18}
+                size={20}
                 color={isFocused ? stitchTheme.colors.primary : stitchTheme.colors.textMuted}
               />
               <Text style={[styles.label, isFocused && styles.labelActive]} numberOfLines={1}>
@@ -63,39 +64,59 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(253,250,244,0.97)',
-    borderTopWidth: 1,
-    borderTopColor: stitchTheme.colors.sand,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 18,
-    paddingHorizontal: 8,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    paddingHorizontal: 14,
+    paddingTop: 10,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 6,
+    backgroundColor: stitchTheme.colors.navTrack,
+    borderRadius: 30,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.56)',
+    shadowColor: '#1a3d2b',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 14,
+    overflow: 'hidden',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 22,
+    minHeight: 58,
   },
   itemActive: {
-    backgroundColor: stitchTheme.colors.mintLight,
+    backgroundColor: stitchTheme.colors.navActive,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+  },
+  itemGlow: {
+    position: 'absolute',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    top: -14,
+    backgroundColor: 'rgba(183,228,199,0.35)',
   },
   label: {
-    fontSize: 10,
+    fontSize: 10.5,
     lineHeight: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     fontFamily: stitchTheme.fonts.label,
     color: stitchTheme.colors.textMuted,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   labelActive: {
     color: stitchTheme.colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

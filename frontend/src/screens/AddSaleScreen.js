@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -22,17 +21,21 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { createSale, updateSale } from '../services/saleService';
+import { StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import {
+  useCreateSaleMutation,
+  useUpdateSaleMutation,
+} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
-import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
-  const queryClient = useQueryClient();
+  const createMutation = useCreateSaleMutation(projectId);
+  const updateMutation = useUpdateSaleMutation(projectId);
   const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
   const [weightSold, setWeightSold] = useState('');
@@ -96,13 +99,13 @@ export default function AddSaleScreen({ route, navigation }) {
         if (itemId) {
           const record = await database.get('sales').find(itemId);
           if (record.remoteId) {
-            await updateSale(record.remoteId, {
+            await updateMutation.mutateAsync({ id: record.remoteId, values: {
               customer,
               weightSold,
               unitPrice,
               date,
               notes,
-            });
+            } });
           }
           await updateLocalModel(record, (draft) => {
             draft.customer = customer.trim();
@@ -116,7 +119,7 @@ export default function AddSaleScreen({ route, navigation }) {
         } else {
           let remoteSale = null;
           try {
-            const response = await createSale({ projectId, customer, weightSold, unitPrice, date, notes });
+            const response = await createMutation.mutateAsync({ projectId, customer, weightSold, unitPrice, date, notes });
             remoteSale = response.sale || null;
           } catch (error) {
             remoteSale = null;
@@ -142,7 +145,6 @@ export default function AddSaleScreen({ route, navigation }) {
         }
       });
 
-      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.sales(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();
@@ -161,10 +163,18 @@ export default function AddSaleScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={itemId ? t('sales.edit_title') : t('sales.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
-
-        <StitchEyebrow>{t('sales.entry_eyebrow')}</StitchEyebrow>
-        <StitchDisplayTitle>{itemId ? t('sales.edit_title') : t('sales.entry_title')}</StitchDisplayTitle>
+        <StitchHeroHeader
+          eyebrow={t('sales.entry_eyebrow')}
+          title={itemId ? t('sales.edit_title') : t('sales.entry_title')}
+          subtitle={project?.name || t('sales.screen_title')}
+          actionIcon='arrow-back'
+          onActionPress={() => navigation.goBack()}
+        >
+          <View style={styles.heroPills}>
+            <StitchHeroPill label={t('sales.total_revenue')} value={formatCurrency(total, currency)} icon='cash-outline' />
+            <StitchHeroPill label={t('sales.quantity_heading')} value={weightSold || '0'} icon='cube-outline' />
+          </View>
+        </StitchHeroHeader>
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.panel}>
@@ -263,23 +273,24 @@ export default function AddSaleScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  banner: { marginTop: 14 },
-  panel: { marginTop: 20 },
-  fieldLarge: { minHeight: 76, borderRadius: 16, backgroundColor: '#e3e0dd', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  largeInput: { flex: 1, fontSize: 24, fontWeight: '700', color: stitchTheme.colors.text },
-  mediumInput: { flex: 1, fontSize: 20, fontWeight: '600', color: stitchTheme.colors.text },
-  unitBadge: { fontSize: 18, fontWeight: '700', color: '#6f786b' },
-  currencyText: { fontSize: 20, fontWeight: '900', color: '#6f786b' },
-  totalHero: { marginTop: 28, borderRadius: 30, backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: 22, paddingVertical: 24, alignItems: 'center' },
-  totalHeroLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 2.2, textTransform: 'uppercase', color: '#a6d38f', textAlign: 'center' },
-  totalHeroValue: { marginTop: 12, fontSize: 36, lineHeight: 40, fontWeight: '900', color: stitchTheme.colors.primarySoft, textAlign: 'center' },
-  infoCard: { marginTop: 18, borderRadius: 18, backgroundColor: '#f5f0eb', paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', gap: 14, alignItems: 'center' },
-  infoIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 56, gap: stitchTheme.spacing.sm },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  banner: { marginTop: stitchTheme.spacing.xs },
+  panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
+  fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  largeInput: { flex: 1, fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
+  mediumInput: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
+  unitBadge: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  currencyText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.textMuted },
+  totalHero: { marginTop: stitchTheme.spacing.md, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.lg, alignItems: 'center', ...stitchShadows.float },
+  totalHeroLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: '#a6d38f', textAlign: 'center' },
+  totalHeroValue: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, fontWeight: '900', color: stitchTheme.colors.primarySoft, textAlign: 'center' },
+  infoCard: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', gap: stitchTheme.spacing.sm, alignItems: 'center' },
+  infoIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   infoBody: { flex: 1 },
-  infoLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: '#6f786b' },
-  infoValue: { marginTop: 4, fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
-  notesField: { marginTop: 18, minHeight: 96, borderRadius: 18, backgroundColor: '#f1ece7', paddingHorizontal: 18, paddingVertical: 16, fontSize: 16, lineHeight: 24, color: stitchTheme.colors.text, textAlignVertical: 'top' },
-  saveButton: { marginTop: 34 },
-  footerNote: { marginTop: 16, fontSize: 14, lineHeight: 22, color: '#6f786b' },
+  infoLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', color: stitchTheme.colors.textMuted },
+  infoValue: { marginTop: 4, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  notesField: { marginTop: stitchTheme.spacing.sm, minHeight: 92, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  saveButton: { marginTop: stitchTheme.spacing.md },
+  footerNote: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: '#6f786b' },
 });

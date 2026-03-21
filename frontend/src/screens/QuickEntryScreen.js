@@ -23,21 +23,18 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
-import { stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { createEmployee } from '../services/employeeService';
 import { createWorkEntry } from '../services/workEntryService';
 import StatusBanner from '../components/ui/StatusBanner';
 import { EMPLOYEE_KEYS } from '../hooks/api/useEmployeesApi';
 import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import {
   StitchChip,
-  StitchDisplayTitle,
-  StitchEyebrow,
   StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionLabel,
-  StitchSurface,
-  StitchTopBar,
 } from '../components/ui/StitchPrimitives';
 
 const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
@@ -231,121 +228,135 @@ export default function QuickEntryScreen({ navigation }) {
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={t('quick_entry.save')} onBack={() => navigation.goBack()} />
-        <StitchEyebrow>{t('quick_entry.fields.activity')}</StitchEyebrow>
-        <StitchDisplayTitle>{t('quick_entry.save')}</StitchDisplayTitle>
-        <StatusBanner {...banner} style={styles.banner} />
-
-        <StitchSurface style={styles.heroSurface}>
-          <Text style={styles.heroLabel}>{t('quick_entry.total')}</Text>
-          <Text style={styles.heroValue}>{formatCurrency(total, currency)}</Text>
-          <StitchMiniBars values={graphValues} activeIndex={3} softIndex={1} style={{ marginTop: 18 }} />
-        </StitchSurface>
-
-        <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
-        <TouchableOpacity style={styles.inputShell} onPress={() => setProjectDropdownVisible((value) => !value)} activeOpacity={0.88}>
-          <Text style={[styles.inputText, !selectedProject && styles.placeholder]}>{selectedProject?.name || t('quick_entry.select_project')}</Text>
-          <Ionicons name="chevron-down" size={20} color={stitchTheme.colors.textMuted} />
-        </TouchableOpacity>
-
-        {projectDropdownVisible ? (
-          <View style={styles.dropdownMenu}>
-            {projects.length === 0 ? (
-              <Text style={styles.dropdownEmpty}>{t('projects.empty_state')}</Text>
-            ) : (
-              projects.map((project) => (
-                <TouchableOpacity
-                  key={project.id}
-                  style={[styles.dropdownItem, selectedProject?.id === project.id && styles.dropdownItemActive]}
-                  onPress={() => {
-                    setSelectedProject(project);
-                    setProjectDropdownVisible(false);
-                  }}
-                  activeOpacity={0.88}
-                >
-                  <Text style={styles.dropdownItemText}>{project.name}</Text>
-                </TouchableOpacity>
-              ))
-            )}
+      <View style={styles.container}>
+        <StitchHeroHeader
+          eyebrow={t('quick_entry.fields.activity')}
+          title={t('quick_entry.save')}
+          subtitle={selectedProject?.name || t('quick_entry.select_project')}
+          actionIcon='arrow-back'
+          onActionPress={() => navigation.goBack()}
+        >
+          <View style={styles.heroPills}>
+            <StitchHeroPill label={t('quick_entry.total')} value={formatCurrency(total, currency)} icon='cash-outline' />
+            <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' />
           </View>
-        ) : null}
+          <StitchMiniBars values={graphValues} activeIndex={3} softIndex={1} style={styles.heroBars} />
+        </StitchHeroHeader>
 
-        <StitchSectionLabel>{t('quick_entry.fields.employee')} *</StitchSectionLabel>
-        <TextInput
-          ref={employeeInputRef}
-          style={styles.inputShell}
-          value={employeeName}
-          onChangeText={(value) => {
-            setEmployeeName(value);
-            setSelectedEmployee(null);
-            setEmployeeDropdownVisible(value.length > 0);
-          }}
-          onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
-          placeholder={t('quick_entry.placeholders.employee')}
-          placeholderTextColor="#8a9388"
-          autoCapitalize="words"
-        />
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <StatusBanner {...banner} style={styles.banner} />
 
-        {employeeDropdownVisible && filteredEmployees.length > 0 ? (
-          <View style={styles.dropdownMenu}>
-            {filteredEmployees.slice(0, 3).map((employee) => (
-              <TouchableOpacity
-                key={employee.id}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setEmployeeName(employee.name);
-                  setSelectedEmployee(employee);
-                  setEmployeeDropdownVisible(false);
-                }}
-                activeOpacity={0.88}
-              >
-                <Text style={styles.dropdownItemText}>{employee.name}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.formCard}>
+            <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
+            <TouchableOpacity style={styles.inputShell} onPress={() => setProjectDropdownVisible((value) => !value)} activeOpacity={0.88}>
+              <Text style={[styles.inputText, !selectedProject && styles.placeholder]}>{selectedProject?.name || t('quick_entry.select_project')}</Text>
+              <Ionicons name={projectDropdownVisible ? 'chevron-up' : 'chevron-down'} size={18} color={stitchTheme.colors.primary} />
+            </TouchableOpacity>
+
+            {projectDropdownVisible ? (
+              <View style={styles.dropdownMenu}>
+                {projects.length === 0 ? (
+                  <Text style={styles.dropdownEmpty}>{t('projects.empty_state')}</Text>
+                ) : (
+                  projects.map((project, index) => (
+                    <TouchableOpacity
+                      key={project.id}
+                      style={[
+                        styles.dropdownItem,
+                        index === projects.length - 1 && styles.dropdownItemLast,
+                        selectedProject?.id === project.id && styles.dropdownItemActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedProject(project);
+                        setProjectDropdownVisible(false);
+                      }}
+                      activeOpacity={0.88}
+                    >
+                      <Text style={styles.dropdownItemText}>{project.name}</Text>
+                      {selectedProject?.id === project.id ? <Ionicons name='checkmark' size={16} color={stitchTheme.colors.primary} /> : null}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+            ) : null}
+
+            <StitchSectionLabel>{t('quick_entry.fields.employee')} *</StitchSectionLabel>
+            <TextInput
+              ref={employeeInputRef}
+              style={styles.inputShell}
+              value={employeeName}
+              onChangeText={(value) => {
+                setEmployeeName(value);
+                setSelectedEmployee(null);
+                setEmployeeDropdownVisible(value.length > 0);
+              }}
+              onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
+              placeholder={t('quick_entry.placeholders.employee')}
+              placeholderTextColor="#8a9388"
+              autoCapitalize="words"
+            />
+
+            {employeeDropdownVisible && filteredEmployees.length > 0 ? (
+              <View style={styles.dropdownMenu}>
+                {filteredEmployees.slice(0, 3).map((employee, index) => (
+                  <TouchableOpacity
+                    key={employee.id}
+                    style={[styles.dropdownItem, index === Math.min(filteredEmployees.length, 3) - 1 && styles.dropdownItemLast]}
+                    onPress={() => {
+                      setEmployeeName(employee.name);
+                      setSelectedEmployee(employee);
+                      setEmployeeDropdownVisible(false);
+                    }}
+                    activeOpacity={0.88}
+                  >
+                    <Text style={styles.dropdownItemText}>{employee.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+
+            <StitchSectionLabel>{t('quick_entry.fields.activity')}</StitchSectionLabel>
+            <View style={styles.chipsRow}>
+              {ACTIVITIES.map((item) => (
+                <StitchChip key={item} label={t(`common.activities.${item}`)} active={activity === item} onPress={() => setActivity(item)} style={styles.activityChip} />
+              ))}
+            </View>
+
+            <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
+            <TouchableOpacity style={styles.inputShell} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
+              <Text style={styles.inputText}>{formatAppDate(date)}</Text>
+              <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
+            </TouchableOpacity>
+
+            {showDatePicker ? (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+              />
+            ) : null}
+
+            <View style={styles.row}>
+              <View style={styles.third}>
+                <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionLabel>
+                <TextInput style={styles.inputShell} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
+              </View>
+              <View style={styles.third}>
+                <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionLabel>
+                <TextInput style={styles.inputShell} value={days} onChangeText={setDays} keyboardType="numeric" />
+              </View>
+              <View style={styles.third}>
+                <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionLabel>
+                <TextInput style={styles.inputShell} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
+              </View>
+            </View>
+
+            <StitchPrimaryButton label={t('quick_entry.save')} onPress={handleSave} disabled={saving} icon="checkmark-circle" style={styles.button} />
+            {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
           </View>
-        ) : null}
-
-        <StitchSectionLabel>{t('quick_entry.fields.activity')}</StitchSectionLabel>
-        <View style={styles.chipsRow}>
-          {ACTIVITIES.map((item) => (
-            <StitchChip key={item} label={t(`common.activities.${item}`)} active={activity === item} onPress={() => setActivity(item)} style={styles.activityChip} />
-          ))}
-        </View>
-
-        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
-        <TouchableOpacity style={styles.inputShell} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
-          <Text style={styles.inputText}>{formatAppDate(date)}</Text>
-          <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
-        </TouchableOpacity>
-
-        {showDatePicker ? (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-          />
-        ) : null}
-
-        <View style={styles.row}>
-          <View style={styles.third}>
-            <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionLabel>
-            <TextInput style={styles.inputShell} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
-          </View>
-          <View style={styles.third}>
-            <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionLabel>
-            <TextInput style={styles.inputShell} value={days} onChangeText={setDays} keyboardType="numeric" />
-          </View>
-          <View style={styles.third}>
-            <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionLabel>
-            <TextInput style={styles.inputShell} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
-          </View>
-        </View>
-
-        <StitchPrimaryButton label={t('quick_entry.save')} onPress={handleSave} disabled={saving} icon="checkmark-circle" style={styles.button} />
-        {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -353,25 +364,47 @@ export default function QuickEntryScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  banner: { marginTop: 14 },
-  heroSurface: { marginTop: 22 },
-  heroLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: '800' },
-  heroValue: { marginTop: 10, fontSize: 38, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },
-  inputShell: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
-  inputText: { fontSize: 17, color: stitchTheme.colors.text, fontWeight: '600' },
+  scroll: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 64 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
+  banner: { marginBottom: stitchTheme.spacing.md },
+  formCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    padding: stitchTheme.spacing.md,
+    gap: stitchTheme.spacing.sm,
+    ...stitchShadows.card,
+  },
+  inputShell: {
+    minHeight: 50,
+    borderRadius: stitchTheme.radius.md,
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingVertical: 13,
+    fontSize: stitchTheme.typography.body.fontSize,
+    lineHeight: stitchTheme.typography.body.lineHeight,
+    color: stitchTheme.colors.text,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderWidth: 1,
+    borderColor: stitchTheme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inputText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
   placeholder: { color: '#8a9388' },
-  dropdownMenu: { backgroundColor: '#fff', borderRadius: 24, marginTop: 8, overflow: 'hidden' },
-  dropdownItem: { paddingHorizontal: 18, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#f0ece7' },
-  dropdownItemActive: { backgroundColor: '#eef7eb' },
-  dropdownItemText: { fontSize: 16, color: stitchTheme.colors.text, fontWeight: '700' },
-  dropdownEmpty: { padding: 16, color: stitchTheme.colors.textMuted, textAlign: 'center' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  dropdownMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, marginTop: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', ...stitchShadows.card },
+  dropdownItem: { minHeight: 50, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 14, backgroundColor: stitchTheme.colors.surfaceHighlight, borderBottomWidth: 1, borderBottomColor: stitchTheme.colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
+  dropdownItemActive: { backgroundColor: stitchTheme.colors.successSurface },
+  dropdownItemLast: { borderBottomWidth: 0 },
+  dropdownItemText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '700', flex: 1 },
+  dropdownEmpty: { padding: stitchTheme.spacing.md, color: stitchTheme.colors.textMuted, textAlign: 'center' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   activityChip: { marginBottom: 0 },
-  row: { flexDirection: 'row', gap: 12 },
+  row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   third: { flex: 1 },
-  smallLabel: { fontSize: 12 },
-  button: { marginTop: 28 },
-  loader: { marginTop: 12 },
+  smallLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
+  button: { marginTop: stitchTheme.spacing.md },
+  loader: { marginTop: stitchTheme.spacing.sm },
 });

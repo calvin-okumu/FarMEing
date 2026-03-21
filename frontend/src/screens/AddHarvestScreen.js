@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -21,11 +20,14 @@ import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchDisplayTitle, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { createHarvest, updateHarvest } from '../services/harvestService';
+import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import {
+  useCreateHarvestMutation,
+  useUpdateHarvestMutation,
+} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
-import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 const UNITS = ['kg', 'tons', 'bags', 'crates', 'pieces'];
 const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
@@ -34,7 +36,8 @@ export default function AddHarvestScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { language, setLanguage } = useSettingsStore();
-  const queryClient = useQueryClient();
+  const createMutation = useCreateHarvestMutation(projectId);
+  const updateMutation = useUpdateHarvestMutation(projectId);
   const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -91,14 +94,14 @@ export default function AddHarvestScreen({ route, navigation }) {
         if (itemId) {
           const record = await database.get('harvests').find(itemId);
           if (record.remoteId) {
-            await updateHarvest(record.remoteId, {
+            await updateMutation.mutateAsync({ id: record.remoteId, values: {
               crop,
               date,
               weight,
               unit,
               quality,
               notes,
-            });
+            } });
           }
           await updateLocalModel(record, (draft) => {
             draft.crop = crop.trim();
@@ -112,7 +115,7 @@ export default function AddHarvestScreen({ route, navigation }) {
         } else {
           let remoteHarvest = null;
           try {
-            const response = await createHarvest({ projectId, crop, date, weight, unit, quality, notes });
+            const response = await createMutation.mutateAsync({ projectId, crop, date, weight, unit, quality, notes });
             remoteHarvest = response.harvest || null;
           } catch (error) {
             remoteHarvest = null;
@@ -138,7 +141,6 @@ export default function AddHarvestScreen({ route, navigation }) {
         }
       });
 
-      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.harvests(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();
@@ -157,10 +159,18 @@ export default function AddHarvestScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={itemId ? t('harvest.edit_title') : t('harvest.screen_title')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightLabel="EN / SW" />
-
-        <StitchDisplayTitle>{itemId ? t('harvest.edit_title') : t('harvest.entry_title')}</StitchDisplayTitle>
-        <Text style={styles.subtitle}>{t('harvest.entry_subtitle')}</Text>
+        <StitchHeroHeader
+          eyebrow={t('harvest.entry_subtitle')}
+          title={itemId ? t('harvest.edit_title') : t('harvest.entry_title')}
+          subtitle={crop || t('harvest.placeholders.crop')}
+          actionIcon='arrow-back'
+          onActionPress={() => navigation.goBack()}
+        >
+          <View style={styles.heroPills}>
+            <StitchHeroPill label={t('harvest.live_total')} value={liveTotal} icon='leaf-outline' />
+            <StitchHeroPill label={t('harvest.fields.unit')} value={t(`harvest.units.${unit}`)} icon='scale-outline' />
+          </View>
+        </StitchHeroHeader>
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('harvest.crop_heading')}</StitchSectionLabel>
@@ -266,31 +276,31 @@ export default function AddHarvestScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  banner: { marginTop: 14 },
-  subtitle: { marginTop: 8, fontSize: 18, lineHeight: 28, color: stitchTheme.colors.text },
-  field: { minHeight: 72, borderRadius: 24, backgroundColor: '#e6e3e0', paddingHorizontal: 22, justifyContent: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  fieldText: { fontSize: 18, fontWeight: '600', color: stitchTheme.colors.text },
-  quantityField: { minHeight: 88, borderRadius: 28, backgroundColor: '#e6e3e0', paddingHorizontal: 24, fontSize: 32, fontWeight: '300', color: stitchTheme.colors.text },
-  liveCard: { marginTop: 18, minHeight: 88, paddingHorizontal: 24, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.primaryContainer },
-  liveLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2.2, color: '#a9d89e' },
-  liveValue: { fontSize: 24, fontWeight: '900', color: '#9ce58b' },
-  qualityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  qualityCard: { width: '31%', minHeight: 88, borderRadius: 28, backgroundColor: '#e9e6e2', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  qualityCardWide: { width: '100%', minHeight: 70 },
-  qualityCardActive: { backgroundColor: stitchTheme.colors.primarySoft, ...stitchShadows.card },
-  qualityTitle: { fontSize: 16, fontWeight: '900', color: stitchTheme.colors.text },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 56, gap: stitchTheme.spacing.sm },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  banner: { marginTop: stitchTheme.spacing.xs },
+  field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
+  quantityField: { minHeight: 72, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, fontWeight: '300', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  liveCard: { marginTop: stitchTheme.spacing.xs, minHeight: 82, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.primaryContainer, borderRadius: stitchTheme.radius.card, ...stitchShadows.float },
+  liveLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: '#a9d89e' },
+  liveValue: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: '#9ce58b' },
+  qualityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
+  qualityCard: { width: '31%', minHeight: 78, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  qualityCardWide: { width: '100%', minHeight: 60 },
+  qualityCardActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: 'transparent', ...stitchShadows.soft },
+  qualityTitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text, textAlign: 'center' },
   qualityTitleActive: { color: stitchTheme.colors.primary },
-  qualityNote: { marginTop: 4, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', color: stitchTheme.colors.text },
+  qualityNote: { marginTop: 4, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', textTransform: 'uppercase', color: stitchTheme.colors.textMuted, textAlign: 'center' },
   qualityNoteActive: { color: stitchTheme.colors.primary },
-  unitRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  unitRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
   unitChip: {},
-  unitChipText: { color: stitchTheme.colors.accentBrown, fontWeight: '800', fontSize: 13 },
-  notesCard: { marginTop: 28, borderRadius: 32, backgroundColor: '#f2efeb', padding: 18 },
-  notesHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  notesIconWrap: { width: 42, height: 42, borderRadius: 21, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
-  notesTitle: { fontSize: 18, fontWeight: '800', color: stitchTheme.colors.primary },
-  notesInput: { minHeight: 120, fontSize: 16, lineHeight: 25, color: stitchTheme.colors.text, textAlignVertical: 'top' },
-  saveButton: { marginTop: 34 },
-  footerNote: { marginTop: 18, textAlign: 'center', fontSize: 12, fontWeight: '700', letterSpacing: 2.4, textTransform: 'uppercase', color: '#6f786b' },
+  unitChipText: { color: stitchTheme.colors.accentBrown, fontWeight: '800', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight },
+  notesCard: { marginTop: stitchTheme.spacing.md, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, ...stitchShadows.soft },
+  notesHeader: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
+  notesIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
+  notesTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  notesInput: { minHeight: 110, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top' },
+  saveButton: { marginTop: stitchTheme.spacing.md },
+  footerNote: { marginTop: stitchTheme.spacing.sm, textAlign: 'center', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: '#6f786b' },
 });

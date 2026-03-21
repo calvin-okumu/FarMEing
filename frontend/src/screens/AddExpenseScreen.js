@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -23,11 +22,14 @@ import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchDisplayTitle, StitchEyebrow, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
-import { createExpense, updateExpense } from '../services/expenseService';
+import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import {
+  useCreateExpenseMutation,
+  useUpdateExpenseMutation,
+} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
-import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -46,7 +48,8 @@ export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
-  const queryClient = useQueryClient();
+  const createMutation = useCreateExpenseMutation(projectId);
+  const updateMutation = useUpdateExpenseMutation(projectId);
   const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
@@ -120,13 +123,13 @@ export default function AddExpenseScreen({ route, navigation }) {
         if (itemId) {
           const record = await database.get('expenses').find(itemId);
           if (record.remoteId) {
-            await updateExpense(record.remoteId, {
+            await updateMutation.mutateAsync({ id: record.remoteId, values: {
               category,
               amount,
               date,
               note,
               receiptUrl: photo,
-            });
+            } });
           }
           await updateLocalModel(record, (draft) => {
             draft.category = category;
@@ -142,7 +145,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         } else {
           let remoteExpense = null;
           try {
-            const response = await createExpense({ projectId, category, amount, date, note, receiptUrl: photo });
+            const response = await createMutation.mutateAsync({ projectId, category, amount, date, note, receiptUrl: photo });
             remoteExpense = response.expense || null;
           } catch (error) {
             remoteExpense = null;
@@ -170,7 +173,6 @@ export default function AddExpenseScreen({ route, navigation }) {
         }
       });
 
-      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.expenses(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();
@@ -189,11 +191,18 @@ export default function AddExpenseScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={itemId ? t('expenses.edit_title') : t('expenses.screen_title')} subtitle={t('settings.brand_short')} onBack={() => navigation.goBack()} onRightPress={toggleLanguage} rightIcon="language-outline" />
-
-        <StitchEyebrow>{t('expenses.entry_eyebrow')}</StitchEyebrow>
-        <StitchDisplayTitle>{itemId ? t('expenses.edit_title') : t('expenses.entry_title')}</StitchDisplayTitle>
-        <View style={styles.accentLine} />
+        <StitchHeroHeader
+          eyebrow={t('expenses.entry_eyebrow')}
+          title={itemId ? t('expenses.edit_title') : t('expenses.entry_title')}
+          subtitle={note || t('settings.brand_short')}
+          actionIcon='arrow-back'
+          onActionPress={() => navigation.goBack()}
+        >
+          <View style={styles.heroPills}>
+            <StitchHeroPill label={t('expenses.fields.amount')} value={amount ? `${currency} ${amount}` : `${currency} 0.00`} icon='cash-outline' />
+            <StitchHeroPill label={t('expenses.category_heading')} value={t(`expenses.categories.${category}`)} icon='receipt-outline' />
+          </View>
+        </StitchHeroHeader>
 
         <StitchSurface style={styles.amountCard}>
           <StitchSectionLabel>{t('expenses.fields.amount')}</StitchSectionLabel>
@@ -346,41 +355,41 @@ export default function AddExpenseScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  banner: { marginTop: 14 },
-  accentLine: { width: 72, height: 6, borderRadius: 999, backgroundColor: stitchTheme.colors.primarySoft, marginTop: 18, marginBottom: 28 },
-  amountCard: { padding: 26 },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  amountCurrency: { fontSize: 28, fontWeight: '800', color: stitchTheme.colors.primary },
-  amountInput: { flex: 1, fontSize: 56, lineHeight: 62, fontWeight: '300', color: stitchTheme.colors.text, paddingVertical: 0 },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  categoryTile: { width: '47.5%', minHeight: 76, borderRadius: 24, backgroundColor: '#ece8e4', paddingHorizontal: 18, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  categoryTileActive: { backgroundColor: '#f2f0ed', shadowColor: '#00450d', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  categoryTileText: { flex: 1, fontSize: 16, fontWeight: '700', color: stitchTheme.colors.text },
-  field: { minHeight: 70, borderRadius: 24, backgroundColor: '#e4e1de', paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  fieldText: { fontSize: 18, fontWeight: '600', color: stitchTheme.colors.text },
-  fieldMuted: { fontSize: 18, fontWeight: '600', color: '#667086' },
-  noteField: { minHeight: 154, borderRadius: 28, backgroundColor: '#e4e1de', paddingHorizontal: 24, paddingVertical: 22, fontSize: 16, lineHeight: 24, color: stitchTheme.colors.text, textAlignVertical: 'top' },
-  uploadCard: { marginTop: 16, borderRadius: 28, backgroundColor: '#efebe7', padding: 18, gap: 16 },
-  uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  uploadIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  uploadTitle: { fontSize: 18, fontWeight: '800', color: stitchTheme.colors.text },
-  uploadSubtitle: { fontSize: 15, lineHeight: 20, color: stitchTheme.colors.textMuted, marginTop: 2 },
-  uploadActions: { flexDirection: 'row', gap: 10 },
-  uploadButton: { flex: 1, minHeight: 44, borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  uploadButtonText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: 14 },
-  photoWrap: { marginTop: 16, borderRadius: 24, overflow: 'hidden', position: 'relative' },
-  photo: { width: '100%', height: 170, resizeMode: 'cover' },
-  removePhoto: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
-  inlineRow: { marginTop: 12 },
-  pillToggle: { flexDirection: 'row', gap: 8 },
-  smallPillText: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.accentBrown, textAlign: 'center' },
-  switchTrack: { width: 58, height: 32, borderRadius: 20, backgroundColor: '#ddd8d2', padding: 3 },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 56, gap: stitchTheme.spacing.sm },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  banner: { marginTop: stitchTheme.spacing.xs },
+  amountCard: { padding: stitchTheme.spacing.lg, borderRadius: stitchTheme.radius.card },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
+  amountCurrency: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  amountInput: { flex: 1, fontSize: 42, lineHeight: 46, fontWeight: '300', color: stitchTheme.colors.text, paddingVertical: 0 },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
+  categoryTile: { width: '47.5%', minHeight: 68, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
+  categoryTileActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, ...stitchShadows.soft },
+  categoryTileText: { flex: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
+  field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
+  fieldMuted: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '600', color: stitchTheme.colors.textMuted },
+  noteField: { minHeight: 132, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  uploadCard: { marginTop: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.md, ...stitchShadows.soft },
+  uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
+  uploadIconWrap: { width: 44, height: 44, borderRadius: 16, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  uploadTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  uploadSubtitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
+  uploadActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  uploadButton: { flex: 1, minHeight: 40, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  uploadButtonText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  photoWrap: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card, overflow: 'hidden', position: 'relative' },
+  photo: { width: '100%', height: 160, resizeMode: 'cover' },
+  removePhoto: { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  inlineRow: { marginTop: stitchTheme.spacing.xs },
+  pillToggle: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  smallPillText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, textAlign: 'center' },
+  switchTrack: { width: 54, height: 30, borderRadius: 18, backgroundColor: stitchTheme.colors.surfaceMuted, padding: 2 },
   switchTrackActive: { backgroundColor: stitchTheme.colors.primarySoft },
   switchKnob: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff' },
   switchKnobActive: { alignSelf: 'flex-end' },
-  frequencyRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  frequencyRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
   frequencyChip: { flex: 1 },
-  frequencyText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.accentBrown },
-  saveButton: { marginTop: 26 },
+  frequencyText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown },
+  saveButton: { marginTop: stitchTheme.spacing.md },
 });

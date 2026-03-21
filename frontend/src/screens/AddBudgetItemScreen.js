@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -17,21 +16,20 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
-import { createBudgetItem, updateBudgetItem } from '../services/budgetService';
+import {
+  useCreateBudgetItemMutation,
+  useUpdateBudgetItemMutation,
+} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
-import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
   StitchChip,
-  StitchDisplayTitle,
-  StitchEyebrow,
   StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionLabel,
-  StitchSurface,
-  StitchTopBar,
 } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 
 const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', 'fuel', 'irrigation', 'other'];
 
@@ -39,7 +37,8 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, itemId } = route.params;
   const currency = useSettingsStore((s) => s.currency);
-  const queryClient = useQueryClient();
+  const createMutation = useCreateBudgetItemMutation(projectId);
+  const updateMutation = useUpdateBudgetItemMutation(projectId);
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -79,13 +78,13 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         if (itemId) {
           const record = await database.get('budget_items').find(itemId);
           if (record.remoteId) {
-            await updateBudgetItem(record.remoteId, {
+            await updateMutation.mutateAsync({ id: record.remoteId, values: {
               category,
               name: name.trim(),
               quantity,
               unit,
               unitPrice,
-            });
+            } });
           }
           await updateLocalModel(record, (draft) => {
             draft.category = category;
@@ -98,7 +97,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         } else {
           let remoteItem = null;
           try {
-            const response = await createBudgetItem({ projectId, category, name, quantity, unit, unitPrice });
+            const response = await createMutation.mutateAsync({ projectId, category, name, quantity, unit, unitPrice });
             remoteItem = response.budgetItem || null;
           } catch (error) {
             remoteItem = null;
@@ -123,7 +122,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         }
       });
 
-      await queryClient.invalidateQueries({ queryKey: PROJECT_RESOURCE_KEYS.budget(projectId) });
 
       syncAll().catch(() => {});
       navigation.goBack();
@@ -142,19 +140,19 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <StitchTopBar title={itemId ? t('budget.edit_title') : t('budget.add')} onBack={() => navigation.goBack()} />
-        <StitchEyebrow>{t('budget.fields.category')}</StitchEyebrow>
-        <StitchDisplayTitle>{itemId ? t('budget.edit_title') : t('budget.add')}</StitchDisplayTitle>
-
-        <StitchSurface style={styles.heroSurface}>
-          <View style={styles.heroTopRow}>
-            <View>
-              <Text style={styles.heroAmountLabel}>{t('budget.estimated_total')}</Text>
-              <Text style={styles.heroAmount}>{formatCurrency(total, currency)}</Text>
-            </View>
+        <StitchHeroHeader
+          eyebrow={t('budget.fields.category')}
+          title={itemId ? t('budget.edit_title') : t('budget.add')}
+          subtitle={name || t('budget.placeholders.name')}
+          actionIcon='arrow-back'
+          onActionPress={() => navigation.goBack()}
+        >
+          <View style={styles.heroPills}>
+            <StitchHeroPill label={t('budget.estimated_total')} value={formatCurrency(total, currency)} icon='cash-outline' />
+            <StitchHeroPill label={t('budget.fields.quantity')} value={quantity || '0'} icon='layers-outline' />
           </View>
-          <StitchMiniBars values={bars} activeIndex={3} softIndex={1} style={{ marginTop: 18 }} />
-        </StitchSurface>
+          <StitchMiniBars values={bars} activeIndex={3} softIndex={1} style={styles.heroBars} />
+        </StitchHeroHeader>
         <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('budget.fields.category')}</StitchSectionLabel>
@@ -223,17 +221,15 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 54 },
-  heroSurface: { marginTop: 22 },
-  banner: { marginTop: 14 },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  heroAmountLabel: { fontSize: 12, color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: '800' },
-  heroAmount: { marginTop: 10, fontSize: 38, lineHeight: 42, fontWeight: '900', color: stitchTheme.colors.primary },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: 56, gap: stitchTheme.spacing.sm },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
+  banner: { marginTop: stitchTheme.spacing.xs },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
   chipWrap: { marginBottom: 0 },
-  row: { flexDirection: 'row', gap: 12 },
+  row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
-  input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
-  button: { marginTop: 28 },
-  loader: { marginTop: 12 },
+  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  button: { marginTop: stitchTheme.spacing.md },
+  loader: { marginTop: stitchTheme.spacing.sm },
 });
