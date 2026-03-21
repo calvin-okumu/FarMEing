@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -231,6 +232,7 @@ export default function ProjectsScreen({ navigation, route }) {
   };
 
   const chartValues = filteredProjects.slice(0, 6).map((project, index) => (project.landSize || 1) + index);
+  const totalLand = filteredProjects.reduce((sum, project) => sum + (project.landSize || 0), 0);
 
   if (queryLoading && !projects.length) {
     return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
@@ -241,44 +243,72 @@ export default function ProjectsScreen({ navigation, route }) {
       <FlatList
         data={filteredProjects}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })} activeOpacity={0.88}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="leaf" size={18} color={stitchTheme.colors.primary} />
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-              <TouchableOpacity onPress={() => openEdit(item)} hitSlop={8}><Ionicons name="create-outline" size={18} color={stitchTheme.colors.primary} /></TouchableOpacity>
-              <TouchableOpacity onPress={() => setDeleteTarget(item)} hitSlop={8}><Ionicons name="trash-outline" size={18} color="#a60a15" /></TouchableOpacity>
-            </View>
-            <Text style={styles.cardCrop}>{item.crop}</Text>
-            <View style={styles.cardMeta}>
-              <Text style={styles.metaText}>{item.landSize} {item.landUnit}</Text>
-              {item.startDate ? <Text style={styles.metaText}>{formatAppDate(item.startDate)}</Text> : null}
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item, index }) => {
+          const accentStyle = index % 2 === 0 ? styles.cardAccentSage : styles.cardAccentAmber;
+          const avatarStyle = index % 2 === 0 ? styles.cardAvatarForest : styles.cardAvatarWarm;
+          const avatarIconColor = index % 2 === 0 ? stitchTheme.colors.primaryDim : stitchTheme.colors.accentBrown;
+
+          return (
+            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })} activeOpacity={0.9}>
+              <View style={[styles.cardAccent, accentStyle]} />
+              <View style={styles.cardTopRow}>
+                <View style={[styles.cardIconWrap, avatarStyle]}>
+                  <Ionicons name="leaf-outline" size={16} color={avatarIconColor} />
+                </View>
+                <View style={styles.cardTitleWrap}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.cardCrop} numberOfLines={1}>{item.crop || t('projects.fields.crop')}</Text>
+                </View>
+                <StitchBadge label={(item.status || 'ACTIVE').toLowerCase()} tone='success' style={styles.statusBadge} textStyle={styles.statusBadgeText} />
+              </View>
+              <View style={styles.cardDivider} />
+              <View style={styles.cardMetaRow}>
+                <View>
+                  <Text style={styles.metaLabel}>{t('projects.fields.land_size')}</Text>
+                  <Text style={styles.metaValue}>{item.landSize || 0} {item.landUnit}</Text>
+                </View>
+                <View>
+                  <Text style={styles.metaLabel}>{t('projects.fields.start_date')}</Text>
+                  <Text style={styles.metaValue}>{item.startDate ? formatAppDate(item.startDate) : '--'}</Text>
+                </View>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity style={styles.cardActionButton} onPress={() => openEdit(item)} hitSlop={8}>
+                    <Ionicons name="create-outline" size={12} color={stitchTheme.colors.primaryContainer} />
+                    <Text style={styles.cardActionText}>{t('common.edit')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cardActionButton} onPress={() => setDeleteTarget(item)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={12} color={stitchTheme.colors.accentRed} />
+                    <Text style={styles.cardDeleteText}>{t('common.delete')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <>
-            <View style={styles.listHeaderRow}>
-              <View>
-                <Text style={styles.pageKicker}>{t('projects.title')}</Text>
-                <Text style={styles.pageTitle}>{t('projects.portfolio_title')}</Text>
+            <StitchHeroHeader
+              eyebrow={t('projects.title')}
+              title={String(filteredProjects.length)}
+              subtitle={t('projects.directory_subtitle')}
+              actionIcon='add'
+              onActionPress={openCreate}
+            >
+              <View style={styles.heroStatsRow}>
+                <StitchHeroPill
+                  label={t('projects.fields.land_size')}
+                  value={`${totalLand.toLocaleString()} ${formData.landUnit}`}
+                  icon='resize-outline'
+                />
+                <StitchHeroPill
+                  label={t('projects.title')}
+                  value={String(filteredProjects.length)}
+                  icon='leaf-outline'
+                />
               </View>
-              <TouchableOpacity style={styles.pageAction} onPress={openCreate} activeOpacity={0.88}>
-                <Ionicons name="add" size={18} color={stitchTheme.colors.primary} />
-              </TouchableOpacity>
-            </View>
-            <StitchSurface style={styles.heroCard}>
-              <View style={styles.heroTopRow}>
-                <View>
-                  <Text style={styles.heroEyebrow}>{t('projects.title')}</Text>
-                  <Text style={styles.heroValue}>{filteredProjects.length}</Text>
-                  <Text style={styles.heroSubtext}>{t('projects.directory_subtitle')}</Text>
-                </View>
-                <View style={styles.heroBadge}><Ionicons name="leaf" size={22} color={stitchTheme.colors.primary} /></View>
-              </View>
-              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={2} style={styles.trendRow} />
-            </StitchSurface>
+              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={2} style={styles.heroBars} />
+            </StitchHeroHeader>
             {queryError ? <StatusBanner tone="error" title={t('common.error')} message={queryError.message} /> : null}
             <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
@@ -296,24 +326,24 @@ export default function ProjectsScreen({ navigation, route }) {
       <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={() => setModalVisible(false)}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('projects.placeholders.name')} placeholderTextColor="#8a9388" />
+          <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('projects.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
 
           <StitchSectionLabel>{t('projects.fields.crop')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.crop} onChangeText={(crop) => setFormData((p) => ({ ...p, crop }))} placeholder={t('projects.placeholders.crop')} placeholderTextColor="#8a9388" />
+          <TextInput style={styles.input} value={formData.crop} onChangeText={(crop) => setFormData((p) => ({ ...p, crop }))} placeholder={t('projects.placeholders.crop')} placeholderTextColor={stitchTheme.colors.textMuted} />
 
           <View style={styles.row}>
             <View style={styles.halfInput}>
               <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.landSize} onChangeText={(landSize) => setFormData((p) => ({ ...p, landSize }))} placeholder={t('common.zero')} placeholderTextColor="#8a9388" keyboardType="decimal-pad" />
+              <TextInput style={styles.input} value={formData.landSize} onChangeText={(landSize) => setFormData((p) => ({ ...p, landSize }))} placeholder={t('common.zero')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
             </View>
             <View style={styles.halfInput}>
               <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.landUnit} onChangeText={(landUnit) => setFormData((p) => ({ ...p, landUnit }))} placeholder={t('projects.placeholders.unit')} placeholderTextColor="#8a9388" />
+              <TextInput style={styles.input} value={formData.landUnit} onChangeText={(landUnit) => setFormData((p) => ({ ...p, landUnit }))} placeholder={t('projects.placeholders.unit')} placeholderTextColor={stitchTheme.colors.textMuted} />
             </View>
           </View>
 
           <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.expectedYield} onChangeText={(expectedYield) => setFormData((p) => ({ ...p, expectedYield }))} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor="#8a9388" keyboardType="decimal-pad" />
+          <TextInput style={styles.input} value={formData.expectedYield} onChangeText={(expectedYield) => setFormData((p) => ({ ...p, expectedYield }))} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
 
           <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
           <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
@@ -334,32 +364,44 @@ export default function ProjectsScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  list: { padding: 20, paddingBottom: 120 },
-  headerBlock: { gap: 16, marginBottom: 16 },
-  listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  pageKicker: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 1.4 },
-  pageTitle: { marginTop: 8, fontSize: 34, lineHeight: 38, color: stitchTheme.colors.primary, fontWeight: '900', maxWidth: 220 },
-  pageAction: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...stitchShadows.card },
-  heroCard: {},
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  heroEyebrow: { fontSize: 13, color: stitchTheme.colors.accentBrown, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '800' },
-  heroValue: { fontSize: 46, lineHeight: 50, color: stitchTheme.colors.primary, fontWeight: '900', marginTop: 8 },
-  heroSubtext: { fontSize: 16, color: stitchTheme.colors.textMuted, marginTop: 4 },
-  heroBadge: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  trendRow: { marginTop: 18 },
-  card: { backgroundColor: '#fff', borderRadius: 28, padding: 20, marginBottom: 12, ...stitchShadows.card },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  cardTitle: { fontSize: 20, fontWeight: '800', color: stitchTheme.colors.text, flex: 1 },
-  cardCrop: { fontSize: 15, color: stitchTheme.colors.accentBrown, marginBottom: 12, fontWeight: '600' },
-  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  metaText: { fontSize: 13, color: stitchTheme.colors.textMuted, fontWeight: '600' },
-  fab: { position: 'absolute', bottom: 20, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
-  compactLabel: { fontSize: 12 },
-  input: { borderRadius: 22, padding: 16, fontSize: 17, color: stitchTheme.colors.text, backgroundColor: '#e9e5e1' },
-  dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 22, padding: 16, backgroundColor: '#e9e5e1' },
-  dateSelectorText: { fontSize: 17, color: stitchTheme.colors.text, fontWeight: '600' },
-  row: { flexDirection: 'row', gap: 12 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
+  list: { padding: stitchTheme.spacing.screen, paddingBottom: 128 },
+  headerBlock: { gap: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.md },
+  heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
+  heroStatPill: { flex: 1 },
+  heroStatLabel: {},
+  heroStatValue: {},
+  heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
+  card: { backgroundColor: stitchTheme.colors.surface, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.xs, borderWidth: 1, borderColor: stitchTheme.colors.border, overflow: 'hidden' },
+  cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },
+  cardAccentAmber: { backgroundColor: stitchTheme.colors.accentBrown },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8 },
+  cardIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cardAvatarForest: { backgroundColor: stitchTheme.colors.primary },
+  cardAvatarWarm: { backgroundColor: stitchTheme.colors.accentBrown },
+  cardTitleWrap: { flex: 1, minWidth: 0 },
+  statusBadge: { marginLeft: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  statusBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, letterSpacing: 0.8 },
+  cardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  cardCrop: { marginTop: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
+  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.border, marginVertical: 10, marginHorizontal: 8 },
+  cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 8, gap: stitchTheme.spacing.sm },
+  metaPill: { flex: 1 },
+  metaPillLabel: {},
+  metaPillValue: {},
+  metaLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  metaValue: { marginTop: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
+  cardActions: { flexDirection: 'row', gap: 9, alignItems: 'center' },
+  cardActionButton: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
+  cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
+  fab: { position: 'absolute', bottom: stitchTheme.spacing.lg, right: stitchTheme.spacing.lg, width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.primaryDim, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
+  compactLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
+  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceSubtle, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceSubtle, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  dateSelectorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '600' },
+  row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   halfInput: { flex: 1 },
-  saveButton: { marginTop: 24, marginBottom: 20 },
+  saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 });

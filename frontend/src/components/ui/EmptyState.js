@@ -6,7 +6,7 @@ export default function EmptyState({ icon = 'leaf-outline', title, subtitle }) {
   return (
     <View style={styles.wrap}>
       <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={42} color={stitchTheme.colors.primary} />
+        <Ionicons name={icon} size={34} color={stitchTheme.colors.primary} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -15,8 +15,15 @@ export default function EmptyState({ icon = 'leaf-outline', title, subtitle }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 32 },
-  iconWrap: { width: 88, height: 88, borderRadius: 28, backgroundColor: '#eef3ea', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '800', color: stitchTheme.colors.primary, marginTop: 18 },
-  subtitle: { fontSize: 16, lineHeight: 24, color: stitchTheme.colors.textMuted, marginTop: 8, textAlign: 'center' },
+  wrap: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 28 },
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: stitchTheme.radius.lg,
+    backgroundColor: stitchTheme.colors.successSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: stitchTheme.typography.title.fontSize, fontWeight: '800', color: stitchTheme.colors.primary, marginTop: 14 },
+  subtitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 6, textAlign: 'center' },
 });
