@@ -7,6 +7,8 @@ const createProjectSchema = z.object({
   landUnit:  z.string().optional(),          // defaults to "acres" in DB
   startDate: z.string().datetime({ offset: true }).or(z.string().date()),
   endDate:   z.string().datetime({ offset: true }).or(z.string().date()).optional().nullable(),
+  expectedYield: z.number().nonnegative('Expected yield cannot be negative').optional().nullable(),
+  status: z.enum(['PLANNING', 'ACTIVE', 'HARVESTED', 'CLOSED']).optional(),
   seasonId:  z.string().uuid('Invalid season ID').optional().nullable(),
   notes:     z.string().optional().nullable(),
 });

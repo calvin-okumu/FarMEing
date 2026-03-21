@@ -150,6 +150,25 @@ const TABLES = [
       };
     },
   },
+  {
+    table: 'inventory_items',
+    endpoint: '/inventory',
+    responseKey: 'inventoryItem',
+    payload: async (record) => {
+      const projectId = await resolveProjectRemoteId(record.projectId);
+      if (!projectId) return null;
+      return {
+        projectId,
+        name: record.name,
+        category: record.category,
+        quantity: record.quantity,
+        unit: record.unit,
+        unitCost: record.unitCost,
+        usedQty: record.usedQty,
+        notes: record.notes,
+      };
+    },
+  },
 ];
 
 function isRemoteId(value) {
@@ -364,12 +383,13 @@ async function pullChanges() {
     const localProjectId = projectMap.get(project.id) || project.id;
 
     try {
-      const [budgetRes, expenseRes, workRes, harvestRes, saleRes] = await Promise.all([
+      const [budgetRes, expenseRes, workRes, harvestRes, saleRes, inventoryRes] = await Promise.all([
         api.get(`/budget/${project.id}`),
         api.get(`/expenses/${project.id}`),
         api.get(`/work-entries/${project.id}`),
         api.get(`/harvests/${project.id}`),
         api.get(`/sales/${project.id}`),
+        api.get(`/inventory/${project.id}`),
       ]);
 
       pulled += await syncProjectBoundCollection(
@@ -457,6 +477,24 @@ async function pullChanges() {
           record.weightSold = item.weightSold ?? 0;
           record.unitPrice = item.unitPrice ?? 0;
           record.totalAmount = item.totalAmount ?? 0;
+          record.notes = item.notes ?? '';
+          record.isDeleted = item.isDeleted ?? false;
+        }
+      );
+
+      pulled += await syncProjectBoundCollection(
+        'inventory_items',
+        inventoryRes.data.inventoryItems || [],
+        projectMap,
+        (record, item) => {
+          record.projectId = projectMap.get(item.projectId) || localProjectId;
+          record.name = item.name ?? '';
+          record.category = item.category ?? '';
+          record.quantity = item.quantity ?? 0;
+          record.unit = item.unit ?? '';
+          record.unitCost = item.unitCost ?? 0;
+          record.totalCost = item.totalCost ?? 0;
+          record.usedQty = item.usedQty ?? 0;
           record.notes = item.notes ?? '';
           record.isDeleted = item.isDeleted ?? false;
         }

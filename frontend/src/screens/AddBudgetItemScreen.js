@@ -15,11 +15,7 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
-import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
-import {
-  useCreateBudgetItemMutation,
-  useUpdateBudgetItemMutation,
-} from '../hooks/api/useProjectResourcesApi';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 import { stitchTheme } from '../theme/stitchTheme';
@@ -37,8 +33,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, itemId } = route.params;
   const currency = useSettingsStore((s) => s.currency);
-  const createMutation = useCreateBudgetItemMutation(projectId);
-  const updateMutation = useUpdateBudgetItemMutation(projectId);
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -77,32 +71,15 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('budget_items').find(itemId);
-          if (record.remoteId) {
-            await updateMutation.mutateAsync({ id: record.remoteId, values: {
-              category,
-              name: name.trim(),
-              quantity,
-              unit,
-              unitPrice,
-            } });
-          }
           await updateLocalModel(record, (draft) => {
             draft.category = category;
             draft.name = name.trim();
             draft.quantity = parseFloat(quantity);
             draft.unit = unit.trim();
             draft.unitPrice = parseFloat(unitPrice);
-          }, record.remoteId);
+          });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          let remoteItem = null;
-          try {
-            const response = await createMutation.mutateAsync({ projectId, category, name, quantity, unit, unitPrice });
-            remoteItem = response.budgetItem || null;
-          } catch (error) {
-            remoteItem = null;
-          }
-
           await database.get('budget_items').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -112,13 +89,8 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             record.unit = unit.trim();
             record.unitPrice = parseFloat(unitPrice);
             record.isDeleted = false;
-            if (remoteItem?.id) {
-              markRecordSynced(record, remoteItem.id);
-            }
           });
-          setBanner(remoteItem?.id
-            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
-            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
+          setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 

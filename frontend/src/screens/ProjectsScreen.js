@@ -17,6 +17,7 @@ import { Q } from '@nozbe/watermelondb';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
+import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchBadge, StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
@@ -26,14 +27,8 @@ import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
-import { markRecordSynced } from '../utils/localRecord';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
-import {
-  useCreateProjectMutation,
-  useDeleteProjectMutation,
-  useProjectsQuery,
-  useUpdateProjectMutation,
-} from '../hooks/api/useProjectsApi';
 
 const DEFAULT_FORM = {
   name: '',
@@ -46,10 +41,6 @@ const DEFAULT_FORM = {
 
 export default function ProjectsScreen({ navigation, route }) {
   const { t } = useTranslation();
-  const { data: remoteProjects = [], isLoading: queryLoading, isRefetching, refetch, error: queryError } = useProjectsQuery();
-  const createMutation = useCreateProjectMutation();
-  const updateMutation = useUpdateProjectMutation();
-  const deleteMutation = useDeleteProjectMutation();
 
   const [projects, setProjects] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -59,12 +50,15 @@ export default function ProjectsScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [banner, setBanner] = useState(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const loadLocal = async () => {
       const rows = await database.get('farm_projects').query(Q.where('is_deleted', false)).fetch();
       rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
       setProjects(rows);
+      setInitialLoading(false);
     };
 
     loadLocal();
@@ -82,49 +76,8 @@ export default function ProjectsScreen({ navigation, route }) {
   }, []);
 
   useEffect(() => {
-    if (!remoteProjects.length) return;
-
-    const syncProjects = async () => {
-      await database.write(async () => {
-        for (const item of remoteProjects) {
-          const matches = await database.get('farm_projects').query(Q.where('remote_id', item.id)).fetch();
-          const existing = matches[0] || null;
-
-          if (existing) {
-            await existing.update((record) => {
-              record.userId = item.userId || record.userId || '';
-              record.name = item.name || '';
-              record.crop = item.crop || '';
-              record.landSize = item.landSize || 0;
-              record.landUnit = item.landUnit || 'acres';
-              record.startDate = item.startDate ? new Date(item.startDate).getTime() : Date.now();
-              record.expectedYield = item.expectedYield || 0;
-              record.status = item.status || 'ACTIVE';
-              record.notes = item.notes || '';
-              record.isDeleted = !!item.isDeleted;
-              markRecordSynced(record, item.id);
-            });
-          } else {
-            await database.get('farm_projects').create((record) => {
-              record.userId = item.userId || '';
-              record.name = item.name || '';
-              record.crop = item.crop || '';
-              record.landSize = item.landSize || 0;
-              record.landUnit = item.landUnit || 'acres';
-              record.startDate = item.startDate ? new Date(item.startDate).getTime() : Date.now();
-              record.expectedYield = item.expectedYield || 0;
-              record.status = item.status || 'ACTIVE';
-              record.notes = item.notes || '';
-              record.isDeleted = !!item.isDeleted;
-              markRecordSynced(record, item.id);
-            });
-          }
-        }
-      });
-    };
-
-    syncProjects().catch((error) => console.warn('[ProjectsScreen] sync query projects failed:', error.message));
-  }, [remoteProjects]);
+    syncAll().catch(() => {});
+  }, []);
 
   const filteredProjects = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -163,44 +116,42 @@ export default function ProjectsScreen({ navigation, route }) {
 
     try {
       setBanner(null);
-      if (editingProject) {
-        const { project } = await updateMutation.mutateAsync({
-          id: editingProject.remoteId || editingProject.id,
-          values: formData,
-        });
-        await database.write(async () => {
+      await database.write(async () => {
+        if (editingProject) {
           const record = await database.get('farm_projects').find(editingProject.id);
           await updateLocalModel(record, (draft) => {
-            draft.name = project.name || formData.name.trim();
-            draft.crop = project.crop || formData.crop.trim();
-            draft.landSize = project.landSize || parseFloat(formData.landSize) || 0;
-            draft.landUnit = project.landUnit || formData.landUnit || 'acres';
-            draft.startDate = project.startDate ? new Date(project.startDate).getTime() : formData.startDate.getTime();
-            draft.expectedYield = project.expectedYield || parseFloat(formData.expectedYield) || 0;
-            draft.status = project.status || 'ACTIVE';
-          }, editingProject.remoteId || project.id);
-        });
+            draft.name = formData.name.trim();
+            draft.crop = formData.crop.trim();
+            draft.landSize = parseFloat(formData.landSize) || 0;
+            draft.landUnit = formData.landUnit || 'acres';
+            draft.startDate = formData.startDate.getTime();
+            draft.expectedYield = parseFloat(formData.expectedYield) || 0;
+            draft.status = draft.status || 'ACTIVE';
+          });
+        } else {
+          await database.get('farm_projects').create((record) => {
+            initializeLocalRecord(record);
+            record.userId = '';
+            record.name = formData.name.trim();
+            record.crop = formData.crop.trim();
+            record.landSize = parseFloat(formData.landSize) || 0;
+            record.landUnit = formData.landUnit || 'acres';
+            record.startDate = formData.startDate.getTime();
+            record.expectedYield = parseFloat(formData.expectedYield) || 0;
+            record.status = 'ACTIVE';
+            record.notes = '';
+            record.isDeleted = false;
+          });
+        }
+      });
+
+      if (editingProject) {
         setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
       } else {
-        const { project } = await createMutation.mutateAsync(formData);
-        await database.write(async () => {
-          await database.get('farm_projects').create((record) => {
-            record.userId = project.userId || '';
-            record.name = project.name || '';
-            record.crop = project.crop || '';
-            record.landSize = project.landSize || 0;
-            record.landUnit = project.landUnit || 'acres';
-            record.startDate = project.startDate ? new Date(project.startDate).getTime() : formData.startDate.getTime();
-            record.expectedYield = project.expectedYield || 0;
-            record.status = project.status || 'ACTIVE';
-            record.notes = project.notes || '';
-            record.isDeleted = false;
-            markRecordSynced(record, project.id);
-          });
-        });
         setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
       }
 
+      syncAll().catch(() => {});
       setModalVisible(false);
       setEditingProject(null);
       setFormData(DEFAULT_FORM);
@@ -214,15 +165,11 @@ export default function ProjectsScreen({ navigation, route }) {
     if (!deleteTarget) return;
     try {
       setBanner(null);
-      await deleteMutation.mutateAsync(deleteTarget.remoteId || deleteTarget.id);
       await database.write(async () => {
         const record = await database.get('farm_projects').find(deleteTarget.id);
-        if (deleteTarget.remoteId) {
-          await record.destroyPermanently();
-        } else {
-          await deleteLocalModel(record);
-        }
+        await deleteLocalModel(record);
       });
+      syncAll().catch(() => {});
       setDeleteTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
     } catch (error) {
@@ -234,7 +181,19 @@ export default function ProjectsScreen({ navigation, route }) {
   const chartValues = filteredProjects.slice(0, 6).map((project, index) => (project.landSize || 1) + index);
   const totalLand = filteredProjects.reduce((sum, project) => sum + (project.landSize || 0), 0);
 
-  if (queryLoading && !projects.length) {
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const result = await syncAll();
+      if (result?.error) {
+        setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: result.error });
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (initialLoading && !projects.length) {
     return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
   }
 
@@ -309,14 +268,13 @@ export default function ProjectsScreen({ navigation, route }) {
               </View>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={2} style={styles.heroBars} />
             </StitchHeroHeader>
-            {queryError ? <StatusBanner tone="error" title={t('common.error')} message={queryError.message} /> : null}
             <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
           </>
         }
         ListHeaderComponentStyle={styles.headerBlock}
         ListEmptyComponent={<EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={stitchTheme.colors.primaryContainer} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
       />
 
       <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.9}>
@@ -353,7 +311,7 @@ export default function ProjectsScreen({ navigation, route }) {
 
           {showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(_event, selectedDate) => { setShowDatePicker(Platform.OS === 'ios'); if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
 
-          <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSave} disabled={createMutation.isPending || updateMutation.isPending} loading={createMutation.isPending || updateMutation.isPending} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
+          <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSave} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
         </ScrollView>
       </ResourceFormModal>
 

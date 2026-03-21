@@ -13,32 +13,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
-import api from '../lib/api';
+import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
+import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
 import StatusBanner from '../components/ui/StatusBanner';
-import { workEntriesByActivity, workEntriesByEmployee } from '../services/workEntryService';
 import { deleteLocalModel } from '../utils/resourceMutations';
 import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
 import {
   useBudgetItemsQuery,
-  useDeleteBudgetItemMutation,
-  useDeleteExpenseMutation,
-  useDeleteHarvestMutation,
-  useDeleteSaleMutation,
-  useDeleteWorkEntryMutation,
   useExpensesQuery,
   useHarvestsQuery,
   useSalesQuery,
-  useUpdateWorkEntryStatusMutation,
   useWorkEntriesQuery,
   useWorkEntryActivityAnalyticsQuery,
   useWorkEntryEmployeeAnalyticsQuery,
@@ -136,10 +130,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [workEntries, setWorkEntries] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [sales, setSales] = useState([]);
-  const [timeline, setTimeline] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [laborByEmployee, setLaborByEmployee] = useState([]);
-  const [laborByActivity, setLaborByActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -156,12 +147,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const salesQuery = useSalesQuery(remoteProjectId);
   const laborByEmployeeQuery = useWorkEntryEmployeeAnalyticsQuery(remoteProjectId);
   const laborByActivityQuery = useWorkEntryActivityAnalyticsQuery(remoteProjectId);
-  const deleteBudgetMutation = useDeleteBudgetItemMutation(remoteProjectId);
-  const deleteExpenseMutation = useDeleteExpenseMutation(remoteProjectId);
-  const deleteWorkEntryMutation = useDeleteWorkEntryMutation(remoteProjectId);
-  const deleteHarvestMutation = useDeleteHarvestMutation(remoteProjectId);
-  const deleteSaleMutation = useDeleteSaleMutation(remoteProjectId);
-  const updateWorkEntryStatusMutation = useUpdateWorkEntryStatusMutation(remoteProjectId);
 
   useEffect(() => {
     if (initialTab && TAB_ORDER.includes(initialTab)) {
@@ -179,11 +164,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
       try {
         const proj = await database.get('farm_projects').find(projectId);
         setProject(proj);
-
-        if (proj.remoteId) {
-          const { data } = await api.get(`/projects/${proj.remoteId}/summary`);
-          setTimeline(data.timeline || []);
-        }
       } catch (err) {
         console.warn('[ProjectDetail] load error:', err.message);
       } finally {
@@ -191,19 +171,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
       }
     };
     loadProject();
+    syncAll().catch(() => {});
   }, [projectId]);
-
-  useEffect(() => {
-    if (laborByEmployeeQuery.data) {
-      setLaborByEmployee(laborByEmployeeQuery.data);
-    }
-  }, [laborByEmployeeQuery.data]);
-
-  useEffect(() => {
-    if (laborByActivityQuery.data) {
-      setLaborByActivity(laborByActivityQuery.data);
-    }
-  }, [laborByActivityQuery.data]);
 
   useEffect(() => {
     if (!projectId || !budgetQuery.data?.length) return;
@@ -404,12 +373,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
     };
   }, [projectId, project?.remoteId]);
 
-  const totalBudget = budgetItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
-  const totalLabor = workEntries.filter((item) => item.status === 'APPROVED').reduce((sum, item) => sum + item.totalCost, 0);
-  const totalSpent = totalExpenses + totalLabor;
-  const totalHarvest = harvests.reduce((sum, item) => sum + item.weight, 0);
-  const totalRevenue = sales.reduce((sum, item) => sum + item.totalAmount, 0);
+  const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales }), [budgetItems, expenses, workEntries, harvests, sales]);
+  const totalBudget = summary.totalBudget;
+  const totalExpenses = summary.totalExpenses;
+  const totalLabor = summary.totalLaborCost;
+  const totalSpent = summary.totalCost;
+  const totalHarvest = summary.totalHarvest;
+  const totalRevenue = summary.totalRevenue;
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const resourcesSyncing = budgetQuery.isFetching || expenseQuery.isFetching || workQuery.isFetching || harvestQuery.isFetching || salesQuery.isFetching;
   const activeQueryError = activeTab === 'budget' ? budgetQuery.error
@@ -430,6 +400,37 @@ export default function ProjectDetailScreen({ route, navigation }) {
     employeeMap.set(employee.id, employee.name);
     if (employee.remoteId) employeeMap.set(employee.remoteId, employee.name);
   });
+
+  const localLaborByEmployee = useMemo(() => {
+    const grouped = new Map();
+    workEntries.forEach((item) => {
+      if (item.isDeleted) return;
+      const key = item.employeeId || 'unknown';
+      const existing = grouped.get(key) || { employeeId: key, employeeName: employeeMap.get(key) || t('employees.unknown'), totalCost: 0, totalDays: 0, entryCount: 0 };
+      existing.totalCost += item.totalCost || 0;
+      existing.totalDays += item.daysWorked || 0;
+      existing.entryCount += 1;
+      grouped.set(key, existing);
+    });
+    return [...grouped.values()].sort((a, b) => b.totalCost - a.totalCost);
+  }, [workEntries, employees, t]);
+
+  const localLaborByActivity = useMemo(() => {
+    const grouped = new Map();
+    workEntries.forEach((item) => {
+      if (item.isDeleted) return;
+      const key = item.activity || 'Other';
+      const existing = grouped.get(key) || { activity: key, totalCost: 0, totalDays: 0, entryCount: 0 };
+      existing.totalCost += item.totalCost || 0;
+      existing.totalDays += item.daysWorked || 0;
+      existing.entryCount += 1;
+      grouped.set(key, existing);
+    });
+    return [...grouped.values()].sort((a, b) => b.totalCost - a.totalCost);
+  }, [workEntries]);
+
+  const laborByEmployee = laborByEmployeeQuery.data?.length ? laborByEmployeeQuery.data : localLaborByEmployee;
+  const laborByActivity = laborByActivityQuery.data?.length ? laborByActivityQuery.data : localLaborByActivity;
 
   const localTimeline = useMemo(() => {
     const workItems = workEntries.slice(0, 4).map((entry) => ({
@@ -465,7 +466,14 @@ export default function ProjectDetailScreen({ route, navigation }) {
     return [...workItems, ...expenseItems].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [workEntries, expenses, employeeMap, t, currency]);
 
-  const mergedTimeline = timeline.length ? timeline : localTimeline;
+  const mergedTimeline = localTimeline;
+  const activeLocalCount = activeTab === 'budget' ? budgetItems.length
+    : activeTab === 'expenses' ? expenses.length
+    : activeTab === 'labor' ? workEntries.length
+    : activeTab === 'harvest' ? harvests.length
+    : activeTab === 'sales' ? sales.length
+    : activeTab === 'timeline' ? mergedTimeline.length
+    : 0;
 
   const groupedTimeline = useMemo(() => {
     const today = [];
@@ -545,14 +553,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
     const { type, item } = deleteTarget;
 
     try {
-      if (item.remoteId) {
-        if (type === 'budget') await deleteBudgetMutation.mutateAsync(item.remoteId);
-        if (type === 'expenses') await deleteExpenseMutation.mutateAsync(item.remoteId);
-        if (type === 'labor') await deleteWorkEntryMutation.mutateAsync(item.remoteId);
-        if (type === 'harvest') await deleteHarvestMutation.mutateAsync(item.remoteId);
-        if (type === 'sales') await deleteSaleMutation.mutateAsync(item.remoteId);
-      }
-
       await database.write(async () => {
         const tableMap = {
           budget: 'budget_items',
@@ -562,12 +562,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
           sales: 'sales',
         };
         const record = await database.get(tableMap[type]).find(item.id);
-        if (item.remoteId) {
-          await record.destroyPermanently();
-        } else {
-          await deleteLocalModel(record);
-        }
+        await deleteLocalModel(record);
       });
+      syncAll().catch(() => {});
       setDeleteTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
     } catch (error) {
@@ -578,16 +575,15 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const handleStatusChange = async (item, status) => {
     try {
-      if (item.remoteId) {
-        await updateWorkEntryStatusMutation.mutateAsync({ id: item.remoteId, status });
-      }
       await database.write(async () => {
         const record = await database.get('work_entries').find(item.id);
         await record.update((draft) => {
           draft.status = status;
           draft.updatedAt = Date.now();
+          draft.syncStatus = draft.remoteId ? 'pending_update' : draft.syncStatus;
         });
       });
+      syncAll().catch(() => {});
       setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
@@ -726,8 +722,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
               <StitchChip label={t('resource.sort_amount')} active={sortMode === 'amount'} onPress={() => setSortMode('amount')} />
               {resourcesSyncing || syncStatus === 'syncing' ? <Text style={styles.syncHint}>{t('resource.syncing')}</Text> : null}
             </View>
-            {activeQueryLoading ? <StatusBanner tone="info" title={t('resource.loading_title')} message={t('resource.loading_body')} /> : null}
-            {activeQueryError ? <StatusBanner tone="error" title={t('common.error')} message={activeQueryError.message || t('resource.loading_error')} /> : null}
+            {activeQueryLoading && activeLocalCount === 0 ? <StatusBanner tone="info" title={t('resource.loading_title')} message={t('resource.loading_body')} /> : null}
+            {activeQueryError && activeLocalCount === 0 ? <StatusBanner tone="error" title={t('common.error')} message={activeQueryError.message || t('resource.loading_error')} /> : null}
           </View>
         ) : null}
 

@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 6,
+  version: 7,
   tables: [
     // ── FarmProject ─────────────────────────────────────────────────────────
     tableSchema({
@@ -176,6 +176,28 @@ export default appSchema({
         { name: 'sync_status',    type: 'string' },
         { name: 'last_synced_at', type: 'number', isOptional: true },
         { name: 'last_error',     type: 'string', isOptional: true },
+      ],
+    }),
+
+    tableSchema({
+      name: 'inventory_items',
+      columns: [
+        { name: 'remote_id', type: 'string' },
+        { name: 'project_id', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'category', type: 'string' },
+        { name: 'quantity', type: 'number' },
+        { name: 'unit', type: 'string' },
+        { name: 'unit_cost', type: 'number' },
+        { name: 'total_cost', type: 'number' },
+        { name: 'used_qty', type: 'number' },
+        { name: 'notes', type: 'string', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+        { name: 'sync_status', type: 'string' },
+        { name: 'last_synced_at', type: 'number', isOptional: true },
+        { name: 'last_error', type: 'string', isOptional: true },
       ],
     }),
   ],

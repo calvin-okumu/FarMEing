@@ -13,16 +13,20 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
+import { database } from '../db';
+import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
+import { computeEmployeeBalance } from '../utils/localAnalytics';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
-import { useDeleteEmployeeMutation, useEmployeeBalanceQuery, useUpdateEmployeeMutation } from '../hooks/api/useEmployeesApi';
-import { useCreatePaymentMutation, useEmployeePaymentsQuery } from '../hooks/api/usePaymentsApi';
-import { listWorkEntries } from '../services/workEntryService';
+import useSettingsStore from '../store/useSettingsStore';
+import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import { initializeLocalRecord } from '../utils/localRecord';
 
 function BalanceBars({ earned, paid, balance }) {
   const values = [earned || 1, paid || 1, Math.abs(balance) || 1];
@@ -49,8 +53,11 @@ function BalanceBars({ earned, paid, balance }) {
 export default function EmployeeDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { employeeId } = route.params || {};
+  const currency = useSettingsStore((s) => s.currency);
   const [activeTab, setActiveTab] = useState('work');
+  const [employee, setEmployee] = useState(null);
   const [workEntries, setWorkEntries] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loadingTabData, setLoadingTabData] = useState(true);
   const [editVisible, setEditVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
@@ -58,36 +65,46 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const [editForm, setEditForm] = useState({ name: '', phone: '', role: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', note: '', date: new Date() });
   const [banner, setBanner] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const balanceQuery = useEmployeeBalanceQuery(employeeId);
-  const paymentsQuery = useEmployeePaymentsQuery(employeeId);
-  const updateMutation = useUpdateEmployeeMutation();
-  const deleteMutation = useDeleteEmployeeMutation();
-  const createPaymentMutation = useCreatePaymentMutation(employeeId);
-
-  const employee = balanceQuery.data?.employee;
-  const balance = balanceQuery.data?.balance || { totalEarned: 0, totalPaid: 0, outstanding: 0 };
+  const balance = useMemo(() => computeEmployeeBalance(workEntries, payments), [workEntries, payments]);
 
   useEffect(() => {
     if (!employeeId) return;
-    const loadRelated = async () => {
+    const employeeCollection = database.get('employees');
+    const workQuery = database.get('work_entries').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false));
+    const paymentQuery = database.get('payments').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false));
+
+    const loadLocal = async () => {
       try {
         setLoadingTabData(true);
-        const projectsData = await import('../services/projectService').then((mod) => mod.listProjects());
-        const projects = projectsData.projects || [];
-        const workLists = await Promise.all(
-          projects
-            .filter((project) => !project.isDeleted)
-            .map((project) => listWorkEntries(project.id).catch(() => ({ workEntries: [] })))
-        );
-        const allWorkEntries = workLists.flatMap((entry) => entry.workEntries || []);
-        setWorkEntries(allWorkEntries.filter((entry) => entry.employeeId === employeeId));
+        const record = await employeeCollection.find(employeeId);
+        setEmployee(record);
+        const [workRows, paymentRows] = await Promise.all([workQuery.fetch(), paymentQuery.fetch()]);
+        setWorkEntries(workRows);
+        setPayments(paymentRows);
+      } catch {
+        setEmployee(null);
       } finally {
         setLoadingTabData(false);
       }
     };
 
-    loadRelated();
+    loadLocal();
+    syncAll().catch(() => {});
+
+    const employeeSub = employeeCollection.findAndObserve(employeeId).subscribe({
+      next: (record) => setEmployee(record),
+      error: () => setEmployee(null),
+    });
+    const workSub = workQuery.observe().subscribe((rows) => setWorkEntries(rows));
+    const paymentSub = paymentQuery.observe().subscribe((rows) => setPayments(rows));
+
+    return () => {
+      employeeSub.unsubscribe();
+      workSub.unsubscribe();
+      paymentSub.unsubscribe();
+    };
   }, [employeeId]);
 
   useEffect(() => {
@@ -102,8 +119,15 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleUpdate = async () => {
     try {
-      await updateMutation.mutateAsync({ id: employeeId, values: editForm });
-      await balanceQuery.refetch();
+      await database.write(async () => {
+        const record = await database.get('employees').find(employeeId);
+        await updateLocalModel(record, (draft) => {
+          draft.name = editForm.name.trim();
+          draft.phone = editForm.phone.trim();
+          draft.role = editForm.role.trim();
+        });
+      });
+      syncAll().catch(() => {});
       setEditVisible(false);
       setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
     } catch (error) {
@@ -114,7 +138,11 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleDelete = async () => {
     try {
-      await deleteMutation.mutateAsync(employeeId);
+      await database.write(async () => {
+        const record = await database.get('employees').find(employeeId);
+        await deleteLocalModel(record);
+      });
+      syncAll().catch(() => {});
       setDeleteVisible(false);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
       navigation.goBack();
@@ -126,13 +154,17 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleRecordPayment = async () => {
     try {
-      await createPaymentMutation.mutateAsync({
-        employeeId,
-        amount: paymentForm.amount,
-        date: paymentForm.date,
-        note: paymentForm.note,
+      await database.write(async () => {
+        await database.get('payments').create((record) => {
+          initializeLocalRecord(record);
+          record.employeeId = employeeId;
+          record.amount = parseFloat(paymentForm.amount) || 0;
+          record.date = paymentForm.date.getTime();
+          record.note = paymentForm.note.trim();
+          record.isDeleted = false;
+        });
       });
-      await Promise.all([paymentsQuery.refetch(), balanceQuery.refetch()]);
+      syncAll().catch(() => {});
       setPaymentVisible(false);
       setPaymentForm({ amount: '', note: '', date: new Date() });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
@@ -142,8 +174,19 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
-  const payments = paymentsQuery.data || [];
-  const loading = balanceQuery.isLoading || paymentsQuery.isLoading || loadingTabData;
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await syncAll();
+      if (result?.error) {
+        setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: result.error });
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const loading = loadingTabData;
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
@@ -176,7 +219,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       <View style={styles.balanceCard}>
         <View>
           <Text style={styles.balanceLabel}>{t('employees.outstanding_balance')}</Text>
-          <Text style={[styles.balanceValue, balance.outstanding > 0 ? styles.balancePositive : styles.balanceNeutral]}>{formatCurrency(balance.outstanding, employee.currency || 'USD')}</Text>
+          <Text style={[styles.balanceValue, balance.outstanding > 0 ? styles.balancePositive : styles.balanceNeutral]}>{formatCurrency(balance.outstanding, currency)}</Text>
         </View>
         <StitchPrimaryButton label={t('payments.pay_worker')} onPress={() => setPaymentVisible(true)} disabled={balance.outstanding <= 0} icon="cash-outline" style={styles.payButton} />
       </View>
@@ -191,7 +234,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           <View key={item.id} style={styles.listItem}>
             <View style={styles.listItemHeader}>
               <Text style={styles.listItemTitle}>{activeTab === 'work' ? item.activity : t('payments.title')}</Text>
-              <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, employee.currency || 'USD')}</Text>
+              <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, currency)}</Text>
             </View>
             <Text style={styles.listItemMeta}>{formatAppDate(item.date)}{item.note ? ` • ${item.note}` : ''}</Text>
           </View>
@@ -201,6 +244,10 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <TouchableOpacity style={styles.deleteTrigger} onPress={() => setDeleteVisible(true)} activeOpacity={0.88}>
           <Ionicons name="trash-outline" size={18} color="#9c1111" />
           <Text style={styles.deleteTriggerText}>{t('common.delete')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.refreshTrigger} onPress={handleRefresh} activeOpacity={0.88}>
+          <Ionicons name="sync-outline" size={18} color={stitchTheme.colors.primary} />
+          <Text style={styles.refreshTriggerText}>{isRefreshing ? t('common.loading') : t('common.refresh')}</Text>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -214,7 +261,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           <TextInput style={styles.input} value={editForm.phone} onChangeText={(phone) => setEditForm((p) => ({ ...p, phone }))} placeholderTextColor="#8a9388" />
           <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
           <TextInput style={styles.input} value={editForm.role} onChangeText={(role) => setEditForm((p) => ({ ...p, role }))} placeholderTextColor="#8a9388" />
-          <StitchPrimaryButton label={t('common.save')} onPress={handleUpdate} disabled={updateMutation.isPending} loading={updateMutation.isPending} icon="save-outline" style={styles.saveButton} />
+          <StitchPrimaryButton label={t('common.save')} onPress={handleUpdate} icon="save-outline" style={styles.saveButton} />
         </View></KeyboardAvoidingView></View>
       </Modal>
 
@@ -264,6 +311,8 @@ const styles = StyleSheet.create({
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, textAlign: 'center', marginTop: stitchTheme.spacing.lg },
   deleteTrigger: { marginTop: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   deleteTriggerText: { color: '#9c1111', fontWeight: '800' },
+  refreshTrigger: { marginTop: stitchTheme.spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  refreshTriggerText: { color: stitchTheme.colors.primary, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },

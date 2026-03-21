@@ -11,6 +11,7 @@ import Employee    from './models/Employee';
 import Payment     from './models/Payment';
 import Harvest     from './models/Harvest';
 import Sale        from './models/Sale';
+import InventoryItem from './models/InventoryItem';
 
 // SQLiteAdapter uses expo-sqlite under the hood on Expo Go
 const adapter = new SQLiteAdapter({
@@ -25,7 +26,7 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale],
+  modelClasses: [FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem],
 });
 
 // Convenience collection getters
@@ -37,3 +38,4 @@ export const employeesCollection = database.get('employees');
 export const paymentsCollection = database.get('payments');
 export const harvestsCollection = database.get('harvests');
 export const salesCollection = database.get('sales');
+export const inventoryCollection = database.get('inventory_items');

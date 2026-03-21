@@ -19,14 +19,10 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import {
-  useCreateSaleMutation,
-  useUpdateSaleMutation,
-} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -34,8 +30,6 @@ export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
-  const createMutation = useCreateSaleMutation(projectId);
-  const updateMutation = useUpdateSaleMutation(projectId);
   const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
   const [weightSold, setWeightSold] = useState('');
@@ -98,15 +92,6 @@ export default function AddSaleScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('sales').find(itemId);
-          if (record.remoteId) {
-            await updateMutation.mutateAsync({ id: record.remoteId, values: {
-              customer,
-              weightSold,
-              unitPrice,
-              date,
-              notes,
-            } });
-          }
           await updateLocalModel(record, (draft) => {
             draft.customer = customer.trim();
             draft.weightSold = parseFloat(weightSold);
@@ -114,17 +99,9 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.totalAmount = total;
             draft.date = date.getTime();
             draft.notes = notes.trim();
-          }, record.remoteId);
+          });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          let remoteSale = null;
-          try {
-            const response = await createMutation.mutateAsync({ projectId, customer, weightSold, unitPrice, date, notes });
-            remoteSale = response.sale || null;
-          } catch (error) {
-            remoteSale = null;
-          }
-
           await database.get('sales').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -135,13 +112,8 @@ export default function AddSaleScreen({ route, navigation }) {
             record.date = date.getTime();
             record.notes = notes.trim();
             record.isDeleted = false;
-            if (remoteSale?.id) {
-              markRecordSynced(record, remoteSale.id);
-            }
           });
-          setBanner(remoteSale?.id
-            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
-            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
+          setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 

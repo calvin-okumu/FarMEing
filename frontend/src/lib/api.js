@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import useBackendStore from '../store/useBackendStore';
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 // Set EXPO_PUBLIC_API_URL for your environment.
@@ -38,7 +39,10 @@ api.interceptors.request.use(async (config) => {
 
 // ── Response interceptor — normalise error messages ───────────────────────────
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        useBackendStore.getState().setOnline();
+        return response;
+    },
     (error) => {
         const isNetworkError = !error.response && (
             error.code === 'ECONNABORTED' ||
@@ -46,17 +50,26 @@ api.interceptors.response.use(
         );
 
         if (isNetworkError) {
-            return Promise.reject(new Error(
+            const wrappedError = new Error(
                 `Cannot reach backend at ${BASE_URL}. Set EXPO_PUBLIC_API_URL for your device/emulator.`
-            ));
+            );
+            wrappedError.isBackendUnavailable = true;
+            wrappedError.statusCode = null;
+            useBackendStore.getState().setOffline(wrappedError.message);
+            return Promise.reject(wrappedError);
         }
 
+        const statusCode = error.response?.status ?? null;
         const message =
             error.response?.data?.error ||
             error.response?.data?.message ||
             error.message ||
             'Something went wrong';
-        return Promise.reject(new Error(message));
+        const wrappedError = new Error(message);
+        wrappedError.statusCode = statusCode;
+        wrappedError.details = error.response?.data?.details || [];
+        wrappedError.isBackendUnavailable = false;
+        return Promise.reject(wrappedError);
     }
 );
 

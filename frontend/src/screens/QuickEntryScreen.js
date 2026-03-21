@@ -22,10 +22,8 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { createEmployee } from '../services/employeeService';
-import { createWorkEntry } from '../services/workEntryService';
 import StatusBanner from '../components/ui/StatusBanner';
 import { EMPLOYEE_KEYS } from '../hooks/api/useEmployeesApi';
 import { PROJECT_RESOURCE_KEYS } from '../hooks/api/useProjectResourcesApi';
@@ -97,14 +95,6 @@ export default function QuickEntryScreen({ navigation }) {
       }
 
       if (!employee) {
-        let remoteEmployee = null;
-        try {
-          const response = await createEmployee({ name: employeeName.trim(), phone: '', role: '' });
-          remoteEmployee = response.employee || null;
-        } catch {
-          remoteEmployee = null;
-        }
-
         employee = await database.get('employees').create((record) => {
           initializeLocalRecord(record);
           record.userId = '';
@@ -112,30 +102,7 @@ export default function QuickEntryScreen({ navigation }) {
           record.phone = '';
           record.role = '';
           record.isDeleted = false;
-          if (remoteEmployee?.id) {
-            markRecordSynced(record, remoteEmployee.id);
-          }
         });
-      }
-
-      let remoteWorkEntry = null;
-      try {
-        const response = await createWorkEntry({
-          projectId: selectedProject.remoteId || selectedProject.id,
-          employeeId: employee.remoteId || employee.id,
-          activity: activity.charAt(0).toUpperCase() + activity.slice(1),
-          date,
-          daysWorked: (parseFloat(workers) || 1) * (parseFloat(days) || 1),
-          ratePerDay: parseFloat(rate) || 0,
-          hoursWorked: null,
-          imageUrl: null,
-          status: 'PENDING',
-          isRecurring: false,
-          notes: '',
-        });
-        remoteWorkEntry = response.workEntry || null;
-      } catch {
-        remoteWorkEntry = null;
       }
 
       await database.get('work_entries').create((record) => {
@@ -150,14 +117,9 @@ export default function QuickEntryScreen({ navigation }) {
         record.notes = '';
         record.isPaid = false;
         record.isDeleted = false;
-        if (remoteWorkEntry?.id) {
-          markRecordSynced(record, remoteWorkEntry.id);
-        }
       });
 
-      setBanner(remoteWorkEntry?.id
-        ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
-        : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
+      setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
     });
   };
 

@@ -22,14 +22,10 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
 import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import {
-  useCreateWorkEntryMutation,
-  useUpdateWorkEntryMutation,
-} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -48,8 +44,6 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
-  const createMutation = useCreateWorkEntryMutation(projectId);
-  const updateMutation = useUpdateWorkEntryMutation(projectId);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -148,21 +142,6 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('work_entries').find(itemId);
-          if (record.remoteId) {
-            await updateMutation.mutateAsync({ id: record.remoteId, values: {
-              employeeId: selectedEmployee.remoteId || selectedEmployee.id,
-              activity: activity.charAt(0).toUpperCase() + activity.slice(1),
-              date,
-              daysWorked,
-              ratePerDay,
-              hoursWorked,
-              imageUrl: photo,
-              status: record.status,
-              isRecurring,
-              frequency: isRecurring ? frequency.toUpperCase() : null,
-              notes,
-            } });
-          }
           await updateLocalModel(record, (draft) => {
             draft.employeeId = selectedEmployee.id;
             draft.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
@@ -175,30 +154,9 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             draft.isRecurring = isRecurring;
             draft.frequency = isRecurring ? frequency.toUpperCase() : null;
             draft.notes = notes.trim();
-          }, record.remoteId);
+          });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          let remoteWorkEntry = null;
-          try {
-            const response = await createMutation.mutateAsync({
-              projectId,
-              employeeId: selectedEmployee.remoteId || selectedEmployee.id,
-              activity: activity.charAt(0).toUpperCase() + activity.slice(1),
-              date,
-              daysWorked,
-              ratePerDay,
-              hoursWorked,
-              imageUrl: photo,
-              status: 'PENDING',
-              isRecurring,
-              frequency: isRecurring ? frequency.toUpperCase() : null,
-              notes,
-            });
-            remoteWorkEntry = response.workEntry || null;
-          } catch (error) {
-            remoteWorkEntry = null;
-          }
-
           await database.get('work_entries').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -216,13 +174,8 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             record.notes = notes.trim();
             record.isPaid = false;
             record.isDeleted = false;
-            if (remoteWorkEntry?.id) {
-              markRecordSynced(record, remoteWorkEntry.id);
-            }
           });
-          setBanner(remoteWorkEntry?.id
-            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
-            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
+          setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 

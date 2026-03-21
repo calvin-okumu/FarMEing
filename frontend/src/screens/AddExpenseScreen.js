@@ -18,16 +18,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import {
-  useCreateExpenseMutation,
-  useUpdateExpenseMutation,
-} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -48,8 +44,6 @@ export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { currency, language, setLanguage } = useSettingsStore();
-  const createMutation = useCreateExpenseMutation(projectId);
-  const updateMutation = useUpdateExpenseMutation(projectId);
   const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
@@ -122,15 +116,6 @@ export default function AddExpenseScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('expenses').find(itemId);
-          if (record.remoteId) {
-            await updateMutation.mutateAsync({ id: record.remoteId, values: {
-              category,
-              amount,
-              date,
-              note,
-              receiptUrl: photo,
-            } });
-          }
           await updateLocalModel(record, (draft) => {
             draft.category = category;
             draft.expenseType = expenseType;
@@ -140,17 +125,9 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.frequency = isRecurring ? frequency.toUpperCase() : null;
             draft.note = note.trim();
             draft.receiptUrl = photo || '';
-          }, record.remoteId);
+          });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          let remoteExpense = null;
-          try {
-            const response = await createMutation.mutateAsync({ projectId, category, amount, date, note, receiptUrl: photo });
-            remoteExpense = response.expense || null;
-          } catch (error) {
-            remoteExpense = null;
-          }
-
           await database.get('expenses').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -163,13 +140,8 @@ export default function AddExpenseScreen({ route, navigation }) {
             record.note = note.trim();
             record.receiptUrl = photo || '';
             record.isDeleted = false;
-            if (remoteExpense?.id) {
-              markRecordSynced(record, remoteExpense.id);
-            }
           });
-          setBanner(remoteExpense?.id
-            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
-            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
+          setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 

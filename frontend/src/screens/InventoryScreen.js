@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,21 +14,20 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
+import { database } from '../db';
+import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel, StitchSurface, StitchTopBar } from '../components/ui/StitchPrimitives';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
-import {
-  useCreateInventoryMutation,
-  useDeleteInventoryMutation,
-  useInventoryQuery,
-  useUpdateInventoryMutation,
-} from '../hooks/api/useInventoryApi';
 import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
+import { initializeLocalRecord } from '../utils/localRecord';
+import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
 
 const DEFAULT_FORM = {
   name: '',
@@ -44,19 +43,41 @@ export default function InventoryScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, projectName } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
-  const { data, isLoading, isRefetching, refetch, error } = useInventoryQuery(projectId);
-  const createMutation = useCreateInventoryMutation(projectId);
-  const updateMutation = useUpdateInventoryMutation(projectId);
-  const deleteMutation = useDeleteInventoryMutation(projectId);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [query, setQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [banner, setBanner] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const inventoryItems = data?.inventoryItems || [];
-  const grandTotalCost = data?.grandTotalCost || 0;
+  useEffect(() => {
+    if (!projectId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const queryRef = database.get('inventory_items').query(Q.where('project_id', projectId), Q.where('is_deleted', false));
+
+    const loadLocal = async () => {
+      const rows = await queryRef.fetch();
+      setInventoryItems(rows);
+      setIsLoading(false);
+    };
+
+    loadLocal().catch(() => setIsLoading(false));
+    syncAll().catch(() => {});
+
+    const sub = queryRef.observe().subscribe((rows) => setInventoryItems(rows));
+    return () => sub.unsubscribe();
+  }, [projectId]);
+
+  const grandTotalCost = useMemo(
+    () => inventoryItems.reduce((sum, item) => sum + (item.totalCost || ((item.quantity || 0) * (item.unitCost || 0))), 0),
+    [inventoryItems]
+  );
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -87,12 +108,44 @@ export default function InventoryScreen({ route, navigation }) {
   const handleSubmit = async () => {
     try {
       setBanner(null);
-      const values = { ...formData, projectId };
+      const quantity = parseFloat(formData.quantity) || 0;
+      const unitCost = parseFloat(formData.unitCost) || 0;
+      const usedQty = parseFloat(formData.usedQty) || 0;
+
+      await database.write(async () => {
+        if (editingItem) {
+          const record = await database.get('inventory_items').find(editingItem.id);
+          await updateLocalModel(record, (draft) => {
+            draft.name = formData.name.trim();
+            draft.category = formData.category.trim();
+            draft.quantity = quantity;
+            draft.unit = formData.unit.trim() || 'kg';
+            draft.unitCost = unitCost;
+            draft.usedQty = usedQty;
+            draft.totalCost = parseFloat((quantity * unitCost).toFixed(2));
+            draft.notes = formData.notes.trim();
+          });
+        } else {
+          await database.get('inventory_items').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.name = formData.name.trim();
+            record.category = formData.category.trim();
+            record.quantity = quantity;
+            record.unit = formData.unit.trim() || 'kg';
+            record.unitCost = unitCost;
+            record.usedQty = usedQty;
+            record.totalCost = parseFloat((quantity * unitCost).toFixed(2));
+            record.notes = formData.notes.trim();
+            record.isDeleted = false;
+          });
+        }
+      });
+
+      syncAll().catch(() => {});
       if (editingItem) {
-        await updateMutation.mutateAsync({ id: editingItem.id, values });
         setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
       } else {
-        await createMutation.mutateAsync(values);
         setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
       }
       setModalVisible(false);
@@ -101,6 +154,18 @@ export default function InventoryScreen({ route, navigation }) {
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await syncAll();
+      if (result?.error) {
+        setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: result.error });
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -116,7 +181,7 @@ export default function InventoryScreen({ route, navigation }) {
         data={filteredItems}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControlProxy refreshing={isRefetching} onRefresh={refetch} />}
+        refreshControl={<RefreshControlProxy refreshing={isRefreshing} onRefresh={handleRefresh} />}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
             <View style={styles.cardTop}>
@@ -142,7 +207,6 @@ export default function InventoryScreen({ route, navigation }) {
               <Text style={styles.heroValue}>{formatCurrency(grandTotalCost, currency)}</Text>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={chartValues.length - 1} softIndex={1} style={styles.chartWrap} />
             </StitchSurface>
-            {error ? <StatusBanner tone="error" title={t('common.error')} message={error.message} /> : null}
             <StatusBanner {...banner} />
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
           </>
@@ -193,8 +257,7 @@ export default function InventoryScreen({ route, navigation }) {
                 <StitchPrimaryButton
                   label={editingItem ? t('common.save') : t('inventory.create_title')}
                   onPress={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending || !formData.name.trim()}
-                  loading={createMutation.isPending || updateMutation.isPending}
+                  disabled={!formData.name.trim()}
                   icon={editingItem ? 'save-outline' : 'add-circle'}
                   style={styles.saveButton}
                 />
@@ -213,7 +276,11 @@ export default function InventoryScreen({ route, navigation }) {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={async () => {
           try {
-            await deleteMutation.mutateAsync(deleteTarget.id);
+            await database.write(async () => {
+              const record = await database.get('inventory_items').find(deleteTarget.id);
+              await deleteLocalModel(record);
+            });
+            syncAll().catch(() => {});
             setDeleteTarget(null);
             setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
           } catch (error) {

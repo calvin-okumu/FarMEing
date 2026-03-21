@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { getCurrentUser, loginUser, registerUser } from '../services/authService';
 import useSettingsStore from './useSettingsStore';
+import useBackendStore from './useBackendStore';
 import i18n from '../i18n';
 
 const TOKEN_KEY = 'auth_token';
@@ -35,9 +36,18 @@ const useAuthStore = create((set, get) => ({
         if (freshUser) {
           await _persist(token, freshUser);
         }
+        useBackendStore.getState().setOnline();
         set({ token, user: freshUser, isLoading: false });
         return freshUser;
-      } catch {
+      } catch (error) {
+        if (error?.isBackendUnavailable && cachedUser) {
+          useBackendStore.getState().setOffline(error.message);
+          const lang = await useSettingsStore.getState().initializeLanguage(cachedUser);
+          i18n.changeLanguage(lang);
+          set({ token, user: cachedUser, isLoading: false });
+          return cachedUser;
+        }
+
         await Promise.all([
           SecureStore.deleteItemAsync(TOKEN_KEY),
           SecureStore.deleteItemAsync(USER_KEY),

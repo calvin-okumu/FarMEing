@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
+import { database } from '../db';
+import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import {
   StitchBadge,
@@ -25,7 +28,7 @@ import {
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import StatusBanner from '../components/ui/StatusBanner';
-import { useCreateEmployeeMutation, useEmployeesQuery } from '../hooks/api/useEmployeesApi';
+import { initializeLocalRecord } from '../utils/localRecord';
 
 function WorkerCard({ item, onPress, t }) {
   const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
@@ -71,12 +74,29 @@ function WorkerCard({ item, onPress, t }) {
 
 export default function EmployeesScreen({ navigation }) {
   const { t } = useTranslation();
-  const { data: employees = [], isLoading, isRefetching, refetch, error } = useEmployeesQuery();
-  const createMutation = useCreateEmployeeMutation();
+  const [employees, setEmployees] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [formData, setFormData] = useState({ name: '', phone: '', role: '' });
   const [banner, setBanner] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    const queryRef = database.get('employees').query(Q.where('is_deleted', false));
+
+    const loadLocal = async () => {
+      const rows = await queryRef.fetch();
+      setEmployees(rows);
+      setIsLoading(false);
+    };
+
+    loadLocal().catch(() => setIsLoading(false));
+    syncAll().catch(() => {});
+
+    const sub = queryRef.observe().subscribe((rows) => setEmployees(rows));
+    return () => sub.unsubscribe();
+  }, []);
 
   const filteredEmployees = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -105,13 +125,35 @@ export default function EmployeesScreen({ navigation }) {
   const handleCreate = async () => {
     try {
       setBanner(null);
-      await createMutation.mutateAsync(formData);
+      await database.write(async () => {
+        await database.get('employees').create((record) => {
+          initializeLocalRecord(record);
+          record.userId = '';
+          record.name = formData.name.trim();
+          record.phone = formData.phone.trim();
+          record.role = formData.role.trim();
+          record.isDeleted = false;
+        });
+      });
+      syncAll().catch(() => {});
       setModalVisible(false);
       setFormData({ name: '', phone: '', role: '' });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (createError) {
       setBanner({ tone: 'error', title: t('common.error'), message: createError.message });
       Alert.alert(t('common.error'), createError.message);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await syncAll();
+      if (result?.error) {
+        setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: result.error });
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -189,7 +231,6 @@ export default function EmployeesScreen({ navigation }) {
             </View>
 
             <View style={styles.bodyBlock}>
-              {error ? <StatusBanner tone='error' title={t('common.error')} message={error.message} /> : null}
               <StatusBanner {...banner} />
               <View style={styles.searchRow}>
                 <View style={styles.searchWrap}>
@@ -208,7 +249,7 @@ export default function EmployeesScreen({ navigation }) {
           </>
         }
         ListEmptyComponent={<EmptyState icon='people-outline' title={t('employees.empty_title')} subtitle={t('employees.empty_subtitle')} />}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={stitchTheme.colors.primaryContainer} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
       />
 
       <Modal visible={modalVisible} animationType='slide' transparent>
@@ -229,7 +270,7 @@ export default function EmployeesScreen({ navigation }) {
               <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
               <TextInput style={styles.input} value={formData.role} onChangeText={(role) => setFormData((p) => ({ ...p, role }))} placeholder={t('employees.placeholders.role')} placeholderTextColor={stitchTheme.colors.textMuted} />
 
-              <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleCreate} disabled={createMutation.isPending || !formData.name.trim()} loading={createMutation.isPending} icon='person-add' style={styles.saveButton} />
+              <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleCreate} disabled={!formData.name.trim()} icon='person-add' style={styles.saveButton} />
             </View>
           </KeyboardAvoidingView>
         </View>

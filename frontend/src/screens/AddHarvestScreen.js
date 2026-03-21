@@ -16,16 +16,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { initializeLocalRecord, markRecordSynced } from '../utils/localRecord';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchHeroHeader, { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import {
-  useCreateHarvestMutation,
-  useUpdateHarvestMutation,
-} from '../hooks/api/useProjectResourcesApi';
 import { updateLocalModel } from '../utils/resourceMutations';
 import StatusBanner from '../components/ui/StatusBanner';
 
@@ -36,8 +32,6 @@ export default function AddHarvestScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params;
   const { language, setLanguage } = useSettingsStore();
-  const createMutation = useCreateHarvestMutation(projectId);
-  const updateMutation = useUpdateHarvestMutation(projectId);
   const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -93,16 +87,6 @@ export default function AddHarvestScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('harvests').find(itemId);
-          if (record.remoteId) {
-            await updateMutation.mutateAsync({ id: record.remoteId, values: {
-              crop,
-              date,
-              weight,
-              unit,
-              quality,
-              notes,
-            } });
-          }
           await updateLocalModel(record, (draft) => {
             draft.crop = crop.trim();
             draft.weight = parseFloat(weight);
@@ -110,17 +94,9 @@ export default function AddHarvestScreen({ route, navigation }) {
             draft.quality = quality;
             draft.date = date.getTime();
             draft.notes = notes.trim();
-          }, record.remoteId);
+          });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          let remoteHarvest = null;
-          try {
-            const response = await createMutation.mutateAsync({ projectId, crop, date, weight, unit, quality, notes });
-            remoteHarvest = response.harvest || null;
-          } catch (error) {
-            remoteHarvest = null;
-          }
-
           await database.get('harvests').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -131,13 +107,8 @@ export default function AddHarvestScreen({ route, navigation }) {
             record.date = date.getTime();
             record.notes = notes.trim();
             record.isDeleted = false;
-            if (remoteHarvest?.id) {
-              markRecordSynced(record, remoteHarvest.id);
-            }
           });
-          setBanner(remoteHarvest?.id
-            ? { tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') }
-            : { tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
+          setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
+import useBackendStore from '../store/useBackendStore';
 import AuthNavigator from './AuthNavigator';
 import TabNavigator  from './TabNavigator';
 import { stitchTheme } from '../theme/stitchTheme';
@@ -8,6 +9,7 @@ import { stitchTheme } from '../theme/stitchTheme';
 export default function RootNavigator() {
   const token     = useAuthStore((s) => s.token);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const backendStatus = useBackendStore((s) => s.status);
   const [holdSplash, setHoldSplash] = useState(true);
 
   useEffect(() => {
@@ -62,10 +64,26 @@ export default function RootNavigator() {
 
   // React Navigation automatically animates between these two navigators
   // when `token` changes (login → tabs, logout → auth)
-  return token ? <TabNavigator /> : <AuthNavigator />;
+  return (
+    <View style={styles.appShell}>
+      {token ? <TabNavigator /> : <AuthNavigator />}
+      {backendStatus === 'offline' ? (
+        <View pointerEvents="none" style={styles.offlineBannerWrap}>
+          <View style={styles.offlineBanner}>
+            <View style={styles.offlineDot} />
+            <Text style={styles.offlineText}>Offline mode - saving locally</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  appShell: {
+    flex: 1,
+    backgroundColor: stitchTheme.colors.background,
+  },
   splashScreen: {
     flex: 1,
     backgroundColor: stitchTheme.colors.primary,
@@ -180,6 +198,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2.2,
+    textTransform: 'uppercase',
+  },
+  offlineBannerWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 12,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(17,42,30,0.94)',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  offlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: stitchTheme.colors.accentPeach,
+  },
+  offlineText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
 });

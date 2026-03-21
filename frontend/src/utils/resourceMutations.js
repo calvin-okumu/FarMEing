@@ -3,8 +3,10 @@ import { markRecordDeleted, markRecordUpdated, markRecordSynced, SYNC_STATUS } f
 export async function updateLocalModel(record, applyChanges, remoteId) {
   await record.update((draft) => {
     applyChanges(draft);
-    if (remoteId || draft.remoteId) {
-      markRecordSynced(draft, remoteId || draft.remoteId);
+    if (remoteId) {
+      markRecordSynced(draft, remoteId);
+    } else if (draft.remoteId) {
+      markRecordUpdated(draft);
     } else {
       markRecordUpdated(draft);
       draft.syncStatus = SYNC_STATUS.PENDING_CREATE;

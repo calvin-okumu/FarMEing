@@ -59,8 +59,11 @@ const createExpense = async (req, res) => {
     data: {
       projectId:  data.projectId,
       category:   data.category,
+      expenseType: data.expenseType ?? 'OPEX',
       amount:     data.amount,
       date:       new Date(data.date),
+      isRecurring: data.isRecurring ?? false,
+      frequency: data.frequency ?? null,
       note:       data.note       ?? null,
       receiptUrl: data.receiptUrl ?? null,
     },
