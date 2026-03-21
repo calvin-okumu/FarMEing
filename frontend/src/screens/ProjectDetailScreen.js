@@ -727,9 +727,17 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {activeTab === 'budget' ? visibleBudgetItems.length ? visibleBudgetItems.map((item) => renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'budget', item)) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
+        {activeTab === 'budget' ? visibleBudgetItems.length ? visibleBudgetItems.map((item) => (
+          <View key={item.id}>
+            {renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'budget', item)}
+          </View>
+        )) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
 
-        {activeTab === 'expenses' ? visibleExpenses.length ? visibleExpenses.map((item) => renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
+        {activeTab === 'expenses' ? visibleExpenses.length ? visibleExpenses.map((item) => (
+          <View key={item.id}>
+            {renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)}
+          </View>
+        )) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
 
         {activeTab === 'labor' ? (
           workEntries.length ? (
@@ -748,14 +756,26 @@ export default function ProjectDetailScreen({ route, navigation }) {
                   </StitchSurface>
                 </View>
               ) : null}
-              {visibleWorkEntries.map((item) => renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
+              {visibleWorkEntries.map((item) => (
+                <View key={item.id}>
+                  {renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item)}
+                </View>
+              ))}
             </>
           ) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
         ) : null}
 
-        {activeTab === 'harvest' ? visibleHarvests.length ? visibleHarvests.map((item) => renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
+        {activeTab === 'harvest' ? visibleHarvests.length ? visibleHarvests.map((item) => (
+          <View key={item.id}>
+            {renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)}
+          </View>
+        )) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
 
-        {activeTab === 'sales' ? visibleSales.length ? visibleSales.map((item) => renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
+        {activeTab === 'sales' ? visibleSales.length ? visibleSales.map((item) => (
+          <View key={item.id}>
+            {renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)}
+          </View>
+        )) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
 
         {activeTab === 'inventory' ? (
           <View style={[styles.collectionCard, styles.inventoryCard]}>

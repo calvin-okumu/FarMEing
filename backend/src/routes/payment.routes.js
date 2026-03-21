@@ -5,9 +5,26 @@ const { authenticate } = require('../middleware/auth.middleware');
 const router = Router();
 const prisma = new PrismaClient();
 
+async function findOwnedEmployee(employeeId, userId) {
+  if (!employeeId) return null;
+  return prisma.employee.findFirst({
+    where: {
+      id: employeeId,
+      userId,
+      isDeleted: false,
+    },
+  });
+}
+
 async function createPayment(req, res) {
   try {
+    const userId = req.user.id;
     const { employeeId, amount, date, note } = req.body;
+
+    const employee = await findOwnedEmployee(employeeId, userId);
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
     
     const payment = await prisma.payment.create({
       data: {
@@ -27,7 +44,13 @@ async function createPayment(req, res) {
 
 async function listPayments(req, res) {
   try {
+    const userId = req.user.id;
     const { employeeId } = req.params;
+
+    const employee = await findOwnedEmployee(employeeId, userId);
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
     
     const payments = await prisma.payment.findMany({
       where: { employeeId },
