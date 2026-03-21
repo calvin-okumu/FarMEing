@@ -19,7 +19,7 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import SearchBar from '../components/ui/SearchBar';
@@ -179,8 +179,8 @@ export default function ProjectsScreen({ navigation, route }) {
     }
   };
 
-  const chartValues = filteredProjects.slice(0, 6).map((project, index) => (project.landSize || 1) + index);
   const totalLand = filteredProjects.reduce((sum, project) => sum + (project.landSize || 0), 0);
+  const activeProjects = filteredProjects.filter((project) => (project.status || 'ACTIVE') === 'ACTIVE').length;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -203,26 +203,32 @@ export default function ProjectsScreen({ navigation, route }) {
       <StitchDashboardShell
         hero={{
           eyebrow: t('projects.title'),
-          title: String(filteredProjects.length),
-          subtitle: t('projects.directory_subtitle'),
+          title: t('projects.title'),
+          subtitle: 'Manage crop cycles, land use, and project records in one place.',
           actionIcon: 'add',
           onActionPress: openCreate,
+          style: styles.hero,
           children: (
-            <>
-              <View style={styles.heroStatsRow}>
-                <StitchHeroPill
-                  label={t('projects.fields.land_size')}
-                  value={`${totalLand.toLocaleString()} ${formData.landUnit}`}
-                  icon='resize-outline'
-                />
-                <StitchHeroPill
-                  label={t('projects.title')}
-                  value={String(filteredProjects.length)}
-                  icon='leaf-outline'
-                />
-              </View>
-              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={2} style={styles.heroBars} />
-            </>
+            <View style={styles.heroStatsRow}>
+              <StitchHeroPill
+                label={t('projects.fields.land_size')}
+                value={`${totalLand.toLocaleString()} ${formData.landUnit}`}
+                icon='resize-outline'
+                style={styles.heroPillPrimary}
+              />
+              <StitchHeroPill
+                label='Active'
+                value={String(activeProjects)}
+                icon='leaf-outline'
+                style={styles.heroPillSecondary}
+              />
+              <StitchHeroPill
+                label='Total'
+                value={String(filteredProjects.length)}
+                icon='albums-outline'
+                style={styles.heroPillTertiary}
+              />
+            </View>
           ),
         }}
         bodyContentStyle={styles.list}
@@ -230,7 +236,7 @@ export default function ProjectsScreen({ navigation, route }) {
       >
         <StatusBanner {...banner} />
         <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
-        <StitchDashboardSectionHeader title={t('projects.title')} subtitle={t('projects.directory_subtitle')} actionLabel={String(filteredProjects.length)} />
+        <StitchDashboardSectionHeader title={t('projects.directory_title')} subtitle='Browse and open project workspaces' actionLabel={String(filteredProjects.length)} />
         {filteredProjects.length ? filteredProjects.map((item, index) => {
           const accentStyle = index % 2 === 0 ? styles.cardAccentSage : styles.cardAccentAmber;
           const avatarStyle = index % 2 === 0 ? styles.cardAvatarForest : styles.cardAvatarWarm;
@@ -322,8 +328,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
   list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
-  heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
-  heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
+  hero: { paddingBottom: stitchTheme.spacing.md },
+  heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
+  heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
+  heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
+  heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', ...stitchShadows.soft },
   cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },

@@ -196,24 +196,23 @@ export default function QuickEntryScreen({ navigation }) {
         <StitchDashboardShell
           hero={{
             eyebrow: t('quick_entry.fields.activity'),
-            title: t('quick_entry.save'),
-            subtitle: selectedProject?.name || t('quick_entry.select_project'),
+            title: 'Quick Entry',
+            subtitle: selectedProject?.name || 'Log labor and save it directly to a project.',
             actionIcon: 'arrow-back',
             onActionPress: () => navigation.goBack(),
+            style: styles.hero,
             children: (
-              <>
-                <View style={styles.heroPills}>
-                  <StitchHeroPill label={t('quick_entry.total')} value={formatCurrency(total, currency)} icon='cash-outline' />
-                  <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' />
-                </View>
-                <StitchMiniBars values={graphValues} activeIndex={3} softIndex={1} style={styles.heroBars} />
-              </>
+              <View style={styles.heroPills}>
+                <StitchHeroPill label={t('quick_entry.total')} value={formatCurrency(total, currency)} icon='cash-outline' style={styles.heroPillPrimary} />
+                <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' style={styles.heroPillSecondary} />
+                <StitchHeroPill label={t('quick_entry.fields.activity')} value={t(`common.activities.${activity}`)} icon='flash-outline' style={styles.heroPillTertiary} />
+              </View>
             ),
           }}
           bodyContentStyle={styles.content}
         >
           <StatusBanner {...banner} style={styles.banner} />
-          <StitchDashboardSectionHeader title={t('quick_entry.save')} subtitle={t('quick_entry.fields.project')} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
+          <StitchDashboardSectionHeader title='Quick Entry' subtitle='Fill the form and save the labor record' actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <View style={styles.formCard}>
             <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
@@ -335,8 +334,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
-  heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
+  hero: { paddingBottom: stitchTheme.spacing.md },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10 },
+  heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
+  heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
+  heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   banner: { marginBottom: stitchTheme.spacing.md },
   formCard: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,

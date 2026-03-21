@@ -39,12 +39,12 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="ProjectsList"
         component={ProjectsScreen}
-        options={{ title: t('projects.title') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="ProjectDetail"
         component={ProjectDetailScreen}
-        options={{ title: t('dashboard.title') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="AddBudgetItem"
@@ -88,7 +88,7 @@ function EmployeeStackNavigator() {
       <EmployeeStack.Screen
         name="EmployeesList"
         component={EmployeesScreen}
-        options={{ title: t('employees.work_history') }}
+        options={{ headerShown: false }}
       />
       <EmployeeStack.Screen
         name="EmployeeDetail"

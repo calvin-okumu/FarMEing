@@ -111,11 +111,6 @@ export default function EmployeesScreen({ navigation }) {
     );
   }, [employees, query]);
 
-  const chartValues = useMemo(
-    () => filteredEmployees.slice(0, 7).map((employee, index) => Math.max(index + 1, (employee.name || '').length)),
-    [filteredEmployees]
-  );
-
   const syncedEmployees = useMemo(
     () => employees.filter((employee) => employee.remoteId).length,
     [employees]
@@ -124,6 +119,11 @@ export default function EmployeesScreen({ navigation }) {
   const rolesCount = useMemo(() => {
     return new Set(employees.map((employee) => employee.role).filter(Boolean)).size;
   }, [employees]);
+
+  const assignedEmployees = useMemo(
+    () => filteredEmployees.filter((employee) => !!employee.role).length,
+    [filteredEmployees]
+  );
 
   const handleCreate = async () => {
     try {
@@ -173,38 +173,17 @@ export default function EmployeesScreen({ navigation }) {
       <StitchDashboardShell
         hero={{
           eyebrow: t('settings.brand_short'),
-          title: t('employees.directory_title'),
-          subtitle: t('employees.title'),
+          title: t('employees.title'),
+          subtitle: 'Track team members, roles, and payment activity from one shared roster.',
           actionIcon: 'person-add',
           onActionPress: () => setModalVisible(true),
+          style: styles.hero,
           children: (
-            <>
-              <View style={styles.heroPills}>
-                <StitchHeroPill label={t('employees.title')} value={String(employees.length)} icon='people-outline' />
-                <StitchHeroPill label={t('employees.api_live')} value={String(syncedEmployees)} icon='cloud-done-outline' />
-                <StitchHeroPill label={t('employees.fields.role')} value={String(rolesCount)} icon='briefcase-outline' />
-              </View>
-              <View style={styles.chartWrap}>
-                {(chartValues.length ? chartValues : [2, 3, 4, 5, 3, 4, 2]).map((value, index, values) => {
-                  const maxValue = Math.max(...values, 1);
-                  const active = index === 3;
-                  return (
-                    <View
-                      key={`${value}-${index}`}
-                      style={[
-                        styles.bar,
-                        {
-                          height: Math.max(14, (value / maxValue) * 44),
-                          backgroundColor: active
-                            ? stitchTheme.colors.primaryDim
-                            : `rgba(82,183,136,${0.3 + (value / maxValue) * 0.45})`,
-                        },
-                      ]}
-                    />
-                  );
-                })}
-              </View>
-            </>
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('employees.title')} value={String(filteredEmployees.length)} icon='people-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label='Assigned' value={String(assignedEmployees)} icon='briefcase-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={t('employees.api_live')} value={String(syncedEmployees)} icon='cloud-done-outline' style={styles.heroPillTertiary} />
+            </View>
           ),
         }}
         bodyContentStyle={styles.list}
@@ -219,7 +198,7 @@ export default function EmployeesScreen({ navigation }) {
             <Ionicons name='options-outline' size={16} color={stitchTheme.colors.primary} />
           </TouchableOpacity>
         </View>
-        <StitchDashboardSectionHeader title={t('employees.title')} subtitle={t('employees.directory_title')} actionLabel={String(filteredEmployees.length)} />
+        <StitchDashboardSectionHeader title={t('employees.directory_title')} subtitle='Browse and open worker records' actionLabel={String(filteredEmployees.length)} />
         {filteredEmployees.length ? filteredEmployees.map((item) => (
           <WorkerCard
             key={item.id}
@@ -261,17 +240,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
   list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
-  chartWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 5,
-    height: 44,
-  },
-  bar: {
-    flex: 1,
-    borderRadius: 5,
-  },
+  hero: { paddingBottom: stitchTheme.spacing.md },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10 },
+  heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
+  heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
+  heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   searchRow: {
     flexDirection: 'row',
     gap: stitchTheme.spacing.sm,

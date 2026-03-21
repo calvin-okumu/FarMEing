@@ -664,11 +664,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
           subtitle: activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`,
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
+          style: styles.hero,
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' />
-              <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' />
-              <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' />
+              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' style={styles.heroPillTertiary} />
             </View>
           ),
         }}
@@ -845,7 +846,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 64 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  hero: { paddingBottom: stitchTheme.spacing.md },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10, marginBottom: stitchTheme.spacing.xs },
+  heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
+  heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
+  heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   banner: { marginTop: stitchTheme.spacing.xs },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted, marginBottom: stitchTheme.spacing.md },
