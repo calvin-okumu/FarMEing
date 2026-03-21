@@ -59,6 +59,7 @@ export default function StitchDashboardShell({
             actionIcon={hero.actionIcon}
             onActionPress={hero.onActionPress}
             style={hero.style}
+            variant={hero.variant}
           >
             {hero.children}
           </StitchHeroHeader>

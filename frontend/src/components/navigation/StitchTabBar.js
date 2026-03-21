@@ -13,6 +13,23 @@ const TAB_META = {
   Settings: { icon: 'person-outline' },
 };
 
+const ROOT_ROUTES = {
+  Dashboard: 'Dashboard',
+  Projects: 'ProjectsList',
+  Employees: 'EmployeesList',
+  QuickEntry: 'QuickEntry',
+  Settings: 'Settings',
+};
+
+function getDeepFocusedRouteName(route) {
+  if (!route?.state || typeof route.state.index !== 'number') {
+    return route?.name;
+  }
+
+  const child = route.state.routes?.[route.state.index];
+  return getDeepFocusedRouteName(child);
+}
+
 export default function StitchTabBar({ state, descriptors, navigation }) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
@@ -48,8 +65,16 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+            if (!event.defaultPrevented) {
+              const rootRouteName = ROOT_ROUTES[route.name];
+              if (rootRouteName && rootRouteName !== route.name) {
+                navigation.navigate(route.name, { screen: rootRouteName });
+                return;
+              }
+
+              if (!isFocused) {
+                navigation.navigate(route.name);
+              }
             }
           };
 
@@ -60,13 +85,13 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
               accessibilityState={isFocused ? { selected: true } : {}}
               onPress={onPress}
               style={[styles.item, isFocused && styles.itemActive]}
-              activeOpacity={0.88}
+              activeOpacity={0.96}
             >
               {isFocused ? <View style={styles.itemGlow} /> : null}
               <Ionicons
                 name={isFocused ? meta.icon.replace('-outline', '') : meta.icon}
                 size={20}
-                color={isFocused ? stitchTheme.colors.primary : stitchTheme.colors.textMuted}
+                color={isFocused ? '#ffffff' : 'rgba(255,255,255,0.68)'}
               />
               <Text style={[styles.label, isFocused && styles.labelActive]} numberOfLines={1}>
                 {label}
@@ -85,6 +110,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'transparent',
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,
     paddingHorizontal: 14,
     paddingTop: 10,
@@ -94,17 +120,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     minHeight: STITCH_TAB_BAR_HEIGHT - (Platform.OS === 'ios' ? 56 : 42),
-    backgroundColor: stitchTheme.colors.navTrack,
+    backgroundColor: 'rgba(17,42,30,0.94)',
     borderRadius: 30,
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.56)',
+    borderColor: 'rgba(255,255,255,0.08)',
     shadowColor: '#1a3d2b',
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
   },
   item: {
     flex: 1,
@@ -117,9 +143,9 @@ const styles = StyleSheet.create({
     minHeight: 58,
   },
   itemActive: {
-    backgroundColor: stitchTheme.colors.navActive,
+    backgroundColor: 'rgba(253,250,244,0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.72)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   itemGlow: {
     position: 'absolute',
@@ -127,18 +153,18 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: 27,
     top: -14,
-    backgroundColor: 'rgba(183,228,199,0.35)',
+    backgroundColor: 'rgba(183,228,199,0.18)',
   },
   label: {
     fontSize: 10.5,
     lineHeight: 14,
     fontWeight: '700',
     fontFamily: stitchTheme.fonts.label,
-    color: stitchTheme.colors.textMuted,
+    color: 'rgba(255,255,255,0.62)',
     letterSpacing: 0.5,
   },
   labelActive: {
-    color: stitchTheme.colors.primary,
+    color: '#ffffff',
     fontWeight: '800',
   },
 });

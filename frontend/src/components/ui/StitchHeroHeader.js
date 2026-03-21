@@ -11,24 +11,27 @@ export default function StitchHeroHeader({
   onActionPress,
   children,
   style,
+  variant = 'default',
 }) {
+  const compact = variant === 'compact';
+
   return (
     <View style={[styles.hero, style]}>
-      <View style={styles.circleLarge} />
-      <View style={styles.circleSmall} />
+      <View style={[styles.circleLarge, compact && styles.circleLargeCompact]} />
+      <View style={[styles.circleSmall, compact && styles.circleSmallCompact]} />
 
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, compact && styles.topRowCompact]}>
         <View style={styles.copy}>
-          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-          <Text style={styles.title}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          {eyebrow ? <Text style={[styles.eyebrow, compact && styles.eyebrowCompact]}>{eyebrow}</Text> : null}
+          <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
+          {subtitle ? <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text> : null}
         </View>
         {onActionPress ? (
           <StitchIconButton icon={actionIcon || 'ellipsis-horizontal'} onPress={onActionPress} style={styles.actionButton} />
         ) : null}
       </View>
 
-      {children ? <View style={styles.footer}>{children}</View> : null}
+      {children ? <View style={[styles.footer, compact && styles.footerCompact]}>{children}</View> : null}
     </View>
   );
 }
@@ -77,6 +80,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: stitchTheme.spacing.sm,
   },
+  topRowCompact: {
+    gap: stitchTheme.spacing.xs,
+  },
   copy: {
     flex: 1,
   },
@@ -90,6 +96,9 @@ const styles = StyleSheet.create({
     color: stitchTheme.colors.primaryDim,
     marginBottom: 4,
   },
+  eyebrowCompact: {
+    marginBottom: 2,
+  },
   title: {
     fontSize: stitchTheme.typography.hero.fontSize,
     lineHeight: stitchTheme.typography.hero.lineHeight,
@@ -98,12 +107,20 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     letterSpacing: -1,
   },
+  titleCompact: {
+    fontSize: 28,
+    lineHeight: 31,
+  },
   subtitle: {
     marginTop: 5,
     fontSize: stitchTheme.typography.bodySmall.fontSize,
     lineHeight: stitchTheme.typography.bodySmall.lineHeight,
     fontFamily: stitchTheme.fonts.body,
     color: 'rgba(255,255,255,0.58)',
+  },
+  subtitleCompact: {
+    marginTop: 3,
+    maxWidth: '88%',
   },
   actionButton: {
     marginTop: 4,
@@ -112,6 +129,23 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: stitchTheme.spacing.md,
+  },
+  footerCompact: {
+    marginTop: stitchTheme.spacing.sm,
+  },
+  circleLargeCompact: {
+    top: -70,
+    right: -60,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+  },
+  circleSmallCompact: {
+    bottom: -48,
+    left: 12,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
   },
   pill: {
     flex: 1,
