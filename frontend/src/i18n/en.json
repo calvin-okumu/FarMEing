@@ -149,6 +149,7 @@
   "projects": {
     "title": "My Farm Projects",
     "portfolio_title": "Project Portfolio",
+    "directory_title": "Project Portfolio",
     "tabs": {
       "budget": "Budget",
       "expenses": "Expenses",
@@ -261,6 +262,7 @@
     }
   },
   "employees": {
+    "title": "Employees",
     "fields": {
       "name": "Name",
       "phone": "Phone",

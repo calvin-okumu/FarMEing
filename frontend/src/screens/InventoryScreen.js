@@ -201,7 +201,7 @@ export default function InventoryScreen({ route, navigation }) {
       >
         <StatusBanner {...banner} />
         <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
-        <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel={String(filteredItems.length)} />
+        <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel='New Item' onActionPress={openCreate} />
         {filteredItems.length ? filteredItems.map((item) => (
           <TouchableOpacity key={item.id} style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
             <View style={styles.cardTop}>
@@ -220,10 +220,6 @@ export default function InventoryScreen({ route, navigation }) {
           </TouchableOpacity>
         )) : <EmptyState icon="cube-outline" title={t('inventory.empty_title')} subtitle={t('inventory.empty_subtitle')} />}
       </StitchDashboardShell>
-
-      <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.9}>
-        <Ionicons name="add" size={28} color={stitchTheme.colors.primary} />
-      </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -316,7 +312,6 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 4 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.md, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
   cardAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  fab: { position: 'absolute', bottom: 20, right: 20, width: 50, height: 50, borderRadius: 25, backgroundColor: stitchTheme.colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.68)', ...stitchShadows.float },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.backgroundAccent, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },

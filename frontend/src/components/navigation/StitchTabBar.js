@@ -6,11 +6,11 @@ import { stitchTheme } from '../../theme/stitchTheme';
 export const STITCH_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 126 : 112;
 
 const TAB_META = {
-  Dashboard: { icon: 'grid-outline' },
-  Projects: { icon: 'albums-outline' },
-  Employees: { icon: 'people-outline' },
-  QuickEntry: { icon: 'flash-outline' },
-  Settings: { icon: 'person-outline' },
+  Dashboard: { icon: 'grid-outline', label: 'Home' },
+  Projects: { icon: 'albums-outline', label: 'Projects' },
+  Employees: { icon: 'people-outline', label: 'Workers' },
+  QuickEntry: { icon: 'flash-outline', label: 'Quick' },
+  Settings: { icon: 'person-outline', label: 'Profile' },
 };
 
 const ROOT_ROUTES = {
@@ -55,7 +55,7 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
           const { options } = descriptors[route.key];
-          const label = options.tabBarLabel ?? options.title ?? route.name;
+          const label = options.tabBarLabel ?? TAB_META[route.name]?.label ?? route.name;
           const meta = TAB_META[route.name] || TAB_META.Dashboard;
 
           const onPress = () => {
@@ -138,6 +138,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     gap: 5,
+    paddingHorizontal: 4,
     paddingVertical: 10,
     borderRadius: 22,
     minHeight: 58,

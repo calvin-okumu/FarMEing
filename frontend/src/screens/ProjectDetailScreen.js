@@ -22,7 +22,7 @@ import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import StitchDashboardShell from '../components/ui/StitchDashboardShell';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
@@ -655,6 +655,17 @@ export default function ProjectDetailScreen({ route, navigation }) {
     );
   }
 
+  const handlePrimaryAction = () => {
+    const params = { projectId: project.id };
+    if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
+    else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
+    else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
+    else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
+    else if (activeTab === 'sales') navigation.navigate('AddSale', params);
+    else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
+    else navigation.navigate('AddExpense', params);
+  };
+
   return (
     <View style={styles.screen}>
       <StitchDashboardShell
@@ -719,6 +730,15 @@ export default function ProjectDetailScreen({ route, navigation }) {
             );
           })}
         </ScrollView>
+
+        {activeTab !== 'timeline' ? (
+          <StitchDashboardSectionHeader
+            title={t(`projects.tabs.${activeTab}`)}
+            subtitle={activeTab === 'inventory' ? t('inventory.project_inventory_subtitle') : 'Browse records and create a new entry'}
+            actionLabel={activeTab === 'inventory' ? t('inventory.open') : 'Add'}
+            onActionPress={handlePrimaryAction}
+          />
+        ) : null}
 
         {activeTab !== 'timeline' && activeTab !== 'inventory' ? (
           <View style={styles.toolbarBlock}>
@@ -810,25 +830,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        <View style={{ height: 140 }} />
+        <View style={{ height: 40 }} />
       </StitchDashboardShell>
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => {
-          const params = { projectId: project.id };
-          if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
-          else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
-          else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
-          else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
-          else if (activeTab === 'sales') navigation.navigate('AddSale', params);
-          else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
-          else navigation.navigate('AddExpense', params);
-        }}
-        activeOpacity={0.9}
-      >
-        <Ionicons name="add" size={30} color={stitchTheme.colors.primary} />
-      </TouchableOpacity>
 
       <ConfirmDialog
         visible={!!deleteTarget}
@@ -952,16 +955,4 @@ const styles = StyleSheet.create({
   timelinePreviewRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
   timelinePreview: { width: 80, height: 80, borderRadius: stitchTheme.radius.lg, alignItems: 'center', justifyContent: 'center' },
   timelineFooterValue: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  fab: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 112 : 96,
-    right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    backgroundColor: stitchTheme.colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...stitchShadows.float,
-  },
 });

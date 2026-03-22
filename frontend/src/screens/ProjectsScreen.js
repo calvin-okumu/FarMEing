@@ -236,7 +236,7 @@ export default function ProjectsScreen({ navigation, route }) {
       >
         <StatusBanner {...banner} />
         <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
-        <StitchDashboardSectionHeader title={t('projects.directory_title')} subtitle='Browse and open project workspaces' actionLabel={String(filteredProjects.length)} />
+        <StitchDashboardSectionHeader title={t('projects.directory_title', { defaultValue: t('projects.portfolio_title') })} subtitle='Browse and open project workspaces' actionLabel={String(filteredProjects.length)} />
         {filteredProjects.length ? filteredProjects.map((item, index) => {
           const accentStyle = index % 2 === 0 ? styles.cardAccentSage : styles.cardAccentAmber;
           const avatarStyle = index % 2 === 0 ? styles.cardAvatarForest : styles.cardAvatarWarm;
@@ -280,10 +280,6 @@ export default function ProjectsScreen({ navigation, route }) {
           );
         }) : <EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
       </StitchDashboardShell>
-
-      <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.9}>
-        <Ionicons name="add" size={28} color={stitchTheme.colors.primary} />
-      </TouchableOpacity>
 
       <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={() => setModalVisible(false)}>
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -357,7 +353,6 @@ const styles = StyleSheet.create({
   cardActionButton: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
   cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
-  fab: { position: 'absolute', bottom: stitchTheme.spacing.lg, right: stitchTheme.spacing.lg, width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.surfaceHighlight, borderWidth: 1, borderColor: 'rgba(255,255,255,0.68)', alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
   compactLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
   input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
   dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },

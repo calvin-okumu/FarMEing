@@ -173,14 +173,14 @@ export default function EmployeesScreen({ navigation }) {
       <StitchDashboardShell
         hero={{
           eyebrow: t('settings.brand_short'),
-          title: t('employees.title'),
+          title: t('employees.title', { defaultValue: 'Employees' }),
           subtitle: 'Track team members, roles, and payment activity from one shared roster.',
           actionIcon: 'person-add',
           onActionPress: () => setModalVisible(true),
           style: styles.hero,
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('employees.title')} value={String(filteredEmployees.length)} icon='people-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('employees.title', { defaultValue: 'Employees' })} value={String(filteredEmployees.length)} icon='people-outline' style={styles.heroPillPrimary} />
               <StitchHeroPill label='Assigned' value={String(assignedEmployees)} icon='briefcase-outline' style={styles.heroPillSecondary} />
               <StitchHeroPill label={t('employees.api_live')} value={String(syncedEmployees)} icon='cloud-done-outline' style={styles.heroPillTertiary} />
             </View>
@@ -198,7 +198,7 @@ export default function EmployeesScreen({ navigation }) {
             <Ionicons name='options-outline' size={16} color={stitchTheme.colors.primary} />
           </TouchableOpacity>
         </View>
-        <StitchDashboardSectionHeader title={t('employees.directory_title')} subtitle='Browse and open worker records' actionLabel={String(filteredEmployees.length)} />
+        <StitchDashboardSectionHeader title={t('employees.directory_title', { defaultValue: 'People & Payments' })} subtitle='Browse and open worker records' actionLabel={String(filteredEmployees.length)} />
         {filteredEmployees.length ? filteredEmployees.map((item) => (
           <WorkerCard
             key={item.id}

@@ -114,27 +114,27 @@ export default function TabNavigator() {
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: t('dashboard.title') }}
+        options={{ title: t('dashboard.title'), tabBarLabel: 'Home' }}
       />
       <Tab.Screen
         name="Projects"
         component={ProjectStackNavigator}
-        options={{ title: t('projects.title') }}
+        options={{ title: t('projects.title'), tabBarLabel: 'Projects' }}
       />
       <Tab.Screen
         name="Employees"
         component={EmployeeStackNavigator}
-        options={{ title: t('tab.workers') }}
+        options={{ title: t('tab.workers'), tabBarLabel: 'Workers' }}
       />
       <Tab.Screen
         name="QuickEntry"
         component={QuickEntryScreen}
-        options={{ title: 'Quick' }}
+        options={{ title: 'Quick', tabBarLabel: 'Quick' }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: t('tab.profile') }}
+        options={{ title: t('tab.profile'), tabBarLabel: 'Profile' }}
       />
     </Tab.Navigator>
   );
