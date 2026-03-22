@@ -119,6 +119,21 @@ function ResourceOverviewCard({ eyebrow, title, value, tone = 'soft' }) {
   );
 }
 
+function WorkspaceAction({ label, icon, onPress, tone = 'default' }) {
+  return (
+    <TouchableOpacity
+      style={[styles.workspaceAction, tone === 'accent' && styles.workspaceActionAccent]}
+      onPress={onPress}
+      activeOpacity={0.88}
+    >
+      <View style={[styles.workspaceActionIcon, tone === 'accent' && styles.workspaceActionIconAccent]}>
+        <Ionicons name={icon} size={16} color={tone === 'accent' ? '#ffffff' : stitchTheme.colors.primary} />
+      </View>
+      <Text style={[styles.workspaceActionText, tone === 'accent' && styles.workspaceActionTextAccent]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, initialTab } = route.params || {};
@@ -465,8 +480,40 @@ export default function ProjectDetailScreen({ route, navigation }) {
       amountLabel: `- ${formatCurrency(expense.amount, currency)}`,
     }));
 
-    return [...workItems, ...expenseItems].sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [workEntries, expenses, employeeMap, t, currency]);
+    const harvestItems = harvests.slice(0, 2).map((harvest) => ({
+      type: 'HARVEST',
+      date: harvest.date,
+      icon: 'leaf-outline',
+      title: `${t('timeline.harvest_title', { defaultValue: 'Harvest update' })} / ${harvest.crop || t('harvest.entry_title')}`,
+      body: harvest.notes || t('timeline.harvest_default_body', { defaultValue: `Harvest quality: ${harvest.quality || t('harvest.default_quality')}`, quality: harvest.quality || t('harvest.default_quality') }),
+      timeIcon: 'calendar-outline',
+      timeLabel: formatAppDate(harvest.date),
+      dotColor: stitchTheme.colors.primaryDim,
+      amount: harvest.weight,
+      amountLabel: `${harvest.weight || 0} ${harvest.unit || t('harvest.units.kg')}`,
+      badge: harvest.quality ? t(`harvest.qualities.${harvest.quality}`, { defaultValue: harvest.quality }) : null,
+      badgeBackground: stitchTheme.colors.successSurface,
+      badgeColor: stitchTheme.colors.primary,
+    }));
+
+    const saleItems = sales.slice(0, 2).map((sale) => ({
+      type: 'SALE',
+      date: sale.date,
+      icon: 'cash-outline',
+      title: `${t('timeline.sale_title', { defaultValue: 'Sale recorded' })} / ${sale.customer || t('sales.cash_sale')}`,
+      body: sale.notes || t('timeline.sale_default_body', { defaultValue: `Recorded sale for ${sale.customer || t('sales.cash_sale')}`, customer: sale.customer || t('sales.cash_sale') }),
+      timeIcon: 'calendar-outline',
+      timeLabel: formatAppDate(sale.date),
+      dotColor: stitchTheme.colors.accentBrown,
+      amount: sale.totalAmount,
+      amountLabel: formatCurrency(sale.totalAmount || 0, currency),
+      badge: sale.weightSold ? `${sale.weightSold} ${t('harvest.units.kg')}` : null,
+      badgeBackground: stitchTheme.colors.warningSurface,
+      badgeColor: stitchTheme.colors.accentBrown,
+    }));
+
+    return [...workItems, ...expenseItems, ...harvestItems, ...saleItems].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [workEntries, expenses, harvests, sales, employeeMap, t, currency]);
 
   const mergedTimeline = localTimeline;
   const activeLocalCount = activeTab === 'budget' ? budgetItems.length
@@ -666,13 +713,22 @@ export default function ProjectDetailScreen({ route, navigation }) {
     else navigation.navigate('AddExpense', params);
   };
 
+  const activeTabLabel = t(`projects.tabs.${activeTab}`);
+  const activeTabCount = activeTab === 'budget' ? visibleBudgetItems.length
+    : activeTab === 'expenses' ? visibleExpenses.length
+    : activeTab === 'labor' ? visibleWorkEntries.length
+    : activeTab === 'harvest' ? visibleHarvests.length
+    : activeTab === 'sales' ? visibleSales.length
+    : activeTab === 'timeline' ? mergedTimeline.length
+    : 1;
+
   return (
     <View style={styles.screen}>
       <StitchDashboardShell
         hero={{
           eyebrow: t('timeline.project_activity'),
           title: project.name,
-          subtitle: activeTab === 'timeline' ? t('timeline.history_title') : `${project.crop} ${t('timeline.overview')}`,
+          subtitle: `${project.crop} • ${project.landSize} ${project.landUnit}`,
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
           style: styles.hero,
@@ -690,12 +746,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         <StitchSurface style={styles.heroCard}>
           <View style={styles.heroRow}>
-            <Text style={styles.heroMeta}>{project.crop} • {project.landSize} {project.landUnit}</Text>
+            <Text style={styles.heroMeta}>{project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}</Text>
             <View style={[styles.heroStatus, project.status === 'ACTIVE' ? styles.heroStatusActive : styles.heroStatusMuted]}>
               <Text style={[styles.heroStatusText, project.status === 'ACTIVE' ? styles.heroStatusTextActive : styles.heroStatusTextMuted]}>{project.status}</Text>
             </View>
           </View>
-          <View style={styles.summaryRow}>
+          <View style={styles.summaryGrid}>
+            <SummaryCard label={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} />
             <SummaryCard label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} />
             <SummaryCard label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} tone="accent" />
             <SummaryCard label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} />
@@ -706,21 +763,36 @@ export default function ProjectDetailScreen({ route, navigation }) {
           <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.spent')}</Text>
         </StitchSurface>
 
-        {activeTab !== 'timeline' ? (
-          <View style={styles.overviewGrid}>
-            <ResourceOverviewCard
-              eyebrow={t('dashboard.spent')}
-              title={project.crop || t('projects.fields.crop')}
-              value={formatCurrency(totalSpent, currency)}
-            />
-            <ResourceOverviewCard
-              eyebrow={t('dashboard.revenue')}
-              title={t('projects.tabs.sales')}
-              value={formatCurrency(totalRevenue, currency)}
-              tone="accent"
-            />
-          </View>
-        ) : null}
+        <View style={styles.overviewGrid}>
+          <ResourceOverviewCard
+            eyebrow={t('dashboard.profit', { defaultValue: 'Profit' })}
+            title={totalRevenue >= totalSpent ? t('timeline.completed') : t('dashboard.spent')}
+            value={formatCurrency(totalRevenue - totalSpent, currency)}
+            tone="accent"
+          />
+          <ResourceOverviewCard
+            eyebrow={t('dashboard.budget')}
+            title={project.crop || t('projects.fields.crop')}
+            value={`${budgetProgress.toFixed(0)}%`}
+          />
+        </View>
+
+        <StitchDashboardSectionHeader
+          title='Workspace'
+          subtitle='Choose the next project operation'
+          actionLabel={activeTabLabel}
+        />
+
+        <View style={styles.workspaceActionsRow}>
+          <WorkspaceAction label='Budget' icon='wallet-outline' onPress={() => setActiveTab('budget')} />
+          <WorkspaceAction label='Expense' icon='receipt-outline' onPress={() => setActiveTab('expenses')} />
+          <WorkspaceAction label='Labor' icon='people-outline' onPress={() => setActiveTab('labor')} />
+        </View>
+        <View style={styles.workspaceActionsRow}>
+          <WorkspaceAction label='Harvest' icon='leaf-outline' onPress={() => setActiveTab('harvest')} />
+          <WorkspaceAction label='Sales' icon='cash-outline' onPress={() => setActiveTab('sales')} />
+          <WorkspaceAction label={activeTab === 'inventory' ? 'Open Stock' : 'Timeline'} icon={activeTab === 'inventory' ? 'cube-outline' : 'time-outline'} onPress={() => activeTab === 'inventory' ? handlePrimaryAction() : setActiveTab('timeline')} tone='accent' />
+        </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TAB_ORDER.map((tab) => {
@@ -733,9 +805,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         {activeTab !== 'timeline' ? (
           <StitchDashboardSectionHeader
-            title={t(`projects.tabs.${activeTab}`)}
+            title={activeTabLabel}
             subtitle={activeTab === 'inventory' ? t('inventory.project_inventory_subtitle') : 'Browse records and create a new entry'}
-            actionLabel={activeTab === 'inventory' ? t('inventory.open') : 'Add'}
+            actionLabel={activeTab === 'inventory' ? t('inventory.open') : `Add (${activeTabCount})`}
             onActionPress={handlePrimaryAction}
           />
         ) : null}
@@ -804,19 +876,33 @@ export default function ProjectDetailScreen({ route, navigation }) {
         )) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
 
         {activeTab === 'inventory' ? (
-          <View style={[styles.collectionCard, styles.inventoryCard]}>
-            <View style={[styles.cardAccent, styles.cardAccentSage]} />
-            <View style={styles.collectionTopRow}>
-              <View style={styles.inventoryCopy}>
-                <Text style={styles.collectionTitle}>{t('inventory.title')}</Text>
-                <Text style={styles.collectionMeta}>{t('inventory.project_inventory_subtitle')}</Text>
-              </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })} activeOpacity={0.88} style={styles.inventoryOpenRow}>
-                <Text style={styles.inventoryLink}>{t('inventory.open')}</Text>
-                <Ionicons name='chevron-forward' size={12} color={stitchTheme.colors.primaryContainer} />
-              </TouchableOpacity>
+          <>
+            <View style={styles.analyticsRow}>
+              <StitchSurface style={styles.analyticsCard}>
+                <Text style={styles.analyticsLabel}>{t('inventory.title')}</Text>
+                <Text style={styles.analyticsTitle}>{t('inventory.project_inventory_subtitle')}</Text>
+                <Text style={styles.analyticsValue}>{project.crop || t('projects.fields.crop')}</Text>
+              </StitchSurface>
+              <StitchSurface style={styles.analyticsCard}>
+                <Text style={styles.analyticsLabel}>{t('projects.tabs.inventory')}</Text>
+                <Text style={styles.analyticsTitle}>Open stock register</Text>
+                <Text style={styles.analyticsValue}>{project.landSize} {project.landUnit}</Text>
+              </StitchSurface>
             </View>
-          </View>
+            <View style={[styles.collectionCard, styles.inventoryCard]}>
+              <View style={[styles.cardAccent, styles.cardAccentSage]} />
+              <View style={styles.collectionTopRow}>
+                <View style={styles.inventoryCopy}>
+                  <Text style={styles.collectionTitle}>{t('inventory.title')}</Text>
+                  <Text style={styles.collectionMeta}>{t('inventory.project_inventory_subtitle')}</Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })} activeOpacity={0.88} style={styles.inventoryOpenRow}>
+                  <Text style={styles.inventoryLink}>{t('inventory.open')}</Text>
+                  <Ionicons name='chevron-forward' size={12} color={stitchTheme.colors.primaryContainer} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
         ) : null}
 
         {activeTab === 'timeline' ? (
