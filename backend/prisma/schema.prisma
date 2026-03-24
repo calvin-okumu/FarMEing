@@ -50,6 +50,7 @@ model FarmProject {
   expectedYield Float?       @default(0)
   status        String       @default("ACTIVE") // PLANNING, ACTIVE, HARVESTED, CLOSED
   notes         String?
+  contractUrl   String?
   isDeleted     Boolean      @default(false)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -89,6 +90,7 @@ model Expense {
   frequency   String?     // DAILY, WEEKLY, MONTHLY
   note        String?
   receiptUrl  String?
+  payee       String?
   isDeleted   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -186,6 +188,7 @@ model InventoryItem {
   totalCost Float
   usedQty   Float    @default(0)
   notes     String?
+  payee     String?
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 7,
+  version: 8,
   tables: [
     // ── FarmProject ─────────────────────────────────────────────────────────
     tableSchema({
@@ -19,6 +19,7 @@ export default appSchema({
         { name: 'expected_yield', type: 'number', isOptional: true },
         { name: 'status',         type: 'string' },          // PLANNING, ACTIVE, HARVESTED, CLOSED
         { name: 'notes',          type: 'string', isOptional: true },
+        { name: 'contract_url',   type: 'string', isOptional: true },
         { name: 'is_deleted',     type: 'boolean' },
         { name: 'created_at',     type: 'number' },
         { name: 'updated_at',     type: 'number' },
@@ -62,6 +63,7 @@ export default appSchema({
         { name: 'frequency',    type: 'string', isOptional: true }, // DAILY, WEEKLY, MONTHLY
         { name: 'note',         type: 'string', isOptional: true },
         { name: 'receipt_url',  type: 'string', isOptional: true },
+        { name: 'payee',        type: 'string', isOptional: true },
         { name: 'is_deleted',   type: 'boolean' },
         { name: 'created_at',   type: 'number' },
         { name: 'updated_at',   type: 'number' },
@@ -192,6 +194,7 @@ export default appSchema({
         { name: 'total_cost', type: 'number' },
         { name: 'used_qty', type: 'number' },
         { name: 'notes', type: 'string', isOptional: true },
+        { name: 'payee', type: 'string', isOptional: true },
         { name: 'is_deleted', type: 'boolean' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },

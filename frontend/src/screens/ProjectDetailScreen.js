@@ -649,6 +649,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
       <Text style={styles.collectionMeta}>{meta}</Text>
       {type && item ? (
         <View style={styles.collectionActionRow}>
+          <Text style={styles.collectionActionLabel}>Actions</Text>
+          <View style={styles.collectionActionGroup}>
           <TouchableOpacity style={styles.collectionActionButton} onPress={() => handleEditItem(type, item)} activeOpacity={0.88}>
             <Ionicons name="create-outline" size={16} color={stitchTheme.colors.primary} />
             <Text style={styles.collectionActionText}>{t('common.edit')}</Text>
@@ -657,6 +659,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <Ionicons name="trash-outline" size={16} color={stitchTheme.colors.accentRed} />
             <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
           </TouchableOpacity>
+          </View>
         </View>
       ) : null}
       {type === 'labor' ? (
@@ -734,7 +737,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           style: styles.hero,
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
               <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
               <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' style={styles.heroPillTertiary} />
             </View>
@@ -753,25 +756,25 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
           <View style={styles.summaryGrid}>
             <SummaryCard label={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} />
-            <SummaryCard label={t('dashboard.spent')} value={formatCurrency(totalSpent, currency)} />
-            <SummaryCard label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} tone="accent" />
-            <SummaryCard label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} />
+            <SummaryCard label={t('dashboard.non_labor_costs', { defaultValue: 'Non-Labor Costs' })} value={formatCurrency(totalExpenses, currency)} />
+            <SummaryCard label={t('dashboard.labor_cost')} value={formatCurrency(totalLabor, currency)} />
+            <SummaryCard label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} tone="accent" />
           </View>
           <View style={styles.progressBarTrack}>
             <View style={[styles.progressBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && styles.progressBarFillDanger]} />
           </View>
-          <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.spent')}</Text>
+          <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.total_spent')}</Text>
         </StitchSurface>
 
         <View style={styles.overviewGrid}>
           <ResourceOverviewCard
             eyebrow={t('dashboard.profit', { defaultValue: 'Profit' })}
-            title={totalRevenue >= totalSpent ? t('timeline.completed') : t('dashboard.spent')}
+            title={totalRevenue >= totalSpent ? t('timeline.completed') : t('dashboard.total_spent')}
             value={formatCurrency(totalRevenue - totalSpent, currency)}
             tone="accent"
           />
           <ResourceOverviewCard
-            eyebrow={t('dashboard.budget')}
+            eyebrow={t('dashboard.total_spent')}
             title={project.crop || t('projects.fields.crop')}
             value={`${budgetProgress.toFixed(0)}%`}
           />
@@ -827,7 +830,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         {activeTab === 'budget' ? visibleBudgetItems.length ? visibleBudgetItems.map((item) => (
           <View key={item.id}>
-            {renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'budget', item)}
+            {renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'default', 'budget', item)}
           </View>
         )) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
 
@@ -984,11 +987,13 @@ const styles = StyleSheet.create({
   collectionAmountPositive: { color: stitchTheme.colors.primary },
   collectionAmountNegative: { color: stitchTheme.colors.accentRed },
   collectionMeta: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted },
-  collectionActionRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
-  collectionActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
+  collectionActionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
+  collectionActionLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  collectionActionGroup: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs },
+  collectionActionButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 7, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
   collectionActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
-  collectionActionText: { color: stitchTheme.colors.primary, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },
-  collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },
+  collectionActionText: { color: stitchTheme.colors.primary, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800' },
+  collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800' },
   inventoryCard: { paddingHorizontal: 17 },
   inventoryCopy: { flex: 1, paddingLeft: 8 },
   inventoryOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },

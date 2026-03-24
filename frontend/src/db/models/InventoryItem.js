@@ -12,8 +12,9 @@ export default class InventoryItem extends Model {
   @text('unit') unit;
   @field('unit_cost') unitCost;
   @field('total_cost') totalCost;
-  @field('used_qty') usedQty;
-  @text('notes') notes;
+  @field('used_qty')   usedQty;
+  @text('notes')       notes;
+  @text('payee')       payee;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;

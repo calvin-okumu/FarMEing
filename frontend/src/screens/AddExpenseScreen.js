@@ -53,6 +53,7 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState('monthly');
   const [note, setNote] = useState('');
+  const [payee, setPayee] = useState('');
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
@@ -69,6 +70,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       setIsRecurring(!!item.isRecurring);
       setFrequency(item.frequency?.toLowerCase() || 'monthly');
       setNote(item.note || '');
+      setPayee(item.payee || '');
       setPhoto(item.receiptUrl || null);
     }).catch(() => {});
   }, [itemId]);
@@ -126,6 +128,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.frequency = isRecurring ? frequency.toUpperCase() : null;
             draft.note = note.trim();
             draft.receiptUrl = photo || '';
+            draft.payee = payee.trim();
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -140,6 +143,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             record.frequency = isRecurring ? frequency.toUpperCase() : null;
             record.note = note.trim();
             record.receiptUrl = photo || '';
+            record.payee = payee.trim();
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -233,6 +237,15 @@ export default function AddExpenseScreen({ route, navigation }) {
         <View style={styles.field}>
           <Text style={styles.fieldMuted}>{draftId}</Text>
         </View>
+
+        <StitchSectionLabel>{t('expenses.fields.payee', { defaultValue: 'Payee / Vendor' })}</StitchSectionLabel>
+        <TextInput
+          style={styles.inputField}
+          value={payee}
+          onChangeText={setPayee}
+          placeholder={t('expenses.placeholders.payee', { defaultValue: 'e.g. Mark, AgroVet' })}
+          placeholderTextColor="#7a8296"
+        />
 
         <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
         <TextInput
@@ -345,6 +358,7 @@ const styles = StyleSheet.create({
   field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
   fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   fieldMuted: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '600', color: stitchTheme.colors.textMuted },
+  inputField: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
   noteField: { minHeight: 132, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
   uploadCard: { marginTop: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.md, ...stitchShadows.soft },
   uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },

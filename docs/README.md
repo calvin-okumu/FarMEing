@@ -6,38 +6,25 @@ This directory contains reference documentation for the FarmTrack full-stack far
 
 | Document | Description |
 |---|---|
-| [backend.md](./backend.md) | Node.js/Express REST API — stack, setup, all endpoints, Prisma schema, middleware, folder structure |
-| [frontend.md](./frontend.md) | Expo/React Native mobile app — stack, setup, screens, WatermelonDB, sync service, navigation, auth flow |
+| [backend.md](./backend.md) | Node.js/Express REST API — models, endpoints, Prisma schema |
+| [frontend.md](./frontend.md) | Expo/React Native mobile app — screens, WatermelonDB, sync service, localization |
 
 ## Project Overview
 
-FarmTrack is a mobile-first farm management application that lets farmers track projects, budget items, expenses, employees, work entries, payments, and inventory. The mobile app works offline using a local WatermelonDB SQLite database and syncs data from the backend API on demand.
+FarmTrack is a mobile-first farm management application that lets farmers track projects, harvests, sales, and labor.
+
+### Key Features
+- **Offline-First:** Full data access and creation without a network connection.
+- **Bi-directional Sync:** Automatic synchronization between local database and server.
+- **Multilingual Support:** English and Kiswahili (i18n).
+- **Yield Tracking:** Record crop yields and calculate revenue from sales.
+- **Financial Dashboard:** Real-time summary of costs and revenue.
 
 ## Repository Structure
 
 ```
 Node_Proj/
 ├── backend/          # Express REST API
-│   ├── prisma/       # Prisma schema and migrations
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── routes/
-│   │   ├── validators/
-│   │   └── lib/
-│   └── server.js
 ├── frontend/         # Expo React Native app
-│   ├── src/
-│   │   ├── db/       # WatermelonDB schema and models
-│   │   ├── navigation/
-│   │   ├── screens/
-│   │   ├── services/
-│   │   ├── store/
-│   │   ├── hooks/
-│   │   └── lib/
-│   └── App.js
 └── docs/             # This documentation
-    ├── README.md     # (this file)
-    ├── backend.md
-    └── frontend.md
 ```

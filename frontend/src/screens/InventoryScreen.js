@@ -39,6 +39,7 @@ const DEFAULT_FORM = {
   unitCost: '',
   usedQty: '',
   notes: '',
+  payee: '',
 };
 
 export default function InventoryScreen({ route, navigation }) {
@@ -103,6 +104,7 @@ export default function InventoryScreen({ route, navigation }) {
       unitCost: String(item.unitCost ?? ''),
       usedQty: String(item.usedQty ?? ''),
       notes: item.notes || '',
+      payee: item.payee || '',
     });
     setModalVisible(true);
   };
@@ -126,6 +128,7 @@ export default function InventoryScreen({ route, navigation }) {
             draft.usedQty = usedQty;
             draft.totalCost = parseFloat((quantity * unitCost).toFixed(2));
             draft.notes = formData.notes.trim();
+            draft.payee = formData.payee.trim();
           });
         } else {
           await database.get('inventory_items').create((record) => {
@@ -139,6 +142,7 @@ export default function InventoryScreen({ route, navigation }) {
             record.usedQty = usedQty;
             record.totalCost = parseFloat((quantity * unitCost).toFixed(2));
             record.notes = formData.notes.trim();
+            record.payee = formData.payee.trim();
             record.isDeleted = false;
           });
         }
@@ -234,6 +238,8 @@ export default function InventoryScreen({ route, navigation }) {
                 <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
                 <StitchSectionLabel>{t('inventory.fields.category')}</StitchSectionLabel>
                 <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
+                <StitchSectionLabel>Supplier / Payee</StitchSectionLabel>
+                <TextInput style={styles.input} value={formData.payee} onChangeText={(payee) => setFormData((p) => ({ ...p, payee }))} placeholderTextColor="#8a9388" />
                 <View style={styles.row}>
                   <View style={styles.half}>
                     <StitchSectionLabel>{t('inventory.fields.quantity')}</StitchSectionLabel>

@@ -231,6 +231,21 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <BalanceBars earned={balance.totalEarned} paid={balance.totalPaid} balance={balance.outstanding} />
       </StitchSurface>
 
+      <View style={styles.analyticsRow}>
+        <View style={styles.analyticsCard}>
+          <Text style={styles.analyticsLabel}>{t('employees.total_earned')}</Text>
+          <Text style={styles.analyticsValue}>{formatCurrency(balance.totalEarned, currency)}</Text>
+        </View>
+        <View style={styles.analyticsCard}>
+          <Text style={styles.analyticsLabel}>{t('payments.title')}</Text>
+          <Text style={styles.analyticsValue}>{formatCurrency(balance.totalPaid, currency)}</Text>
+        </View>
+        <View style={styles.analyticsCard}>
+          <Text style={styles.analyticsLabel}>{t('employees.entries_count')}</Text>
+          <Text style={styles.analyticsValue}>{String(workEntries.length)}</Text>
+        </View>
+      </View>
+
       <View style={styles.balanceCard}>
         <View>
           <Text style={styles.balanceLabel}>{t('employees.outstanding_balance')}</Text>
@@ -239,10 +254,10 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <StitchPrimaryButton label={t('payments.pay_worker')} onPress={() => setPaymentVisible(true)} disabled={balance.outstanding <= 0} icon="cash-outline" style={styles.payButton} />
       </View>
 
-      <StitchDashboardSectionHeader title={t('employees.title')} subtitle={activeTab === 'work' ? t('employees.work_history') : t('payments.title')} actionLabel={String(activeTab === 'work' ? workEntries.length : payments.length)} />
+      <StitchDashboardSectionHeader title={t('employees.title')} subtitle={activeTab === 'work' ? t('employees.work_log') : t('payments.title')} actionLabel={String(activeTab === 'work' ? workEntries.length : payments.length)} />
 
       <View style={styles.tabs}>
-        <StitchChip label={t('employees.work_history')} active={activeTab === 'work'} onPress={() => setActiveTab('work')} style={styles.tabButton} />
+        <StitchChip label={t('employees.work_log')} active={activeTab === 'work'} onPress={() => setActiveTab('work')} style={styles.tabButton} />
         <StitchChip label={t('payments.title')} active={activeTab === 'payments'} onPress={() => setActiveTab('payments')} style={styles.tabButton} />
       </View>
 
@@ -303,13 +318,17 @@ const styles = StyleSheet.create({
   errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted },
   contentWrap: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
-  header: { padding: stitchTheme.spacing.lg, alignItems: 'center', borderRadius: stitchTheme.radius.card },
-  avatarLarge: { width: 58, height: 58, borderRadius: 29, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: stitchTheme.spacing.sm },
-  avatarTextLarge: { color: '#fff', fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800' },
+  header: { padding: stitchTheme.spacing.md, alignItems: 'center', borderRadius: stitchTheme.radius.card },
+  avatarLarge: { width: 50, height: 50, borderRadius: 25, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: stitchTheme.spacing.xs },
+  avatarTextLarge: { color: '#fff', fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800' },
   employeeName: { fontSize: stitchTheme.typography.section.fontSize, lineHeight: stitchTheme.typography.section.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary, textAlign: 'center' },
-  employeeRole: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, marginTop: 4, fontWeight: '600' },
-  balanceBars: { height: 54, flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: stitchTheme.spacing.md },
-  balanceBar: { width: 18, borderTopLeftRadius: 10, borderTopRightRadius: 10, minHeight: 16 },
+  employeeRole: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, marginTop: 3, fontWeight: '700' },
+  balanceBars: { height: 42, flexDirection: 'row', alignItems: 'flex-end', gap: 5, marginTop: stitchTheme.spacing.sm },
+  balanceBar: { width: 14, borderTopLeftRadius: 8, borderTopRightRadius: 8, minHeight: 14 },
+  analyticsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm },
+  analyticsCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.lg, paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: stitchTheme.spacing.sm },
+  analyticsLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.7 },
+  analyticsValue: { marginTop: 3, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
   balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.surfaceHighlight, marginTop: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.md, padding: stitchTheme.spacing.md, borderRadius: stitchTheme.radius.card, ...stitchShadows.card },
   balanceLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, marginBottom: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
   balanceValue: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900' },
@@ -318,9 +337,9 @@ const styles = StyleSheet.create({
   payButton: { minHeight: 46, paddingHorizontal: stitchTheme.spacing.md },
   tabs: { flexDirection: 'row', marginBottom: stitchTheme.spacing.xs, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: 6 },
   tabButton: { flex: 1 },
-  listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
+  listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.sm + 2, marginBottom: stitchTheme.spacing.xs, ...stitchShadows.card },
   listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: stitchTheme.spacing.sm },
-  listItemTitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, flex: 1 },
+  listItemTitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, flex: 1, textTransform: 'uppercase', letterSpacing: 0.7 },
   listItemAmount: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
   listItemMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, textAlign: 'center', marginTop: stitchTheme.spacing.lg },

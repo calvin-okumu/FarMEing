@@ -38,6 +38,7 @@ const DEFAULT_FORM = {
   landUnit: 'acres',
   startDate: new Date(),
   expectedYield: '',
+  contractUrl: '',
 };
 
 export default function ProjectsScreen({ navigation, route }) {
@@ -108,6 +109,7 @@ export default function ProjectsScreen({ navigation, route }) {
       landUnit: project.landUnit || 'acres',
       startDate: project.startDate ? new Date(project.startDate) : new Date(),
       expectedYield: String(project.expectedYield ?? ''),
+      contractUrl: project.contractUrl || '',
     });
     setModalVisible(true);
   };
@@ -127,6 +129,7 @@ export default function ProjectsScreen({ navigation, route }) {
             draft.landUnit = formData.landUnit || 'acres';
             draft.startDate = formData.startDate.getTime();
             draft.expectedYield = parseFloat(formData.expectedYield) || 0;
+            draft.contractUrl = formData.contractUrl.trim();
             draft.status = draft.status || 'ACTIVE';
           });
         } else {
@@ -139,6 +142,7 @@ export default function ProjectsScreen({ navigation, route }) {
             record.landUnit = formData.landUnit || 'acres';
             record.startDate = formData.startDate.getTime();
             record.expectedYield = parseFloat(formData.expectedYield) || 0;
+            record.contractUrl = formData.contractUrl.trim();
             record.status = 'ACTIVE';
             record.notes = '';
             record.isDeleted = false;
@@ -302,6 +306,9 @@ export default function ProjectsScreen({ navigation, route }) {
 
           <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
           <TextInput style={styles.input} value={formData.expectedYield} onChangeText={(expectedYield) => setFormData((p) => ({ ...p, expectedYield }))} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
+
+          <StitchSectionLabel>Contract / Lease URL</StitchSectionLabel>
+          <TextInput style={styles.input} value={formData.contractUrl} onChangeText={(url) => setFormData((p) => ({ ...p, contractUrl: url }))} placeholder="https://..." placeholderTextColor={stitchTheme.colors.textMuted} />
 
           <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
           <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>

@@ -11,6 +11,7 @@ const createProjectSchema = z.object({
   status: z.enum(['PLANNING', 'ACTIVE', 'HARVESTED', 'CLOSED']).optional(),
   seasonId:  z.string().uuid('Invalid season ID').optional().nullable(),
   notes:     z.string().optional().nullable(),
+  contractUrl: z.string().url('Invalid contract URL').optional().nullable(),
 });
 
 // All fields optional for PATCH-style updates

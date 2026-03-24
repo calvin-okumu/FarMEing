@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Worker Activity Logging - The Tactile Earth</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed-dim": "#ebbcac",
+              "on-error": "#ffffff",
+              "on-primary-fixed": "#002204",
+              "tertiary-fixed": "#ffdad6",
+              "surface-container-highest": "#e4e2e0",
+              "inverse-surface": "#30302f",
+              "inverse-primary": "#88d982",
+              "surface-container-high": "#eae8e6",
+              "surface": "#fbf9f7",
+              "on-surface": "#1b1c1b",
+              "secondary-fixed": "#ffdbcf",
+              "error": "#ba1a1a",
+              "outline": "#717a6d",
+              "on-secondary-fixed": "#2e150b",
+              "tertiary-container": "#a60a15",
+              "on-tertiary-fixed": "#410003",
+              "surface-container-lowest": "#ffffff",
+              "surface-tint": "#1b6d24",
+              "on-secondary-container": "#795548",
+              "tertiary": "#7c000a",
+              "on-surface-variant": "#41493e",
+              "on-tertiary-fixed-variant": "#93000e",
+              "on-primary-fixed-variant": "#005312",
+              "on-primary-container": "#86d881",
+              "outline-variant": "#c0c9bb",
+              "primary-fixed": "#a3f69c",
+              "on-secondary-fixed-variant": "#603f33",
+              "tertiary-fixed-dim": "#ffb4ac",
+              "surface-variant": "#e4e2e0",
+              "primary": "#00450d",
+              "surface-container-low": "#f5f3f1",
+              "surface-bright": "#fbf9f7",
+              "primary-fixed-dim": "#88d982",
+              "background": "#fbf9f7",
+              "on-secondary": "#ffffff",
+              "inverse-on-surface": "#f2f0ee",
+              "on-tertiary-container": "#ffb2aa",
+              "surface-container": "#efedec",
+              "primary-container": "#065f18",
+              "surface-dim": "#dbdad8",
+              "on-tertiary": "#ffffff",
+              "on-primary": "#ffffff",
+              "on-error-container": "#93000a",
+              "secondary": "#7a5649",
+              "error-container": "#ffdad6",
+              "on-background": "#1b1c1b",
+              "secondary-container": "#fdcdbc"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-[#f5f3f1] w-full px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-12 h-12 rounded-full hover:bg-[#efedec] transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-[#00450d]" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-manrope font-bold text-2xl text-[#00450d]">Worker Activity</h1>
+</div>
+<button class="flex items-center justify-center w-12 h-12 rounded-full hover:bg-[#efedec] transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-[#00450d]" data-icon="translate">translate</span>
+</button>
+</header>
+<main class="max-w-xl mx-auto px-6 pt-8 space-y-10">
+<!-- Header Section -->
+<section class="space-y-1">
+<h2 class="text-3xl font-black text-primary tracking-tight">Kazi za Wafanyakazi</h2>
+<p class="text-secondary font-medium italic">Logging daily field progress</p>
+</section>
+<!-- Task Selection Grid -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<label class="text-sm font-bold uppercase tracking-widest text-on-surface-variant">Select Task / Chagua Kazi</label>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<!-- Task Items -->
+<button class="flex flex-col items-center justify-center p-6 bg-surface-container-lowest border-2 border-transparent focus:border-primary-fixed rounded-lg text-center transition-all duration-200 hover:bg-surface-container-high group">
+<span class="material-symbols-outlined text-3xl mb-2 text-primary group-hover:scale-110 transition-transform" data-icon="agriculture">agriculture</span>
+<span class="font-bold text-on-surface">Planting</span>
+<span class="text-xs text-on-surface-variant">Kupanda</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 bg-surface-container-lowest border-2 border-transparent focus:border-primary-fixed rounded-lg text-center transition-all duration-200 hover:bg-surface-container-high group">
+<span class="material-symbols-outlined text-3xl mb-2 text-primary group-hover:scale-110 transition-transform" data-icon="water_drop">water_drop</span>
+<span class="font-bold text-on-surface">Irrigation</span>
+<span class="text-xs text-on-surface-variant">Kumwagilia</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 bg-surface-container-lowest border-2 border-transparent focus:border-primary-fixed rounded-lg text-center transition-all duration-200 hover:bg-surface-container-high group">
+<span class="material-symbols-outlined text-3xl mb-2 text-primary group-hover:scale-110 transition-transform" data-icon="bug_report">bug_report</span>
+<span class="font-bold text-on-surface">Spraying</span>
+<span class="text-xs text-on-surface-variant">Kunyunyizia</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 bg-surface-container-lowest border-2 border-transparent focus:border-primary-fixed rounded-lg text-center transition-all duration-200 hover:bg-surface-container-high group">
+<span class="material-symbols-outlined text-3xl mb-2 text-primary group-hover:scale-110 transition-transform" data-icon="content_cut">content_cut</span>
+<span class="font-bold text-on-surface">Harvesting</span>
+<span class="text-xs text-on-surface-variant">Kuvuna</span>
+</button>
+</div>
+</section>
+<!-- Hours Input Section -->
+<section class="space-y-4">
+<label class="text-sm font-bold uppercase tracking-widest text-on-surface-variant block">Hours Worked / Saa za Kazi</label>
+<div class="flex items-center gap-4 bg-surface-container-high p-2 rounded-lg">
+<button class="w-16 h-16 bg-surface-container-lowest rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-sm">
+<span class="material-symbols-outlined text-2xl font-bold" data-icon="remove">remove</span>
+</button>
+<div class="flex-1 text-center">
+<input class="bg-transparent border-none text-center text-4xl font-headline font-bold text-primary w-full focus:ring-0" type="number" value="8"/>
+<span class="text-xs font-medium text-secondary">HOURS</span>
+</div>
+<button class="w-16 h-16 bg-primary-fixed rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-sm">
+<span class="material-symbols-outlined text-2xl font-bold text-on-primary-fixed" data-icon="add">add</span>
+</button>
+</div>
+</section>
+<!-- Camera Section (The Hero Action) -->
+<section class="space-y-4">
+<label class="text-sm font-bold uppercase tracking-widest text-on-surface-variant block">Evidence / Picha ya Kazi</label>
+<div class="relative group cursor-pointer overflow-hidden rounded-lg bg-surface-container-highest flex flex-col items-center justify-center h-56 border-4 border-dashed border-outline-variant/30 hover:border-primary-fixed transition-colors">
+<div class="absolute inset-0 bg-cover bg-center opacity-10 group-hover:scale-110 transition-transform duration-700" data-alt="Close up of tilled farm soil" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAm9rnaByYrO3pjWyyJRCSzoQaOsPdUQjGfKsdU2nMvJeHPNnm9NnRHsHf1cuvHS9hVPeEnr_HRAFZhxhp9lDLnWSY5zaQjgzWhQMhO--TcZy6hw15Fvpr1Rjnret0YPRAPkximL8LE-OCEFa1yOUsTq1V8gaRbhLQe0IOUE9JhOQAQQr1KzoIZ9-KJFVa54har_0qzM_m37QW4H64HZbZk6zcmWAiqZfhJ77CxalB5AFOXpU6Hlm6DJgLmYqxZ2fjmeWFAscnKACEo')"></div>
+<div class="relative z-10 flex flex-col items-center gap-3">
+<div class="w-24 h-24 bg-primary rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-primary-fixed text-5xl" data-icon="photo_camera" style="font-variation-settings: 'FILL' 1;">photo_camera</span>
+</div>
+<div class="text-center">
+<span class="block font-headline font-extrabold text-xl text-primary">Take Photo</span>
+<span class="block text-sm font-medium text-secondary italic">Piga Picha</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Notes Field -->
+<section class="space-y-4">
+<label class="text-sm font-bold uppercase tracking-widest text-on-surface-variant block">Notes / Maelezo</label>
+<div class="bg-surface-container rounded-lg p-4">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/50 font-medium resize-none" placeholder="Describe the progress... / Eleza maendeleo..." rows="3"></textarea>
+</div>
+</section>
+<!-- Submit Button -->
+<section class="pt-4">
+<button class="w-full h-16 bg-primary text-primary-fixed rounded-lg font-headline font-extrabold text-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform">
+<span>Wasilisha / Submit</span>
+<span class="material-symbols-outlined" data-icon="send">send</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 backdrop-blur-md shadow-[0_-4px_24px_rgba(27,28,27,0.04)] rounded-t-[32px]">
+<div class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-colors">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Dashboard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-colors">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Expenses</span>
+</div>
+<!-- Active Tab: Workers -->
+<div class="flex flex-col items-center justify-center bg-[#a3f69c] text-[#00450d] rounded-[24px] px-5 py-2 scale-110">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-inter text-[11px] font-bold tracking-wide">Workers</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-colors">
+<span class="material-symbols-outlined" data-icon="agriculture">agriculture</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Harvest</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-colors">
+<span class="material-symbols-outlined" data-icon="monetization_on">monetization_on</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Sales</span>
+</div>
+</nav>
+</body></html>

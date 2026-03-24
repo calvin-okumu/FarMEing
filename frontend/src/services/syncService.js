@@ -30,6 +30,7 @@ const TABLES = [
       expectedYield: record.expectedYield,
       status: record.status,
       notes: record.notes,
+      contractUrl: record.contractUrl,
     }),
   },
   {
@@ -66,6 +67,7 @@ const TABLES = [
         frequency: record.frequency,
         note: record.note,
         receiptUrl: record.receiptUrl,
+        payee: record.payee,
       };
     },
   },
@@ -166,6 +168,7 @@ const TABLES = [
         unitCost: record.unitCost,
         usedQty: record.usedQty,
         notes: record.notes,
+        payee: record.payee,
       };
     },
   },
@@ -255,6 +258,7 @@ async function syncProjects(projects) {
     record.expectedYield = item.expectedYield ?? 0;
     record.status = item.status ?? 'ACTIVE';
     record.notes = item.notes ?? '';
+    record.contractUrl = item.contractUrl ?? '';
     record.isDeleted = item.isDeleted ?? false;
   });
 }
@@ -421,6 +425,7 @@ async function pullChanges() {
           record.frequency = item.frequency ?? null;
           record.note = item.note ?? '';
           record.receiptUrl = item.receiptUrl ?? '';
+          record.payee = item.payee ?? '';
           record.isDeleted = item.isDeleted ?? false;
         }
       );
@@ -496,6 +501,7 @@ async function pullChanges() {
           record.totalCost = item.totalCost ?? 0;
           record.usedQty = item.usedQty ?? 0;
           record.notes = item.notes ?? '';
+          record.payee = item.payee ?? '';
           record.isDeleted = item.isDeleted ?? false;
         }
       );

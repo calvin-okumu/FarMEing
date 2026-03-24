@@ -13,6 +13,7 @@ const PROJECT_SELECT = {
   expectedYield: true,
   status: true,
   notes: true,
+  contractUrl: true,
   isDeleted: true,
   createdAt: true,
   updatedAt: true,

@@ -11,6 +11,7 @@ const createInventorySchema = z.object({
   unitCost:  z.number().nonnegative('Unit cost must be zero or greater'),
   usedQty:   z.number().nonnegative('Used quantity cannot be negative').optional(),
   notes:     z.string().optional().nullable(),
+  payee:     z.string().optional().nullable(),
   // totalCost is excluded — always computed server-side
 });
 
@@ -23,6 +24,7 @@ const updateInventorySchema = z
     unitCost: z.number().nonnegative().optional(),
     usedQty:  z.number().nonnegative('Used quantity cannot be negative').optional(),
     notes:    z.string().optional().nullable(),
+    payee:    z.string().optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field is required for update',

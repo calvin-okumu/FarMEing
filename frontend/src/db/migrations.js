@@ -47,5 +47,13 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 8,
+      steps: [
+        addColumns({ table: 'farm_projects', columns: [{ name: 'contract_url', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'expenses', columns: [{ name: 'payee', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'inventory_items', columns: [{ name: 'payee', type: 'string', isOptional: true }] }),
+      ],
+    },
   ],
 });

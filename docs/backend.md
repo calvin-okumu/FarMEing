@@ -16,23 +16,26 @@
    - [Employees](#employees)
    - [Payments](#payments)
    - [Work Entries](#work-entries)
+   - [Harvests](#harvests)
+   - [Sales](#sales)
    - [Inventory](#inventory)
+   - [System](#system)
 6. [Prisma Schema](#prisma-schema)
 
 ---
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js |
-| Framework | Express |
-| ORM | Prisma |
-| Database | PostgreSQL |
-| Authentication | JWT (`jsonwebtoken`) — 7-day tokens |
-| Password hashing | bcrypt (10 salt rounds) |
-| Validation | Zod |
-| Environment | dotenv |
+| Layer | Technology | Version |
+|---|---|---|
+| Runtime | Node.js | |
+| Framework | Express | v5.2.1 |
+| ORM | Prisma | v5.22.0 |
+| Database | PostgreSQL | |
+| Authentication | JWT (`jsonwebtoken`) — 7-day tokens | ^9.0.3 |
+| Password hashing | bcrypt (10 salt rounds) | ^6.0.0 |
+| Validation | Zod | ^4.3.6 |
+| Environment | dotenv | ^17.3.1 |
 
 ---
 
@@ -86,24 +89,29 @@ backend/
 ├── prisma/
 │   └── schema.prisma            # Prisma data model
 └── src/
-    ├── controllers/
+    ├── controllers/             # Business logic & validation
     │   ├── auth.controller.js
     │   ├── budget.controller.js
     │   ├── employee.controller.js
     │   ├── expense.controller.js
+    │   ├── harvest.controller.js
     │   ├── inventory.controller.js
     │   ├── payment.controller.js
-    │   └── project.controller.js
+    │   ├── project.controller.js
+    │   ├── sale.controller.js
+    │   └── workEntry.controller.js
     ├── middleware/
     │   └── auth.middleware.js   # JWT verification
-    ├── routes/
+    ├── routes/                  # API Route definitions
     │   ├── auth.routes.js
     │   ├── budget.routes.js
     │   ├── employee.routes.js
     │   ├── expense.routes.js
+    │   ├── harvest.routes.js
     │   ├── inventory.routes.js
     │   ├── payment.routes.js
     │   ├── project.routes.js
+    │   ├── sale.routes.js
     │   └── workEntry.routes.js
     ├── validators/              # Zod schemas (one file per resource)
     └── lib/
@@ -116,7 +124,7 @@ backend/
 
 ### `auth.middleware.js` — `authenticate`
 
-Applied as `router.use(authenticate)` on every route group except `/auth`.
+Applied as `router.use(authenticate)` on every route group except `/auth` and `/health`.
 
 **Verification steps:**
 
@@ -125,7 +133,7 @@ Applied as `router.use(authenticate)` on every route group except `/auth`.
 3. Calls `jwt.verify(token, process.env.JWT_SECRET)` to decode and validate the token signature and expiry.
    - Expired tokens → `401 { error: 'Token expired' }`
    - Any other JWT error → `401 { error: 'Invalid token' }`
-4. Fetches the user from the database by `payload.sub` (the user's UUID), selecting only safe fields: `id`, `name`, `phone`, `currency`, `locale`. This ensures soft-deleted or removed users are rejected even if their token has not expired.
+4. Fetches the user from the database by `payload.sub` (the user's UUID), selecting only safe fields: `id`, `name`, `phone`, `role`, `currency`, `locale`. This ensures soft-deleted or removed users are rejected even if their token has not expired.
 5. Attaches the user object to `req.user` and calls `next()`.
 
 ---
@@ -134,661 +142,163 @@ Applied as `router.use(authenticate)` on every route group except `/auth`.
 
 All protected endpoints require the `Authorization: Bearer <token>` header.
 
-Validation errors return:
-```json
-{
-  "error": "Validation failed",
-  "details": [{ "field": "fieldName", "message": "reason" }]
-}
-```
-
----
+**Common Response Formats:**
+*   **Validation Errors:** `400 Bad Request`
+    ```json
+    {
+      "error": "Validation failed",
+      "details": [{ "field": "fieldName", "message": "reason" }]
+    }
+    ```
+*   **Not Found:** `404 Not Found`
+    ```json
+    { "error": "Resource not found" }
+    ```
 
 ### Auth
 
-Base path: `/auth` — **no authentication required**
+Base path: `/auth` — **Public**
 
-#### `POST /auth/register`
-
-Register a new user account.
-
-**Request body:**
-
-| Field | Type | Required |
-|---|---|---|
-| `name` | string | yes |
-| `phone` | string | yes (must be unique) |
-| `password` | string | yes |
-
-**Success response `201`:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "name": "string",
-    "phone": "string",
-    "currency": "TZS",
-    "locale": "sw-TZ",
-    "createdAt": "ISO datetime"
-  },
-  "token": "jwt"
-}
-```
-
-**Error responses:**
-- `400` — validation failed
-- `409` — phone number already registered
-
----
-
-#### `POST /auth/login`
-
-Authenticate with phone and password.
-
-**Request body:**
-
-| Field | Type | Required |
-|---|---|---|
-| `phone` | string | yes |
-| `password` | string | yes |
-
-**Success response `200`:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "name": "string",
-    "phone": "string",
-    "currency": "string",
-    "locale": "string"
-  },
-  "token": "jwt"
-}
-```
-
-**Error responses:**
-- `400` — validation failed
-- `401` — invalid phone or password
-
----
+| Method | Endpoint | Description | Request Body |
+|---|---|---|---|
+| `POST` | `/register` | Register new user | `{ name, phone, password, role? }` |
+| `POST` | `/login` | Authenticate user | `{ phone, password }` |
 
 ### Projects
 
-Base path: `/projects` — **authentication required**
+Base path: `/projects` — **Protected**
 
-All operations are scoped to the authenticated user (`req.user.id`). Deleted projects (`isDeleted: true`) are excluded from list and get responses.
-
-#### `POST /projects`
-
-Create a new farm project.
-
-**Request body:**
-
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `name` | string | yes | |
-| `crop` | string | yes | |
-| `landSize` | number | yes | |
-| `landUnit` | string | yes | e.g. `"acres"` |
-| `startDate` | string | yes | ISO date |
-| `endDate` | string | no | ISO date |
-| `notes` | string | no | |
-| `seasonId` | string (UUID) | no | Must belong to the same user |
-
-**Success response `201`:** `{ "project": { ...projectFields } }`
-
----
-
-#### `GET /projects`
-
-List all active (non-deleted) projects for the authenticated user, ordered by `createdAt` descending.
-
-**Success response `200`:**
-```json
-{ "projects": [ { ...projectFields } ] }
-```
-
-Project fields include: `id`, `name`, `crop`, `landSize`, `landUnit`, `startDate`, `endDate`, `notes`, `isDeleted`, `createdAt`, `updatedAt`, `seasonId`, `userId`, `season: { id, name }`.
-
----
-
-#### `GET /projects/:id`
-
-Get a single project by ID (must belong to the authenticated user and not be deleted).
-
-**Success response `200`:** `{ "project": { ...projectFields } }`
-
-**Error:** `404` — project not found or access denied
-
----
-
-#### `GET /projects/:id/summary`
-
-Get financial aggregates for a project.
-
-**Success response `200`:**
-```json
-{
-  "project": { ...projectFields },
-  "summary": {
-    "totalBudget": 0.00,
-    "totalExpenses": 0.00,
-    "totalLaborCost": 0.00,
-    "totalCost": 0.00
-  }
-}
-```
-
-`totalCost` = `totalExpenses` + `totalLaborCost`. Only non-deleted child records are counted.
-
----
-
-#### `PUT /projects/:id`
-
-Update a project. Accepts the same optional fields as create (all fields are optional on update).
-
-**Success response `200`:** `{ "project": { ...projectFields } }`
-
----
-
-#### `DELETE /projects/:id`
-
-Soft-delete a project (`isDeleted` set to `true`).
-
-**Success response `200`:** `{ "message": "Project deleted" }`
-
----
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | List all active projects |
+| `POST` | `/` | Create a new project |
+| `GET` | `/:id` | Get project details |
+| `PUT` | `/:id` | Update project |
+| `DELETE` | `/:id` | Soft delete project |
+| `GET` | `/:id/summary` | Get financial summary (budget vs actuals) |
 
 ### Budget Items
 
-Base path: `/budget` — **authentication required**
+Base path: `/budget` — **Protected**
 
-Ownership is verified through the parent project (must belong to `req.user.id`).
-
-#### `POST /budget`
-
-Create a budget item. `total` is computed server-side as `quantity × unitPrice`.
-
-**Request body:**
-
-| Field | Type | Required |
+| Method | Endpoint | Description |
 |---|---|---|
-| `projectId` | string (UUID) | yes |
-| `category` | string | yes |
-| `name` | string | yes |
-| `quantity` | number | yes |
-| `unit` | string | yes |
-| `unitPrice` | number | yes |
-| `notes` | string | no |
-
-**Success response `201`:** `{ "budgetItem": { ...fields, "total": number } }`
-
----
-
-#### `GET /budget/:projectId`
-
-List all non-deleted budget items for a project.
-
-**Success response `200`:**
-```json
-{
-  "budgetItems": [ { ...fields } ],
-  "grandTotal": 0.00
-}
-```
-
----
-
-#### `PUT /budget/:id`
-
-Update a budget item. `total` is recalculated server-side on every update.
-
-**Success response `200`:** `{ "budgetItem": { ...fields } }`
-
----
-
-#### `DELETE /budget/:id`
-
-Soft-delete a budget item.
-
-**Success response `200`:** `{ "message": "Budget item deleted" }`
-
----
+| `GET` | `/:projectId` | List budget items for a project |
+| `POST` | `/` | Create a budget item |
+| `PUT` | `/:id` | Update a budget item |
+| `DELETE` | `/:id` | Delete a budget item |
 
 ### Expenses
 
-Base path: `/expenses` — **authentication required**
+Base path: `/expenses` — **Protected**
 
-#### `POST /expenses`
-
-Create an expense record.
-
-**Request body:**
-
-| Field | Type | Required |
+| Method | Endpoint | Description |
 |---|---|---|
-| `projectId` | string (UUID) | yes |
-| `category` | string | yes |
-| `amount` | number | yes |
-| `date` | string | yes | ISO date |
-| `note` | string | no |
-| `receiptUrl` | string | no |
-
-**Success response `201`:** `{ "expense": { ...fields } }`
-
----
-
-#### `GET /expenses/:projectId`
-
-List all non-deleted expenses for a project, ordered by `date` descending.
-
-**Success response `200`:**
-```json
-{
-  "expenses": [ { ...fields } ],
-  "totalAmount": 0.00
-}
-```
-
----
-
-#### `PUT /expenses/:id`
-
-Update an expense.
-
-**Success response `200`:** `{ "expense": { ...fields } }`
-
----
-
-#### `DELETE /expenses/:id`
-
-Soft-delete an expense.
-
-**Success response `200`:** `{ "message": "Expense deleted" }`
-
----
+| `GET` | `/:projectId` | List expenses for a project |
+| `POST` | `/` | Create an expense |
+| `PUT` | `/:id` | Update an expense |
+| `DELETE` | `/:id` | Delete an expense |
 
 ### Employees
 
-Base path: `/employees` — **authentication required**
+Base path: `/employees` — **Protected**
 
-#### `POST /employees`
-
-Create an employee record linked to the authenticated user.
-
-**Request body:**
-
-| Field | Type | Required |
+| Method | Endpoint | Description |
 |---|---|---|
-| `name` | string | yes |
-| `phone` | string | no |
-| `role` | string | no |
-
-**Success response `201`:** `{ "employee": { ...fields } }`
-
----
-
-#### `GET /employees`
-
-List all non-deleted employees belonging to the authenticated user, ordered by `createdAt` descending.
-
-**Success response `200`:** `{ "employees": [ { ...fields } ] }`
-
----
-
-#### `GET /employees/:id/balance`
-
-Compute the financial balance for an employee.
-
-- `totalEarned` — sum of all non-deleted `WorkEntry.totalCost` for this employee
-- `totalPaid` — sum of all `Payment.amount` for this employee
-- `outstanding` — `totalEarned - totalPaid` (positive = owed to employee)
-
-**Success response `200`:**
-```json
-{
-  "employee": { "id": "uuid", "name": "string", "phone": "string", "role": "string" },
-  "balance": {
-    "totalEarned": 0.00,
-    "totalPaid": 0.00,
-    "outstanding": 0.00
-  }
-}
-```
-
----
-
-#### `PUT /employees/:id`
-
-Update an employee.
-
-**Success response `200`:** `{ "employee": { ...fields } }`
-
----
-
-#### `DELETE /employees/:id`
-
-Soft-delete an employee.
-
-**Success response `200`:** `{ "message": "Employee deleted" }`
-
----
+| `GET` | `/` | List all employees |
+| `POST` | `/` | Create a new employee |
+| `PUT` | `/:id` | Update employee details |
+| `DELETE` | `/:id` | Soft delete employee |
+| `GET` | `/:id/balance` | Get payment balance for an employee |
 
 ### Payments
 
-Base path: `/payments` — **authentication required**
+Base path: `/payments` — **Protected**
 
-> Note: payment logic is implemented directly in `payment.routes.js` (no separate controller file).
-
-#### `POST /payments`
-
-Record a payment to an employee.
-
-**Request body:**
-
-| Field | Type | Required |
+| Method | Endpoint | Description |
 |---|---|---|
-| `employeeId` | string (UUID) | yes |
-| `amount` | number | yes |
-| `date` | string | yes | ISO date |
-| `note` | string | no |
-
-**Success response `201`:** `{ "payment": { ...fields } }`
-
----
-
-#### `GET /payments`
-
-List all payments for employees belonging to the authenticated user, ordered by `date` descending.
-
-**Success response `200`:** `{ "payments": [ { ...fields } ] }`
-
----
-
-#### `GET /payments/:employeeId`
-
-List payments for a specific employee, ordered by `date` descending.
-
-**Success response `200`:** `{ "payments": [ { ...fields } ] }`
-
----
+| `GET` | `/` | List all payments made |
+| `POST` | `/` | Record a payment to an employee |
+| `GET` | `/:employeeId` | List payments for a specific employee |
 
 ### Work Entries
 
-Base path: `/work-entries` — **authentication required**
+Base path: `/work-entries` — **Protected**
 
-> Note: work entry logic is implemented directly in `workEntry.routes.js` with inline Zod validation.
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/:projectId` | List work entries for a project |
+| `POST` | `/` | Create a work entry |
+| `PUT` | `/:id` | Update a work entry |
+| `DELETE` | `/:id` | Delete a work entry |
+| `PATCH` | `/:id/approve` | Approve a pending work entry |
+| `GET` | `/:projectId/by-employee` | Aggregated work stats by employee |
+| `GET` | `/:projectId/by-activity` | Aggregated work stats by activity |
 
-#### `POST /work-entries`
+### Harvests
 
-Create a work entry. Input is validated with a Zod schema.
+Base path: `/harvests` — **Protected**
 
-**Request body:**
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/:projectId` | List harvest records for a project |
+| `POST` | `/` | Record a harvest |
+| `PUT` | `/:id` | Update a harvest record |
+| `DELETE` | `/:id` | Delete a harvest record |
 
-| Field | Type | Required | Constraints |
-|---|---|---|---|
-| `projectId` | string (UUID) | yes | |
-| `employeeId` | string (UUID) | yes | |
-| `activity` | string | yes | min length 1 |
-| `date` | string | yes | ISO date |
-| `daysWorked` | number | yes | must be positive |
-| `ratePerDay` | number | yes | must be positive |
-| `totalCost` | number | yes | |
-| `notes` | string | no | |
+### Sales
 
-**Success response `201`:** `{ "workEntry": { ...fields } }`
+Base path: `/sales` — **Protected**
 
-**Error:** `400` — ZodError with array of validation messages
-
----
-
-#### `GET /work-entries/:projectId`
-
-List all non-deleted work entries for a project, ordered by `date` descending.
-
-**Success response `200`:** `{ "workEntries": [ { ...fields } ] }`
-
----
-
-#### `PUT /work-entries/:id`
-
-Update a work entry. Accepts any subset of the work entry fields.
-
-**Success response `200`:** `{ "workEntry": { ...fields } }`
-
----
-
-#### `DELETE /work-entries/:id`
-
-Soft-delete a work entry (`isDeleted` set to `true`).
-
-**Success response `200`:** `{ "message": "Work entry deleted" }`
-
----
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/:projectId` | List sales for a project |
+| `POST` | `/` | Record a sale |
+| `PUT` | `/:id` | Update a sale record |
+| `DELETE` | `/:id` | Delete a sale record |
 
 ### Inventory
 
-Base path: `/inventory` — **authentication required**
+Base path: `/inventory` — **Protected**
 
-Ownership is verified through the parent project. `totalCost` is computed server-side as `quantity × unitCost`.
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/:projectId` | List inventory items |
+| `POST` | `/` | Add an inventory item |
+| `PUT` | `/:id` | Update an inventory item |
+| `DELETE` | `/:id` | Delete an inventory item |
 
-#### `POST /inventory`
+### System
 
-Create an inventory item.
-
-**Request body:**
-
-| Field | Type | Required | Notes |
+| Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| `projectId` | string (UUID) | yes | |
-| `name` | string | yes | |
-| `category` | string | yes | |
-| `quantity` | number | yes | |
-| `unit` | string | yes | |
-| `unitCost` | number | yes | |
-| `usedQty` | number | no | defaults to 0; cannot exceed `quantity` |
-| `notes` | string | no | |
-
-**Success response `201`:** `{ "inventoryItem": { ...fields, "totalCost": number } }`
-
-**Error:** `400` — if `usedQty > quantity`
-
----
-
-#### `GET /inventory/:projectId`
-
-List all non-deleted inventory items for a project.
-
-**Success response `200`:**
-```json
-{
-  "inventoryItems": [ { ...fields } ],
-  "grandTotalCost": 0.00
-}
-```
-
----
-
-#### `PUT /inventory/:id`
-
-Update an inventory item. `totalCost` is recalculated server-side. `usedQty` is validated against the effective `quantity`.
-
-**Success response `200`:** `{ "inventoryItem": { ...fields } }`
-
----
-
-#### `DELETE /inventory/:id`
-
-Soft-delete an inventory item.
-
-**Success response `200`:** `{ "message": "Inventory item deleted" }`
+| `GET` | `/health` | Health check | Public |
+| `GET` | `/api/me` | Get current user details | Protected |
 
 ---
 
 ## Prisma Schema
 
-Database: PostgreSQL. All primary keys are UUIDs (`@default(uuid())`). Timestamps use `@default(now())` and `@updatedAt`.
+The data model is defined in `prisma/schema.prisma`. Key entities include:
 
-### `User`
+### Core
+*   **User:** Central entity. Contains credentials, role (`ADMIN`, `WORKER`), and localization settings (`currency`, `locale`).
+*   **Season:** Represents a farming season, linked to a user.
+*   **FarmProject:** Represents a specific crop cycle on a plot of land. Linked to `User` and optional `Season`. Tracks status (`PLANNING`, `ACTIVE`, `HARVESTED`, `CLOSED`).
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `name` | String | |
-| `phone` | String | `@unique` |
-| `password` | String | bcrypt hash |
-| `currency` | String | default `"TZS"` |
-| `locale` | String | default `"sw-TZ"` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
+### Financials
+*   **BudgetItem:** Planned costs for a project.
+*   **Expense:** Actual costs incurred. Differentiates `CAPEX` vs `OPEX`. Supports recurring expenses.
+*   **Sale:** Revenue generated from selling harvests.
+*   **Payment:** Records payments made to employees.
 
-Relations: has many `FarmProject`, `Employee`, `Season`.
+### Operations
+*   **Employee:** Workers managed by the user.
+*   **WorkEntry:** Logs daily labor. Tracks `activity`, `hoursWorked` / `daysWorked`, `cost`, and approval status.
+*   **Harvest:** Records crop yields (`weight`, `unit`, `quality`).
+*   **InventoryItem:** Tracks inputs and resources.
 
----
-
-### `Season`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `userId` | String | FK → User |
-| `name` | String | |
-| `startDate` | DateTime | |
-| `endDate` | DateTime? | optional |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
-Relations: belongs to `User`; has many `FarmProject`.
-
----
-
-### `FarmProject`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `userId` | String | FK → User |
-| `seasonId` | String? | FK → Season (optional) |
-| `name` | String | |
-| `crop` | String | |
-| `landSize` | Float | |
-| `landUnit` | String | default `"acres"` |
-| `startDate` | DateTime | |
-| `endDate` | DateTime? | optional |
-| `notes` | String? | optional |
-| `isDeleted` | Boolean | default `false` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
-Relations: belongs to `User`, `Season`; has many `BudgetItem`, `Expense`, `WorkEntry`.
-
----
-
-### `BudgetItem`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `projectId` | String | FK → FarmProject |
-| `category` | String | |
-| `name` | String | |
-| `quantity` | Float | |
-| `unit` | String | |
-| `unitPrice` | Float | |
-| `total` | Float | computed: `quantity × unitPrice` |
-| `notes` | String? | optional |
-| `isDeleted` | Boolean | default `false` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
----
-
-### `Expense`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `projectId` | String | FK → FarmProject |
-| `category` | String | |
-| `amount` | Float | |
-| `date` | DateTime | |
-| `note` | String? | optional |
-| `receiptUrl` | String? | optional |
-| `isDeleted` | Boolean | default `false` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
----
-
-### `Employee`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `userId` | String | FK → User |
-| `name` | String | |
-| `phone` | String? | optional |
-| `role` | String? | optional |
-| `isDeleted` | Boolean | default `false` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
-Relations: belongs to `User`; has many `WorkEntry`, `Payment`.
-
----
-
-### `WorkEntry`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `projectId` | String | FK → FarmProject |
-| `employeeId` | String | FK → Employee |
-| `activity` | String | |
-| `date` | DateTime | |
-| `daysWorked` | Float | |
-| `ratePerDay` | Float | |
-| `totalCost` | Float | |
-| `notes` | String? | optional |
-| `isPaid` | Boolean | default `false` |
-| `isDeleted` | Boolean | default `false` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
----
-
-### `Payment`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `employeeId` | String | FK → Employee |
-| `amount` | Float | |
-| `date` | DateTime | |
-| `note` | String? | optional |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
-> Note: `Payment` has no `isDeleted` field in the Prisma schema.
-
----
-
-### `InventoryItem`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | String (UUID) | PK |
-| `projectId` | String | (no FK constraint defined in schema) |
-| `name` | String | |
-| `category` | String | |
-| `quantity` | Float | |
-| `unit` | String | |
-| `unitCost` | Float | |
-| `totalCost` | Float | computed: `quantity × unitCost` |
-| `usedQty` | Float | default `0` |
-| `notes` | String? | optional |
-| `isDeleted` | Boolean | default `false` |
-| `createdAt` | DateTime | |
-| `updatedAt` | DateTime | |
-
-> Note: `InventoryItem` is not represented in the WatermelonDB local schema — inventory data is not synced to the mobile app.
+### Relationships
+*   **User** has many **Projects** and **Employees**.
+*   **Project** has many **BudgetItems**, **Expenses**, **WorkEntries**, **Harvests**, and **Sales**.
+*   **Employee** has many **WorkEntries** and **Payments**.

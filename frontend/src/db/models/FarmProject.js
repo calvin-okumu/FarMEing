@@ -16,6 +16,7 @@ export default class FarmProject extends Model {
   @field('expected_yield') expectedYield;
   @text('status')     status;
   @text('notes')      notes;
+  @text('contract_url') contractUrl;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;

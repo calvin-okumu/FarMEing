@@ -66,6 +66,7 @@ const createExpense = async (req, res) => {
       frequency: data.frequency ?? null,
       note:       data.note       ?? null,
       receiptUrl: data.receiptUrl ?? null,
+      payee:      data.payee      ?? null,
     },
   });
 

@@ -73,6 +73,7 @@ const createInventoryItem = async (req, res) => {
       totalCost,
       usedQty,
       notes:     data.notes ?? null,
+      payee:     data.payee ?? null,
     },
   });
 

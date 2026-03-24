@@ -15,6 +15,7 @@ const createExpenseSchema = z.object({
   frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional().nullable(),
   note:       z.string().optional().nullable(),
   receiptUrl: z.string().url('Invalid receipt URL').optional().nullable(),
+  payee:      z.string().optional().nullable(),
 });
 
 const updateExpenseSchema = z
@@ -27,6 +28,7 @@ const updateExpenseSchema = z
     frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional().nullable(),
     note:       z.string().optional().nullable(),
     receiptUrl: z.string().url('Invalid receipt URL').optional().nullable(),
+    payee:      z.string().optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field is required for update',

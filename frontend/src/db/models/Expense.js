@@ -12,8 +12,9 @@ export default class Expense extends Model {
   @field('date')       date;
   @field('is_recurring') isRecurring;
   @text('frequency')    frequency;
-  @text('note')        note;
+  @text('note')       note;
   @text('receipt_url') receiptUrl;
+  @text('payee')      payee;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;

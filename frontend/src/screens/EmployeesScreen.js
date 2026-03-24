@@ -23,6 +23,7 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import {
   StitchBadge,
+  StitchChip,
   StitchIconButton,
   StitchPrimaryButton,
   StitchSectionLabel,
@@ -45,7 +46,7 @@ function WorkerCard({ item, onPress, t }) {
         </View>
         <View style={styles.cardMeta}>
           <Text style={styles.workerName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.workerRole}>{item.role || t('employees.role_unset')}</Text>
+          <Text style={styles.workerRole}>{item.phone || t('employees.no_phone')}</Text>
         </View>
         <StitchBadge
           label={item.role || t('employees.role_unset')}
@@ -58,11 +59,11 @@ function WorkerCard({ item, onPress, t }) {
       <View style={styles.divider} />
 
       <View style={styles.cardBottom}>
-        <View>
+        <View style={styles.metaGroup}>
           <Text style={styles.metaLabel}>{t('employees.fields.phone')}</Text>
           <Text style={styles.metaValue}>{item.phone || t('employees.no_phone')}</Text>
         </View>
-        <View style={styles.metaMiddle}>
+        <View style={[styles.metaGroup, styles.metaMiddle]}>
           <Text style={styles.metaLabel}>{t('employees.fields.role')}</Text>
           <Text style={styles.metaValue} numberOfLines={1}>{item.role || t('employees.role_unset')}</Text>
         </View>
@@ -80,6 +81,7 @@ export default function EmployeesScreen({ navigation }) {
   const [employees, setEmployees] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [query, setQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
   const [formData, setFormData] = useState({ name: '', phone: '', role: '' });
   const [banner, setBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,13 +105,17 @@ export default function EmployeesScreen({ navigation }) {
 
   const filteredEmployees = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return employees;
-    return employees.filter((employee) =>
+    const searched = !normalized ? employees : employees.filter((employee) =>
       [employee.name, employee.phone, employee.role]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(normalized))
     );
-  }, [employees, query]);
+
+    if (activeFilter === 'withRole') return searched.filter((employee) => !!employee.role?.trim());
+    if (activeFilter === 'synced') return searched.filter((employee) => !!employee.remoteId);
+    if (activeFilter === 'local') return searched.filter((employee) => !employee.remoteId);
+    return searched;
+  }, [employees, query, activeFilter]);
 
   const syncedEmployees = useMemo(
     () => employees.filter((employee) => employee.remoteId).length,
@@ -181,7 +187,7 @@ export default function EmployeesScreen({ navigation }) {
           children: (
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('employees.title', { defaultValue: 'Employees' })} value={String(filteredEmployees.length)} icon='people-outline' style={styles.heroPillPrimary} />
-              <StitchHeroPill label='Assigned' value={String(assignedEmployees)} icon='briefcase-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={t('employees.with_role')} value={String(assignedEmployees)} icon='briefcase-outline' style={styles.heroPillSecondary} />
               <StitchHeroPill label={t('employees.api_live')} value={String(syncedEmployees)} icon='cloud-done-outline' style={styles.heroPillTertiary} />
             </View>
           ),
@@ -194,9 +200,12 @@ export default function EmployeesScreen({ navigation }) {
           <View style={styles.searchWrap}>
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />
           </View>
-          <TouchableOpacity style={styles.filterBtn} activeOpacity={0.88}>
-            <Ionicons name='options-outline' size={16} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
+        </View>
+        <View style={styles.filterRow}>
+          <StitchChip label={t('employees.filters.all')} active={activeFilter === 'all'} onPress={() => setActiveFilter('all')} />
+          <StitchChip label={t('employees.with_role')} active={activeFilter === 'withRole'} onPress={() => setActiveFilter('withRole')} />
+          <StitchChip label={t('employees.filters.synced')} active={activeFilter === 'synced'} onPress={() => setActiveFilter('synced')} />
+          <StitchChip label={t('employees.filters.local')} active={activeFilter === 'local'} onPress={() => setActiveFilter('local')} />
         </View>
         <StitchDashboardSectionHeader title={t('employees.directory_title', { defaultValue: 'People & Payments' })} subtitle='Browse and open worker records' actionLabel={String(filteredEmployees.length)} />
         {filteredEmployees.length ? filteredEmployees.map((item) => (
@@ -246,29 +255,23 @@ const styles = StyleSheet.create({
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   searchRow: {
-    flexDirection: 'row',
-    gap: stitchTheme.spacing.sm,
     marginBottom: stitchTheme.spacing.lg,
   },
   searchWrap: {
     flex: 1,
   },
-  filterBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.68)',
-    ...stitchShadows.float,
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: stitchTheme.spacing.xs,
+    marginBottom: stitchTheme.spacing.md,
   },
   card: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
-    padding: 18,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
     overflow: 'hidden',
     ...stitchShadows.card,
   },
@@ -283,20 +286,20 @@ const styles = StyleSheet.create({
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: stitchTheme.colors.primary,
   },
   avatarText: {
     color: stitchTheme.colors.warmWhite,
-    fontSize: stitchTheme.typography.title.fontSize,
-    lineHeight: stitchTheme.typography.title.lineHeight,
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -307,13 +310,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: stitchTheme.colors.text,
     letterSpacing: -0.3,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   workerRole: {
-    fontSize: stitchTheme.typography.bodySmall.fontSize,
-    lineHeight: stitchTheme.typography.bodySmall.lineHeight,
-    fontWeight: '500',
-    color: stitchTheme.colors.accentBrown,
+    fontSize: stitchTheme.typography.caption.fontSize,
+    lineHeight: stitchTheme.typography.caption.lineHeight,
+    fontWeight: '700',
+    color: stitchTheme.colors.textMuted,
   },
   badge: {
     paddingHorizontal: 9,
@@ -331,7 +334,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: stitchTheme.colors.line,
-    marginVertical: 14,
+    marginVertical: 12,
     opacity: 0.8,
   },
   cardBottom: {
@@ -340,9 +343,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  metaGroup: {
+    flex: 1,
+  },
   metaMiddle: {
     alignItems: 'center',
-    flex: 1,
   },
   metaLabel: {
     fontSize: stitchTheme.typography.caption.fontSize,

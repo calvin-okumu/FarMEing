@@ -18,7 +18,7 @@ export function computeProjectSummary({ budgetItems = [], expenses = [], workEnt
   const totalBudget = budgetItems.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
   const totalExpenses = expenses.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.amount || 0), 0);
   const totalLaborCost = workEntries
-    .filter((item) => !item.isDeleted && item.status === 'APPROVED')
+    .filter((item) => !item.isDeleted)
     .reduce((sum, item) => sum + (item.totalCost || 0), 0);
   const totalHarvest = harvests.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.weight || 0), 0);
   const totalRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
