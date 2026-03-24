@@ -171,7 +171,7 @@ const getProjectSummary = async (req, res) => {
       _sum:   { amount: true },
     }),
     prisma.workEntry.aggregate({
-      where:  { projectId: req.params.id, isDeleted: false, status: 'APPROVED' },
+      where:  { projectId: req.params.id, isDeleted: false },
       _sum:   { totalCost: true },
     }),
     prisma.harvest.aggregate({
