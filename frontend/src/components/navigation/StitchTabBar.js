@@ -13,22 +13,6 @@ const TAB_META = {
   Settings: { icon: 'person-outline', label: 'Profile' },
 };
 
-const ROOT_ROUTES = {
-  Dashboard: 'Dashboard',
-  Projects: 'ProjectsList',
-  Employees: 'EmployeesList',
-  QuickEntry: 'QuickEntry',
-  Settings: 'Settings',
-};
-
-function getDeepFocusedRouteName(route) {
-  if (!route?.state || typeof route.state.index !== 'number') {
-    return route?.name;
-  }
-
-  const child = route.state.routes?.[route.state.index];
-  return getDeepFocusedRouteName(child);
-}
 
 export default function StitchTabBar({ state, descriptors, navigation }) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -65,16 +49,8 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
               canPreventDefault: true,
             });
 
-            if (!event.defaultPrevented) {
-              const rootRouteName = ROOT_ROUTES[route.name];
-              if (rootRouteName && rootRouteName !== route.name) {
-                navigation.navigate(route.name, { screen: rootRouteName });
-                return;
-              }
-
-              if (!isFocused) {
-                navigation.navigate(route.name);
-              }
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
             }
           };
 
