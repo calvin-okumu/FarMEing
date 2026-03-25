@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchTheme } from '../../theme/stitchTheme';
 
-export const STITCH_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 96 : 84;
+export const STITCH_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 90 : 78;
 
 const TAB_META = {
   Dashboard: { icon: 'grid-outline', label: 'Home' },
@@ -87,9 +87,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'transparent',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 8,
     paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingTop: 6,
     zIndex: 999,
     elevation: 20,
   },
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    minHeight: 56,
+    minHeight: 52,
     backgroundColor: 'rgba(17,42,30,0.94)',
     borderRadius: 28,
     paddingHorizontal: 8,
@@ -116,9 +116,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     paddingHorizontal: 4,
-    paddingVertical: 7,
+    paddingVertical: 5,
     borderRadius: 20,
-    minHeight: 46,
+    minHeight: 42,
   },
   itemActive: {
     backgroundColor: 'rgba(253,250,244,0.18)',
