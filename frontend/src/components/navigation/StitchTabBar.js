@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchTheme } from '../../theme/stitchTheme';
 
-export const STITCH_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 126 : 112;
+export const STITCH_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 96 : 84;
 
 const TAB_META = {
   Dashboard: { icon: 'grid-outline', label: 'Home' },
@@ -87,9 +87,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'transparent',
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingTop: 8,
     zIndex: 999,
     elevation: 20,
   },
@@ -97,11 +97,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    minHeight: STITCH_TAB_BAR_HEIGHT - (Platform.OS === 'ios' ? 56 : 42),
+    minHeight: 56,
     backgroundColor: 'rgba(17,42,30,0.94)',
-    borderRadius: 30,
+    borderRadius: 28,
     paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     shadowColor: '#1a3d2b',
@@ -114,11 +114,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
     paddingHorizontal: 4,
-    paddingVertical: 10,
-    borderRadius: 22,
-    minHeight: 58,
+    paddingVertical: 7,
+    borderRadius: 20,
+    minHeight: 46,
   },
   itemActive: {
     backgroundColor: 'rgba(253,250,244,0.18)',
@@ -127,9 +127,9 @@ const styles = StyleSheet.create({
   },
   itemGlow: {
     position: 'absolute',
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     top: 0,
     backgroundColor: 'rgba(183,228,199,0.18)',
   },
