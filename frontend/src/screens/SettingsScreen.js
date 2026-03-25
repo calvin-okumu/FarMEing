@@ -147,7 +147,7 @@ export default function SettingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 28, gap: stitchTheme.spacing.md },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.md },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   profileCard: {
     flexDirection: 'row',

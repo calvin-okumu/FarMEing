@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
-  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
   hero: { paddingBottom: stitchTheme.spacing.md },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10 },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },

@@ -27,6 +27,7 @@ import {
 } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 
 const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', 'fuel', 'irrigation', 'other'];
 
@@ -198,7 +199,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingBottom: 56, gap: stitchTheme.spacing.sm },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
   banner: { marginTop: stitchTheme.spacing.xs },

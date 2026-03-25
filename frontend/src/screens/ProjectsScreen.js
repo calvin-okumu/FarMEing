@@ -330,7 +330,7 @@ export default function ProjectsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
-  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
   hero: { paddingBottom: stitchTheme.spacing.md },
   heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
