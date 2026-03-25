@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
     gap: 5,
     paddingHorizontal: 4,
     paddingVertical: 10,
@@ -131,7 +130,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    top: -14,
+    top: 0,
     backgroundColor: 'rgba(183,228,199,0.18)',
   },
   label: {
