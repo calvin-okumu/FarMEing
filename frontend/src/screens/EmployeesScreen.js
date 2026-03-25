@@ -220,7 +220,7 @@ export default function EmployeesScreen({ navigation }) {
 
       <Modal visible={modalVisible} animationType='slide' transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+          <KeyboardAvoidingView behavior={'padding'} style={styles.keyboardView}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{t('employees.new_employee')}</Text>

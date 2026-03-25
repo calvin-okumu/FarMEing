@@ -284,7 +284,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </StitchDashboardShell>
 
       <Modal visible={editVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           <StitchSectionLabel>{t('employees.fields.name')}</StitchSectionLabel>
           <TextInput style={styles.input} value={editForm.name} onChangeText={(name) => setEditForm((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
@@ -297,7 +297,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </Modal>
 
       <Modal visible={paymentVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           <StitchSectionLabel>{t('payments.fields.amount')}</StitchSectionLabel>
           <TextInput style={styles.input} value={paymentForm.amount} onChangeText={(amount) => setPaymentForm((p) => ({ ...p, amount }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />

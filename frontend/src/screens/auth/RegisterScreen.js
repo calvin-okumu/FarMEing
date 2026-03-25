@@ -59,7 +59,7 @@ export default function RegisterScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={'padding'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
       <StitchAuthShell

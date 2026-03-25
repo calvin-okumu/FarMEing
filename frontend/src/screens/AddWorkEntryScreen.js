@@ -202,7 +202,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={'padding'}
       style={styles.flex}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
