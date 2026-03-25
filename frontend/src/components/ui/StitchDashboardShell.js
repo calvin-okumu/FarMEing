@@ -1,4 +1,5 @@
-import { Animated, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
 import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
@@ -40,6 +41,20 @@ export default function StitchDashboardShell({
   statusBarStyle = 'light-content',
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
 }) {
+  const heroMaxHeight = useRef(new Animated.Value(300)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () =>
+      Animated.timing(heroMaxHeight, { toValue: 0, duration: 180, useNativeDriver: false }).start()
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () =>
+      Animated.timing(heroMaxHeight, { toValue: 300, duration: 200, useNativeDriver: false }).start()
+    );
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
   const resolvedBodyContentStyle = StyleSheet.flatten([styles.bodyContent, bodyContentStyle]) || {};
   const mergedBodyContentStyle = [
     styles.bodyContent,
@@ -50,7 +65,7 @@ export default function StitchDashboardShell({
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={statusBarStyle} backgroundColor={statusBarBackgroundColor} />
-      <Animated.View style={[styles.heroWrapper, hero?.wrapperStyle]}>
+      <Animated.View style={[styles.heroWrapper, hero?.wrapperStyle, { maxHeight: heroMaxHeight }]}>
         {hero?.eyebrow || hero?.title ? (
           <StitchHeroHeader
             eyebrow={hero.eyebrow}
