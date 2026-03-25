@@ -34,7 +34,7 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} pointerEvents="box-none">
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -90,6 +90,8 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,
     paddingHorizontal: 14,
     paddingTop: 10,
+    zIndex: 999,
+    elevation: 20,
   },
   bar: {
     flexDirection: 'row',
