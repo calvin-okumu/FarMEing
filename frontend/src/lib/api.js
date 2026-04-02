@@ -5,6 +5,8 @@ import useBackendStore from '../store/useBackendStore';
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 // Set EXPO_PUBLIC_API_URL for your environment.
+// Use an https:// URL for tunneled or production deployments.
+// The local defaults below are only meant for emulator and simulator development.
 // Android emulator: http://10.0.2.2:3000
 // iOS simulator:    http://localhost:3000
 // Physical device:  http://<your-lan-ip>:3000

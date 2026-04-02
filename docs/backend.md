@@ -72,6 +72,8 @@ node server.js
 
 The server listens on `http://localhost:3000` (or the value of `$PORT`).
 
+For production, the recommended setup is to keep the backend bound to the host machine and expose it through a named Cloudflare Tunnel such as `https://api.carlhub.uk` instead of opening port `3000` directly.
+
 ### Health check
 
 ```

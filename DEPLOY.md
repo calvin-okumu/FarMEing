@@ -99,12 +99,17 @@ pm2 startup        # run the printed command (it looks like: sudo env PATH=... p
 pm2 save
 ```
 
-### 1.6 Open the firewall
+### 1.6 Firewall note
+
+If you are using the recommended Cloudflare Tunnel setup in Part 2, do not open port `3000` publicly.
+
+You can enable the firewall without exposing the backend port:
 
 ```bash
-sudo ufw allow 3000
 sudo ufw enable
 ```
+
+Only allow `3000` directly if you intentionally want the API reachable outside Cloudflare.
 
 ### 1.7 Verify the backend is running
 
@@ -138,7 +143,22 @@ This prints a URL like `https://xxxx-xxxx.trycloudflare.com`. Use this as your `
 
 ### Option B — Named tunnel with a custom domain (permanent, recommended)
 
-Requires a free Cloudflare account and a domain added to Cloudflare DNS.
+Recommended default: expose the backend publicly at `https://api.carlhub.uk`, keep the Node server listening on `localhost:3000`, and rely on the app's existing JWT authentication for API protection.
+
+Why this setup:
+
+- No Android cleartext traffic
+- No router port forwarding
+- No DuckDNS dependency
+- Stable public hostname for the mobile app
+- Origin stays private behind Cloudflare
+
+Prerequisites:
+
+- Your domain `carlhub.uk` is active in Cloudflare DNS
+- The backend runs on the same machine as `cloudflared`
+- The backend responds locally on `http://localhost:3000/health`
+- You can run commands with `sudo`
 
 ```bash
 # Install cloudflared (if not already done)
@@ -146,27 +166,34 @@ curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloud
 sudo dpkg -i cloudflared.deb
 
 # Authenticate with your Cloudflare account (opens browser)
-cloudflared login
+cloudflared tunnel login
 
 # Create a named tunnel
-cloudflared tunnel create farmtrack
+cloudflared tunnel create farmtrack-api
 
 # Route your subdomain to the tunnel
-cloudflared tunnel route dns farmtrack api.yourdomain.com
+cloudflared tunnel route dns farmtrack-api api.carlhub.uk
 ```
+
+When prompted in the browser, authorize the `carlhub.uk` zone.
+
+Save the tunnel ID printed by `cloudflared tunnel create farmtrack-api`.
 
 Create the config file at `/etc/cloudflared/config.yml`:
 
 ```yaml
 tunnel: <TUNNEL_ID>
 credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
+
 ingress:
-  - hostname: api.yourdomain.com
+  - hostname: api.carlhub.uk
     service: http://localhost:3000
   - service: http_status:404
 ```
 
-> Replace `<TUNNEL_ID>` with the ID printed by `cloudflared tunnel create farmtrack`.
+> Replace `<TUNNEL_ID>` with the ID printed by `cloudflared tunnel create farmtrack-api`.
+
+If your credentials file is stored elsewhere, update `credentials-file` to match the real path.
 
 Install and start the tunnel as a system service:
 
@@ -174,14 +201,165 @@ Install and start the tunnel as a system service:
 sudo cloudflared service install
 sudo systemctl enable cloudflared
 sudo systemctl start cloudflared
+sudo systemctl status cloudflared
 ```
 
-Verify:
+Verify the backend locally first:
+
+```bash
+curl http://localhost:3000/health
+# Expected: {"status":"ok"}
+```
+
+Then verify the public HTTPS endpoint:
+
+```bash
+curl https://api.carlhub.uk/health
+# Expected: {"status":"ok"}
+```
+
+You can also inspect the tunnel:
+
+```bash
+cloudflared tunnel list
+cloudflared tunnel info farmtrack-api
+```
+
+Update the mobile app environment to use the permanent HTTPS API URL:
+
+```env
+EXPO_PUBLIC_API_URL=https://api.carlhub.uk
+```
+
+You can place this in `frontend/.env` for local Expo runs, and `frontend/.env.example` now shows the same production default.
+
+Then rebuild the app so the new public URL is bundled into the client.
+
+Recommended production posture:
+
+- Keep the backend bound to `localhost` if possible
+- Do not expose port `3000` publicly
+- Keep `api.carlhub.uk` proxied through Cloudflare
+- Rely on existing app authentication for API access
+- Add Cloudflare WAF or rate limiting later if needed
+
+Troubleshooting:
+
+- If `https://api.carlhub.uk/health` does not load, check that the backend is running on `localhost:3000`, `cloudflared` is active, and the DNS route exists in Cloudflare
+- If the tunnel connects but cannot reach the origin, confirm the `service` value in `/etc/cloudflared/config.yml` is `http://localhost:3000`
+- If the mobile app still points to an old host, update `EXPO_PUBLIC_API_URL` and rebuild the app
+
+### Option C - Private access via Twingate + Nginx
+
+Use this if your backend stays on your local network and only approved users/devices should reach it through Twingate.
+
+Recommended topology:
+
+- Backend app via PM2 on `127.0.0.1:3000`
+- Nginx on the same host, listening on `443`
+- Twingate Connector on the same LAN
+- Twingate Resource pointing to the Nginx hostname on `443`
+
+This keeps port `3000` private and gives the mobile app a stable HTTPS base URL.
+
+#### 2C.1 Install Nginx
+
+On the backend server:
+
+```bash
+sudo apt update
+sudo apt install -y nginx
+```
+
+#### 2C.2 Configure Nginx as a reverse proxy
+
+Create `/etc/nginx/sites-available/farmtrack`:
+
+```nginx
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Enable the site and reload Nginx:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/farmtrack /etc/nginx/sites-enabled/farmtrack
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Verify locally on the server:
+
+```bash
+curl http://localhost/health
+# Expected: {"status":"ok"}
+```
+
+#### 2C.3 Add HTTPS in Nginx
+
+For Android devices, use HTTPS with a certificate trusted by the device. The easiest setup is a real domain/subdomain such as `api.yourdomain.com`.
+
+Example TLS config:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+> Avoid self-signed certificates for the mobile app unless you also manage device trust settings.
+
+#### 2C.4 Publish the backend through Twingate
+
+In the Twingate Admin Console:
+
+1. Create or reuse a Connector on the same LAN as the backend server.
+2. Add a Resource for `api.yourdomain.com`.
+3. Allow access on TCP port `443`.
+4. Assign the Resource to the users/groups that should access the app.
+
+Each client device that will use the app must have the Twingate client installed, signed in, and connected.
+
+#### 2C.5 Verify over Twingate
+
+From a Twingate-connected laptop or phone:
 
 ```bash
 curl https://api.yourdomain.com/health
 # Expected: {"status":"ok"}
 ```
+
+If you do not have a real domain and valid certificate, you can use HTTP over Twingate for testing, but Android release builds may require additional cleartext-traffic configuration.
 
 ---
 
@@ -189,7 +367,10 @@ curl https://api.yourdomain.com/health
 
 ### 3.1 Update the API URL in eas.json
 
-In `frontend/eas.json`, replace the placeholder URL with your actual tunnel URL:
+In `frontend/eas.json`, replace the placeholder URL with your actual backend URL. Examples:
+
+- Cloudflare Tunnel: `https://api.yourdomain.com`
+- Twingate + Nginx: `https://api.yourdomain.com`
 
 ```json
 "preview": {
