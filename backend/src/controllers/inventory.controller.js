@@ -85,9 +85,10 @@ const createInventoryItem = async (req, res) => {
 const listInventoryItems = async (req, res) => {
   const project = await findOwnedProject(req.params.projectId, req.user.id, res);
   if (!project) return;
+  const includeDeleted = req.query.includeDeleted === 'true';
 
   const items = await prisma.inventoryItem.findMany({
-    where:   { projectId: req.params.projectId, isDeleted: false },
+    where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'asc' },
   });
 

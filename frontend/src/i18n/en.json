@@ -483,6 +483,8 @@
     "title": "Payment",
     "record": "Record Payment",
     "confirm": "Confirm Payment",
+    "delete_title": "Delete Payment",
+    "confirm_delete": "Are you sure you want to delete this payment of {{name}}?",
     "pay_worker": "Pay Worker",
     "empty": "No payments yet",
     "fields": {

@@ -483,6 +483,8 @@
     "title": "Malipo",
     "record": "Rekodi Malipo",
     "confirm": "Thibitisha Malipo",
+    "delete_title": "Futa Malipo",
+    "confirm_delete": "Una uhakika unataka kufuta malipo haya ya {{name}}?",
     "pay_worker": "Lipa Mfanyakazi",
     "empty": "Hakuna malipo bado",
     "fields": {

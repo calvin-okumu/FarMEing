@@ -52,8 +52,9 @@ const createEmployee = async (req, res) => {
 // ── GET /employees ────────────────────────────────────────────────────────────
 
 const listEmployees = async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === 'true';
   const employees = await prisma.employee.findMany({
-    where:   { userId: req.user.id, isDeleted: false },
+    where:   { userId: req.user.id, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -93,7 +94,7 @@ const deleteEmployee = async (req, res) => {
 
 // ── GET /employees/:id/balance ────────────────────────────────────────────────
 // totalEarned  = sum of WorkEntry.totalCost  (non-deleted entries)
-// totalPaid    = sum of Payment.amount        (all payments)
+// totalPaid    = sum of Payment.amount        (non-deleted payments)
 // balance      = totalEarned - totalPaid      (amount still owed)
 
 const getEmployeeBalance = async (req, res) => {
@@ -106,7 +107,7 @@ const getEmployeeBalance = async (req, res) => {
       _sum:  { totalCost: true },
     }),
     prisma.payment.aggregate({
-      where: { employeeId: req.params.id },
+      where: { employeeId: req.params.id, isDeleted: false },
       _sum:  { amount: true },
     }),
   ]);

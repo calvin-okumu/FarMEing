@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
@@ -29,7 +29,7 @@ import StatusBanner from '../components/ui/StatusBanner';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
-import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import { deleteProjectCascade, updateLocalModel } from '../utils/resourceMutations';
 
 const DEFAULT_FORM = {
   name: '',
@@ -90,6 +90,7 @@ export default function ProjectsScreen({ navigation, route }) {
   const openCreate = () => {
     setEditingProject(null);
     setFormData(DEFAULT_FORM);
+    setShowDatePicker(false);
     setModalVisible(true);
   };
 
@@ -111,7 +112,30 @@ export default function ProjectsScreen({ navigation, route }) {
       expectedYield: String(project.expectedYield ?? ''),
       contractUrl: project.contractUrl || '',
     });
+    setShowDatePicker(false);
     setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setShowDatePicker(false);
+    setModalVisible(false);
+  };
+
+  const openStartDatePicker = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: formData.startDate,
+        mode: 'date',
+        onChange: (_event, selectedDate) => {
+          if (selectedDate) {
+            setFormData((previous) => ({ ...previous, startDate: selectedDate }));
+          }
+        },
+      });
+      return;
+    }
+
+    setShowDatePicker(true);
   };
 
   const handleSave = async () => {
@@ -119,36 +143,34 @@ export default function ProjectsScreen({ navigation, route }) {
 
     try {
       setBanner(null);
-      await database.write(async () => {
-        if (editingProject) {
-          const record = await database.get('farm_projects').find(editingProject.id);
-          await updateLocalModel(record, (draft) => {
-            draft.name = formData.name.trim();
-            draft.crop = formData.crop.trim();
-            draft.landSize = parseFloat(formData.landSize) || 0;
-            draft.landUnit = formData.landUnit || 'acres';
-            draft.startDate = formData.startDate.getTime();
-            draft.expectedYield = parseFloat(formData.expectedYield) || 0;
-            draft.contractUrl = formData.contractUrl.trim();
-            draft.status = draft.status || 'ACTIVE';
-          });
-        } else {
-          await database.get('farm_projects').create((record) => {
-            initializeLocalRecord(record);
-            record.userId = '';
-            record.name = formData.name.trim();
-            record.crop = formData.crop.trim();
-            record.landSize = parseFloat(formData.landSize) || 0;
-            record.landUnit = formData.landUnit || 'acres';
-            record.startDate = formData.startDate.getTime();
-            record.expectedYield = parseFloat(formData.expectedYield) || 0;
-            record.contractUrl = formData.contractUrl.trim();
-            record.status = 'ACTIVE';
-            record.notes = '';
-            record.isDeleted = false;
-          });
-        }
-      });
+      if (editingProject) {
+        const record = await database.get('farm_projects').find(editingProject.id);
+        await updateLocalModel(record, (draft) => {
+          draft.name = formData.name.trim();
+          draft.crop = formData.crop.trim();
+          draft.landSize = parseFloat(formData.landSize) || 0;
+          draft.landUnit = formData.landUnit || 'acres';
+          draft.startDate = formData.startDate.getTime();
+          draft.expectedYield = parseFloat(formData.expectedYield) || 0;
+          draft.contractUrl = formData.contractUrl.trim();
+          draft.status = draft.status || 'ACTIVE';
+        });
+      } else {
+        await database.get('farm_projects').create((record) => {
+          initializeLocalRecord(record);
+          record.userId = '';
+          record.name = formData.name.trim();
+          record.crop = formData.crop.trim();
+          record.landSize = parseFloat(formData.landSize) || 0;
+          record.landUnit = formData.landUnit || 'acres';
+          record.startDate = formData.startDate.getTime();
+          record.expectedYield = parseFloat(formData.expectedYield) || 0;
+          record.contractUrl = formData.contractUrl.trim();
+          record.status = 'ACTIVE';
+          record.notes = '';
+          record.isDeleted = false;
+        });
+      }
 
       if (editingProject) {
         setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
@@ -157,7 +179,7 @@ export default function ProjectsScreen({ navigation, route }) {
       }
 
       syncAll().catch(() => {});
-      setModalVisible(false);
+      closeModal();
       setEditingProject(null);
       setFormData(DEFAULT_FORM);
     } catch (error) {
@@ -170,10 +192,7 @@ export default function ProjectsScreen({ navigation, route }) {
     if (!deleteTarget) return;
     try {
       setBanner(null);
-      await database.write(async () => {
-        const record = await database.get('farm_projects').find(deleteTarget.id);
-        await deleteLocalModel(record);
-      });
+      await deleteProjectCascade(database, deleteTarget.id);
       syncAll().catch(() => {});
       setDeleteTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
@@ -285,7 +304,7 @@ export default function ProjectsScreen({ navigation, route }) {
         }) : <EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
       </StitchDashboardShell>
 
-      <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={() => setModalVisible(false)}>
+      <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={closeModal}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
           <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('projects.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
@@ -311,12 +330,12 @@ export default function ProjectsScreen({ navigation, route }) {
           <TextInput style={styles.input} value={formData.contractUrl} onChangeText={(url) => setFormData((p) => ({ ...p, contractUrl: url }))} placeholder="https://..." placeholderTextColor={stitchTheme.colors.textMuted} />
 
           <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
-          <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
+          <TouchableOpacity style={styles.dateSelector} onPress={openStartDatePicker} activeOpacity={0.88}>
             <Text style={styles.dateSelectorText}>{formatAppDate(formData.startDate)}</Text>
             <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
           </TouchableOpacity>
 
-          {showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(_event, selectedDate) => { setShowDatePicker(Platform.OS === 'ios'); if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
+          {Platform.OS === 'ios' && showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display="spinner" onChange={(_event, selectedDate) => { if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
 
           <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSave} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
         </ScrollView>

@@ -370,17 +370,17 @@ async function countFailedRecords() {
 
 async function pullChanges() {
   let pulled = 0;
-  const { data: { projects = [] } } = await api.get('/projects');
+  const { data: { projects = [] } } = await api.get('/projects', { params: { includeDeleted: true } });
   pulled += await syncProjects(projects);
 
   const activeProjects = projects.filter((project) => !project.isDeleted);
   const { projects: projectMap, employees: employeeMapBefore } = await buildRemoteMaps();
 
-  const { data: { employees = [] } } = await api.get('/employees');
+  const { data: { employees = [] } } = await api.get('/employees', { params: { includeDeleted: true } });
   pulled += await syncEmployees(employees);
 
   const { employees: employeeMap } = await buildRemoteMaps();
-  const { data: { payments = [] } } = await api.get('/payments');
+  const { data: { payments = [] } } = await api.get('/payments', { params: { includeDeleted: true } });
   pulled += await syncPayments(payments, employeeMap);
 
   for (const project of activeProjects) {
@@ -388,12 +388,12 @@ async function pullChanges() {
 
     try {
       const [budgetRes, expenseRes, workRes, harvestRes, saleRes, inventoryRes] = await Promise.all([
-        api.get(`/budget/${project.id}`),
-        api.get(`/expenses/${project.id}`),
-        api.get(`/work-entries/${project.id}`),
-        api.get(`/harvests/${project.id}`),
-        api.get(`/sales/${project.id}`),
-        api.get(`/inventory/${project.id}`),
+        api.get(`/budget/${project.id}`, { params: { includeDeleted: true } }),
+        api.get(`/expenses/${project.id}`, { params: { includeDeleted: true } }),
+        api.get(`/work-entries/${project.id}`, { params: { includeDeleted: true } }),
+        api.get(`/harvests/${project.id}`, { params: { includeDeleted: true } }),
+        api.get(`/sales/${project.id}`, { params: { includeDeleted: true } }),
+        api.get(`/inventory/${project.id}`, { params: { includeDeleted: true } }),
       ]);
 
       pulled += await syncProjectBoundCollection(

@@ -64,6 +64,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const [loadingTabData, setLoadingTabData] = useState(true);
   const [editVisible, setEditVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
+  const [deletePaymentTarget, setDeletePaymentTarget] = useState(null);
   const [paymentVisible, setPaymentVisible] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', role: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', note: '', date: new Date() });
@@ -122,13 +123,11 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleUpdate = async () => {
     try {
-      await database.write(async () => {
-        const record = await database.get('employees').find(employeeId);
-        await updateLocalModel(record, (draft) => {
-          draft.name = editForm.name.trim();
-          draft.phone = editForm.phone.trim();
-          draft.role = editForm.role.trim();
-        });
+      const record = await database.get('employees').find(employeeId);
+      await updateLocalModel(record, (draft) => {
+        draft.name = editForm.name.trim();
+        draft.phone = editForm.phone.trim();
+        draft.role = editForm.role.trim();
       });
       syncAll().catch(() => {});
       setEditVisible(false);
@@ -141,10 +140,8 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleDelete = async () => {
     try {
-      await database.write(async () => {
-        const record = await database.get('employees').find(employeeId);
-        await deleteLocalModel(record);
-      });
+      const record = await database.get('employees').find(employeeId);
+      await deleteLocalModel(record);
       syncAll().catch(() => {});
       setDeleteVisible(false);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
@@ -157,20 +154,33 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleRecordPayment = async () => {
     try {
-      await database.write(async () => {
-        await database.get('payments').create((record) => {
-          initializeLocalRecord(record);
-          record.employeeId = employeeId;
-          record.amount = parseFloat(paymentForm.amount) || 0;
-          record.date = paymentForm.date.getTime();
-          record.note = paymentForm.note.trim();
-          record.isDeleted = false;
-        });
+      await database.get('payments').create((record) => {
+        initializeLocalRecord(record);
+        record.employeeId = employeeId;
+        record.amount = parseFloat(paymentForm.amount) || 0;
+        record.date = paymentForm.date.getTime();
+        record.note = paymentForm.note.trim();
+        record.isDeleted = false;
       });
       syncAll().catch(() => {});
       setPaymentVisible(false);
       setPaymentForm({ amount: '', note: '', date: new Date() });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
+    } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
+      Alert.alert(t('common.error'), error.message);
+    }
+  };
+
+  const handleDeletePayment = async () => {
+    if (!deletePaymentTarget) return;
+
+    try {
+      const record = await database.get('payments').find(deletePaymentTarget.id);
+      await deleteLocalModel(record);
+      syncAll().catch(() => {});
+      setDeletePaymentTarget(null);
+      setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
@@ -265,7 +275,14 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <View key={item.id} style={styles.listItem}>
           <View style={styles.listItemHeader}>
             <Text style={styles.listItemTitle}>{activeTab === 'work' ? item.activity : t('payments.title')}</Text>
-            <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, currency)}</Text>
+            <View style={styles.listItemActions}>
+              <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, currency)}</Text>
+              {activeTab === 'payments' ? (
+                <TouchableOpacity onPress={() => setDeletePaymentTarget(item)} activeOpacity={0.8} style={styles.inlineDeleteButton}>
+                  <Ionicons name="trash-outline" size={16} color="#9c1111" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
           <Text style={styles.listItemMeta}>{formatAppDate(item.date)}{item.note ? ` • ${item.note}` : ''}</Text>
         </View>
@@ -308,6 +325,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </Modal>
 
       <ConfirmDialog visible={deleteVisible} title={t('employees.delete_title')} message={t('employees.confirm_delete', { name: employee.name })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteVisible(false)} onConfirm={handleDelete} />
+      <ConfirmDialog visible={!!deletePaymentTarget} title={t('payments.delete_title')} message={t('payments.confirm_delete', { name: formatCurrency(deletePaymentTarget?.amount || 0, currency) })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeletePaymentTarget(null)} onConfirm={handleDeletePayment} />
     </View>
   );
 }
@@ -339,8 +357,10 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1 },
   listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.sm + 2, marginBottom: stitchTheme.spacing.xs, ...stitchShadows.card },
   listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: stitchTheme.spacing.sm },
+  listItemActions: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs },
   listItemTitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, flex: 1, textTransform: 'uppercase', letterSpacing: 0.7 },
   listItemAmount: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
+  inlineDeleteButton: { padding: 6, borderRadius: stitchTheme.radius.sm, backgroundColor: 'rgba(156,17,17,0.08)' },
   listItemMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, textAlign: 'center', marginTop: stitchTheme.spacing.lg },
   deleteTrigger: { marginTop: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

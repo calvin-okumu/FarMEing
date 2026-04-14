@@ -8,6 +8,9 @@ This directory contains reference documentation for the FarmTrack full-stack far
 |---|---|
 | [backend.md](./backend.md) | Node.js/Express REST API — models, endpoints, Prisma schema |
 | [frontend.md](./frontend.md) | Expo/React Native mobile app — screens, WatermelonDB, sync service, localization |
+| [implementation/farm_app_implementation_v2.md](./implementation/farm_app_implementation_v2.md) | Implementation roadmap for the app build and rollout |
+| [implementation/data protection.md](./implementation/data%20protection.md) | Data protection strategy for backups, restores, migrations, and sync safety |
+| [implementation/soft-delete-consistency-plan.md](./implementation/soft-delete-consistency-plan.md) | Plan for making soft delete behavior consistent across backend, app, sync, and reporting |
 
 ## Project Overview
 
@@ -27,4 +30,5 @@ Node_Proj/
 ├── backend/          # Express REST API
 ├── frontend/         # Expo React Native app
 └── docs/             # This documentation
+    └── implementation/ # Planning and protection docs
 ```

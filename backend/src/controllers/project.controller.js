@@ -83,8 +83,9 @@ const createProject = async (req, res) => {
 // ── GET /projects ─────────────────────────────────────────────────────────────
 
 const listProjects = async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === 'true';
   const projects = await prisma.farmProject.findMany({
-    where:   { userId: req.user.id, isDeleted: false },
+    where:   { userId: req.user.id, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'desc' },
     select:  PROJECT_SELECT,
   });
@@ -143,10 +144,36 @@ const deleteProject = async (req, res) => {
   const owned = await findOwned(req.params.id, req.user.id, res);
   if (!owned) return;
 
-  await prisma.farmProject.update({
-    where: { id: req.params.id },
-    data:  { isDeleted: true },
-  });
+  await prisma.$transaction([
+    prisma.farmProject.update({
+      where: { id: req.params.id },
+      data:  { isDeleted: true },
+    }),
+    prisma.budgetItem.updateMany({
+      where: { projectId: req.params.id, isDeleted: false },
+      data:  { isDeleted: true },
+    }),
+    prisma.expense.updateMany({
+      where: { projectId: req.params.id, isDeleted: false },
+      data:  { isDeleted: true },
+    }),
+    prisma.workEntry.updateMany({
+      where: { projectId: req.params.id, isDeleted: false },
+      data:  { isDeleted: true },
+    }),
+    prisma.harvest.updateMany({
+      where: { projectId: req.params.id, isDeleted: false },
+      data:  { isDeleted: true },
+    }),
+    prisma.sale.updateMany({
+      where: { projectId: req.params.id, isDeleted: false },
+      data:  { isDeleted: true },
+    }),
+    prisma.inventoryItem.updateMany({
+      where: { projectId: req.params.id, isDeleted: false },
+      data:  { isDeleted: true },
+    }),
+  ]);
 
   return res.json({ message: 'Project deleted' });
 };

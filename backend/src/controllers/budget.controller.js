@@ -80,9 +80,10 @@ const createBudgetItem = async (req, res) => {
 const listBudgetItems = async (req, res) => {
   const project = await findOwnedProject(req.params.projectId, req.user.id, res);
   if (!project) return;
+  const includeDeleted = req.query.includeDeleted === 'true';
 
   const items = await prisma.budgetItem.findMany({
-    where:   { projectId: req.params.projectId, isDeleted: false },
+    where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'asc' },
   });
 

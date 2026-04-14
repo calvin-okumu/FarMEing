@@ -78,9 +78,10 @@ const createExpense = async (req, res) => {
 const listExpenses = async (req, res) => {
   const project = await findOwnedProject(req.params.projectId, req.user.id, res);
   if (!project) return;
+  const includeDeleted = req.query.includeDeleted === 'true';
 
   const expenses = await prisma.expense.findMany({
-    where:   { projectId: req.params.projectId, isDeleted: false },
+    where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { date: 'desc' },
   });
 
