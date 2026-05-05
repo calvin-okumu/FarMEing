@@ -499,24 +499,35 @@
     }
   },
   "quick_entry": {
+    "mode": "Entry Type",
+    "modes": {
+      "individual": "Individual",
+      "crew": "Crew"
+    },
     "fields": {
       "project": "Project",
       "employee": "Employee",
+      "crew_name": "Crew Name",
       "activity": "Activity",
       "workers": "Workers",
       "days": "Days",
       "rate": "Rate"
     },
     "placeholders": {
-      "employee": "Type name..."
+      "employee": "Type name...",
+      "crew_name": "Type crew name..."
     },
     "select_project": "Select project...",
     "total": "Total",
+    "single_worker_hint": "Quick Entry saves one worker at a time.",
+    "crew_hint": "Crew Entry saves a grouped labor record under a reusable crew label.",
     "save": "SAVE ENTRY",
     "success": "Work entry logged!",
     "errors": {
       "project_required": "Please select a project",
       "employee_required": "Please enter employee name",
+      "workers_required": "Please enter at least one worker",
+      "single_worker_only": "Quick Entry only supports one worker per entry. Use Add Work Entry for crews.",
       "rate_required": "Please enter a valid rate",
       "save_local": "Failed to save entry locally"
     }

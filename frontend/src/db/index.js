@@ -29,6 +29,12 @@ export const database = new Database({
   modelClasses: [FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem],
 });
 
+export async function resetLocalDatabase() {
+  await database.write(async () => {
+    await database.unsafeResetDatabase();
+  });
+}
+
 // Convenience collection getters
 export const projectsCollection  = database.get('farm_projects');
 export const budgetItemsCollection = database.get('budget_items');

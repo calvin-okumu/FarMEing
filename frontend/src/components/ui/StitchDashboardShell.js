@@ -1,33 +1,30 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
 import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
 import StitchHeroHeader from './StitchHeroHeader';
 
-export function StitchDashboardSectionHeader({ title, subtitle, actionLabel, onActionPress, badgeLabel, style }) {
+const EXPANDED_HERO_HEIGHT = 184;
+
+export function StitchDashboardSectionHeader({ title, subtitle, badgeLabel, actionLabel, onActionPress, style }) {
   return (
     <View style={[styles.sectionHead, style]}>
-      <View>
+      <View style={styles.sectionCopy}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null}
       </View>
       {badgeLabel ? (
-        <StitchDashboardStatusBadge label={badgeLabel} />
-      ) : actionLabel ? (
-        <TouchableOpacity activeOpacity={0.88} onPress={onActionPress}>
+        <View style={styles.liveBadge}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>{badgeLabel}</Text>
+        </View>
+      ) : null}
+      {!badgeLabel && actionLabel && onActionPress ? (
+        <TouchableOpacity onPress={onActionPress} activeOpacity={0.82}>
           <Text style={styles.seeAll}>{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}
-    </View>
-  );
-}
-
-export function StitchDashboardStatusBadge({ label }) {
-  return (
-    <View style={styles.liveBadge}>
-      <View style={styles.liveDot} />
-      <Text style={styles.liveText}>{label}</Text>
     </View>
   );
 }
@@ -41,19 +38,22 @@ export default function StitchDashboardShell({
   statusBarStyle = 'light-content',
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
 }) {
-  const heroMaxHeight = useRef(new Animated.Value(300)).current;
+  const heroHeight = useRef(new Animated.Value(EXPANDED_HERO_HEIGHT)).current;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, () =>
-      Animated.timing(heroMaxHeight, { toValue: 0, duration: 180, useNativeDriver: false }).start()
+      Animated.timing(heroHeight, { toValue: 0, duration: 180, useNativeDriver: false }).start()
     );
     const hideSub = Keyboard.addListener(hideEvent, () =>
-      Animated.timing(heroMaxHeight, { toValue: 300, duration: 200, useNativeDriver: false }).start()
+      Animated.timing(heroHeight, { toValue: EXPANDED_HERO_HEIGHT, duration: 200, useNativeDriver: false }).start()
     );
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [heroHeight]);
 
   const resolvedBodyContentStyle = StyleSheet.flatten([styles.bodyContent, bodyContentStyle]) || {};
   const mergedBodyContentStyle = [
@@ -65,20 +65,24 @@ export default function StitchDashboardShell({
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={statusBarStyle} backgroundColor={statusBarBackgroundColor} />
-      <Animated.View style={[styles.heroWrapper, hero?.wrapperStyle, { maxHeight: heroMaxHeight }]}>
-        {hero?.eyebrow || hero?.title ? (
-          <StitchHeroHeader
-            eyebrow={hero.eyebrow}
-            title={hero.title}
-            subtitle={hero.subtitle}
-            actionIcon={hero.actionIcon}
-            onActionPress={hero.onActionPress}
-            style={hero.style}
-            variant={hero.variant}
-          >
-            {hero.children}
-          </StitchHeroHeader>
-        ) : null}
+      <Animated.View style={[styles.heroWrapper, { height: heroHeight }]}> 
+        <Animated.View style={hero?.wrapperStyle}>
+          {hero?.eyebrow || hero?.title ? (
+            <StitchHeroHeader
+              eyebrow={hero.eyebrow}
+              title={hero.title}
+              subtitle={hero.subtitle}
+              actionIcon={hero.actionIcon}
+              onActionPress={hero.onActionPress}
+              leftActionIcon={hero.leftActionIcon}
+              onLeftActionPress={hero.onLeftActionPress}
+              style={hero.style}
+              variant={hero.variant}
+            >
+              {hero.children}
+            </StitchHeroHeader>
+          ) : null}
+        </Animated.View>
       </Animated.View>
 
       <ScrollView style={[styles.body, bodyStyle]} contentContainerStyle={mergedBodyContentStyle} showsVerticalScrollIndicator={false} refreshControl={refreshControl} keyboardShouldPersistTaps='handled'>
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
   },
   heroWrapper: {
     overflow: 'hidden',
-    paddingBottom: stitchTheme.spacing.xs,
+    paddingBottom: 0,
     backgroundColor: stitchTheme.colors.forestDeep,
   },
   body: {
@@ -116,6 +120,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: stitchTheme.spacing.xs,
+  },
+  sectionCopy: {
+    flex: 1,
+    paddingRight: stitchTheme.spacing.sm,
   },
   sectionTitle: {
     fontSize: stitchTheme.typography.section.fontSize,

@@ -38,6 +38,11 @@ import {
 } from '../components/ui/StitchPrimitives';
 
 const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
+const ENTRY_MODES = ['individual', 'crew'];
+
+function normalizeEmployeeName(value) {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
 
 export default function QuickEntryScreen({ navigation }) {
   const { t } = useTranslation();
@@ -52,6 +57,7 @@ export default function QuickEntryScreen({ navigation }) {
   const [employeeName, setEmployeeName] = useState('');
   const [employeeDropdownVisible, setEmployeeDropdownVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [entryMode, setEntryMode] = useState('individual');
   const [activity, setActivity] = useState('planting');
   const [workers, setWorkers] = useState('1');
   const [days, setDays] = useState('1');
@@ -61,17 +67,25 @@ export default function QuickEntryScreen({ navigation }) {
   const [banner, setBanner] = useState(null);
 
   const employeeInputRef = useRef(null);
-  const total = (parseFloat(workers) || 0) * (parseFloat(days) || 0) * (parseFloat(rate) || 0);
+  const workerCount = parseFloat(workers) || 0;
+  const total = workerCount * (parseFloat(days) || 0) * (parseFloat(rate) || 0);
+  const employeeLabel = entryMode === 'crew' ? t('quick_entry.fields.crew_name') : t('quick_entry.fields.employee');
+  const employeePlaceholder = entryMode === 'crew' ? t('quick_entry.placeholders.crew_name') : t('quick_entry.placeholders.employee');
+  const helperText = entryMode === 'crew' ? t('quick_entry.crew_hint') : t('quick_entry.single_worker_hint');
   const graphValues = useMemo(() => [parseFloat(workers) || 1, parseFloat(days) || 1, parseFloat(rate) || 1, total || 1], [workers, days, rate, total]);
 
   useEffect(() => {
+    const projectQuery = database.get('farm_projects').query(Q.where('is_deleted', false));
+    const employeeQuery = database.get('employees').query(Q.where('is_deleted', false));
+
     const loadData = async () => {
       try {
-        const projRows = await database.get('farm_projects').query(Q.where('is_deleted', false)).fetch();
+        const [projRows, empRows] = await Promise.all([
+          projectQuery.fetch(),
+          employeeQuery.fetch(),
+        ]);
         setProjects(projRows);
         if (projRows.length === 1) setSelectedProject(projRows[0]);
-
-        const empRows = await database.get('employees').query(Q.where('is_deleted', false)).fetch();
         setEmployees(empRows);
       } catch (err) {
         console.warn('[QuickEntry] load error:', err.message);
@@ -81,6 +95,29 @@ export default function QuickEntryScreen({ navigation }) {
     };
 
     loadData();
+
+    const projectSub = projectQuery.observe().subscribe((rows) => {
+      setProjects(rows);
+      setSelectedProject((current) => {
+        if (!current) {
+          return rows.length === 1 ? rows[0] : null;
+        }
+        return rows.find((project) => project.id === current.id) || (rows.length === 1 ? rows[0] : null);
+      });
+    });
+
+    const employeeSub = employeeQuery.observe().subscribe((rows) => {
+      setEmployees(rows);
+      setSelectedEmployee((current) => {
+        if (!current) return null;
+        return rows.find((employee) => employee.id === current.id) || null;
+      });
+    });
+
+    return () => {
+      projectSub.unsubscribe();
+      employeeSub.unsubscribe();
+    };
   }, []);
 
   const onDateChange = (_event, selectedDate) => {
@@ -90,9 +127,22 @@ export default function QuickEntryScreen({ navigation }) {
 
   const saveLocally = async () => {
     await database.write(async () => {
+      const normalizedName = normalizeEmployeeName(employeeName);
+      const latestEmployees = await database.get('employees').query(Q.where('is_deleted', false)).fetch();
+      const desiredRole = entryMode === 'crew' ? 'CREW' : '';
       let employee = selectedEmployee;
+
+      if (employee) {
+        employee = latestEmployees.find((entry) => entry.id === employee.id) || null;
+      }
+
       if (!employee) {
-        const existing = employees.find((entry) => entry.name?.toLowerCase() === employeeName.trim().toLowerCase());
+        const existing = latestEmployees.find((entry) => {
+          const sameName = normalizeEmployeeName(entry.name || '') === normalizedName;
+          if (!sameName) return false;
+          if (entryMode === 'crew') return (entry.role || '').toUpperCase() === 'CREW';
+          return (entry.role || '').toUpperCase() !== 'CREW';
+        });
         employee = existing || null;
       }
 
@@ -102,7 +152,7 @@ export default function QuickEntryScreen({ navigation }) {
           record.userId = '';
           record.name = employeeName.trim();
           record.phone = '';
-          record.role = '';
+          record.role = desiredRole;
           record.isDeleted = false;
         });
       }
@@ -113,10 +163,10 @@ export default function QuickEntryScreen({ navigation }) {
         record.employeeId = employee.id;
         record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
         record.date = date.getTime();
-        record.daysWorked = (parseFloat(workers) || 1) * (parseFloat(days) || 1);
+        record.daysWorked = parseFloat(days) || 1;
         record.ratePerDay = parseFloat(rate) || 0;
         record.totalCost = total;
-        record.notes = '';
+        record.notes = entryMode === 'crew' ? `Crew size: ${workerCount}` : '';
         record.isPaid = false;
         record.isDeleted = false;
       });
@@ -138,6 +188,14 @@ export default function QuickEntryScreen({ navigation }) {
       Alert.alert(t('common.error'), t('quick_entry.errors.rate_required'));
       return;
     }
+    if (workerCount <= 0) {
+      Alert.alert(t('common.error'), t('quick_entry.errors.workers_required'));
+      return;
+    }
+    if (entryMode === 'individual' && workerCount > 1) {
+      Alert.alert(t('common.error'), t('quick_entry.errors.single_worker_only'));
+      return;
+    }
 
     setSaving(true);
     setBanner(null);
@@ -147,6 +205,7 @@ export default function QuickEntryScreen({ navigation }) {
       await saveLocally();
       setEmployeeName('');
       setSelectedEmployee(null);
+      setEntryMode('individual');
       setActivity('planting');
       setWorkers('1');
       setDays('1');
@@ -176,7 +235,13 @@ export default function QuickEntryScreen({ navigation }) {
     }
   };
 
-  const filteredEmployees = employees.filter((employee) => employee.name?.toLowerCase().includes(employeeName.toLowerCase()));
+  const filteredEmployees = employees.filter((employee) => {
+    const normalized = normalizeEmployeeName(employee.name || '');
+    const matchesName = normalized.includes(normalizeEmployeeName(employeeName));
+    if (!matchesName) return false;
+    const isCrew = (employee.role || '').toUpperCase() === 'CREW';
+    return entryMode === 'crew' ? isCrew : !isCrew;
+  });
 
   if (loading) {
     return (
@@ -212,9 +277,27 @@ export default function QuickEntryScreen({ navigation }) {
           bodyContentStyle={styles.content}
         >
           <StatusBanner {...banner} style={styles.banner} />
-          <StitchDashboardSectionHeader title='Quick Entry' subtitle='Fill the form and save the labor record' actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
+          <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <View style={styles.formCard}>
+            <StitchSectionLabel>{t('quick_entry.mode')}</StitchSectionLabel>
+            <View style={styles.chipsRow}>
+              {ENTRY_MODES.map((mode) => (
+                <StitchChip
+                  key={mode}
+                  label={t(`quick_entry.modes.${mode}`)}
+                  active={entryMode === mode}
+                  onPress={() => {
+                    setEntryMode(mode);
+                    setSelectedEmployee(null);
+                    setEmployeeName('');
+                    setEmployeeDropdownVisible(false);
+                    setWorkers(mode === 'individual' ? '1' : workers === '1' ? '2' : workers);
+                  }}
+                />
+              ))}
+            </View>
+
             <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
             <TouchableOpacity style={styles.inputShell} onPress={() => setProjectDropdownVisible((value) => !value)} activeOpacity={0.88}>
               <Text style={[styles.inputText, !selectedProject && styles.placeholder]}>{selectedProject?.name || t('quick_entry.select_project')}</Text>
@@ -248,7 +331,7 @@ export default function QuickEntryScreen({ navigation }) {
               </View>
             ) : null}
 
-            <StitchSectionLabel>{t('quick_entry.fields.employee')} *</StitchSectionLabel>
+            <StitchSectionLabel>{employeeLabel} *</StitchSectionLabel>
             <TextInput
               ref={employeeInputRef}
               style={styles.inputShell}
@@ -259,7 +342,7 @@ export default function QuickEntryScreen({ navigation }) {
                 setEmployeeDropdownVisible(value.length > 0);
               }}
               onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
-              placeholder={t('quick_entry.placeholders.employee')}
+              placeholder={employeePlaceholder}
               placeholderTextColor="#8a9388"
               autoCapitalize="words"
             />
@@ -334,8 +417,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
-  hero: { paddingBottom: stitchTheme.spacing.md },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10 },
+  hero: { paddingBottom: 0 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },

@@ -57,9 +57,7 @@ export default schemaMigrations({
     },
     {
       toVersion: 9,
-      steps: [
-        addColumns({ table: 'payments', columns: [{ name: 'is_deleted', type: 'boolean' }] }),
-      ],
+      steps: [],
     },
   ],
 });

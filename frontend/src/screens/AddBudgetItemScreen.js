@@ -33,7 +33,7 @@ const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', '
 
 export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
-  const { projectId, itemId } = route.params;
+  const { projectId, itemId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
@@ -58,6 +58,10 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const bars = useMemo(() => [1, parseFloat(quantity) || 1, parseFloat(unitPrice) || 1, total || 1], [quantity, unitPrice, total]);
 
   const handleSave = async () => {
+    if (!itemId && !projectId) {
+      Alert.alert(t('common.error'), t('projects.errors.not_found'));
+      return;
+    }
     if (!name.trim()) {
       Alert.alert(t('common.error'), t('budget.errors.name_required'));
       return;

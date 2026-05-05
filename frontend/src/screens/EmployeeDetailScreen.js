@@ -123,11 +123,13 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleUpdate = async () => {
     try {
-      const record = await database.get('employees').find(employeeId);
-      await updateLocalModel(record, (draft) => {
-        draft.name = editForm.name.trim();
-        draft.phone = editForm.phone.trim();
-        draft.role = editForm.role.trim();
+      await database.write(async () => {
+        const record = await database.get('employees').find(employeeId);
+        await updateLocalModel(record, (draft) => {
+          draft.name = editForm.name.trim();
+          draft.phone = editForm.phone.trim();
+          draft.role = editForm.role.trim();
+        });
       });
       syncAll().catch(() => {});
       setEditVisible(false);
@@ -140,8 +142,10 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleDelete = async () => {
     try {
-      const record = await database.get('employees').find(employeeId);
-      await deleteLocalModel(record);
+      await database.write(async () => {
+        const record = await database.get('employees').find(employeeId);
+        await deleteLocalModel(record);
+      });
       syncAll().catch(() => {});
       setDeleteVisible(false);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
@@ -154,13 +158,15 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
   const handleRecordPayment = async () => {
     try {
-      await database.get('payments').create((record) => {
-        initializeLocalRecord(record);
-        record.employeeId = employeeId;
-        record.amount = parseFloat(paymentForm.amount) || 0;
-        record.date = paymentForm.date.getTime();
-        record.note = paymentForm.note.trim();
-        record.isDeleted = false;
+      await database.write(async () => {
+        await database.get('payments').create((record) => {
+          initializeLocalRecord(record);
+          record.employeeId = employeeId;
+          record.amount = parseFloat(paymentForm.amount) || 0;
+          record.date = paymentForm.date.getTime();
+          record.note = paymentForm.note.trim();
+          record.isDeleted = false;
+        });
       });
       syncAll().catch(() => {});
       setPaymentVisible(false);
@@ -176,8 +182,10 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     if (!deletePaymentTarget) return;
 
     try {
-      const record = await database.get('payments').find(deletePaymentTarget.id);
-      await deleteLocalModel(record);
+      await database.write(async () => {
+        const record = await database.get('payments').find(deletePaymentTarget.id);
+        await deleteLocalModel(record);
+      });
       syncAll().catch(() => {});
       setDeletePaymentTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });

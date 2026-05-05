@@ -499,24 +499,35 @@
     }
   },
   "quick_entry": {
+    "mode": "Aina ya Rekodi",
+    "modes": {
+      "individual": "Mtu mmoja",
+      "crew": "Kikundi"
+    },
     "fields": {
       "project": "Mradi",
       "employee": "Mfanyakazi",
+      "crew_name": "Jina la Kikundi",
       "activity": "Shughuli",
       "workers": "Wafanyakazi",
       "days": "Siku",
       "rate": "Malipo"
     },
     "placeholders": {
-      "employee": "Andika jina..."
+      "employee": "Andika jina...",
+      "crew_name": "Andika jina la kikundi..."
     },
     "select_project": "Chagua mradi...",
     "total": "Jumla",
+    "single_worker_hint": "Quick Entry huhifadhi mfanyakazi mmoja kwa kila rekodi.",
+    "crew_hint": "Crew Entry huhifadhi rekodi ya kazi ya kikundi kwa jina la kikundi linaloweza kutumika tena.",
     "save": "HIFADHI REKODI",
     "success": "Rekodi ya kazi imehifadhiwa!",
     "errors": {
       "project_required": "Tafadhali chagua mradi",
       "employee_required": "Tafadhali andika jina la mfanyakazi",
+      "workers_required": "Tafadhali weka angalau mfanyakazi mmoja",
+      "single_worker_only": "Quick Entry inatumika kwa mfanyakazi mmoja kwa kila rekodi. Tumia Add Work Entry kwa kundi.",
       "rate_required": "Tafadhali weka malipo sahihi",
       "save_local": "Imeshindikana kuhifadhi rekodi"
     }

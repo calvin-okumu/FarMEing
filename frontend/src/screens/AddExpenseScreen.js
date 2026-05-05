@@ -44,7 +44,7 @@ const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId, itemId } = route.params;
+  const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
@@ -80,7 +80,7 @@ export default function AddExpenseScreen({ route, navigation }) {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.7,
     });
@@ -109,6 +109,10 @@ export default function AddExpenseScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
+    if (!itemId && !projectId) {
+      Alert.alert(t('common.error'), t('projects.errors.not_found'));
+      return;
+    }
     if (!amount) {
       Alert.alert(t('common.error'), t('expenses.errors.amount_required'));
       return;
@@ -346,7 +350,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   banner: { marginTop: stitchTheme.spacing.xs },
   amountCard: { padding: stitchTheme.spacing.lg, borderRadius: stitchTheme.radius.card },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },

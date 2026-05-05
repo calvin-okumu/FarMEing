@@ -370,6 +370,7 @@ async function countFailedRecords() {
 
 async function pullChanges() {
   let pulled = 0;
+  const errors = [];
   const { data: { projects = [] } } = await api.get('/projects', { params: { includeDeleted: true } });
   pulled += await syncProjects(projects);
 
@@ -505,12 +506,12 @@ async function pullChanges() {
           record.isDeleted = item.isDeleted ?? false;
         }
       );
-    } catch {
-      // Skip missing or deleted projects.
+    } catch (error) {
+      errors.push(`Project ${project.name || project.id}: ${error.message || 'pull failed'}`);
     }
   }
 
-  return pulled;
+  return { pulled, errors };
 }
 
 let _syncing = false;
@@ -525,10 +526,19 @@ export async function syncAll() {
 
   try {
     const pushed = await pushChanges();
-    const pulled = await pullChanges();
+    const { pulled, errors } = await pullChanges();
     const failedCount = await countFailedRecords();
+
+    if (errors.length || failedCount > 0) {
+      const errorMessage = errors.length
+        ? `Sync completed with partial failures. ${errors[0]}`
+        : 'Some items failed to sync';
+      useSyncStore.getState().setError(errorMessage, failedCount);
+      return { pushed, pulled, failedCount, skipped: false, error: errorMessage, pullErrors: errors };
+    }
+
     useSyncStore.getState().setSuccess({ failedCount });
-    return { pushed, pulled, failedCount, skipped: false };
+    return { pushed, pulled, failedCount, skipped: false, pullErrors: [] };
   } catch (error) {
     console.warn('[sync] failed:', error.message);
     useSyncStore.getState().setError(error.message);

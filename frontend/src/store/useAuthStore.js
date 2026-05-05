@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { resetLocalDatabase } from '../db';
+import { queryClient } from '../lib/queryClient';
 import { getCurrentUser, loginUser, registerUser } from '../services/authService';
 import useSettingsStore from './useSettingsStore';
 import useBackendStore from './useBackendStore';
+import useSyncStore from './useSyncStore';
 import i18n from '../i18n';
 
 const TOKEN_KEY = 'auth_token';
@@ -85,7 +88,18 @@ const useAuthStore = create((set, get) => ({
       SecureStore.deleteItemAsync(TOKEN_KEY),
       SecureStore.deleteItemAsync(USER_KEY),
     ]);
-    set({ token: null, user: null });
+
+    queryClient.clear();
+
+    try {
+      await resetLocalDatabase();
+    } catch (error) {
+      console.warn('[auth] failed to reset local database:', error.message);
+    }
+
+    useBackendStore.getState().reset();
+    useSyncStore.getState().reset();
+    set({ token: null, user: null, isLoading: false });
   },
 }));
 

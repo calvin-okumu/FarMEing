@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchTheme } from '../../theme/stitchTheme';
 import { StitchIconButton } from './StitchPrimitives';
@@ -27,7 +27,7 @@ export default function StitchHeroHeader({
           {subtitle ? <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text> : null}
         </View>
         {onActionPress ? (
-          <StitchIconButton icon={actionIcon || 'ellipsis-horizontal'} onPress={onActionPress} style={styles.actionButton} />
+          <StitchIconButton icon={actionIcon || 'ellipsis-horizontal'} onPress={onActionPress} iconSize={22} style={styles.actionButton} />
         ) : null}
       </View>
 
@@ -51,9 +51,9 @@ export function StitchHeroPill({ label, value, icon, style }) {
 const styles = StyleSheet.create({
   hero: {
     backgroundColor: stitchTheme.colors.forestDeep,
-    paddingTop: stitchTheme.spacing.md,
+    paddingTop: stitchTheme.spacing.xs + 6,
     paddingHorizontal: stitchTheme.spacing.screen,
-    paddingBottom: stitchTheme.spacing.lg,
+    paddingBottom: stitchTheme.spacing.sm + 2,
     overflow: 'hidden',
   },
   circleLarge: {
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.3,
     textTransform: 'uppercase',
     color: stitchTheme.colors.primaryDim,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   eyebrowCompact: {
     marginBottom: 2,
@@ -112,26 +112,34 @@ const styles = StyleSheet.create({
     lineHeight: 31,
   },
   subtitle: {
-    marginTop: 5,
+    marginTop: 2,
     fontSize: stitchTheme.typography.bodySmall.fontSize,
     lineHeight: stitchTheme.typography.bodySmall.lineHeight,
     fontFamily: stitchTheme.fonts.body,
     color: 'rgba(255,255,255,0.58)',
   },
   subtitleCompact: {
-    marginTop: 3,
+    marginTop: 2,
     maxWidth: '88%',
   },
   actionButton: {
-    marginTop: 4,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderColor: 'rgba(255,255,255,0.15)',
+    marginTop: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(253,250,244,0.18)',
+    borderColor: 'rgba(255,255,255,0.34)',
+    shadowColor: '#08160f',
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   footer: {
-    marginTop: stitchTheme.spacing.md,
+    marginTop: stitchTheme.spacing.xs + 4,
   },
   footerCompact: {
-    marginTop: stitchTheme.spacing.sm,
+    marginTop: stitchTheme.spacing.xs,
   },
   circleLargeCompact: {
     top: -70,
