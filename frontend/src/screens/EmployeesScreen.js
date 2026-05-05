@@ -30,7 +30,6 @@ import {
 } from '../components/ui/StitchPrimitives';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
-import StatusBanner from '../components/ui/StatusBanner';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
 
@@ -194,8 +193,9 @@ export default function EmployeesScreen({ navigation }) {
         }}
         bodyContentStyle={styles.list}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
         <View style={styles.searchRow}>
           <View style={styles.searchWrap}>
             <SearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />

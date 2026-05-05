@@ -29,7 +29,6 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
-import StatusBanner from '../components/ui/StatusBanner';
 
 const ACTIVITIES = [
   { key: 'planting', icon: 'leaf-outline' },
@@ -225,9 +224,9 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
-
         <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
         <View style={styles.taskGrid}>
           {ACTIVITIES.map((item) => {

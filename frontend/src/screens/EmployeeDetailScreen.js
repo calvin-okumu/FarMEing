@@ -239,8 +239,9 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         }}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
         bodyContentStyle={styles.contentWrap}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
 
       <StitchSurface style={styles.header}>
         <View style={styles.avatarLarge}><Text style={styles.avatarTextLarge}>{(employee.name || '?').charAt(0).toUpperCase()}</Text></View>

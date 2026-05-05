@@ -26,7 +26,6 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
-import StatusBanner from '../components/ui/StatusBanner';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
@@ -155,9 +154,9 @@ export default function AddSaleScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
-
         <StitchSurface style={styles.panel}>
           <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
           <View style={styles.fieldLarge}>

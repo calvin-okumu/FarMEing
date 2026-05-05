@@ -744,8 +744,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.heroCard}>
           <View style={styles.heroRow}>

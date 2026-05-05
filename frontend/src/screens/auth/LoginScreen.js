@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
-import StatusBanner from '../../components/ui/StatusBanner';
 import StitchAuthShell from '../../components/ui/StitchAuthShell';
 
 export default function LoginScreen({ navigation }) {
@@ -56,8 +55,9 @@ export default function LoginScreen({ navigation }) {
         title={`${t('auth.login.welcome_line_one')}
 ${t('auth.login.welcome_line_two')}`}
         subtitle={t('auth.login.subtitle')}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-            <StatusBanner {...banner} style={styles.banner} />
             <Text style={styles.label}>{t('auth.fields.phone')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="call-outline" size={18} color="#7d867c" style={styles.inputIcon} />

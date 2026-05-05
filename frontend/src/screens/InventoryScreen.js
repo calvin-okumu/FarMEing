@@ -202,8 +202,9 @@ export default function InventoryScreen({ route, navigation }) {
         }}
         bodyContentStyle={styles.list}
         refreshControl={<RefreshControlProxy refreshing={isRefreshing} onRefresh={handleRefresh} />}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
         <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
         <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel='New Item' onActionPress={openCreate} />
         {filteredItems.length ? filteredItems.map((item) => (

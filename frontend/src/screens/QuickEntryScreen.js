@@ -275,8 +275,9 @@ export default function QuickEntryScreen({ navigation }) {
             ),
           }}
           bodyContentStyle={styles.content}
+          banner={banner}
+          onDismissBanner={() => setBanner(null)}
         >
-          <StatusBanner {...banner} style={styles.banner} />
           <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <View style={styles.formCard}>

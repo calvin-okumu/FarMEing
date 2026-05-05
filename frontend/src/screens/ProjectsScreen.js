@@ -25,7 +25,6 @@ import StitchDashboardShell, { StitchDashboardSectionHeader } from '../component
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import StatusBanner from '../components/ui/StatusBanner';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
@@ -258,8 +257,9 @@ export default function ProjectsScreen({ navigation, route }) {
         }}
         bodyContentStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
         <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
         <StitchDashboardSectionHeader title={t('projects.directory_title', { defaultValue: t('projects.portfolio_title') })} subtitle='Browse and open project workspaces' actionLabel={String(filteredProjects.length)} />
         {filteredProjects.length ? filteredProjects.map((item, index) => {

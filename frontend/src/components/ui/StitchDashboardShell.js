@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
 import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
 import StitchHeroHeader from './StitchHeroHeader';
+import StatusBanner from './StatusBanner';
 
 const EXPANDED_HERO_HEIGHT = 184;
 
@@ -35,6 +36,8 @@ export default function StitchDashboardShell({
   bodyContentStyle,
   bodyStyle,
   refreshControl,
+  banner,
+  onDismissBanner,
   statusBarStyle = 'light-content',
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
 }) {
@@ -65,6 +68,14 @@ export default function StitchDashboardShell({
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={statusBarStyle} backgroundColor={statusBarBackgroundColor} />
+      
+      <StatusBanner 
+        {...banner} 
+        variant="toast" 
+        onDismiss={onDismissBanner} 
+        style={styles.floatingBanner}
+      />
+
       <Animated.View style={[styles.heroWrapper, { height: heroHeight }]}> 
         <Animated.View style={hero?.wrapperStyle}>
           {hero?.eyebrow || hero?.title ? (
@@ -96,6 +107,9 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: stitchTheme.colors.forestDeep,
+  },
+  floatingBanner: {
+    marginTop: Platform.OS === 'ios' ? 0 : 10,
   },
   heroWrapper: {
     overflow: 'hidden',

@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
-import StatusBanner from '../../components/ui/StatusBanner';
 import StitchAuthShell from '../../components/ui/StitchAuthShell';
 
 export default function RegisterScreen({ navigation }) {
@@ -67,8 +66,9 @@ export default function RegisterScreen({ navigation }) {
         title={t('auth.register.title')}
         subtitle={t('auth.register.subtitle')}
         onBack={() => navigation.navigate('Login')}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-            <StatusBanner {...banner} style={styles.banner} />
             <Text style={styles.label}>{t('auth.fields.full_name')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="person-outline" size={18} color="#7d867c" style={styles.inputIcon} />
