@@ -143,34 +143,36 @@ export default function ProjectsScreen({ navigation, route }) {
 
     try {
       setBanner(null);
-      if (editingProject) {
-        const record = await database.get('farm_projects').find(editingProject.id);
-        await updateLocalModel(record, (draft) => {
-          draft.name = formData.name.trim();
-          draft.crop = formData.crop.trim();
-          draft.landSize = parseFloat(formData.landSize) || 0;
-          draft.landUnit = formData.landUnit || 'acres';
-          draft.startDate = formData.startDate.getTime();
-          draft.expectedYield = parseFloat(formData.expectedYield) || 0;
-          draft.contractUrl = formData.contractUrl.trim();
-          draft.status = draft.status || 'ACTIVE';
-        });
-      } else {
-        await database.get('farm_projects').create((record) => {
-          initializeLocalRecord(record);
-          record.userId = '';
-          record.name = formData.name.trim();
-          record.crop = formData.crop.trim();
-          record.landSize = parseFloat(formData.landSize) || 0;
-          record.landUnit = formData.landUnit || 'acres';
-          record.startDate = formData.startDate.getTime();
-          record.expectedYield = parseFloat(formData.expectedYield) || 0;
-          record.contractUrl = formData.contractUrl.trim();
-          record.status = 'ACTIVE';
-          record.notes = '';
-          record.isDeleted = false;
-        });
-      }
+      await database.write(async () => {
+        if (editingProject) {
+          const record = await database.get('farm_projects').find(editingProject.id);
+          await updateLocalModel(record, (draft) => {
+            draft.name = formData.name.trim();
+            draft.crop = formData.crop.trim();
+            draft.landSize = parseFloat(formData.landSize) || 0;
+            draft.landUnit = formData.landUnit || 'acres';
+            draft.startDate = formData.startDate.getTime();
+            draft.expectedYield = parseFloat(formData.expectedYield) || 0;
+            draft.contractUrl = formData.contractUrl.trim();
+            draft.status = draft.status || 'ACTIVE';
+          });
+        } else {
+          await database.get('farm_projects').create((record) => {
+            initializeLocalRecord(record);
+            record.userId = '';
+            record.name = formData.name.trim();
+            record.crop = formData.crop.trim();
+            record.landSize = parseFloat(formData.landSize) || 0;
+            record.landUnit = formData.landUnit || 'acres';
+            record.startDate = formData.startDate.getTime();
+            record.expectedYield = parseFloat(formData.expectedYield) || 0;
+            record.contractUrl = formData.contractUrl.trim();
+            record.status = 'ACTIVE';
+            record.notes = '';
+            record.isDeleted = false;
+          });
+        }
+      });
 
       if (editingProject) {
         setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });

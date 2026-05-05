@@ -31,17 +31,19 @@ export async function deleteLocalModel(record) {
 }
 
 export async function deleteProjectCascade(database, projectId) {
-  const projectRecord = await database.get('farm_projects').find(projectId);
-  await deleteLocalModel(projectRecord);
+  await database.write(async () => {
+    const projectRecord = await database.get('farm_projects').find(projectId);
+    await deleteLocalModel(projectRecord);
 
-  for (const table of PROJECT_BOUND_TABLES) {
-    const related = await database.get(table).query(
-      Q.where('project_id', projectId),
-      Q.where('is_deleted', false)
-    ).fetch();
+    for (const table of PROJECT_BOUND_TABLES) {
+      const related = await database.get(table).query(
+        Q.where('project_id', projectId),
+        Q.where('is_deleted', false)
+      ).fetch();
 
-    for (const record of related) {
-      await deleteLocalModel(record);
+      for (const record of related) {
+        await deleteLocalModel(record);
+      }
     }
-  }
+  });
 }
