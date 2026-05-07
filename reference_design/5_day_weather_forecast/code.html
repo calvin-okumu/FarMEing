@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="light" lang="sw"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#41493e",
+                        "on-primary-fixed": "#002204",
+                        "inverse-on-surface": "#f2f0ee",
+                        "primary-container": "#065f18",
+                        "secondary-fixed": "#ffdbcf",
+                        "surface-dim": "#dbdad8",
+                        "on-error": "#ffffff",
+                        "background": "#fbf9f7",
+                        "tertiary-container": "#a60a15",
+                        "surface": "#fbf9f7",
+                        "on-secondary-fixed": "#2e150b",
+                        "on-surface": "#1b1c1b",
+                        "inverse-primary": "#88d982",
+                        "tertiary-fixed-dim": "#ffb4ac",
+                        "surface-container-highest": "#e4e2e0",
+                        "surface-bright": "#fbf9f7",
+                        "on-primary-fixed-variant": "#005312",
+                        "tertiary": "#7c000a",
+                        "surface-container": "#efedec",
+                        "secondary": "#7a5649",
+                        "on-background": "#1b1c1b",
+                        "surface-container-low": "#f5f3f1",
+                        "primary": "#00450d",
+                        "outline-variant": "#c0c9bb",
+                        "on-tertiary-container": "#ffb2aa",
+                        "surface-container-high": "#eae8e6",
+                        "surface-variant": "#e4e2e0",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#86d881",
+                        "primary-fixed-dim": "#88d982",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#603f33",
+                        "on-secondary-container": "#795548",
+                        "secondary-fixed-dim": "#ebbcac",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#fdcdbc",
+                        "on-tertiary-fixed": "#410003",
+                        "primary-fixed": "#a3f69c",
+                        "error": "#ba1a1a",
+                        "outline": "#717a6d",
+                        "surface-tint": "#1b6d24",
+                        "inverse-surface": "#30302f",
+                        "on-tertiary-fixed-variant": "#93000e",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-[#fbf9f7] dark:bg-stone-950 flex items-center justify-between px-6 py-4 w-full sticky top-0 z-40 transition-colors">
+<div class="flex items-center gap-4">
+<button class="hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-[#00450d] dark:text-[#a3f69c]">menu</span>
+</button>
+<h1 class="text-[#00450d] dark:text-[#a3f69c] font-['Manrope'] font-bold text-2xl tracking-tight">Hali ya Hewa / Weather</h1>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest border-2 border-primary overflow-hidden">
+<img alt="User Profile" class="w-full h-auto" data-alt="User profile avatar icon circular" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZMMqL5s9C5P7MESn33v2swhuo1mk_ylkr_bncxDAIHxxiMM_HBROumRgM5043vLQ-XIoFf4jhqY3pnVDvjanejS6YdXlJILCQW25xJqnEVVP_gkeHAsWb34JD06EsAy91BHVzgDJb21447stFIgs5Zo0LsrxJ8St_uD0XgLEILEO7OH-eWH2AiDXC-zddFcrUXkEgkiP1a3EZ0ZTHzhAv0on2zTOey5E9vUvSBHinbCI3gnFlkGLqCuD4Ziy-7MbO3JDRQPyCP8RE"/>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-6 pt-6 space-y-8">
+<!-- Hero: Current Weather Asymmetric Bento -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Main Temp Card -->
+<div class="md:col-span-8 bg-primary rounded-lg p-8 text-on-primary relative overflow-hidden flex flex-col justify-between min-h-[320px]">
+<div class="absolute top-0 right-0 p-8 opacity-20 scale-[4]">
+<span class="material-symbols-outlined text-white" style="font-size: 48px;">cloudy_snowing</span>
+</div>
+<div class="z-10">
+<p class="font-label text-primary-fixed uppercase tracking-widest text-sm font-bold">Leo / Today</p>
+<h2 class="text-6xl md:text-8xl font-black mt-2">28°C</h2>
+<p class="text-xl font-medium mt-1">Mawingu Kidogo / Partly Cloudy</p>
+</div>
+<div class="z-10 flex gap-6 mt-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-fixed">water_drop</span>
+<div>
+<p class="text-xs opacity-80">Unyevu / Humid</p>
+<p class="font-bold">65%</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-fixed">air</span>
+<div>
+<p class="text-xs opacity-80">Upepo / Wind</p>
+<p class="font-bold">12 km/h</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sunset & Context Card -->
+<div class="md:col-span-4 bg-secondary-container rounded-lg p-8 flex flex-col justify-center items-center text-center space-y-4">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-size: 48px;">wb_twilight</span>
+<div>
+<h3 class="text-on-secondary-container font-bold text-lg">Kutua kwa Jua</h3>
+<p class="text-on-secondary-container opacity-70">Sunset</p>
+<p class="text-3xl font-black text-on-secondary-container mt-2">18:42</p>
+</div>
+<div class="w-full h-[2px] bg-on-secondary-container opacity-10"></div>
+<p class="text-sm font-medium text-on-secondary-container">Mchana mrefu kwa ukuaji / Long day for growth</p>
+</div>
+</section>
+<!-- Agricultural Metrics Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Evapotranspiration -->
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-sm border-l-8 border-primary-fixed">
+<div class="flex items-start justify-between">
+<div>
+<h3 class="font-bold text-xl text-primary">Evapotranspiration</h3>
+<p class="text-sm text-on-surface-variant">Uvukizi wa Maji Ardhini</p>
+</div>
+<span class="material-symbols-outlined text-primary" style="font-size: 32px;">heap_snapshot_thumbnail</span>
+</div>
+<div class="mt-6 flex items-end gap-2">
+<span class="text-4xl font-black text-on-surface">4.2</span>
+<span class="text-lg font-bold text-on-surface-variant pb-1">mm/day</span>
+</div>
+<p class="mt-4 text-sm bg-primary-container/10 p-3 rounded-lg text-primary font-medium">
+<span class="material-symbols-outlined text-sm mr-1">info</span>
+                    Umwagiliaji unapendekezwa kesho asubuhi.
+                </p>
+</div>
+<!-- Soil Temp -->
+<div class="bg-surface-container-lowest rounded-lg p-6 shadow-sm border-l-8 border-secondary">
+<div class="flex items-start justify-between">
+<div>
+<h3 class="font-bold text-xl text-secondary">Soil Temperature</h3>
+<p class="text-sm text-on-surface-variant">Joto la Udongo</p>
+</div>
+<span class="material-symbols-outlined text-secondary" style="font-size: 32px;">thermometer</span>
+</div>
+<div class="mt-6 flex items-end gap-2">
+<span class="text-4xl font-black text-on-surface">22.5</span>
+<span class="text-lg font-bold text-on-surface-variant pb-1">°C</span>
+</div>
+<p class="mt-4 text-sm bg-secondary-container/20 p-3 rounded-lg text-secondary font-medium">
+<span class="material-symbols-outlined text-sm mr-1">check_circle</span>
+                    Hali nzuri kwa upandaji wa mahindi.
+                </p>
+</div>
+</section>
+<!-- 5-Day Forecast: Horizontal Scrollable/Stack -->
+<section class="space-y-6">
+<div class="flex justify-between items-center">
+<h3 class="font-bold text-2xl text-on-surface">Utabiri wa Siku 5 / 5-Day Forecast</h3>
+<span class="text-primary font-bold text-sm bg-primary-fixed px-3 py-1 rounded-full">Weekly View</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Forecast Row 1 -->
+<div class="bg-surface-container rounded-xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors group">
+<div class="flex items-center gap-6 min-w-[140px]">
+<p class="font-bold text-lg text-on-surface">Jumanne</p>
+<p class="text-sm text-on-surface-variant font-medium">Tue</p>
+</div>
+<div class="flex items-center gap-4 flex-1 justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">wb_sunny</span>
+<p class="hidden md:block font-medium text-on-surface-variant">Jua Kali / Sunny</p>
+</div>
+<div class="flex items-center gap-8 justify-end min-w-[120px]">
+<span class="font-black text-xl text-on-surface">31°</span>
+<span class="font-medium text-on-surface-variant">19°</span>
+</div>
+</div>
+<!-- Forecast Row 2 -->
+<div class="bg-surface-container rounded-xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors group">
+<div class="flex items-center gap-6 min-w-[140px]">
+<p class="font-bold text-lg text-on-surface">Jumatano</p>
+<p class="text-sm text-on-surface-variant font-medium">Wed</p>
+</div>
+<div class="flex items-center gap-4 flex-1 justify-center">
+<span class="material-symbols-outlined text-blue-500 text-3xl" style="font-variation-settings: 'FILL' 1;">rainy</span>
+<p class="hidden md:block font-medium text-on-surface-variant">Mvua / Rainy</p>
+</div>
+<div class="flex items-center gap-8 justify-end min-w-[120px]">
+<span class="font-black text-xl text-on-surface">24°</span>
+<span class="font-medium text-on-surface-variant">17°</span>
+</div>
+</div>
+<!-- Forecast Row 3 -->
+<div class="bg-surface-container rounded-xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors group">
+<div class="flex items-center gap-6 min-w-[140px]">
+<p class="font-bold text-lg text-on-surface">Alhamisi</p>
+<p class="text-sm text-on-surface-variant font-medium">Thu</p>
+</div>
+<div class="flex items-center gap-4 flex-1 justify-center">
+<span class="material-symbols-outlined text-stone-500 text-3xl">cloudy_snowing</span>
+<p class="hidden md:block font-medium text-on-surface-variant">Mawingu / Cloudy</p>
+</div>
+<div class="flex items-center gap-8 justify-end min-w-[120px]">
+<span class="font-black text-xl text-on-surface">27°</span>
+<span class="font-medium text-on-surface-variant">18°</span>
+</div>
+</div>
+<!-- Forecast Row 4 -->
+<div class="bg-surface-container rounded-xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors group">
+<div class="flex items-center gap-6 min-w-[140px]">
+<p class="font-bold text-lg text-on-surface">Ijumaa</p>
+<p class="text-sm text-on-surface-variant font-medium">Fri</p>
+</div>
+<div class="flex items-center gap-4 flex-1 justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">partly_cloudy_day</span>
+<p class="hidden md:block font-medium text-on-surface-variant">Nusu Jua / Mixed</p>
+</div>
+<div class="flex items-center gap-8 justify-end min-w-[120px]">
+<span class="font-black text-xl text-on-surface">29°</span>
+<span class="font-medium text-on-surface-variant">20°</span>
+</div>
+</div>
+<!-- Forecast Row 5 -->
+<div class="bg-surface-container rounded-xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors group">
+<div class="flex items-center gap-6 min-w-[140px]">
+<p class="font-bold text-lg text-on-surface">Jumamosi</p>
+<p class="text-sm text-on-surface-variant font-medium">Sat</p>
+</div>
+<div class="flex items-center gap-4 flex-1 justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">wb_sunny</span>
+<p class="hidden md:block font-medium text-on-surface-variant">Jua Kali / Sunny</p>
+</div>
+<div class="flex items-center gap-8 justify-end min-w-[120px]">
+<span class="font-black text-xl text-on-surface">32°</span>
+<span class="font-medium text-on-surface-variant">21°</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl shadow-[0_-4px_24px_rgba(27,28,27,0.04)] rounded-t-[32px]">
+<div class="flex flex-col items-center justify-center text-stone-500 dark:text-stone-400 px-4 py-2 hover:opacity-80 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined">agriculture</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-wider mt-1">Shamba</span>
+</div>
+<div class="flex flex-col items-center justify-center text-stone-500 dark:text-stone-400 px-4 py-2 hover:opacity-80 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined">storefront</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-wider mt-1">Soko</span>
+</div>
+<!-- Active Item: Hali ya Hewa -->
+<div class="flex flex-col items-center justify-center bg-[#a3f69c] dark:bg-[#00450d] text-[#00450d] dark:text-[#a3f69c] rounded-full px-6 py-2 active:scale-90 duration-200 ease-out cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cloudy_snowing</span>
+<span class="font-['Inter'] text-[10px] font-bold uppercase tracking-wider mt-1">Hali ya Hewa</span>
+</div>
+<div class="flex flex-col items-center justify-center text-stone-500 dark:text-stone-400 px-4 py-2 hover:opacity-80 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Inter'] text-[10px] font-medium uppercase tracking-wider mt-1">Mipangilio</span>
+</div>
+</nav>
+</body></html>

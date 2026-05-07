@@ -1,0 +1,331 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Q } from '@nozbe/watermelondb';
+import { useTranslation } from 'react-i18next';
+import { database } from '../db';
+import { syncAll } from '../services/syncService';
+import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import SearchBar from '../components/ui/SearchBar';
+import EmptyState from '../components/ui/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import StatusBanner from '../components/ui/StatusBanner';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
+import { formatCurrency } from '../utils/currency';
+import useSettingsStore from '../store/useSettingsStore';
+import { initializeLocalRecord } from '../utils/localRecord';
+import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+
+const DEFAULT_FORM = {
+  name: '',
+  category: 'Inputs',
+  quantity: '',
+  unit: 'kg',
+  unitCost: '',
+  usedQty: '',
+  notes: '',
+  payee: '',
+};
+
+export default function InventoryScreen({ route, navigation }) {
+  const { t } = useTranslation();
+  const { projectId, projectName } = route.params || {};
+  const currency = useSettingsStore((s) => s.currency);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [query, setQuery] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [banner, setBanner] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!projectId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const queryRef = database.get('inventory_items').query(Q.where('project_id', projectId), Q.where('is_deleted', false));
+
+    const loadLocal = async () => {
+      const rows = await queryRef.fetch();
+      setInventoryItems(rows);
+      setIsLoading(false);
+    };
+
+    loadLocal().catch(() => setIsLoading(false));
+    syncAll().catch(() => {});
+
+    const sub = queryRef.observe().subscribe((rows) => setInventoryItems(rows));
+    return () => sub.unsubscribe();
+  }, [projectId]);
+
+  const grandTotalCost = useMemo(
+    () => inventoryItems.reduce((sum, item) => sum + (item.totalCost || ((item.quantity || 0) * (item.unitCost || 0))), 0),
+    [inventoryItems]
+  );
+
+  const filteredItems = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return inventoryItems;
+    return inventoryItems.filter((item) => [item.name, item.category, item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
+  }, [inventoryItems, query]);
+
+  const openCreate = () => {
+    setEditingItem(null);
+    setFormData(DEFAULT_FORM);
+    setModalVisible(true);
+  };
+
+  const openEdit = (item) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name || '',
+      category: item.category || '',
+      quantity: String(item.quantity ?? ''),
+      unit: item.unit || '',
+      unitCost: String(item.unitCost ?? ''),
+      usedQty: String(item.usedQty ?? ''),
+      notes: item.notes || '',
+      payee: item.payee || '',
+    });
+    setModalVisible(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setBanner(null);
+      const quantity = parseFloat(formData.quantity) || 0;
+      const unitCost = parseFloat(formData.unitCost) || 0;
+      const usedQty = parseFloat(formData.usedQty) || 0;
+
+      await database.write(async () => {
+        if (editingItem) {
+          const record = await database.get('inventory_items').find(editingItem.id);
+          await updateLocalModel(record, (draft) => {
+            draft.name = formData.name.trim();
+            draft.category = formData.category.trim();
+            draft.quantity = quantity;
+            draft.unit = formData.unit.trim() || 'kg';
+            draft.unitCost = unitCost;
+            draft.usedQty = usedQty;
+            draft.totalCost = parseFloat((quantity * unitCost).toFixed(2));
+            draft.notes = formData.notes.trim();
+            draft.payee = formData.payee.trim();
+          });
+        } else {
+          await database.get('inventory_items').create((record) => {
+            initializeLocalRecord(record);
+            record.projectId = projectId;
+            record.name = formData.name.trim();
+            record.category = formData.category.trim();
+            record.quantity = quantity;
+            record.unit = formData.unit.trim() || 'kg';
+            record.unitCost = unitCost;
+            record.usedQty = usedQty;
+            record.totalCost = parseFloat((quantity * unitCost).toFixed(2));
+            record.notes = formData.notes.trim();
+            record.payee = formData.payee.trim();
+            record.isDeleted = false;
+          });
+        }
+      });
+
+      syncAll().catch(() => {});
+      if (editingItem) {
+        setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
+      } else {
+        setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
+      }
+      setModalVisible(false);
+      setEditingItem(null);
+      setFormData(DEFAULT_FORM);
+    } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
+      Alert.alert(t('common.error'), error.message);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await syncAll();
+      if (result?.error) {
+        setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: result.error });
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const chartValues = useMemo(() => filteredItems.slice(0, 5).map((item, index) => Math.max(index + 1, item.totalCost || 1)), [filteredItems]);
+
+  if (isLoading) {
+    return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
+  }
+
+  return (
+    <View style={styles.container}>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('inventory.title'),
+          title: formatCurrency(grandTotalCost, currency),
+          subtitle: projectName || t('projects.title'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          children: (
+            <>
+              <View style={styles.heroPills}>
+                <StitchHeroPill label={t('inventory.title')} value={String(filteredItems.length)} icon='cube-outline' />
+                <StitchHeroPill label={t('inventory.total_value')} value={formatCurrency(grandTotalCost, currency)} icon='cash-outline' />
+              </View>
+              <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={1} style={styles.chartWrap} />
+            </>
+          ),
+        }}
+        bodyContentStyle={styles.list}
+        refreshControl={<RefreshControlProxy refreshing={isRefreshing} onRefresh={handleRefresh} />}
+      >
+        <StatusBanner {...banner} />
+        <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
+        <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel='New Item' onActionPress={openCreate} />
+        {filteredItems.length ? filteredItems.map((item) => (
+          <TouchableOpacity key={item.id} style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
+            <View style={styles.cardTop}>
+              <View>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.cardMeta}>{item.category} • {item.quantity} {item.unit}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setDeleteTarget(item)} hitSlop={8}>
+                <Ionicons name="trash-outline" size={20} color="#9c1111" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.cardBottom}>
+              <Text style={styles.cardAmount}>{formatCurrency(item.totalCost, currency)}</Text>
+              <Text style={styles.cardMeta}>{t('inventory.used_qty')}: {item.usedQty}</Text>
+            </View>
+          </TouchableOpacity>
+        )) : <EmptyState icon="cube-outline" title={t('inventory.empty_title')} subtitle={t('inventory.empty_subtitle')} />}
+      </StitchDashboardShell>
+
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}>
+            <View style={styles.modalContent}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingItem ? t('inventory.edit_title') : t('inventory.create_title')}</Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={22} color={stitchTheme.colors.text} /></TouchableOpacity>
+                </View>
+                <StitchSectionLabel>{t('inventory.fields.name')}</StitchSectionLabel>
+                <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
+                <StitchSectionLabel>{t('inventory.fields.category')}</StitchSectionLabel>
+                <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
+                <StitchSectionLabel>Supplier / Payee</StitchSectionLabel>
+                <TextInput style={styles.input} value={formData.payee} onChangeText={(payee) => setFormData((p) => ({ ...p, payee }))} placeholderTextColor="#8a9388" />
+                <View style={styles.row}>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.quantity')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                  </View>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.unit')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} placeholderTextColor="#8a9388" />
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.unit_cost')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                  </View>
+                  <View style={styles.half}>
+                    <StitchSectionLabel>{t('inventory.fields.used_qty')}</StitchSectionLabel>
+                    <TextInput style={styles.input} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                  </View>
+                </View>
+                <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+                <TextInput style={[styles.input, styles.notesInput]} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline placeholderTextColor="#8a9388" />
+                <StitchPrimaryButton
+                  label={editingItem ? t('common.save') : t('inventory.create_title')}
+                  onPress={handleSubmit}
+                  disabled={!formData.name.trim()}
+                  icon={editingItem ? 'save-outline' : 'add-circle'}
+                  style={styles.saveButton}
+                />
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title={t('inventory.delete_title')}
+        message={t('inventory.confirm_delete', { name: deleteTarget?.name || '' })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          try {
+            await database.write(async () => {
+              const record = await database.get('inventory_items').find(deleteTarget.id);
+              await deleteLocalModel(record);
+            });
+            syncAll().catch(() => {});
+            setDeleteTarget(null);
+            setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
+          } catch (error) {
+            setBanner({ tone: 'error', title: t('common.error'), message: error.message });
+            Alert.alert(t('common.error'), error.message);
+          }
+        }}
+      />
+    </View>
+  );
+}
+
+function RefreshControlProxy({ refreshing, onRefresh }) {
+  const { RefreshControl } = require('react-native');
+  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={stitchTheme.colors.primaryContainer} />;
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: stitchTheme.colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
+  chartWrap: { marginTop: stitchTheme.spacing.md },
+  card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, alignItems: 'flex-start' },
+  cardTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  cardMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 4 },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.md, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
+  cardAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
+  keyboardView: { width: '100%' },
+  modalContent: { backgroundColor: stitchTheme.colors.backgroundAccent, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
+  modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
+  half: { flex: 1 },
+  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  notesInput: { minHeight: 96, textAlignVertical: 'top' },
+  saveButton: { marginTop: stitchTheme.spacing.lg },
+});

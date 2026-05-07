@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Tactile Earth - New Expense</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed-dim": "#ebbcac",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#002204",
+                        "tertiary-fixed": "#ffdad6",
+                        "surface-container-highest": "#e4e2e0",
+                        "inverse-surface": "#30302f",
+                        "inverse-primary": "#88d982",
+                        "surface-container-high": "#eae8e6",
+                        "surface": "#fbf9f7",
+                        "on-surface": "#1b1c1b",
+                        "secondary-fixed": "#ffdbcf",
+                        "error": "#ba1a1a",
+                        "outline": "#717a6d",
+                        "on-secondary-fixed": "#2e150b",
+                        "tertiary-container": "#a60a15",
+                        "on-tertiary-fixed": "#410003",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#1b6d24",
+                        "on-secondary-container": "#795548",
+                        "tertiary": "#7c000a",
+                        "on-surface-variant": "#41493e",
+                        "on-tertiary-fixed-variant": "#93000e",
+                        "on-primary-fixed-variant": "#005312",
+                        "on-primary-container": "#86d881",
+                        "outline-variant": "#c0c9bb",
+                        "primary-fixed": "#a3f69c",
+                        "on-secondary-fixed-variant": "#603f33",
+                        "tertiary-fixed-dim": "#ffb4ac",
+                        "surface-variant": "#e4e2e0",
+                        "primary": "#00450d",
+                        "surface-container-low": "#f5f3f1",
+                        "surface-bright": "#fbf9f7",
+                        "primary-fixed-dim": "#88d982",
+                        "background": "#fbf9f7",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f2f0ee",
+                        "on-tertiary-container": "#ffb2aa",
+                        "surface-container": "#efedec",
+                        "primary-container": "#065f18",
+                        "surface-dim": "#dbdad8",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "secondary": "#7a5649",
+                        "error-container": "#ffdad6",
+                        "on-background": "#1b1c1b",
+                        "secondary-container": "#fdcdbc"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-[#f5f3f1] dark:bg-stone-900 flex justify-between items-center w-full px-6 py-4">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-[#efedec] transition-colors scale-95 active:duration-150">
+<span class="material-symbols-outlined text-[#00450d] dark:text-[#a3f69c]">arrow_back</span>
+</button>
+<h1 class="font-manrope font-bold text-2xl text-[#00450d] dark:text-[#a3f69c]">New Expense</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-manrope font-black text-[#00450d] dark:text-[#a3f69c] text-xl">The Tactile Earth</span>
+<span class="material-symbols-outlined text-[#00450d] dark:text-[#a3f69c]">translate</span>
+</div>
+</header>
+<main class="max-w-xl mx-auto px-6 pt-8">
+<!-- Editorial Header Section -->
+<section class="mb-10">
+<p class="text-secondary font-medium tracking-wide uppercase text-xs mb-2">Transaction Entry</p>
+<h2 class="text-4xl font-extrabold text-primary leading-tight">Gharama Mpya</h2>
+<div class="w-16 h-1.5 bg-primary-fixed mt-4 rounded-full"></div>
+</section>
+<!-- Form Layout -->
+<div class="space-y-8">
+<!-- Amount Input (Large/Focus) -->
+<div class="bg-surface-container-lowest p-8 rounded-lg shadow-sm">
+<label class="block text-sm font-semibold text-secondary mb-4">Amount / Kiasi</label>
+<div class="flex items-center gap-4">
+<span class="text-3xl font-bold text-primary">KES</span>
+<input class="w-full bg-transparent border-none text-5xl font-black text-on-surface placeholder:text-surface-variant focus:ring-0 p-0" placeholder="0.00" type="number"/>
+</div>
+</div>
+<!-- Category Picker -->
+<div class="space-y-4">
+<label class="block text-sm font-semibold text-secondary ml-2">Category / Aina ya Gharama</label>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center gap-3 p-5 rounded-lg bg-surface-container-high border-2 border-transparent hover:border-primary transition-all">
+<span class="material-symbols-outlined text-primary">potted_plant</span>
+<span class="font-bold text-sm">Seeds</span>
+</button>
+<button class="flex items-center gap-3 p-5 rounded-lg bg-surface-container-high border-2 border-primary transition-all">
+<span class="material-symbols-outlined text-primary">agriculture</span>
+<span class="font-bold text-sm">Tractor</span>
+</button>
+<button class="flex items-center gap-3 p-5 rounded-lg bg-surface-container-high border-2 border-transparent hover:border-primary transition-all">
+<span class="material-symbols-outlined text-primary">water_drop</span>
+<span class="font-bold text-sm">Irrigation</span>
+</button>
+<button class="flex items-center gap-3 p-5 rounded-lg bg-surface-container-high border-2 border-transparent hover:border-primary transition-all">
+<span class="material-symbols-outlined text-primary">engineering</span>
+<span class="font-bold text-sm">Labor</span>
+</button>
+</div>
+</div>
+<!-- Date & Notes -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-secondary ml-2">Date / Tarehe</label>
+<div class="relative">
+<input class="w-full h-16 px-6 bg-surface-container-highest border-none rounded-lg font-medium text-on-surface focus:ring-2 focus:ring-primary-fixed" type="date"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-secondary ml-2">Reference ID</label>
+<input class="w-full h-16 px-6 bg-surface-container-highest border-none rounded-lg font-medium text-on-surface focus:ring-2 focus:ring-primary-fixed" placeholder="#TRX-9902" type="text"/>
+</div>
+</div>
+<!-- Notes Section -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-secondary ml-2">Notes / Maelezo</label>
+<textarea class="w-full p-6 bg-surface-container-highest border-none rounded-lg font-medium text-on-surface focus:ring-2 focus:ring-primary-fixed resize-none" placeholder="Describe the expense detail here..." rows="4"></textarea>
+</div>
+<!-- Attachments (Design System Signature) -->
+<div class="bg-surface-container p-6 rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">receipt_long</span>
+</div>
+<div>
+<p class="font-bold text-sm">Attach Receipt</p>
+<p class="text-xs text-on-surface-variant">Upload image or scan paper</p>
+</div>
+</div>
+<button class="bg-surface-container-lowest px-4 py-2 rounded-full text-xs font-bold text-primary hover:bg-white transition-colors">
+                    Add File
+                </button>
+</div>
+<!-- Action Button -->
+<button class="w-full h-20 bg-primary-fixed hover:bg-[#88d982] text-on-primary-fixed text-xl font-extrabold rounded-lg shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">save</span>
+<span>Hifadhi Gharama</span>
+</button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md shadow-[0_-4px_24px_rgba(27,28,27,0.04)] rounded-t-[32px]">
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] dark:text-stone-400 px-5 py-2 hover:text-[#00450d] transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#a3f69c] dark:bg-[#00450d] text-[#00450d] dark:text-[#a3f69c] rounded-[24px] px-5 py-2 scale-110 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Expenses</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] dark:text-stone-400 px-5 py-2 hover:text-[#00450d] transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Workers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] dark:text-stone-400 px-5 py-2 hover:text-[#00450d] transition-colors" href="#">
+<span class="material-symbols-outlined">agriculture</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Harvest</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] dark:text-stone-400 px-5 py-2 hover:text-[#00450d] transition-colors" href="#">
+<span class="material-symbols-outlined">monetization_on</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Sales</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,635 @@
+{
+  "common": {
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "delete": "Futa",
+    "edit": "Hariri",
+    "loading": "Inapakia...",
+    "error": "Hitilafu",
+    "success": "Imefanikiwa",
+    "back": "Rudi",
+    "date": "Tarehe",
+    "notes": "Maelezo",
+    "recurring": "Je, inajirudia?",
+    "album": "Albamu",
+    "camera": "Kamera",
+    "optional": "Si lazima",
+    "required": "Lazima",
+    "zero": "0",
+    "frequencies": {
+      "daily": "Kila siku",
+      "weekly": "Kila wiki",
+      "monthly": "Kila mwezi"
+    },
+    "activities": {
+      "planting": "Upandaji",
+      "weeding": "Palizi",
+      "harvesting": "Uvunaji",
+      "spraying": "Upuliziaji",
+      "irrigation": "Umwagiliaji",
+      "other": "Nyingine"
+    }
+  },
+  "dashboard": {
+    "title": "Dashibodi",
+    "active_project": "Mradi unaotumika",
+    "profit_loss": "Faida / Hasara",
+    "revenue": "Mapato",
+    "total_budget": "Bajeti Jumla",
+    "total_spent": "Gharama Jumla",
+    "non_labor_costs": "Gharama Zisizo za Kibarua",
+    "labor_cost": "Gharama ya Kibarua",
+    "remaining": "Iliyobaki",
+    "efficiency_metrics": "Vipimo vya Ufanisi",
+    "yield_acre": "Mazao / Ekari",
+    "cost_kg": "Gharama / KG",
+    "rev_kg": "Mapato / KG",
+    "budget_vs_actual": "Bajeti dhidi ya Halisi",
+    "spent": "Jumla ya Matumizi",
+    "budget": "Bajeti",
+    "labor_by_employee": "Kibarua kwa Mfanyakazi",
+    "labor_by_activity": "Kibarua kwa Shughuli",
+    "unpaid_labor": "Jumla ya Kibarua Kisicholipwa",
+    "all_labor_paid": "Kibarua chote kimekwisha kulipwa",
+    "payments_pending": "Malipo bado yanangoja kwa wafanyakazi",
+    "select_project": "Chagua mradi...",
+    "hero_label": "Faida / Hasara",
+    "performance_up": "Shamba mkononi: utendaji ni bora kuliko mwezi uliopita.",
+    "performance_down": "Msimamo wa shamba umeshuka mwezi huu. Angalia gharama na malipo yaliyochelewa.",
+    "weather_alerts": "Hali ya Hewa / Tahadhari",
+    "weather_warning_title": "Mvua Inatarajiwa",
+    "weather_warning_body": "Shinikizo la gharama au malipo limeongezeka. Jiandae kwa kazi za shambani na mifereji.",
+    "weather_good_title": "Hali ya Shamba ni Nzuri",
+    "weather_good_body": "Mapato yanaendelea vizuri. Endelea kufuatilia muda wa mavuno na umwagiliaji.",
+    "risk_high": "Juu",
+    "risk_watch": "Angalia",
+    "target_hit": "Lengo Limefikiwa",
+    "needs_push": "Linahitaji Msukumo",
+    "manage_resources": "Simamia Rasilimali",
+    "rain_expected": "Mvua Inatarajiwa (2pm)",
+    "pest_alert": "Tahadhari ya Wadudu: Sekta B4",
+    "soil_scan_ready": "Uchunguzi wa Udongo Tayari",
+    "revenue_streams": "Mitiririko ya Mapato",
+    "view_report": "Ona Ripoti Kamili",
+    "primary_crop": "Mavuno ya Mahindi",
+    "primary_sector": "Sekta A na C",
+    "secondary_crop": "Kahawa",
+    "secondary_sector": "Sekta B1",
+    "expenses_short": "Gharama",
+    "budget_pressure": "-8% dhidi ya mwezi uliopita",
+    "costs_stable": "Gharama zipo sawa",
+    "active_labor": "Kazi Inayoendelea",
+    "staff_on_field": "Wafanyakazi shambani",
+    "market_prices": "Bei za Soko la Karibu",
+    "market_prices_subtitle": "Mahindi yamepanda 4% leo",
+    "labor_costs": "Gharama za Kazi",
+    "top_labor_activity": "Timu ya Mavuno",
+    "top_worker": "Matengenezo",
+    "manage_budget": "Panga pembejeo na mgawanyo wa mradi",
+    "manage_expenses": "Fuatilia gharama na risiti",
+    "manage_labor": "Idhinisha na simamia kumbukumbu za kazi",
+    "manage_harvest": "Rekodi mavuno na ubora wa shamba",
+    "manage_sales": "Fuatilia mauzo ya mazao na mapato",
+    "manage_inventory": "Dhibiti stock na matumizi ya pembejeo",
+    "scope": "Muigo",
+    "all_projects": "Miradi Yote",
+    "overview_subtitle_selected": "Uchambuzi wa mradi uliochaguliwa",
+    "overview_subtitle_portfolio": "Uchambuzi wa miradi yote",
+    "filter_overview": "Chuja muhtasari na hatua kwa mradi",
+    "focused": "Imechaguliwa",
+    "all": "Zote",
+    "planned_allocation": "Mgawanyo uliopangwa",
+    "operational_direct_expenses": "Gharama za moja kwa moja na uendeshaji",
+    "labor_logs_recorded": "Kumbukumbu {{count}} za kazi zimewekwa",
+    "costs_incurred_total": "Gharama zisizo za kibarua pamoja na kibarua",
+    "sale_records": "Rekodi {{count}} za mauzo",
+    "positive_margin": "Faida ipo juu",
+    "margin_at_risk": "Faida ipo hatarini",
+    "harvest": "Mavuno",
+    "pending_labor": "Kazi Zinazosubiri",
+    "jump_project_section": "Nenda moja kwa moja kwenye sehemu ya mradi",
+    "choose_project": "Chagua mradi",
+    "harvest_total": "Mavuno yote (kg)",
+    "harvest_trend": "+2.4% dhidi ya msimu uliopita",
+    "key_updates": "Taarifa Muhimu",
+    "leading_activity": "inaongoza",
+    "field_ready": "Mahindi yako tayari kuvunwa",
+    "field_ready_body": "Sehemu B iko karibu kuvunwa na utendaji wa shamba uko juu ya makadirio.",
+    "top_worker_body": "{{name}} anaongoza uzalishaji wa kibarua kwa {{amount}}.",
+    "irrigation_alert": "Tahadhari ya Umwagiliaji",
+    "irrigation_alert_body": "Unyevu wa udongo katika Sekta C unapungua. Kagua pampu na ratiba ya shamba.",
+    "irrigation_alert_warning": "Malipo ya wafanyakazi yanayochelewa yanaongezeka. Kagua shughuli kabla ya mzunguko unaofuata wa umwagiliaji.",
+    "run_action": "Endesha Hatua"
+  },
+  "timeline": {
+    "project_activity": "Farm Activity",
+    "history_title": "Timeline History",
+    "overview": "Muhtasari",
+    "lead_copy": "Fuatilia kazi za shambani, mwenendo wa mavuno, na matumizi yote katika timeline moja ya shamba.",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "completed": "Completed",
+    "expense_title": "Expense",
+    "expense_default_body": "Matumizi ya {{category}} yamewekwa kwa mzunguko huu wa shamba.",
+    "work_default_body": "Kazi ya shambani imerekodiwa kwa {{employee}}.",
+    "manual": "Manual"
+  },
+  "weather": {
+    "today": "Leo / Today",
+    "today_condition": "Mawingu Kidogo / Partly Cloudy",
+    "humidity": "Unyevu / Humid",
+    "wind": "Upepo / Wind",
+    "sunset_title": "Kutua kwa Jua",
+    "sunset_subtitle": "Sunset",
+    "sunset_note": "Mchana mrefu kwa ukuaji / Long day for growth",
+    "et_title": "Evapotranspiration",
+    "et_subtitle": "Uvukizi wa Maji Ardhini",
+    "et_tip": "Umwagiliaji unapendekezwa kesho asubuhi.",
+    "soil_temp_title": "Soil Temperature",
+    "soil_temp_subtitle": "Joto la Udongo",
+    "soil_temp_tip": "Hali nzuri kwa upandaji wa mahindi.",
+    "five_day_title": "Utabiri wa Siku 5 / 5-Day Forecast",
+    "weekly_view": "Weekly View",
+    "degree_unit": "°C",
+    "conditions": {
+      "sunny": "Sunny",
+      "rainy": "Rainy",
+      "cloudy": "Cloudy",
+      "mixed": "Mixed"
+    },
+    "days": {
+      "tue": "Jumanne",
+      "wed": "Jumatano",
+      "thu": "Alhamisi",
+      "fri": "Ijumaa",
+      "sat": "Jumamosi"
+    }
+  },
+  "projects": {
+    "title": "Miradi Yangu ya Shamba",
+    "portfolio_title": "Project Portfolio",
+    "directory_title": "Portfolio ya Miradi",
+    "tabs": {
+      "budget": "Bajeti",
+      "expenses": "Gharama",
+      "labor": "Kibarua",
+      "harvest": "Mavuno",
+      "sales": "Mauzo",
+      "inventory": "Inventory",
+      "timeline": "Ratiba"
+    },
+    "fields": {
+      "name": "Jina la Mradi",
+      "crop": "Zao",
+      "land_size": "Ukubwa wa Ardhi",
+      "unit": "Kipimo",
+      "expected_yield": "Mazao Yanayotarajiwa (kg)",
+      "start_date": "Tarehe ya Kuanza",
+      "status": "Hali"
+    },
+    "placeholders": {
+      "name": "mf. Shamba la Kaskazini",
+      "crop": "mf. Ngano, Mahindi",
+      "unit": "ekari",
+      "expected_yield": "mf. 5000"
+    },
+    "new_project": "Mradi Mpya",
+    "edit_title": "Hariri Mradi",
+    "create_project": "Unda Mradi",
+    "empty_state": "Hakuna miradi bado",
+    "directory_subtitle": "Orodha hai ya miradi ya shamba yenye uwezo wa kuhariri.",
+    "search_placeholder": "Tafuta miradi, mazao au hali",
+    "pull_to_sync": "Vuta chini ili kusawazisha kutoka kwenye seva.",
+    "day": "Siku ya {{count}}",
+    "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "errors": {
+      "save_local": "Imeshindikana kuhifadhi mradi kwenye kifaa",
+      "delete_local": "Imeshindikana kufuta mradi",
+      "not_found": "Mradi haujapatikana"
+    }
+  },
+  "budget": {
+    "edit_title": "Hariri Kipengee cha Bajeti",
+    "fields": {
+      "category": "Kategoria",
+      "name": "Jina la Kipengee",
+      "quantity": "Kiasi",
+      "unit": "Kipimo",
+      "unit_price": "Bei kwa Kipimo"
+    },
+    "placeholders": {
+      "name": "mf. Mbolea ya Urea",
+      "unit": "kg, lita, n.k."
+    },
+    "estimated_total": "Jumla Inayokadiriwa:",
+    "add": "Ongeza Kipengee cha Bajeti",
+    "empty": "Hakuna vipengee vya bajeti",
+    "categories": {
+      "seeds": "Mbegu",
+      "fertilizer": "Mbolea",
+      "pesticides": "Viuatilifu",
+      "labor": "Kibarua",
+      "equipment": "Vifaa",
+      "fuel": "Mafuta",
+      "irrigation": "Umwagiliaji",
+      "other": "Nyingine"
+    },
+    "errors": {
+      "name_required": "Jina la kipengee linahitajika",
+      "quantity_price_required": "Kiasi na bei kwa kipimo vinahitajika",
+      "save_local": "Imeshindikana kuhifadhi kipengee cha bajeti"
+    }
+  },
+  "expenses": {
+    "screen_title": "Gharama Mpya",
+    "edit_title": "Hariri Gharama",
+    "entry_eyebrow": "Transaction Entry",
+    "entry_title": "Gharama Mpya",
+    "category_heading": "Category / Aina ya Gharama",
+    "reference_id": "Reference ID",
+    "attach_receipt": "Attach Receipt",
+    "attach_receipt_subtitle": "Upload image or scan paper",
+    "fields": {
+      "category": "Kategoria",
+      "type": "Aina ya Gharama",
+      "amount": "Kiasi",
+      "receipt": "Picha ya Risiti (Si lazima)"
+    },
+    "placeholders": {
+      "note": "Maelezo ya hiari..."
+    },
+    "empty": "Hakuna gharama",
+    "save": "Hifadhi Gharama",
+    "categories": {
+      "seeds": "Mbegu",
+      "fertilizer": "Mbolea",
+      "pesticides": "Viuatilifu",
+      "labor": "Kibarua",
+      "equipment": "Vifaa",
+      "fuel": "Mafuta",
+      "irrigation": "Umwagiliaji",
+      "transport": "Usafiri",
+      "other": "Nyingine"
+    },
+    "types": {
+      "opex": "OPEX (Matumizi ya Uendeshaji)",
+      "capex": "CAPEX (Mtaji)"
+    },
+    "errors": {
+      "amount_required": "Kiasi kinahitajika",
+      "save_local": "Imeshindikana kuhifadhi gharama"
+    }
+  },
+  "employees": {
+    "title": "Wafanyakazi",
+    "fields": {
+      "name": "Jina",
+      "phone": "Simu",
+      "role": "Wajibu"
+    },
+    "placeholders": {
+      "name": "mf. John Doe",
+      "phone": "mf. +255700000000",
+      "role": "mf. Mfanyakazi, Msimamizi"
+    },
+    "new_employee": "Mfanyakazi Mpya",
+    "add_employee": "Ongeza Mfanyakazi",
+    "delete_title": "Futa Mfanyakazi",
+    "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "empty_title": "Hakuna wafanyakazi bado",
+    "directory_title": "Watu na Malipo",
+    "empty_subtitle": "Vuta chini kusawazisha au ongeza mfanyakazi mpya.",
+    "directory_subtitle": "Orodha ya API yenye mizania na vitendo.",
+    "search_placeholder": "Tafuta wafanyakazi, majukumu au simu",
+    "edit_title": "Hariri Mfanyakazi",
+    "role_unset": "Jukumu halijawekwa",
+    "no_phone": "Hakuna simu iliyohifadhiwa",
+    "api_live": "API Hai",
+    "with_role": "Wenye Jukumu",
+    "total_earned": "Jumla ya Mapato",
+    "entries_count": "Rekodi",
+    "earned": "Alichopata",
+    "paid": "Alicholipwa",
+    "settled": "Amelipwa yote",
+    "outstanding_balance": "Salio Linalodaiwa",
+    "work_history": "Historia ya Kazi",
+    "work_log": "Kumbukumbu ya Kazi",
+    "unknown": "Mfanyakazi Asiyejulikana",
+    "filters": {
+      "all": "Wote",
+      "synced": "Wamesawazishwa",
+      "local": "Wa Ndani Tu"
+    },
+    "errors": {
+      "name_required": "Jina la mfanyakazi linahitajika",
+      "save_local": "Imeshindikana kuhifadhi mfanyakazi",
+      "delete_local": "Imeshindikana kufuta mfanyakazi",
+      "not_found": "Mfanyakazi hajapatikana"
+    }
+  },
+  "labor": {
+    "screen_title": "Worker Activity",
+    "edit_title": "Hariri Rekodi ya Kazi",
+    "entry_title": "Kazi za Wafanyakazi",
+    "entry_subtitle": "Logging daily field progress",
+    "select_task": "Select Task / Chagua Kazi",
+    "hours_counter": "Hours Worked / Saa za Kazi",
+    "hours_label": "Hours",
+    "evidence_heading": "Evidence / Picha ya Kazi",
+    "take_photo": "Take Photo",
+    "take_photo_sw": "Piga Picha",
+    "change_photo": "Update Photo",
+    "submit": "Wasilisha / Submit",
+    "log_work": "Rekodi Kazi",
+    "employee": "Mfanyakazi",
+    "activity": "Shughuli",
+    "days_worked": "Siku Zilizofanya Kazi",
+    "rate_day": "Malipo kwa Siku",
+    "hours_worked": "Saa Zilizofanya Kazi",
+    "approve": "Idhinisha",
+    "reject": "Kataa",
+    "photo_proof": "Picha ya Ushahidi",
+    "total_cost": "Gharama Jumla",
+    "empty_state": "Hakuna rekodi za kazi",
+    "add_employee_first": "+ Ongeza mfanyakazi kwanza",
+    "days": "siku",
+    "hours_short": "saa",
+    "placeholders": {
+      "notes": "Maelezo ya hiari..."
+    },
+    "activity_notes": {
+      "planting": "Kupanda",
+      "irrigation": "Kumwagilia",
+      "spraying": "Kunyunyizia",
+      "harvesting": "Kuvuna",
+      "weeding": "Palizi",
+      "other": "Kazi nyingine"
+    },
+    "status": {
+      "pending": "INASUBIRI",
+      "approved": "IMEIDHINISHWA",
+      "rejected": "IMEKATALIWA"
+    },
+    "errors": {
+      "employee_required": "Tafadhali chagua mfanyakazi",
+      "rate_required": "Malipo kwa siku yanahitajika",
+      "save_local": "Imeshindikana kuhifadhi rekodi ya kazi"
+    }
+  },
+  "harvest": {
+    "screen_title": "Harvest Log",
+    "edit_title": "Hariri Mavuno",
+    "entry_title": "Kumbukumbu za Mavuno",
+    "entry_subtitle": "Record your daily yield to track farm productivity and growth.",
+    "crop_heading": "Crop Type / Aina ya Zao",
+    "quantity_heading": "Quantity (kg) / Kiasi (kg)",
+    "live_total": "Live Total",
+    "quality_heading": "Quality Grade / Ubora",
+    "date_heading": "Harvest Date / Tarehe",
+    "field_notes": "Field Notes",
+    "footer_note": "Last logged 4 hours ago by shamba lead",
+    "fields": {
+      "crop": "Jina la Zao",
+      "weight": "Uzito",
+      "unit": "Kipimo",
+      "quality": "Ubora"
+    },
+    "placeholders": {
+      "crop": "mf. Nyanya",
+      "notes": "Maelezo ya hiari..."
+    },
+    "record": "Rekodi Mavuno",
+    "empty": "Hakuna rekodi za mavuno",
+    "default_quality": "Kawaida",
+    "units": {
+      "kg": "kg",
+      "tons": "tani",
+      "bags": "mifuko",
+      "crates": "kreti",
+      "pieces": "vipande"
+    },
+    "qualities": {
+      "grade_a": "Daraja A",
+      "grade_b": "Daraja B",
+      "grade_c": "Daraja C",
+      "mixed": "Mchanganyiko"
+    },
+    "quality_notes": {
+      "grade_a": "Premium",
+      "grade_b": "Standard",
+      "grade_c": "Processing",
+      "mixed": "Mixed batch"
+    },
+    "errors": {
+      "crop_required": "Jina la zao linahitajika",
+      "weight_required": "Uzito sahihi unahitajika",
+      "save_local": "Imeshindikana kuhifadhi mavuno"
+    }
+  },
+  "sales": {
+    "screen_title": "Record Sale",
+    "edit_title": "Hariri Mauzo",
+    "entry_eyebrow": "Mauzo ya Leo",
+    "entry_title": "Rekodi Mauzo Mapya",
+    "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
+    "price_heading": "Price per kg / Bei kwa kg",
+    "buyer_heading": "Buyer Name / Jina la Mnunuzi",
+    "date_label": "Date of Sale",
+    "crop_category": "Crop Category",
+    "complete": "Complete Sale / Maliza Mauzo",
+    "footer_note": "By completing, this transaction will be recorded in your digital ledger.",
+    "fields": {
+      "customer": "Mteja (Si lazima)",
+      "weight_sold": "Uzito Uliouzwa (kg)",
+      "unit_price": "Bei kwa Kipimo"
+    },
+    "placeholders": {
+      "customer": "mf. Muuzaji Sokoni",
+      "notes": "Maelezo ya hiari..."
+    },
+    "record": "Rekodi Mauzo",
+    "cash_sale": "Mauzo ya Papo kwa Papo",
+    "total_revenue": "Mapato Jumla:",
+    "empty": "Hakuna rekodi za mauzo",
+    "errors": {
+      "weight_required": "Uzito sahihi unahitajika",
+      "unit_price_required": "Bei sahihi kwa kipimo inahitajika",
+      "save_local": "Imeshindikana kuhifadhi mauzo"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "open": "Fungua",
+    "total_value": "Thamani ya Inventory",
+    "search_placeholder": "Tafuta vitu vya inventory",
+    "empty_title": "Hakuna inventory bado",
+    "empty_subtitle": "Ongeza mbegu, vifaa, na stock nyingine kwa mradi huu.",
+    "create_title": "Ongeza Kitu cha Inventory",
+    "edit_title": "Hariri Kitu cha Inventory",
+    "delete_title": "Futa Kitu cha Inventory",
+    "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "project_inventory_subtitle": "Dhibiti stock, matumizi, na gharama za kipimo kwa mradi huu.",
+    "used_qty": "Kilichotumika",
+    "fields": {
+      "name": "Jina la Kitu",
+      "category": "Kategoria",
+      "quantity": "Kiasi",
+      "unit": "Kipimo",
+      "unit_cost": "Gharama kwa Kipimo",
+      "used_qty": "Kiasi kilichotumika"
+    }
+  },
+  "payments": {
+    "title": "Malipo",
+    "record": "Rekodi Malipo",
+    "confirm": "Thibitisha Malipo",
+    "pay_worker": "Lipa Mfanyakazi",
+    "empty": "Hakuna malipo bado",
+    "fields": {
+      "amount": "Kiasi"
+    },
+    "placeholders": {
+      "note": "Maelezo ya hiari..."
+    },
+    "errors": {
+      "amount_required": "Tafadhali weka kiasi sahihi",
+      "save_local": "Imeshindikana kuhifadhi malipo"
+    }
+  },
+  "quick_entry": {
+    "fields": {
+      "project": "Mradi",
+      "employee": "Mfanyakazi",
+      "activity": "Shughuli",
+      "workers": "Wafanyakazi",
+      "days": "Siku",
+      "rate": "Malipo"
+    },
+    "placeholders": {
+      "employee": "Andika jina..."
+    },
+    "select_project": "Chagua mradi...",
+    "total": "Jumla",
+    "save": "HIFADHI REKODI",
+    "success": "Rekodi ya kazi imehifadhiwa!",
+    "errors": {
+      "project_required": "Tafadhali chagua mradi",
+      "employee_required": "Tafadhali andika jina la mfanyakazi",
+      "rate_required": "Tafadhali weka malipo sahihi",
+      "save_local": "Imeshindikana kuhifadhi rekodi"
+    }
+  },
+  "settings": {
+    "title": "Mipangilio",
+    "brand_short": "The Tactile Earth",
+    "heading": "Settings / Mipangilio",
+    "language": "Lugha",
+    "currency": "Sarafu",
+    "language_heading": "Language / Lugha",
+    "preferred": "Preferred",
+    "account_details": "Maelezo ya Akaunti",
+    "notifications": "Arifa",
+    "notifications_subtitle": "Dhibiti tahadhari na vikumbusho vya mavuno",
+    "help_support": "Msaada",
+    "help_support_subtitle": "Nyaraka na msaada wa mazungumzo",
+    "terms": "Masharti ya Huduma",
+    "terms_subtitle": "Makubaliano ya kisheria na sera ya faragha",
+    "currency_subtitle": "Sarafu inayotumika kwa mauzo na ripoti",
+    "unknown_user": "Mtumiaji wa Agronomia",
+    "farm_id": "Farm ID: {{id}}",
+    "premium_plan": "Mpango wa Premium",
+    "languages": {
+      "en": "Kiingereza",
+      "sw": "Kiswahili"
+    },
+    "sync_status": "Hali ya Usawazishaji",
+    "sync_states": {
+      "idle": "Imetulia",
+      "syncing": "Inasawazisha",
+      "success": "Imesasishwa",
+      "error": "Inahitaji uangalizi"
+    },
+    "last_sync": "Usawazishaji wa mwisho: {{date}}",
+    "never_synced": "Bado haijawahi kusawazishwa",
+    "failed_items": "Vipengee vilivyoshindikana: {{count}}",
+    "logout": "Ondoka",
+    "logout_action": "Logout / Toka",
+    "profile": "Wasifu",
+    "confirm_logout": "Una uhakika?",
+    "version": "Toleo {{version}}",
+    "brand_version": "The Tactile Earth v{{version}}"
+  },
+  "auth": {
+    "fields": {
+      "full_name": "Jina Kamili",
+      "phone": "Namba ya Simu",
+      "password": "Nenosiri",
+      "confirm_password": "Thibitisha Nenosiri"
+    },
+    "placeholders": {
+      "phone_email": "agronomist@farm.com",
+      "phone": "+255700000000",
+      "password": "Weka nenosiri lako",
+      "password_min": "Angalau herufi 6",
+      "confirm_password": "Rudia nenosiri"
+    },
+    "roles": {
+      "admin": "Msimamizi",
+      "worker": "Mfanyakazi"
+    },
+    "login": {
+      "kicker": "Field Access",
+      "welcome_line_one": "Welcome",
+      "welcome_line_two": "Back",
+      "tagline": "Usimamizi bora wa shamba",
+      "subtitle": "Sign in to manage your fields and harvest data.",
+      "submit": "Ingia",
+      "forgot_password": "Forgot Password?",
+      "alt_methods": "or continue with",
+      "no_account": "Huna akaunti?",
+      "sign_up": "Jisajili"
+    },
+    "register": {
+      "kicker": "Create Profile",
+      "title": "Fungua akaunti",
+      "subtitle": "Anza kufuatilia shamba lako leo",
+      "submit": "Fungua akaunti",
+      "have_account": "Tayari una akaunti?",
+      "register_as": "Jisajili kama"
+    },
+    "errors": {
+      "missing_fields_title": "Sehemu hazijajazwa",
+      "login_missing_fields": "Tafadhali weka simu na nenosiri lako.",
+      "register_missing_fields": "Tafadhali jaza sehemu zote muhimu.",
+      "password_mismatch_title": "Nenosiri halilingani",
+      "password_mismatch": "Nenosiri uliloandika halilingani.",
+      "weak_password_title": "Nenosiri dhaifu",
+      "weak_password": "Nenosiri lazima liwe na angalau herufi 6.",
+      "login_failed_title": "Kuingia kumeshindikana",
+      "registration_failed_title": "Usajili umeshindikana"
+    }
+  },
+  "tab": {
+    "workers": "Wafanyakazi",
+    "profile": "Profile"
+  },
+  "resource": {
+    "confirm_delete_generic": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "search_in_tab": "Tafuta kwenye sehemu hii",
+    "sort_latest": "Mpya",
+    "sort_amount": "Kiasi",
+    "syncing": "Inasawazisha...",
+    "loading_title": "Inasasisha",
+    "loading_body": "Inapakua data mpya ya rasilimali kutoka kwenye seva.",
+    "loading_error": "Imeshindikana kupakia data mpya ya rasilimali."
+  },
+  "feedback": {
+    "created": "Imeundwa",
+    "updated": "Imehaririwa",
+    "deleted": "Imefutwa",
+    "saved_remote": "Imehifadhiwa kwenye seva na kusawazishwa ndani ya kifaa.",
+    "deleted_remote": "Imefutwa kwenye seva na kuondolewa ndani ya kifaa.",
+    "saved_local_title": "Imehifadhiwa Ndani ya Kifaa",
+    "saved_local_body": "Imehifadhiwa kwenye kifaa hiki. Itasawazishwa mara tu mtandao utakapopatikana."
+  }
+}

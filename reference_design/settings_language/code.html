@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Tactile Earth - Mipangilio</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed-dim": "#ebbcac",
+              "on-error": "#ffffff",
+              "on-primary-fixed": "#002204",
+              "tertiary-fixed": "#ffdad6",
+              "surface-container-highest": "#e4e2e0",
+              "inverse-surface": "#30302f",
+              "inverse-primary": "#88d982",
+              "surface-container-high": "#eae8e6",
+              "surface": "#fbf9f7",
+              "on-surface": "#1b1c1b",
+              "secondary-fixed": "#ffdbcf",
+              "error": "#ba1a1a",
+              "outline": "#717a6d",
+              "on-secondary-fixed": "#2e150b",
+              "tertiary-container": "#a60a15",
+              "on-tertiary-fixed": "#410003",
+              "surface-container-lowest": "#ffffff",
+              "surface-tint": "#1b6d24",
+              "on-secondary-container": "#795548",
+              "tertiary": "#7c000a",
+              "on-surface-variant": "#41493e",
+              "on-tertiary-fixed-variant": "#93000e",
+              "on-primary-fixed-variant": "#005312",
+              "on-primary-container": "#86d881",
+              "outline-variant": "#c0c9bb",
+              "primary-fixed": "#a3f69c",
+              "on-secondary-fixed-variant": "#603f33",
+              "tertiary-fixed-dim": "#ffb4ac",
+              "surface-variant": "#e4e2e0",
+              "primary": "#00450d",
+              "surface-container-low": "#f5f3f1",
+              "surface-bright": "#fbf9f7",
+              "primary-fixed-dim": "#88d982",
+              "background": "#fbf9f7",
+              "on-secondary": "#ffffff",
+              "inverse-on-surface": "#f2f0ee",
+              "on-tertiary-container": "#ffb2aa",
+              "surface-container": "#efedec",
+              "primary-container": "#065f18",
+              "surface-dim": "#dbdad8",
+              "on-tertiary": "#ffffff",
+              "on-primary": "#ffffff",
+              "on-error-container": "#93000a",
+              "secondary": "#7a5649",
+              "error-container": "#ffdad6",
+              "on-background": "#1b1c1b",
+              "secondary-container": "#fdcdbc"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #fbf9f7;
+      }
+      .headline-font { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface antialiased pb-32">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-[#fbf9f7] dark:bg-stone-950 flex justify-between items-center w-full px-6 py-4">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#efedec] transition-colors scale-95 active:duration-150">
+<span class="material-symbols-outlined text-[#00450d]" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="headline-font font-bold text-2xl text-[#00450d]">Settings / Mipangilio</h1>
+</div>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#efedec] transition-colors scale-95 active:duration-150">
+<span class="material-symbols-outlined text-[#00450d]" data-icon="translate">translate</span>
+</button>
+</header>
+<main class="max-w-xl mx-auto px-6 pt-4 space-y-8">
+<!-- Profile Section - Asymmetric Bento Style -->
+<section class="grid grid-cols-1 gap-4">
+<div class="bg-surface-container-lowest p-8 rounded-lg shadow-black/5 flex items-center gap-6">
+<div class="relative">
+<img alt="Agronomist User" class="w-20 h-20 rounded-lg object-cover" data-alt="Portrait of a smiling professional farmer outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhi1eO-wqqwMvE9LrDRN27XUUmmY7E16EfH2QdTaKqdV9V5V3w413RhCnquK7QO15WoYTR7FCZyYTyBdG9Xek7RMgwVGDQ6Ki40iKrlh_p2yXePpQ3pSFxteD0dgqv5zZrQfD_BCwHEHo-qAXadcRBccvd5mq0ZRwz0eyS8SJWO7dU3uIqud6bzVuQ8BvuerqSb6eS-cXi1A0KewVNxK-7KydMxcv2lOoRal3Q2_VcmH6Jx3WsjDOaYGnGWP_sGxDZYyPOVEZ8pbn6"/>
+<div class="absolute -bottom-2 -right-2 bg-primary-fixed p-1.5 rounded-full border-4 border-surface-container-lowest">
+<span class="material-symbols-outlined text-on-primary-fixed text-sm" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div>
+<h2 class="headline-font font-extrabold text-xl text-on-surface">Agronomist User</h2>
+<p class="text-secondary font-medium font-body">Farm ID: TTE-2024-8892</p>
+<span class="inline-block mt-1 text-xs font-bold px-2 py-0.5 bg-surface-container rounded-full text-primary uppercase tracking-widest">Premium Plan</span>
+</div>
+</div>
+</section>
+<!-- Language Toggle Section -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="headline-font font-bold text-lg text-primary">Language / Lugha</h3>
+<span class="text-xs font-semibold text-secondary uppercase tracking-widest">Preferred</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded-lg flex gap-2">
+<button class="flex-1 flex items-center justify-center gap-2 py-4 px-4 bg-surface-container-lowest text-on-surface font-bold rounded-lg shadow-sm transition-all">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+<span>English</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-2 py-4 px-4 text-secondary font-semibold rounded-lg hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="public">public</span>
+<span>Kiswahili</span>
+</button>
+</div>
+</section>
+<!-- Additional Settings List -->
+<section class="space-y-2">
+<h3 class="headline-font font-bold text-lg text-primary mb-4">Account Details</h3>
+<!-- Notifications -->
+<div class="group bg-surface-container-lowest p-6 rounded-lg flex items-center justify-between hover:bg-primary-fixed/10 transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Notifications</p>
+<p class="text-sm text-secondary">Manage alerts and harvest reminders</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Help & Support -->
+<div class="group bg-surface-container-lowest p-6 rounded-lg flex items-center justify-between hover:bg-primary-fixed/10 transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Help &amp; Support</p>
+<p class="text-sm text-secondary">Documentation and chat support</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Terms of Service -->
+<div class="group bg-surface-container-lowest p-6 rounded-lg flex items-center justify-between hover:bg-primary-fixed/10 transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Terms of Service</p>
+<p class="text-sm text-secondary">Legal agreements and privacy policy</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</section>
+<!-- Logout Section -->
+<section class="pt-6 pb-12">
+<button class="w-full h-16 bg-surface-container-high text-tertiary font-bold rounded-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:bg-error-container">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout / Toka
+            </button>
+<p class="text-center mt-6 text-xs text-outline font-medium tracking-widest uppercase">The Tactile Earth v2.4.1</p>
+</section>
+</main>
+<!-- Navigation Drawer Content (Semantic Reference) -->
+<!-- Not visible in primary mobile view but follows JSON logic -->
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 backdrop-blur-md shadow-[0_-4px_24px_rgba(27,28,27,0.04)] rounded-t-[32px]">
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Expenses</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="agriculture">agriculture</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Harvest</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1b1c1b] px-5 py-2 hover:text-[#00450d] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="monetization_on">monetization_on</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Sales</span>
+</a>
+<!-- Active Tab: Language/Settings often maps to Profile/Help in many apps, here we map to Profile as active context -->
+<a class="flex flex-col items-center justify-center bg-[#a3f69c] text-[#00450d] rounded-[24px] px-5 py-2 scale-110 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Profile</span>
+</a>
+</nav>
+</body></html>
