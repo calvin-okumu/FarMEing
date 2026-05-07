@@ -395,6 +395,8 @@ const styles = StyleSheet.create({
   employeeRow: { gap: stitchTheme.spacing.xs, paddingBottom: 4 },
   employeeChip: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 10, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted },
   employeeChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
+  employeeChipTeam: { backgroundColor: stitchTheme.colors.mintLight, borderWidth: 1, borderColor: stitchTheme.colors.primarySoft },
+  employeeChipContent: { flexDirection: 'row', alignItems: 'center' },
   employeeChipText: { color: stitchTheme.colors.text, fontWeight: '700', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
   employeeChipTextActive: { color: stitchTheme.colors.primary },
   employeeEmpty: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 10, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset },

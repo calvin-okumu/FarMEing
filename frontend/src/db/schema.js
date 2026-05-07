@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 9,
+  version: 10,
   tables: [
     // ── FarmProject ─────────────────────────────────────────────────────────
     tableSchema({
@@ -109,6 +109,7 @@ export default appSchema({
       columns: [
         { name: 'remote_id',  type: 'string' },
         { name: 'user_id',    type: 'string' },
+        { name: 'project_id', type: 'string', isOptional: true },
         { name: 'name',       type: 'string' },
         { name: 'phone',      type: 'string', isOptional: true },
         { name: 'role',       type: 'string', isOptional: true },

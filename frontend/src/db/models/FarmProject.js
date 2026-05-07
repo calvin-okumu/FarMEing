@@ -1,8 +1,11 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, text } from '@nozbe/watermelondb/decorators';
+import { children, field, text } from '@nozbe/watermelondb/decorators';
 
 export default class FarmProject extends Model {
   static table = 'farm_projects';
+  static associations = {
+    employees: { type: 'has_many', foreignKey: 'project_id' },
+  };
 
   @text('remote_id')  remoteId;
   @text('user_id')    userId;
@@ -23,4 +26,6 @@ export default class FarmProject extends Model {
   @text('sync_status') syncStatus;
   @field('last_synced_at') lastSyncedAt;
   @text('last_error') lastError;
+
+  @children('employees') employees;
 }

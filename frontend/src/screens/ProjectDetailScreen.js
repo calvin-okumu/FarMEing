@@ -842,29 +842,64 @@ export default function ProjectDetailScreen({ route, navigation }) {
         )) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
 
         {activeTab === 'labor' ? (
-          workEntries.length ? (
-            <>
-              {laborByEmployee.length ? (
-                <View style={styles.analyticsRow}>
-                  <StitchSurface style={styles.analyticsCard}>
-                    <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_employee')}</Text>
-                    <Text style={styles.analyticsTitle}>{laborByEmployee[0]?.employeeName || t('employees.unknown')}</Text>
-                    <Text style={styles.analyticsValue}>{formatCurrency(laborByEmployee[0]?.totalCost || 0, currency)}</Text>
-                  </StitchSurface>
-                  <StitchSurface style={styles.analyticsCard}>
-                    <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_activity')}</Text>
-                    <Text style={styles.analyticsTitle}>{laborByActivity[0]?.activity || t('common.activities.other')}</Text>
-                    <Text style={styles.analyticsValue}>{formatCurrency(laborByActivity[0]?.totalCost || 0, currency)}</Text>
-                  </StitchSurface>
-                </View>
-              ) : null}
-              {visibleWorkEntries.map((item) => (
-                <View key={item.id}>
-                  {renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item)}
-                </View>
-              ))}
-            </>
-          ) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
+          <>
+            {employees.filter(e => e.projectId === project.id || (project.remoteId && e.projectId === project.remoteId)).length > 0 ? (
+              <View style={styles.teamSection}>
+                <StitchDashboardSectionHeader 
+                  title={t('employees.project_team', { defaultValue: 'Project Team' })} 
+                  subtitle={t('employees.team_subtitle', { defaultValue: 'Assigned workers for this project' })}
+                  actionLabel={String(employees.filter(e => e.projectId === project.id || (project.remoteId && e.projectId === project.remoteId)).length)}
+                />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamScroll}>
+                  {employees.filter(e => e.projectId === project.id || (project.remoteId && e.projectId === project.remoteId)).map(emp => (
+                    <TouchableOpacity 
+                      key={emp.id} 
+                      style={styles.teamMember}
+                      onPress={() => navigation.navigate('EmployeeDetail', { employeeId: emp.id })}
+                    >
+                      <View style={styles.teamAvatar}>
+                        <Text style={styles.teamAvatarText}>{emp.name.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <Text style={styles.teamName} numberOfLines={1}>{emp.name.split(' ')[0]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity 
+                    style={styles.teamAddMember}
+                    onPress={() => navigation.navigate('Employees')}
+                  >
+                    <View style={styles.teamAddIcon}>
+                      <Ionicons name="person-add-outline" size={18} color={stitchTheme.colors.primary} />
+                    </View>
+                    <Text style={styles.teamName}>{t('common.add')}</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            ) : null}
+
+            {workEntries.length ? (
+              <>
+                {laborByEmployee.length ? (
+                  <View style={styles.analyticsRow}>
+                    <StitchSurface style={styles.analyticsCard}>
+                      <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_employee')}</Text>
+                      <Text style={styles.analyticsTitle}>{laborByEmployee[0]?.employeeName || t('employees.unknown')}</Text>
+                      <Text style={styles.analyticsValue}>{formatCurrency(laborByEmployee[0]?.totalCost || 0, currency)}</Text>
+                    </StitchSurface>
+                    <StitchSurface style={styles.analyticsCard}>
+                      <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_activity')}</Text>
+                      <Text style={styles.analyticsTitle}>{laborByActivity[0]?.activity || t('common.activities.other')}</Text>
+                      <Text style={styles.analyticsValue}>{formatCurrency(laborByActivity[0]?.totalCost || 0, currency)}</Text>
+                    </StitchSurface>
+                  </View>
+                ) : null}
+                {visibleWorkEntries.map((item) => (
+                  <View key={item.id}>
+                    {renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item)}
+                  </View>
+                ))}
+              </>
+            ) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>}
+          </>
         ) : null}
 
         {activeTab === 'harvest' ? visibleHarvests.length ? visibleHarvests.map((item) => (

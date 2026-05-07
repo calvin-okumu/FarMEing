@@ -59,5 +59,11 @@ export default schemaMigrations({
       toVersion: 9,
       steps: [],
     },
+    {
+      toVersion: 10,
+      steps: [
+        addColumns({ table: 'employees', columns: [{ name: 'project_id', type: 'string', isOptional: true }] }),
+      ],
+    },
   ],
 });

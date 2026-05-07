@@ -12,11 +12,15 @@ const TABLES = [
     table: 'employees',
     endpoint: '/employees',
     responseKey: 'employee',
-    payload: (record) => ({
-      name: record.name,
-      phone: record.phone,
-      role: record.role,
-    }),
+    payload: async (record) => {
+      const projectId = await resolveProjectRemoteId(record.projectId);
+      return {
+        name: record.name,
+        phone: record.phone || null,
+        role: record.role || null,
+        projectId: projectId || null,
+      };
+    },
   },
   {
     table: 'farm_projects',
@@ -268,9 +272,10 @@ async function syncProjects(projects) {
   });
 }
 
-async function syncEmployees(remoteItems) {
+async function syncEmployees(remoteItems, projectMap) {
   return upsertSimpleCollection('employees', remoteItems, (record, item) => {
     record.userId = item.userId ?? '';
+    record.projectId = projectMap.get(item.projectId) || item.projectId || null;
     record.name = item.name ?? '';
     record.phone = item.phone || null;
     record.role = item.role || null;
@@ -424,7 +429,7 @@ async function pullChanges() {
   const { projects: projectMap, employees: employeeMapBefore } = await buildRemoteMaps();
 
   const { data: { employees = [] } } = await api.get('/employees', { params: { includeDeleted: true } });
-  pulled += await syncEmployees(employees);
+  pulled += await syncEmployees(employees, projectMap);
 
   const { employees: employeeMap } = await buildRemoteMaps();
   const { data: { payments = [] } } = await api.get('/payments', { params: { includeDeleted: true } });

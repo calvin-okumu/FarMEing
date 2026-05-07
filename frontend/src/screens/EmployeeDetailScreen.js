@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -59,6 +60,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const currency = useSettingsStore((s) => s.currency);
   const [activeTab, setActiveTab] = useState('work');
   const [employee, setEmployee] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [workEntries, setWorkEntries] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loadingTabData, setLoadingTabData] = useState(true);
@@ -66,7 +68,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [deletePaymentTarget, setDeletePaymentTarget] = useState(null);
   const [paymentVisible, setPaymentVisible] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', role: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', role: '', projectId: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', note: '', date: new Date() });
   const [banner, setBanner] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -76,6 +78,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   useEffect(() => {
     if (!employeeId) return;
     const employeeCollection = database.get('employees');
+    const projectsQuery = database.get('farm_projects').query(Q.where('is_deleted', false));
     const workQuery = database.get('work_entries').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false));
     const paymentQuery = database.get('payments').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false));
 
@@ -84,7 +87,12 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         setLoadingTabData(true);
         const record = await employeeCollection.find(employeeId);
         setEmployee(record);
-        const [workRows, paymentRows] = await Promise.all([workQuery.fetch(), paymentQuery.fetch()]);
+        const [projRows, workRows, paymentRows] = await Promise.all([
+          projectsQuery.fetch(),
+          workQuery.fetch(),
+          paymentQuery.fetch(),
+        ]);
+        setProjects(projRows);
         setWorkEntries(workRows);
         setPayments(paymentRows);
       } catch {
@@ -101,11 +109,13 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       next: (record) => setEmployee(record),
       error: () => setEmployee(null),
     });
+    const projSub = projectsQuery.observe().subscribe((rows) => setProjects(rows));
     const workSub = workQuery.observe().subscribe((rows) => setWorkEntries(rows));
     const paymentSub = paymentQuery.observe().subscribe((rows) => setPayments(rows));
 
     return () => {
       employeeSub.unsubscribe();
+      projSub.unsubscribe();
       workSub.unsubscribe();
       paymentSub.unsubscribe();
     };
@@ -117,6 +127,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         name: employee.name || '',
         phone: employee.phone || '',
         role: employee.role || '',
+        projectId: employee.projectId || '',
       });
     }
   }, [employee]);
@@ -129,6 +140,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           draft.name = editForm.name.trim();
           draft.phone = editForm.phone.trim();
           draft.role = editForm.role.trim();
+          draft.projectId = editForm.projectId || null;
         });
       });
       syncAll().catch(() => {});
@@ -310,7 +322,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </StitchDashboardShell>
 
       <Modal visible={editVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           <StitchSectionLabel>{t('employees.fields.name')}</StitchSectionLabel>
           <TextInput style={styles.input} value={editForm.name} onChangeText={(name) => setEditForm((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
@@ -318,8 +330,28 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           <TextInput style={styles.input} value={editForm.phone} onChangeText={(phone) => setEditForm((p) => ({ ...p, phone }))} placeholderTextColor="#8a9388" />
           <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
           <TextInput style={styles.input} value={editForm.role} onChangeText={(role) => setEditForm((p) => ({ ...p, role }))} placeholderTextColor="#8a9388" />
+          
+          <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Project' })}</StitchSectionLabel>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
+            <TouchableOpacity
+              style={[styles.projectChip, !editForm.projectId && styles.projectChipActive]}
+              onPress={() => setEditForm(p => ({ ...p, projectId: '' }))}
+            >
+              <Text style={[styles.projectChipText, !editForm.projectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
+            </TouchableOpacity>
+            {projects.map((proj) => (
+              <TouchableOpacity
+                key={proj.id}
+                style={[styles.projectChip, editForm.projectId === proj.id && styles.projectChipActive]}
+                onPress={() => setEditForm(p => ({ ...p, projectId: proj.id }))}
+              >
+                <Text style={[styles.projectChipText, editForm.projectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
           <StitchPrimaryButton label={t('common.save')} onPress={handleUpdate} icon="save-outline" style={styles.saveButton} />
-        </View></KeyboardAvoidingView></View>
+        </ScrollView></KeyboardAvoidingView></View>
       </Modal>
 
       <Modal visible={paymentVisible} animationType="slide" transparent>
@@ -382,5 +414,10 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  projectSelectionRow: { gap: 8, paddingVertical: 4 },
+  projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
+  projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.lg },
 });
