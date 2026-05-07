@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const prisma = require('../lib/prisma');
+const { findAuthUserById } = require('../lib/auth-user');
 
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -21,10 +21,7 @@ const authenticate = async (req, res, next) => {
   }
 
   // Attach user to request (fetch fresh from DB so deleted users are rejected)
-  const user = await prisma.user.findUnique({
-    where: { id: payload.sub },
-    select: { id: true, name: true, phone: true, currency: true, locale: true },
-  });
+  const user = await findAuthUserById(payload.sub);
 
   if (!user) {
     return res.status(401).json({ error: 'User not found' });

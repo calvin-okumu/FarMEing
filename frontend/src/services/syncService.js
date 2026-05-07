@@ -2,6 +2,7 @@ import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import api from '../lib/api';
 import { SYNC_STATUS, markRecordFailed, markRecordSynced } from '../utils/localRecord';
+import { formatErrorMessage } from './http';
 import useSyncStore from '../store/useSyncStore';
 
 const toMs = (value) => (value ? new Date(value).getTime() : null);
@@ -26,11 +27,12 @@ const TABLES = [
       crop: record.crop,
       landSize: record.landSize,
       landUnit: record.landUnit,
-      startDate: new Date(record.startDate).toISOString().split('T')[0],
+      startDate: record.startDate ? new Date(record.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       expectedYield: record.expectedYield,
       status: record.status,
       notes: record.notes,
-      contractUrl: record.contractUrl,
+      contractUrl: record.contractUrl || null,
+      seasonId: record.seasonId || null,
     }),
   },
   {
@@ -66,7 +68,7 @@ const TABLES = [
         isRecurring: record.isRecurring,
         frequency: record.frequency,
         note: record.note,
-        receiptUrl: record.receiptUrl,
+        receiptUrl: record.receiptUrl || null,
         payee: record.payee,
       };
     },
@@ -90,14 +92,16 @@ const TABLES = [
         date: new Date(record.date).toISOString().split('T')[0],
         daysWorked: record.daysWorked,
         ratePerDay: record.ratePerDay,
+        totalCost: record.totalCost,
         hoursWorked: record.hoursWorked,
-        imageUrl: record.imageUrl,
+        imageUrl: record.imageUrl || null,
         locationLat: record.locationLat,
         locationLng: record.locationLng,
         status: record.status,
         isRecurring: record.isRecurring,
         frequency: record.frequency,
-        notes: record.notes,
+        notes: record.notes || null,
+        isPaid: record.isPaid,
       };
     },
   },
@@ -112,7 +116,7 @@ const TABLES = [
         employeeId,
         amount: record.amount,
         date: new Date(record.date).toISOString().split('T')[0],
-        note: record.note,
+        note: record.note || null,
       };
     },
   },
@@ -129,8 +133,8 @@ const TABLES = [
         date: new Date(record.date).toISOString().split('T')[0],
         weight: record.weight,
         unit: record.unit,
-        quality: record.quality,
-        notes: record.notes,
+        quality: record.quality || null,
+        notes: record.notes || null,
       };
     },
   },
@@ -144,11 +148,11 @@ const TABLES = [
       return {
         projectId,
         date: new Date(record.date).toISOString().split('T')[0],
-        customer: record.customer,
+        customer: record.customer || null,
         weightSold: record.weightSold,
         unitPrice: record.unitPrice,
         totalAmount: record.totalAmount,
-        notes: record.notes,
+        notes: record.notes || null,
       };
     },
   },
@@ -166,9 +170,10 @@ const TABLES = [
         quantity: record.quantity,
         unit: record.unit,
         unitCost: record.unitCost,
+        totalCost: record.totalCost,
         usedQty: record.usedQty,
-        notes: record.notes,
-        payee: record.payee,
+        notes: record.notes || null,
+        payee: record.payee || null,
       };
     },
   },
@@ -248,7 +253,7 @@ async function upsertSimpleCollection(table, remoteItems, mapRecord) {
 async function syncProjects(projects) {
   return upsertSimpleCollection('farm_projects', projects, (record, item) => {
     record.userId = item.userId ?? '';
-    record.seasonId = item.seasonId ?? '';
+    record.seasonId = item.seasonId || null;
     record.name = item.name ?? '';
     record.crop = item.crop ?? '';
     record.landSize = item.landSize ?? 0;
@@ -257,8 +262,8 @@ async function syncProjects(projects) {
     record.endDate = toMs(item.endDate) ?? null;
     record.expectedYield = item.expectedYield ?? 0;
     record.status = item.status ?? 'ACTIVE';
-    record.notes = item.notes ?? '';
-    record.contractUrl = item.contractUrl ?? '';
+    record.notes = item.notes || null;
+    record.contractUrl = item.contractUrl || null;
     record.isDeleted = item.isDeleted ?? false;
   });
 }
@@ -267,8 +272,8 @@ async function syncEmployees(remoteItems) {
   return upsertSimpleCollection('employees', remoteItems, (record, item) => {
     record.userId = item.userId ?? '';
     record.name = item.name ?? '';
-    record.phone = item.phone ?? '';
-    record.role = item.role ?? '';
+    record.phone = item.phone || null;
+    record.role = item.role || null;
     record.isDeleted = item.isDeleted ?? false;
   });
 }
@@ -284,7 +289,7 @@ async function syncPayments(remoteItems, employeeMap) {
     record.employeeId = employeeMap.get(item.employeeId) || item.employeeId || '';
     record.amount = item.amount ?? 0;
     record.date = toMs(item.date) ?? Date.now();
-    record.note = item.note ?? '';
+    record.note = item.note || null;
     record.isDeleted = item.isDeleted ?? false;
   });
 }
@@ -329,9 +334,11 @@ async function processRecord(config, record) {
 
     return 1;
   } catch (error) {
+    const errorMessage = formatErrorMessage(error);
+
     await database.write(async () => {
       await record.update((draft) => {
-        markRecordFailed(draft, error.message, desiredStatus);
+        markRecordFailed(draft, errorMessage, desiredStatus);
       });
     });
     return 0;
@@ -366,6 +373,45 @@ async function countFailedRecords() {
   );
 
   return counts.reduce((sum, count) => sum + count, 0);
+}
+
+export async function hasUnsyncedChanges() {
+  const counts = await Promise.all(
+    TABLES.map(({ table }) =>
+      database.get(table).query(
+        Q.where('sync_status', Q.oneOf([
+          SYNC_STATUS.PENDING_CREATE,
+          SYNC_STATUS.PENDING_UPDATE,
+          SYNC_STATUS.PENDING_DELETE,
+          SYNC_STATUS.FAILED,
+        ]))
+      ).fetchCount()
+    )
+  );
+
+  return counts.reduce((sum, count) => sum + count, 0) > 0;
+}
+
+export async function getFailedRecords() {
+  const failed = [];
+  for (const config of TABLES) {
+    const records = await database.get(config.table)
+      .query(Q.where('sync_status', SYNC_STATUS.FAILED))
+      .fetch();
+    
+    for (const record of records) {
+      failed.push({
+        id: record.id,
+        table: config.table,
+        syncStatus: record.syncStatus,
+        lastError: record.lastError,
+        updatedAt: record.updatedAt,
+        // Identify the record by name, category, crop, or activity
+        name: record.name || record.activity || record.category || record.crop || 'Unknown Item'
+      });
+    }
+  }
+  return failed;
 }
 
 async function pullChanges() {
@@ -423,10 +469,10 @@ async function pullChanges() {
           record.amount = item.amount ?? 0;
           record.date = toMs(item.date) ?? Date.now();
           record.isRecurring = item.isRecurring ?? false;
-          record.frequency = item.frequency ?? null;
-          record.note = item.note ?? '';
-          record.receiptUrl = item.receiptUrl ?? '';
-          record.payee = item.payee ?? '';
+          record.frequency = item.frequency || null;
+          record.note = item.note || null;
+          record.receiptUrl = item.receiptUrl || null;
+          record.payee = item.payee || null;
           record.isDeleted = item.isDeleted ?? false;
         }
       );
@@ -449,8 +495,8 @@ async function pullChanges() {
           record.locationLng = item.locationLng ?? 0;
           record.status = item.status ?? 'PENDING';
           record.isRecurring = item.isRecurring ?? false;
-          record.frequency = item.frequency ?? null;
-          record.notes = item.notes ?? '';
+          record.frequency = item.frequency || null;
+          record.notes = item.notes || null;
           record.isPaid = item.isPaid ?? false;
           record.isDeleted = item.isDeleted ?? false;
         }
@@ -466,8 +512,8 @@ async function pullChanges() {
           record.date = toMs(item.date) ?? Date.now();
           record.weight = item.weight ?? 0;
           record.unit = item.unit ?? 'kg';
-          record.quality = item.quality ?? '';
-          record.notes = item.notes ?? '';
+          record.quality = item.quality || null;
+          record.notes = item.notes || null;
           record.isDeleted = item.isDeleted ?? false;
         }
       );
@@ -479,11 +525,11 @@ async function pullChanges() {
         (record, item) => {
           record.projectId = projectMap.get(item.projectId) || localProjectId;
           record.date = toMs(item.date) ?? Date.now();
-          record.customer = item.customer ?? '';
+          record.customer = item.customer || null;
           record.weightSold = item.weightSold ?? 0;
           record.unitPrice = item.unitPrice ?? 0;
           record.totalAmount = item.totalAmount ?? 0;
-          record.notes = item.notes ?? '';
+          record.notes = item.notes || null;
           record.isDeleted = item.isDeleted ?? false;
         }
       );
@@ -501,8 +547,8 @@ async function pullChanges() {
           record.unitCost = item.unitCost ?? 0;
           record.totalCost = item.totalCost ?? 0;
           record.usedQty = item.usedQty ?? 0;
-          record.notes = item.notes ?? '';
-          record.payee = item.payee ?? '';
+          record.notes = item.notes || null;
+          record.payee = item.payee || null;
           record.isDeleted = item.isDeleted ?? false;
         }
       );

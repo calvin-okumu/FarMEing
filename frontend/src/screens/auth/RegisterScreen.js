@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
+import { formatErrorMessage } from '../../services/http';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
 import StitchAuthShell from '../../components/ui/StitchAuthShell';
 
@@ -48,8 +49,9 @@ export default function RegisterScreen({ navigation }) {
       await register({ name: name.trim(), phone: phone.trim(), password, role });
       // Navigation handled automatically by RootNavigator watching token
     } catch (err) {
-      setBanner({ tone: 'error', title: t('auth.errors.registration_failed_title'), message: err.message });
-      Alert.alert(t('auth.errors.registration_failed_title'), err.message);
+      const message = formatErrorMessage(err);
+      setBanner({ tone: 'error', title: t('auth.errors.registration_failed_title'), message });
+      Alert.alert(t('auth.errors.registration_failed_title'), message);
     } finally {
       setLoading(false);
     }
