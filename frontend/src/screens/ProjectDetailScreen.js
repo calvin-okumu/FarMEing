@@ -744,8 +744,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSurface style={styles.heroCard}>
           <View style={styles.heroRow}>
@@ -938,8 +939,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 64 },
-  hero: { paddingBottom: stitchTheme.spacing.md },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10, marginBottom: stitchTheme.spacing.xs },
+  hero: { paddingBottom: 0 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4, marginBottom: 0 },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },

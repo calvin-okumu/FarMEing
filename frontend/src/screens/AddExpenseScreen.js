@@ -27,7 +27,6 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
-import StatusBanner from '../components/ui/StatusBanner';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -44,7 +43,7 @@ const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId, itemId } = route.params;
+  const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [category, setCategory] = useState('other');
   const [expenseType, setExpenseType] = useState('OPEX');
@@ -80,7 +79,7 @@ export default function AddExpenseScreen({ route, navigation }) {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.7,
     });
@@ -109,6 +108,10 @@ export default function AddExpenseScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
+    if (!itemId && !projectId) {
+      Alert.alert(t('common.error'), t('projects.errors.not_found'));
+      return;
+    }
     if (!amount) {
       Alert.alert(t('common.error'), t('expenses.errors.amount_required'));
       return;
@@ -183,6 +186,8 @@ export default function AddExpenseScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
 
         <StitchSurface style={styles.amountCard}>
@@ -199,7 +204,6 @@ export default function AddExpenseScreen({ route, navigation }) {
             />
           </View>
         </StitchSurface>
-        <StatusBanner {...banner} style={styles.banner} />
 
         <StitchSectionLabel>{t('expenses.category_heading')}</StitchSectionLabel>
         <View style={styles.categoryGrid}>
@@ -346,8 +350,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
-  banner: { marginTop: stitchTheme.spacing.xs },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   amountCard: { padding: stitchTheme.spacing.lg, borderRadius: stitchTheme.radius.card },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   amountCurrency: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },

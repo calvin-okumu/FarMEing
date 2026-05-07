@@ -52,14 +52,33 @@ const createPayment = async (req, res) => {
   return res.status(201).json({ payment });
 };
 
+// ── GET /payments ──────────────────────────────────────────────────────────────
+
+const listAllPayments = async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === 'true';
+  const payments = await prisma.payment.findMany({
+    where: {
+      ...(includeDeleted ? {} : { isDeleted: false }),
+      employee: {
+        userId: req.user.id,
+        ...(includeDeleted ? {} : { isDeleted: false }),
+      },
+    },
+    orderBy: { date: 'desc' },
+  });
+
+  return res.json({ payments });
+};
+
 // ── GET /payments/:employeeId ─────────────────────────────────────────────────
 
 const listPayments = async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === 'true';
   const employee = await findOwnedEmployee(req.params.employeeId, req.user.id, res);
   if (!employee) return;
 
   const payments = await prisma.payment.findMany({
-    where:   { employeeId: req.params.employeeId },
+    where:   { employeeId: req.params.employeeId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { date: 'desc' },
   });
 
@@ -70,4 +89,29 @@ const listPayments = async (req, res) => {
   return res.json({ payments, totalPaid });
 };
 
-module.exports = { createPayment, listPayments };
+// ── DELETE /payments/:id (soft delete) ────────────────────────────────────────
+
+const deletePayment = async (req, res) => {
+  const payment = await prisma.payment.findUnique({
+    where: { id: req.params.id },
+    include: { employee: true },
+  });
+
+  if (
+    !payment ||
+    payment.isDeleted ||
+    payment.employee.isDeleted ||
+    payment.employee.userId !== req.user.id
+  ) {
+    return res.status(404).json({ error: 'Payment not found' });
+  }
+
+  await prisma.payment.update({
+    where: { id: req.params.id },
+    data: { isDeleted: true },
+  });
+
+  return res.json({ message: 'Payment deleted' });
+};
+
+module.exports = { createPayment, listAllPayments, listPayments, deletePayment };

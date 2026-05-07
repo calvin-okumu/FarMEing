@@ -23,6 +23,13 @@ const useBackendStore = create((set) => ({
     status: 'unknown',
     lastCheckedAt: Date.now(),
   }),
+
+  reset: () => set({
+    status: 'unknown',
+    lastCheckedAt: null,
+    lastOnlineAt: null,
+    lastError: '',
+  }),
 }));
 
 export default useBackendStore;

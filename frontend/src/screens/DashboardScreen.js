@@ -143,7 +143,7 @@ export default function DashboardScreen({ navigation }) {
     return activeProjects.filter((project) => `${project.name} ${project.crop} ${project.status}`.toLowerCase().includes(term));
   }, [activeProjects, projectSearch]);
 
-  const filterIds = useMemo(() => getFilterIds(selectedProjectId, projects), [selectedProjectId, projects]);
+  const filterIds = useMemo(() => getFilterIds(selectedProjectId, activeProjects), [selectedProjectId, activeProjects]);
   const matchesProject = (item) => filterIds.includes(item.projectId);
 
   const filteredBudgetItems = useMemo(() => budgetItems.filter(matchesProject), [budgetItems, filterIds]);

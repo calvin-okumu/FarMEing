@@ -4,6 +4,32 @@ export function extractValidation(error) {
   return error?.details || [];
 }
 
+export function formatErrorMessage(error) {
+  if (!error) return 'An unknown error occurred';
+  
+  let message = error.message || 'Something went wrong';
+  const statusCode = error.statusCode;
+  
+  // Try to extract more specific info from details
+  if (error.details) {
+    if (Array.isArray(error.details) && error.details.length > 0) {
+      const details = error.details.map((d) => {
+        if (typeof d === 'string') return d;
+        return d.message || d.msg || JSON.stringify(d);
+      }).join(', ');
+      message = `${message}: ${details}`;
+    } else if (typeof error.details === 'object' && Object.keys(error.details).length > 0) {
+      // Handle object details (e.g., { field: 'error message' })
+      const details = Object.entries(error.details)
+        .map(([key, val]) => `${key}: ${val}`)
+        .join(', ');
+      message = `${message} (${details})`;
+    }
+  }
+
+  return statusCode ? `[${statusCode}] ${message}` : message;
+}
+
 export function toDateOnly(value) {
   if (!value) return null;
   const date = new Date(value);

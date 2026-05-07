@@ -15,12 +15,14 @@ import EmployeeDetailScreen from '../screens/EmployeeDetailScreen';
 import QuickEntryScreen from '../screens/QuickEntryScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import SyncErrorsScreen from '../screens/SyncErrorsScreen';
 import StitchTabBar from '../components/navigation/StitchTabBar';
 import { stitchTheme } from '../theme/stitchTheme';
 
 const Tab = createBottomTabNavigator();
 const ProjectStack = createNativeStackNavigator();
 const EmployeeStack = createNativeStackNavigator();
+const SettingsStack = createNativeStackNavigator();
 
 const stitchHeaderOptions = {
   headerStyle: { backgroundColor: stitchTheme.colors.background },
@@ -99,6 +101,25 @@ function EmployeeStackNavigator() {
   );
 }
 
+function SettingsStackNavigator() {
+  const { t } = useTranslation();
+
+  return (
+    <SettingsStack.Navigator screenOptions={stitchHeaderOptions}>
+      <SettingsStack.Screen
+        name="SettingsHome"
+        component={SettingsScreen}
+        options={{ headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="SyncErrors"
+        component={SyncErrorsScreen}
+        options={{ title: t('settings.sync_errors.title'), headerShown: false }}
+      />
+    </SettingsStack.Navigator>
+  );
+}
+
 export default function TabNavigator() {
   const { t } = useTranslation();
 
@@ -133,7 +154,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={SettingsStackNavigator}
         options={{ title: t('tab.profile'), tabBarLabel: 'Profile' }}
       />
     </Tab.Navigator>

@@ -50,7 +50,7 @@ export function markRecordSynced(record, remoteId) {
 }
 
 export function markRecordFailed(record, message, fallbackStatus) {
-  record.syncStatus = fallbackStatus || record.syncStatus || SYNC_STATUS.FAILED;
+  record.syncStatus = SYNC_STATUS.FAILED;
   record.lastError = message || 'Sync failed';
   record.updatedAt = Date.now();
 }

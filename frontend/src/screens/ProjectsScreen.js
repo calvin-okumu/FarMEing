@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
@@ -25,11 +25,10 @@ import StitchDashboardShell, { StitchDashboardSectionHeader } from '../component
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import StatusBanner from '../components/ui/StatusBanner';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
-import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import { deleteProjectCascade, updateLocalModel } from '../utils/resourceMutations';
 
 const DEFAULT_FORM = {
   name: '',
@@ -90,6 +89,7 @@ export default function ProjectsScreen({ navigation, route }) {
   const openCreate = () => {
     setEditingProject(null);
     setFormData(DEFAULT_FORM);
+    setShowDatePicker(false);
     setModalVisible(true);
   };
 
@@ -111,7 +111,30 @@ export default function ProjectsScreen({ navigation, route }) {
       expectedYield: String(project.expectedYield ?? ''),
       contractUrl: project.contractUrl || '',
     });
+    setShowDatePicker(false);
     setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setShowDatePicker(false);
+    setModalVisible(false);
+  };
+
+  const openStartDatePicker = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: formData.startDate,
+        mode: 'date',
+        onChange: (_event, selectedDate) => {
+          if (selectedDate) {
+            setFormData((previous) => ({ ...previous, startDate: selectedDate }));
+          }
+        },
+      });
+      return;
+    }
+
+    setShowDatePicker(true);
   };
 
   const handleSave = async () => {
@@ -157,7 +180,7 @@ export default function ProjectsScreen({ navigation, route }) {
       }
 
       syncAll().catch(() => {});
-      setModalVisible(false);
+      closeModal();
       setEditingProject(null);
       setFormData(DEFAULT_FORM);
     } catch (error) {
@@ -170,10 +193,7 @@ export default function ProjectsScreen({ navigation, route }) {
     if (!deleteTarget) return;
     try {
       setBanner(null);
-      await database.write(async () => {
-        const record = await database.get('farm_projects').find(deleteTarget.id);
-        await deleteLocalModel(record);
-      });
+      await deleteProjectCascade(database, deleteTarget.id);
       syncAll().catch(() => {});
       setDeleteTarget(null);
       setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
@@ -237,8 +257,9 @@ export default function ProjectsScreen({ navigation, route }) {
         }}
         bodyContentStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
         <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
         <StitchDashboardSectionHeader title={t('projects.directory_title', { defaultValue: t('projects.portfolio_title') })} subtitle='Browse and open project workspaces' actionLabel={String(filteredProjects.length)} />
         {filteredProjects.length ? filteredProjects.map((item, index) => {
@@ -285,7 +306,7 @@ export default function ProjectsScreen({ navigation, route }) {
         }) : <EmptyState icon="leaf-outline" title={t('projects.empty_state')} subtitle={t('projects.pull_to_sync')} />}
       </StitchDashboardShell>
 
-      <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={() => setModalVisible(false)}>
+      <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={closeModal}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
           <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('projects.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
@@ -311,12 +332,12 @@ export default function ProjectsScreen({ navigation, route }) {
           <TextInput style={styles.input} value={formData.contractUrl} onChangeText={(url) => setFormData((p) => ({ ...p, contractUrl: url }))} placeholder="https://..." placeholderTextColor={stitchTheme.colors.textMuted} />
 
           <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
-          <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
+          <TouchableOpacity style={styles.dateSelector} onPress={openStartDatePicker} activeOpacity={0.88}>
             <Text style={styles.dateSelectorText}>{formatAppDate(formData.startDate)}</Text>
             <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
           </TouchableOpacity>
 
-          {showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={(_event, selectedDate) => { setShowDatePicker(Platform.OS === 'ios'); if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
+          {Platform.OS === 'ios' && showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display="spinner" onChange={(_event, selectedDate) => { if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
 
           <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSave} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
         </ScrollView>
@@ -331,8 +352,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
   list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
-  hero: { paddingBottom: stitchTheme.spacing.md },
-  heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
+  hero: { paddingBottom: 0 },
+  heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 4 },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },

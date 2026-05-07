@@ -64,6 +64,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const [loadingTabData, setLoadingTabData] = useState(true);
   const [editVisible, setEditVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
+  const [deletePaymentTarget, setDeletePaymentTarget] = useState(null);
   const [paymentVisible, setPaymentVisible] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', role: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', note: '', date: new Date() });
@@ -177,6 +178,23 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleDeletePayment = async () => {
+    if (!deletePaymentTarget) return;
+
+    try {
+      await database.write(async () => {
+        const record = await database.get('payments').find(deletePaymentTarget.id);
+        await deleteLocalModel(record);
+      });
+      syncAll().catch(() => {});
+      setDeletePaymentTarget(null);
+      setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
+    } catch (error) {
+      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
+      Alert.alert(t('common.error'), error.message);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -221,8 +239,9 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         }}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
         bodyContentStyle={styles.contentWrap}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
 
       <StitchSurface style={styles.header}>
         <View style={styles.avatarLarge}><Text style={styles.avatarTextLarge}>{(employee.name || '?').charAt(0).toUpperCase()}</Text></View>
@@ -265,7 +284,14 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <View key={item.id} style={styles.listItem}>
           <View style={styles.listItemHeader}>
             <Text style={styles.listItemTitle}>{activeTab === 'work' ? item.activity : t('payments.title')}</Text>
-            <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, currency)}</Text>
+            <View style={styles.listItemActions}>
+              <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, currency)}</Text>
+              {activeTab === 'payments' ? (
+                <TouchableOpacity onPress={() => setDeletePaymentTarget(item)} activeOpacity={0.8} style={styles.inlineDeleteButton}>
+                  <Ionicons name="trash-outline" size={16} color="#9c1111" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
           <Text style={styles.listItemMeta}>{formatAppDate(item.date)}{item.note ? ` • ${item.note}` : ''}</Text>
         </View>
@@ -308,6 +334,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </Modal>
 
       <ConfirmDialog visible={deleteVisible} title={t('employees.delete_title')} message={t('employees.confirm_delete', { name: employee.name })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteVisible(false)} onConfirm={handleDelete} />
+      <ConfirmDialog visible={!!deletePaymentTarget} title={t('payments.delete_title')} message={t('payments.confirm_delete', { name: formatCurrency(deletePaymentTarget?.amount || 0, currency) })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeletePaymentTarget(null)} onConfirm={handleDeletePayment} />
     </View>
   );
 }
@@ -339,8 +366,10 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1 },
   listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.sm + 2, marginBottom: stitchTheme.spacing.xs, ...stitchShadows.card },
   listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: stitchTheme.spacing.sm },
+  listItemActions: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs },
   listItemTitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, flex: 1, textTransform: 'uppercase', letterSpacing: 0.7 },
   listItemAmount: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
+  inlineDeleteButton: { padding: 6, borderRadius: stitchTheme.radius.sm, backgroundColor: 'rgba(156,17,17,0.08)' },
   listItemMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, textAlign: 'center', marginTop: stitchTheme.spacing.lg },
   deleteTrigger: { marginTop: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

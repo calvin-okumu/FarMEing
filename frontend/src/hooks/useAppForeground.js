@@ -9,17 +9,19 @@ import { AppState } from 'react-native';
 
 export function useAppForeground(callback) {
   const appStateRef = useRef(AppState.currentState);
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
 
   useEffect(() => {
     // Fire immediately on mount
-    callback();
+    callbackRef.current();
 
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (
         appStateRef.current.match(/inactive|background/) &&
         nextState === 'active'
       ) {
-        callback();
+        callbackRef.current();
       }
       appStateRef.current = nextState;
     });

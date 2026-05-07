@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { createAuthUser, findAuthUserByPhone } = require('../lib/auth-user');
 const { registerSchema, loginSchema } = require('../validators/auth.validator');
 
 const SALT_ROUNDS = 10;
@@ -23,7 +24,10 @@ const register = async (req, res) => {
   const { name, phone, password, role } = result.data;
 
   // Check for duplicate phone
-  const existing = await prisma.user.findUnique({ where: { phone } });
+  const existing = await prisma.user.findUnique({
+    where: { phone },
+    select: { id: true },
+  });
   if (existing) {
     return res.status(409).json({ error: 'Phone number already registered' });
   }
@@ -32,9 +36,11 @@ const register = async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
   // Create user
-  const user = await prisma.user.create({
-    data: { name, phone, password: hashedPassword, role: role || 'ADMIN' },
-    select: { id: true, name: true, phone: true, role: true, currency: true, locale: true, createdAt: true },
+  const user = await createAuthUser({
+    name,
+    phone,
+    password: hashedPassword,
+    role,
   });
 
   // Issue token
@@ -64,7 +70,7 @@ const login = async (req, res) => {
   const { phone, password } = result.data;
 
   // Look up user
-  const user = await prisma.user.findUnique({ where: { phone } });
+  const user = await findAuthUserByPhone(phone, { includePassword: true });
   if (!user) {
     return res.status(401).json({ error: 'Invalid phone or password' });
   }

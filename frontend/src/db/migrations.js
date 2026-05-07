@@ -55,5 +55,9 @@ export default schemaMigrations({
         addColumns({ table: 'inventory_items', columns: [{ name: 'payee', type: 'string', isOptional: true }] }),
       ],
     },
+    {
+      toVersion: 9,
+      steps: [],
+    },
   ],
 });

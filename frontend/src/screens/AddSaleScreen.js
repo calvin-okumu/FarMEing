@@ -26,11 +26,10 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
-import StatusBanner from '../components/ui/StatusBanner';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId, itemId } = route.params;
+  const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
@@ -79,6 +78,10 @@ export default function AddSaleScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
+    if (!itemId && !projectId) {
+      Alert.alert(t('common.error'), t('projects.errors.not_found'));
+      return;
+    }
     if (!weightSold || parseFloat(weightSold) <= 0) {
       Alert.alert(t('common.error'), t('sales.errors.weight_required'));
       return;
@@ -151,9 +154,9 @@ export default function AddSaleScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
-
         <StitchSurface style={styles.panel}>
           <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
           <View style={styles.fieldLarge}>
@@ -251,7 +254,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   banner: { marginTop: stitchTheme.spacing.xs },
   panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },

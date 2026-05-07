@@ -17,7 +17,6 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { updateLocalModel } from '../utils/resourceMutations';
-import StatusBanner from '../components/ui/StatusBanner';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
   StitchChip,
@@ -33,7 +32,7 @@ const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', '
 
 export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
-  const { projectId, itemId } = route.params;
+  const { projectId, itemId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
   const [category, setCategory] = useState('seeds');
   const [name, setName] = useState('');
@@ -58,6 +57,10 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const bars = useMemo(() => [1, parseFloat(quantity) || 1, parseFloat(unitPrice) || 1, total || 1], [quantity, unitPrice, total]);
 
   const handleSave = async () => {
+    if (!itemId && !projectId) {
+      Alert.alert(t('common.error'), t('projects.errors.not_found'));
+      return;
+    }
     if (!name.trim()) {
       Alert.alert(t('common.error'), t('budget.errors.name_required'));
       return;
@@ -131,9 +134,9 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           ),
         }}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
-
         <StitchSectionLabel>{t('budget.fields.category')}</StitchSectionLabel>
         <View style={styles.chipsRow}>
           {CATEGORIES.map((cat) => (
@@ -202,7 +205,6 @@ const styles = StyleSheet.create({
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   heroBars: { marginTop: stitchTheme.spacing.md, height: 44 },
-  banner: { marginTop: stitchTheme.spacing.xs },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
   chipWrap: { marginBottom: 0 },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },

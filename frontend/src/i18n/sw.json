@@ -483,6 +483,8 @@
     "title": "Malipo",
     "record": "Rekodi Malipo",
     "confirm": "Thibitisha Malipo",
+    "delete_title": "Futa Malipo",
+    "confirm_delete": "Una uhakika unataka kufuta malipo haya ya {{name}}?",
     "pay_worker": "Lipa Mfanyakazi",
     "empty": "Hakuna malipo bado",
     "fields": {
@@ -497,24 +499,35 @@
     }
   },
   "quick_entry": {
+    "mode": "Aina ya Rekodi",
+    "modes": {
+      "individual": "Mtu mmoja",
+      "crew": "Kikundi"
+    },
     "fields": {
       "project": "Mradi",
       "employee": "Mfanyakazi",
+      "crew_name": "Jina la Kikundi",
       "activity": "Shughuli",
       "workers": "Wafanyakazi",
       "days": "Siku",
       "rate": "Malipo"
     },
     "placeholders": {
-      "employee": "Andika jina..."
+      "employee": "Andika jina...",
+      "crew_name": "Andika jina la kikundi..."
     },
     "select_project": "Chagua mradi...",
     "total": "Jumla",
+    "single_worker_hint": "Quick Entry huhifadhi mfanyakazi mmoja kwa kila rekodi.",
+    "crew_hint": "Crew Entry huhifadhi rekodi ya kazi ya kikundi kwa jina la kikundi linaloweza kutumika tena.",
     "save": "HIFADHI REKODI",
     "success": "Rekodi ya kazi imehifadhiwa!",
     "errors": {
       "project_required": "Tafadhali chagua mradi",
       "employee_required": "Tafadhali andika jina la mfanyakazi",
+      "workers_required": "Tafadhali weka angalau mfanyakazi mmoja",
+      "single_worker_only": "Quick Entry inatumika kwa mfanyakazi mmoja kwa kila rekodi. Tumia Add Work Entry kwa kundi.",
       "rate_required": "Tafadhali weka malipo sahihi",
       "save_local": "Imeshindikana kuhifadhi rekodi"
     }
@@ -552,8 +565,21 @@
     "last_sync": "Usawazishaji wa mwisho: {{date}}",
     "never_synced": "Bado haijawahi kusawazishwa",
     "failed_items": "Vipengee vilivyoshindikana: {{count}}",
+    "unsynced_title": "Mabadiliko Hayajasawazishwa",
+    "unsynced_message": "Una mabadiliko ambayo hayajahifadhiwa kwenye seva. Ukiondoka sasa, mabadiliko haya yatapotea.",
+    "sync_logout": "Sawazisha na Ondoka",
+    "logout_anyway": "Ondoka Hata Hivyo",
     "logout": "Ondoka",
     "logout_action": "Logout / Toka",
+    "sync_errors": {
+      "title": "Hitilafu za Usawazishaji",
+      "subtitle": "Kagua vipengee vilivyoshindikana kuhifadhiwa kwenye seva",
+      "retry_all": "Jaribu Tena Zote",
+      "no_errors": "Vipengee vyote vimesawazishwa kwa usahihi",
+      "item_id": "ID: {{id}}",
+      "retry_success": "Usawazishaji umekamilika",
+      "retry_failed": "Usawazishaji umeshindikana kwa baadhi ya vipengee"
+    },
     "profile": "Wasifu",
     "confirm_logout": "Una uhakika?",
     "version": "Toleo {{version}}",
