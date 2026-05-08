@@ -34,6 +34,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { useObservable } from '../hooks/useWatermelon';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
 import { useForm, Controller } from 'react-hook-form';
 function WorkerCard({ item, onPress, t, projectMap }) {
@@ -469,7 +470,4 @@ const styles = StyleSheet.create({
   projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.xl },
 });
-ntSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
-  projectChipTextActive: { color: stitchTheme.colors.primary },
-  saveButton: { marginTop: stitchTheme.spacing.xl },
-});
+

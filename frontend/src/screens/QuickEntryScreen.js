@@ -24,6 +24,7 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import StatusBanner from '../components/ui/StatusBanner';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -442,10 +443,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   third: { flex: 1 },
   smallLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
-  button: { marginTop: stitchTheme.spacing.md },
-  loader: { marginTop: stitchTheme.spacing.sm },
-});
-hTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
   button: { marginTop: stitchTheme.spacing.md },
   loader: { marginTop: stitchTheme.spacing.sm },
 });

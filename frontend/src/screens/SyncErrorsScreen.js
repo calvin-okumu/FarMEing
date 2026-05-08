@@ -7,6 +7,7 @@ import { stitchTheme, stitchShadows } from '../theme/stitchTheme';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { formatAppDate } from '../utils/date';
 import useSyncStore from '../store/useSyncStore';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
 export default function SyncErrorsScreen() {
   const { t } = useTranslation();
@@ -167,16 +168,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    ...stitchShadows.float,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-});
-nter',
     gap: 12,
     ...stitchShadows.float,
   },

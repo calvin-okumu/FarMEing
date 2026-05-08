@@ -476,6 +476,3 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   submitButton: { marginTop: stitchTheme.spacing.md },
 });
-ight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  submitButton: { marginTop: stitchTheme.spacing.md },
-});

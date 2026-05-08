@@ -434,7 +434,4 @@ const styles = StyleSheet.create({
   projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.lg },
 });
- color: stitchTheme.colors.textMuted },
-  projectChipTextActive: { color: stitchTheme.colors.primary },
-  saveButton: { marginTop: stitchTheme.spacing.lg },
-});
+

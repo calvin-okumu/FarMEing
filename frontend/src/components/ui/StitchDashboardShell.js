@@ -5,6 +5,7 @@ import { stitchTheme } from '../../theme/stitchTheme';
 import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
 import StitchHeroHeader from './StitchHeroHeader';
 import StatusBanner from './StatusBanner';
+import GlobalSyncStatus from './GlobalSyncStatus';
 
 const EXPANDED_HERO_HEIGHT = 184;
 
@@ -178,8 +179,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: stitchTheme.colors.primaryContainer,
-  },
-});
-maryContainer,
   },
 });
