@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
+import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
@@ -29,6 +30,8 @@ import ResourceFormModal from '../components/ui/ResourceFormModal';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { deleteProjectCascade, updateLocalModel } from '../utils/resourceMutations';
+import { useObservable } from '../hooks/useWatermelon';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
 const DEFAULT_FORM = {
   name: '',
@@ -43,38 +46,29 @@ const DEFAULT_FORM = {
 export default function ProjectsScreen({ navigation, route }) {
   const { t } = useTranslation();
 
-  const [projects, setProjects] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [query, setQuery] = useState('');
-  const [formData, setFormData] = useState(DEFAULT_FORM);
   const [banner, setBanner] = useState(null);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const loadLocal = async () => {
-      const rows = await database.get('farm_projects').query(Q.where('is_deleted', false)).fetch();
-      rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
-      setProjects(rows);
-      setInitialLoading(false);
-    };
+  const { control, handleSubmit, reset, setValue, watch } = useForm({
+    defaultValues: DEFAULT_FORM
+  });
 
-    loadLocal();
+  const formData = watch();
 
-    const sub = database
-      .get('farm_projects')
-      .query(Q.where('is_deleted', false))
-      .observe()
-      .subscribe((rows) => {
-        rows.sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
-        setProjects(rows);
-      });
+  const projectsQuery = useMemo(() => database.get('farm_projects').query(Q.where('is_deleted', false)), []);
+  const rawProjects = useObservable(projectsQuery, null);
 
-    return () => sub.unsubscribe();
-  }, []);
+  const projects = useMemo(() => {
+    if (!rawProjects) return [];
+    return [...rawProjects].sort((a, b) => (b.startDate ?? 0) - (a.startDate ?? 0));
+  }, [rawProjects]);
+
+  const initialLoading = rawProjects === null;
 
   useEffect(() => {
     syncAll().catch(() => {});
@@ -88,7 +82,7 @@ export default function ProjectsScreen({ navigation, route }) {
 
   const openCreate = () => {
     setEditingProject(null);
-    setFormData(DEFAULT_FORM);
+    reset(DEFAULT_FORM);
     setShowDatePicker(false);
     setModalVisible(true);
   };
@@ -102,7 +96,7 @@ export default function ProjectsScreen({ navigation, route }) {
 
   const openEdit = (project) => {
     setEditingProject(project);
-    setFormData({
+    reset({
       name: project.name || '',
       crop: project.crop || '',
       landSize: String(project.landSize ?? ''),
@@ -127,7 +121,7 @@ export default function ProjectsScreen({ navigation, route }) {
         mode: 'date',
         onChange: (_event, selectedDate) => {
           if (selectedDate) {
-            setFormData((previous) => ({ ...previous, startDate: selectedDate }));
+            setValue('startDate', selectedDate);
           }
         },
       });
@@ -137,8 +131,8 @@ export default function ProjectsScreen({ navigation, route }) {
     setShowDatePicker(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.name.trim()) return;
+  const handleSave = async (data) => {
+    if (!data.name.trim()) return;
 
     try {
       setBanner(null);
@@ -146,26 +140,26 @@ export default function ProjectsScreen({ navigation, route }) {
         if (editingProject) {
           const record = await database.get('farm_projects').find(editingProject.id);
           await updateLocalModel(record, (draft) => {
-            draft.name = formData.name.trim();
-            draft.crop = formData.crop.trim();
-            draft.landSize = parseFloat(formData.landSize) || 0;
-            draft.landUnit = formData.landUnit || 'acres';
-            draft.startDate = formData.startDate.getTime();
-            draft.expectedYield = parseFloat(formData.expectedYield) || 0;
-            draft.contractUrl = formData.contractUrl.trim();
+            draft.name = data.name.trim();
+            draft.crop = data.crop.trim();
+            draft.landSize = parseFloat(data.landSize) || 0;
+            draft.landUnit = data.landUnit || 'acres';
+            draft.startDate = data.startDate.getTime();
+            draft.expectedYield = parseFloat(data.expectedYield) || 0;
+            draft.contractUrl = data.contractUrl.trim();
             draft.status = draft.status || 'ACTIVE';
           });
         } else {
           await database.get('farm_projects').create((record) => {
             initializeLocalRecord(record);
             record.userId = '';
-            record.name = formData.name.trim();
-            record.crop = formData.crop.trim();
-            record.landSize = parseFloat(formData.landSize) || 0;
-            record.landUnit = formData.landUnit || 'acres';
-            record.startDate = formData.startDate.getTime();
-            record.expectedYield = parseFloat(formData.expectedYield) || 0;
-            record.contractUrl = formData.contractUrl.trim();
+            record.name = data.name.trim();
+            record.crop = data.crop.trim();
+            record.landSize = parseFloat(data.landSize) || 0;
+            record.landUnit = data.landUnit || 'acres';
+            record.startDate = data.startDate.getTime();
+            record.expectedYield = parseFloat(data.expectedYield) || 0;
+            record.contractUrl = data.contractUrl.trim();
             record.status = 'ACTIVE';
             record.notes = '';
             record.isDeleted = false;
@@ -182,7 +176,7 @@ export default function ProjectsScreen({ navigation, route }) {
       syncAll().catch(() => {});
       closeModal();
       setEditingProject(null);
-      setFormData(DEFAULT_FORM);
+      reset(DEFAULT_FORM);
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
@@ -309,27 +303,64 @@ export default function ProjectsScreen({ navigation, route }) {
       <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={closeModal}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('projects.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
+          <Controller
+            control={control}
+            name="name"
+            rules={{ required: true }}
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
+            )}
+          />
 
           <StitchSectionLabel>{t('projects.fields.crop')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.crop} onChangeText={(crop) => setFormData((p) => ({ ...p, crop }))} placeholder={t('projects.placeholders.crop')} placeholderTextColor={stitchTheme.colors.textMuted} />
+          <Controller
+            control={control}
+            name="crop"
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.crop')} placeholderTextColor={stitchTheme.colors.textMuted} />
+            )}
+          />
 
           <View style={styles.row}>
             <View style={styles.halfInput}>
               <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.landSize} onChangeText={(landSize) => setFormData((p) => ({ ...p, landSize }))} placeholder={t('common.zero')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
+              <Controller
+                control={control}
+                name="landSize"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('common.zero')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
+                )}
+              />
             </View>
             <View style={styles.halfInput}>
               <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.landUnit} onChangeText={(landUnit) => setFormData((p) => ({ ...p, landUnit }))} placeholder={t('projects.placeholders.unit')} placeholderTextColor={stitchTheme.colors.textMuted} />
+              <Controller
+                control={control}
+                name="landUnit"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.unit')} placeholderTextColor={stitchTheme.colors.textMuted} />
+                )}
+              />
             </View>
           </View>
 
           <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.expectedYield} onChangeText={(expectedYield) => setFormData((p) => ({ ...p, expectedYield }))} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
+          <Controller
+            control={control}
+            name="expectedYield"
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
+            )}
+          />
 
           <StitchSectionLabel>Contract / Lease URL</StitchSectionLabel>
-          <TextInput style={styles.input} value={formData.contractUrl} onChangeText={(url) => setFormData((p) => ({ ...p, contractUrl: url }))} placeholder="https://..." placeholderTextColor={stitchTheme.colors.textMuted} />
+          <Controller
+            control={control}
+            name="contractUrl"
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder="https://..." placeholderTextColor={stitchTheme.colors.textMuted} />
+            )}
+          />
 
           <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
           <TouchableOpacity style={styles.dateSelector} onPress={openStartDatePicker} activeOpacity={0.88}>
@@ -337,9 +368,17 @@ export default function ProjectsScreen({ navigation, route }) {
             <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
           </TouchableOpacity>
 
-          {Platform.OS === 'ios' && showDatePicker ? <DateTimePicker value={formData.startDate} mode="date" display="spinner" onChange={(_event, selectedDate) => { if (selectedDate) setFormData((p) => ({ ...p, startDate: selectedDate })); }} /> : null}
+          {Platform.OS === 'ios' && showDatePicker ? (
+            <Controller
+              control={control}
+              name="startDate"
+              render={({ field: { onChange, value } }) => (
+                <DateTimePicker value={value} mode="date" display="spinner" onChange={(_event, selectedDate) => { if (selectedDate) onChange(selectedDate); }} />
+              )}
+            />
+          ) : null}
 
-          <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSave} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
+          <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSubmit(handleSave)} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
         </ScrollView>
       </ResourceFormModal>
 

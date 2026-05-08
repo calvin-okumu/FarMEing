@@ -42,7 +42,7 @@ export default function SyncErrorsScreen() {
       >
         <View style={styles.container}>
           {isLoading ? (
-            <ActivityIndicator size="large" color={stitchTheme.colors.primary} style={{ marginTop: 40 }} />
+            <StitchScreenSkeleton />
           ) : errors.length > 0 ? (
             errors.map((item) => (
               <View key={`${item.table}-${item.id}`} style={styles.errorCard}>
@@ -167,6 +167,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
+    ...stitchShadows.float,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+});
+nter',
     gap: 12,
     ...stitchShadows.float,
   },

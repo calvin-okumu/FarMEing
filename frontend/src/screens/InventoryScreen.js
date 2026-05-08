@@ -25,6 +25,7 @@ import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
@@ -178,7 +179,7 @@ export default function InventoryScreen({ route, navigation }) {
   const chartValues = useMemo(() => filteredItems.slice(0, 5).map((item, index) => Math.max(index + 1, item.totalCost || 1)), [filteredItems]);
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
+    return <StitchScreenSkeleton />;
   }
 
   return (

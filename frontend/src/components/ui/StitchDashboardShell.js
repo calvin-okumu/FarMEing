@@ -68,6 +68,7 @@ export default function StitchDashboardShell({
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={statusBarStyle} backgroundColor={statusBarBackgroundColor} />
+      <GlobalSyncStatus />
       
       <StatusBanner 
         {...banner} 
@@ -177,5 +178,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: stitchTheme.colors.primaryContainer,
+  },
+});
+maryContainer,
   },
 });

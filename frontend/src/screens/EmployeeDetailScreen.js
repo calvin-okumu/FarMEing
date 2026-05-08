@@ -16,7 +16,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
+import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
+import { useObservable } from '../hooks/useWatermelon';
 import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
@@ -59,71 +61,40 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const { employeeId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
   const [activeTab, setActiveTab] = useState('work');
-  const [employee, setEmployee] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [workEntries, setWorkEntries] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [loadingTabData, setLoadingTabData] = useState(true);
   const [editVisible, setEditVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [deletePaymentTarget, setDeletePaymentTarget] = useState(null);
   const [paymentVisible, setPaymentVisible] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', role: '', projectId: '' });
-  const [paymentForm, setPaymentForm] = useState({ amount: '', note: '', date: new Date() });
   const [banner, setBanner] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const balance = useMemo(() => computeEmployeeBalance(workEntries, payments), [workEntries, payments]);
+  // Data Subscriptions
+  const employeeObservable = useMemo(() => database.get('employees').findAndObserve(employeeId), [employeeId]);
+  const projectsQuery = useMemo(() => database.get('farm_projects').query(Q.where('is_deleted', false)), []);
+  const workQuery = useMemo(() => database.get('work_entries').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false)), [employeeId]);
+  const paymentQuery = useMemo(() => database.get('payments').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false)), [employeeId]);
 
-  useEffect(() => {
-    if (!employeeId) return;
-    const employeeCollection = database.get('employees');
-    const projectsQuery = database.get('farm_projects').query(Q.where('is_deleted', false));
-    const workQuery = database.get('work_entries').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false));
-    const paymentQuery = database.get('payments').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false));
+  const employee = useObservable(employeeObservable, null);
+  const projects = useObservable(projectsQuery, null);
+  const workEntries = useObservable(workQuery, []);
+  const payments = useObservable(paymentQuery, []);
 
-    const loadLocal = async () => {
-      try {
-        setLoadingTabData(true);
-        const record = await employeeCollection.find(employeeId);
-        setEmployee(record);
-        const [projRows, workRows, paymentRows] = await Promise.all([
-          projectsQuery.fetch(),
-          workQuery.fetch(),
-          paymentQuery.fetch(),
-        ]);
-        setProjects(projRows);
-        setWorkEntries(workRows);
-        setPayments(paymentRows);
-      } catch {
-        setEmployee(null);
-      } finally {
-        setLoadingTabData(false);
-      }
-    };
+  const isLoading = employee === null || projects === null;
 
-    loadLocal();
-    syncAll().catch(() => {});
+  // Forms
+  const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEdit, watch: watchEdit, setValue: setEditValue } = useForm({
+    defaultValues: { name: '', phone: '', role: '', projectId: '' }
+  });
 
-    const employeeSub = employeeCollection.findAndObserve(employeeId).subscribe({
-      next: (record) => setEmployee(record),
-      error: () => setEmployee(null),
-    });
-    const projSub = projectsQuery.observe().subscribe((rows) => setProjects(rows));
-    const workSub = workQuery.observe().subscribe((rows) => setWorkEntries(rows));
-    const paymentSub = paymentQuery.observe().subscribe((rows) => setPayments(rows));
+  const { control: paymentControl, handleSubmit: handlePaymentSubmit, reset: resetPayment } = useForm({
+    defaultValues: { amount: '', note: '', date: new Date() }
+  });
 
-    return () => {
-      employeeSub.unsubscribe();
-      projSub.unsubscribe();
-      workSub.unsubscribe();
-      paymentSub.unsubscribe();
-    };
-  }, [employeeId]);
+  const editProjectId = watchEdit('projectId');
 
   useEffect(() => {
     if (employee) {
-      setEditForm({
+      resetEdit({
         name: employee.name || '',
         phone: employee.phone || '',
         role: employee.role || '',
@@ -132,15 +103,21 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   }, [employee]);
 
-  const handleUpdate = async () => {
+  const balance = useMemo(() => computeEmployeeBalance(workEntries || [], payments || []), [workEntries, payments]);
+
+  useEffect(() => {
+    syncAll().catch(() => {});
+  }, []);
+
+  const handleUpdate = async (data) => {
     try {
       await database.write(async () => {
         const record = await database.get('employees').find(employeeId);
         await updateLocalModel(record, (draft) => {
-          draft.name = editForm.name.trim();
-          draft.phone = editForm.phone.trim();
-          draft.role = editForm.role.trim();
-          draft.projectId = editForm.projectId || null;
+          draft.name = data.name.trim();
+          draft.phone = data.phone.trim();
+          draft.role = data.role.trim();
+          draft.projectId = data.projectId || null;
         });
       });
       syncAll().catch(() => {});
@@ -168,21 +145,21 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleRecordPayment = async () => {
+  const handleRecordPayment = async (data) => {
     try {
       await database.write(async () => {
         await database.get('payments').create((record) => {
           initializeLocalRecord(record);
           record.employeeId = employeeId;
-          record.amount = parseFloat(paymentForm.amount) || 0;
-          record.date = paymentForm.date.getTime();
-          record.note = paymentForm.note.trim();
+          record.amount = parseFloat(data.amount) || 0;
+          record.date = data.date.getTime();
+          record.note = data.note.trim();
           record.isDeleted = false;
         });
       });
       syncAll().catch(() => {});
       setPaymentVisible(false);
-      setPaymentForm({ amount: '', note: '', date: new Date() });
+      resetPayment({ amount: '', note: '', date: new Date() });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message });
@@ -219,10 +196,8 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
-  const loading = loadingTabData;
-
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
+  if (isLoading) {
+    return <StitchScreenSkeleton />;
   }
 
   if (!employee) {
@@ -324,44 +299,82 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       <Modal visible={editVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          
           <StitchSectionLabel>{t('employees.fields.name')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={editForm.name} onChangeText={(name) => setEditForm((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
+          <Controller
+            control={editControl}
+            name="name"
+            rules={{ required: true }}
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
+            )}
+          />
+
           <StitchSectionLabel>{t('employees.fields.phone')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={editForm.phone} onChangeText={(phone) => setEditForm((p) => ({ ...p, phone }))} placeholderTextColor="#8a9388" />
+          <Controller
+            control={editControl}
+            name="phone"
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
+            )}
+          />
+
           <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={editForm.role} onChangeText={(role) => setEditForm((p) => ({ ...p, role }))} placeholderTextColor="#8a9388" />
+          <Controller
+            control={editControl}
+            name="role"
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
+            )}
+          />
           
           <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Project' })}</StitchSectionLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
             <TouchableOpacity
-              style={[styles.projectChip, !editForm.projectId && styles.projectChipActive]}
-              onPress={() => setEditForm(p => ({ ...p, projectId: '' }))}
+              style={[styles.projectChip, !editProjectId && styles.projectChipActive]}
+              onPress={() => setEditValue('projectId', '')}
             >
-              <Text style={[styles.projectChipText, !editForm.projectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
+              <Text style={[styles.projectChipText, !editProjectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
             </TouchableOpacity>
-            {projects.map((proj) => (
+            {projects && projects.map((proj) => (
               <TouchableOpacity
                 key={proj.id}
-                style={[styles.projectChip, editForm.projectId === proj.id && styles.projectChipActive]}
-                onPress={() => setEditForm(p => ({ ...p, projectId: proj.id }))}
+                style={[styles.projectChip, editProjectId === proj.id && styles.projectChipActive]}
+                onPress={() => setEditValue('projectId', proj.id)}
               >
-                <Text style={[styles.projectChipText, editForm.projectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
+                <Text style={[styles.projectChipText, editProjectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <StitchPrimaryButton label={t('common.save')} onPress={handleUpdate} icon="save-outline" style={styles.saveButton} />
+          <StitchPrimaryButton label={t('common.save')} onPress={handleEditSubmit(handleUpdate)} icon="save-outline" style={styles.saveButton} />
         </ScrollView></KeyboardAvoidingView></View>
       </Modal>
 
       <Modal visible={paymentVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          
           <StitchSectionLabel>{t('payments.fields.amount')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={paymentForm.amount} onChangeText={(amount) => setPaymentForm((p) => ({ ...p, amount }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+          <Controller
+            control={paymentControl}
+            name="amount"
+            rules={{ required: true }}
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+            )}
+          />
+
           <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
-          <TextInput style={styles.input} value={paymentForm.note} onChangeText={(note) => setPaymentForm((p) => ({ ...p, note }))} placeholderTextColor="#8a9388" />
-          <StitchPrimaryButton label={t('payments.confirm')} onPress={handleRecordPayment} icon="checkmark-circle" style={styles.saveButton} />
+          <Controller
+            control={paymentControl}
+            name="note"
+            render={({ field: { onChange, value } }) => (
+              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
+            )}
+          />
+
+          <StitchPrimaryButton label={t('payments.confirm')} onPress={handlePaymentSubmit(handleRecordPayment)} icon="checkmark-circle" style={styles.saveButton} />
         </View></KeyboardAvoidingView></View>
       </Modal>
 
@@ -418,6 +431,10 @@ const styles = StyleSheet.create({
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  projectChipTextActive: { color: stitchTheme.colors.primary },
+  saveButton: { marginTop: stitchTheme.spacing.lg },
+});
+ color: stitchTheme.colors.textMuted },
   projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.lg },
 });

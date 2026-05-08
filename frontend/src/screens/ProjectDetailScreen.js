@@ -23,6 +23,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
@@ -30,15 +31,6 @@ import StatusBanner from '../components/ui/StatusBanner';
 import { deleteLocalModel } from '../utils/resourceMutations';
 import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
-import {
-  useBudgetItemsQuery,
-  useExpensesQuery,
-  useHarvestsQuery,
-  useSalesQuery,
-  useWorkEntriesQuery,
-  useWorkEntryActivityAnalyticsQuery,
-  useWorkEntryEmployeeAnalyticsQuery,
-} from '../hooks/api/useProjectResourcesApi';
 
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
 
@@ -157,14 +149,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const remoteProjectId = project?.remoteId || null;
 
-  const budgetQuery = useBudgetItemsQuery(remoteProjectId);
-  const expenseQuery = useExpensesQuery(remoteProjectId);
-  const workQuery = useWorkEntriesQuery(remoteProjectId);
-  const harvestQuery = useHarvestsQuery(remoteProjectId);
-  const salesQuery = useSalesQuery(remoteProjectId);
-  const laborByEmployeeQuery = useWorkEntryEmployeeAnalyticsQuery(remoteProjectId);
-  const laborByActivityQuery = useWorkEntryActivityAnalyticsQuery(remoteProjectId);
-
   useEffect(() => {
     if (initialTab && TAB_ORDER.includes(initialTab)) {
       setActiveTab(initialTab);
@@ -190,182 +174,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
     loadProject();
     syncAll().catch(() => {});
   }, [projectId]);
-
-  useEffect(() => {
-    if (!projectId || !budgetQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of budgetQuery.data) {
-        const existing = await database.get('budget_items').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.name = item.name || '';
-            record.quantity = item.quantity || 0;
-            record.unit = item.unit || '';
-            record.unitPrice = item.unitPrice || 0;
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('budget_items').create((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.name = item.name || '';
-            record.quantity = item.quantity || 0;
-            record.unit = item.unit || '';
-            record.unitPrice = item.unitPrice || 0;
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, budgetQuery.data]);
-
-  useEffect(() => {
-    if (!projectId || !expenseQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of expenseQuery.data) {
-        const existing = await database.get('expenses').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.expenseType = item.expenseType || 'OPEX';
-            record.amount = item.amount || 0;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.note = item.note || '';
-            record.receiptUrl = item.receiptUrl || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('expenses').create((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.expenseType = item.expenseType || 'OPEX';
-            record.amount = item.amount || 0;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.note = item.note || '';
-            record.receiptUrl = item.receiptUrl || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, expenseQuery.data]);
-
-  useEffect(() => {
-    if (!projectId || !workQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of workQuery.data) {
-        const existing = await database.get('work_entries').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.employeeId = item.employeeId || item.employee?.id || '';
-            record.activity = item.activity || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.daysWorked = item.daysWorked || 0;
-            record.ratePerDay = item.ratePerDay || 0;
-            record.totalCost = item.totalCost || 0;
-            record.hoursWorked = item.hoursWorked || 0;
-            record.imageUrl = item.imageUrl || '';
-            record.status = item.status || 'PENDING';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('work_entries').create((record) => {
-            record.projectId = projectId;
-            record.employeeId = item.employeeId || item.employee?.id || '';
-            record.activity = item.activity || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.daysWorked = item.daysWorked || 0;
-            record.ratePerDay = item.ratePerDay || 0;
-            record.totalCost = item.totalCost || 0;
-            record.hoursWorked = item.hoursWorked || 0;
-            record.imageUrl = item.imageUrl || '';
-            record.status = item.status || 'PENDING';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, workQuery.data]);
-
-  useEffect(() => {
-    if (!projectId || !harvestQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of harvestQuery.data) {
-        const existing = await database.get('harvests').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.crop = item.crop || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.weight = item.weight || 0;
-            record.unit = item.unit || 'kg';
-            record.quality = item.quality || '';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('harvests').create((record) => {
-            record.projectId = projectId;
-            record.crop = item.crop || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.weight = item.weight || 0;
-            record.unit = item.unit || 'kg';
-            record.quality = item.quality || '';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, harvestQuery.data]);
-
-  useEffect(() => {
-    if (!projectId || !salesQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of salesQuery.data) {
-        const existing = await database.get('sales').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.customer = item.customer || '';
-            record.weightSold = item.weightSold || 0;
-            record.unitPrice = item.unitPrice || 0;
-            record.totalAmount = item.totalAmount || 0;
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('sales').create((record) => {
-            record.projectId = projectId;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.customer = item.customer || '';
-            record.weightSold = item.weightSold || 0;
-            record.unitPrice = item.unitPrice || 0;
-            record.totalAmount = item.totalAmount || 0;
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, salesQuery.data]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -398,19 +206,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const totalHarvest = summary.totalHarvest;
   const totalRevenue = summary.totalRevenue;
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-  const resourcesSyncing = budgetQuery.isFetching || expenseQuery.isFetching || workQuery.isFetching || harvestQuery.isFetching || salesQuery.isFetching;
-  const activeQueryError = activeTab === 'budget' ? budgetQuery.error
-    : activeTab === 'expenses' ? expenseQuery.error
-    : activeTab === 'labor' ? workQuery.error || laborByEmployeeQuery.error || laborByActivityQuery.error
-    : activeTab === 'harvest' ? harvestQuery.error
-    : activeTab === 'sales' ? salesQuery.error
-    : null;
-  const activeQueryLoading = activeTab === 'budget' ? budgetQuery.isLoading
-    : activeTab === 'expenses' ? expenseQuery.isLoading
-    : activeTab === 'labor' ? workQuery.isLoading || laborByEmployeeQuery.isLoading || laborByActivityQuery.isLoading
-    : activeTab === 'harvest' ? harvestQuery.isLoading
-    : activeTab === 'sales' ? salesQuery.isLoading
-    : false;
+  const resourcesSyncing = false;
+  const activeQueryError = null;
+  const activeQueryLoading = false;
 
   const employeeMap = new Map();
   employees.forEach((employee) => {
@@ -446,8 +244,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
     return [...grouped.values()].sort((a, b) => b.totalCost - a.totalCost);
   }, [workEntries]);
 
-  const laborByEmployee = laborByEmployeeQuery.data?.length ? laborByEmployeeQuery.data : localLaborByEmployee;
-  const laborByActivity = laborByActivityQuery.data?.length ? laborByActivityQuery.data : localLaborByActivity;
+  const laborByEmployee = localLaborByEmployee;
+  const laborByActivity = localLaborByActivity;
 
   const localTimeline = useMemo(() => {
     const workItems = workEntries.slice(0, 4).map((entry) => ({
@@ -687,11 +485,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   );
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
-      </View>
-    );
+    return <StitchScreenSkeleton />;
   }
 
   if (!project) {
@@ -1083,3 +877,4 @@ const styles = StyleSheet.create({
   timelinePreview: { width: 80, height: 80, borderRadius: stitchTheme.radius.lg, alignItems: 'center', justifyContent: 'center' },
   timelineFooterValue: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
 });
+

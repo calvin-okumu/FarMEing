@@ -33,7 +33,9 @@ import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
+import { useObservable } from '../hooks/useWatermelon';
 
+import { useForm, Controller } from 'react-hook-form';
 function WorkerCard({ item, onPress, t, projectMap }) {
   const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
   const projectName = projectMap?.get(item.projectId) || t('employees.no_project', { defaultValue: 'No Project' });
@@ -79,52 +81,44 @@ function WorkerCard({ item, onPress, t, projectMap }) {
 
 export default function EmployeesScreen({ navigation }) {
   const { t } = useTranslation();
-  const [employees, setEmployees] = useState([]);
-  const [projects, setProjects] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [formData, setFormData] = useState({ name: '', phone: '', role: '', projectId: '' });
   const [banner, setBanner] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const { control, handleSubmit, reset, watch, setValue } = useForm({
+    defaultValues: { name: '', phone: '', role: '', projectId: '' }
+  });
+
+  const selectedProjectId = watch('projectId');
+
+  const employeesQuery = useMemo(() => database.get('employees').query(Q.where('is_deleted', false)), []);
+
+  const projectsQuery = useMemo(() => database.get('farm_projects').query(Q.where('is_deleted', false)), []);
+
+  const employees = useObservable(employeesQuery, null);
+  const projects = useObservable(projectsQuery, null);
+
+  const isLoading = employees === null || projects === null;
+
   useEffect(() => {
-    const employeesQuery = database.get('employees').query(Q.where('is_deleted', false));
-    const projectsQuery = database.get('farm_projects').query(Q.where('is_deleted', false));
-
-    const loadLocal = async () => {
-      const [empRows, projRows] = await Promise.all([
-        employeesQuery.fetch(),
-        projectsQuery.fetch(),
-      ]);
-      setEmployees(empRows);
-      setProjects(projRows);
-      setIsLoading(false);
-    };
-
-    loadLocal().catch(() => setIsLoading(false));
     syncAll().catch(() => {});
-
-    const empSub = employeesQuery.observe().subscribe((rows) => setEmployees(rows));
-    const projSub = projectsQuery.observe().subscribe((rows) => setProjects(rows));
-    
-    return () => {
-      empSub.unsubscribe();
-      projSub.unsubscribe();
-    };
   }, []);
 
   const projectMap = useMemo(() => {
     const map = new Map();
-    projects.forEach(p => {
-      map.set(p.id, p.name);
-      if (p.remoteId) map.set(p.remoteId, p.name);
-    });
+    if (projects) {
+      projects.forEach(p => {
+        map.set(p.id, p.name);
+        if (p.remoteId) map.set(p.remoteId, p.name);
+      });
+    }
     return map;
   }, [projects]);
 
   const filteredEmployees = useMemo(() => {
+    if (!employees) return [];
     const normalized = query.trim().toLowerCase();
     const searched = !normalized ? employees : employees.filter((employee) =>
       [employee.name, employee.phone, employee.role, projectMap.get(employee.projectId)]
@@ -139,12 +133,12 @@ export default function EmployeesScreen({ navigation }) {
   }, [employees, query, activeFilter, projectMap]);
 
   const syncedEmployees = useMemo(
-    () => employees.filter((employee) => employee.remoteId).length,
+    () => employees ? employees.filter((employee) => employee.remoteId).length : 0,
     [employees]
   );
 
   const rolesCount = useMemo(() => {
-    return new Set(employees.map((employee) => employee.role).filter(Boolean)).size;
+    return employees ? new Set(employees.map((employee) => employee.role).filter(Boolean)).size : 0;
   }, [employees]);
 
   const assignedEmployees = useMemo(
@@ -152,23 +146,23 @@ export default function EmployeesScreen({ navigation }) {
     [filteredEmployees]
   );
 
-  const handleCreate = async () => {
+  const handleCreate = async (data) => {
     try {
       setBanner(null);
       await database.write(async () => {
         await database.get('employees').create((record) => {
           initializeLocalRecord(record);
           record.userId = '';
-          record.name = formData.name.trim();
-          record.phone = formData.phone.trim();
-          record.role = formData.role.trim();
-          record.projectId = formData.projectId || null;
+          record.name = data.name.trim();
+          record.phone = data.phone.trim();
+          record.role = data.role.trim();
+          record.projectId = data.projectId || null;
           record.isDeleted = false;
         });
       });
       syncAll().catch(() => {});
       setModalVisible(false);
-      setFormData({ name: '', phone: '', role: '', projectId: '' });
+      reset({ name: '', phone: '', role: '', projectId: '' });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (createError) {
       setBanner({ tone: 'error', title: t('common.error'), message: createError.message });
@@ -189,11 +183,7 @@ export default function EmployeesScreen({ navigation }) {
   };
 
   if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size='large' color={stitchTheme.colors.primaryContainer} />
-      </View>
-    );
+    return <StitchScreenSkeleton />;
   }
 
   return (
@@ -252,34 +242,72 @@ export default function EmployeesScreen({ navigation }) {
               </View>
 
               <StitchSectionLabel>{t('employees.fields.name')} *</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholder={t('employees.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
+              <Controller
+                control={control}
+                name="name"
+                rules={{ required: true }}
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    style={styles.input}
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder={t('employees.placeholders.name')}
+                    placeholderTextColor={stitchTheme.colors.textMuted}
+                  />
+                )}
+              />
 
               <StitchSectionLabel>{t('employees.fields.phone')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.phone} onChangeText={(phone) => setFormData((p) => ({ ...p, phone }))} placeholder={t('employees.placeholders.phone')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType='phone-pad' />
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    style={styles.input}
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder={t('employees.placeholders.phone')}
+                    placeholderTextColor={stitchTheme.colors.textMuted}
+                    keyboardType='phone-pad'
+                  />
+                )}
+              />
 
               <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
-              <TextInput style={styles.input} value={formData.role} onChangeText={(role) => setFormData((p) => ({ ...p, role }))} placeholder={t('employees.placeholders.role')} placeholderTextColor={stitchTheme.colors.textMuted} />
+              <Controller
+                control={control}
+                name="role"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    style={styles.input}
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder={t('employees.placeholders.role')}
+                    placeholderTextColor={stitchTheme.colors.textMuted}
+                  />
+                )}
+              />
 
               <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Project' })}</StitchSectionLabel>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
                 <TouchableOpacity
-                  style={[styles.projectChip, !formData.projectId && styles.projectChipActive]}
-                  onPress={() => setFormData(p => ({ ...p, projectId: '' }))}
+                  style={[styles.projectChip, !selectedProjectId && styles.projectChipActive]}
+                  onPress={() => setValue('projectId', '')}
                 >
-                  <Text style={[styles.projectChipText, !formData.projectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
+                  <Text style={[styles.projectChipText, !selectedProjectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
                 </TouchableOpacity>
-                {projects.map((proj) => (
+                {projects && projects.map((proj) => (
                   <TouchableOpacity
                     key={proj.id}
-                    style={[styles.projectChip, formData.projectId === proj.id && styles.projectChipActive]}
-                    onPress={() => setFormData(p => ({ ...p, projectId: proj.id }))}
+                    style={[styles.projectChip, selectedProjectId === proj.id && styles.projectChipActive]}
+                    onPress={() => setValue('projectId', proj.id)}
                   >
-                    <Text style={[styles.projectChipText, formData.projectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
+                    <Text style={[styles.projectChipText, selectedProjectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleCreate} disabled={!formData.name.trim()} icon='person-add' style={styles.saveButton} />
+              <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleSubmit(handleCreate)} icon='person-add' style={styles.saveButton} />
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
@@ -438,6 +466,10 @@ const styles = StyleSheet.create({
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  projectChipTextActive: { color: stitchTheme.colors.primary },
+  saveButton: { marginTop: stitchTheme.spacing.xl },
+});
+ntSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
   projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.xl },
 });
