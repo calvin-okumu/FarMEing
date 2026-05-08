@@ -18,6 +18,7 @@ model User {
   role      String   @default("ADMIN") // ADMIN, WORKER
   currency  String   @default("TZS")
   locale    String   @default("sw-TZ")
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   projects  FarmProject[]
@@ -31,6 +32,7 @@ model Season {
   name      String
   startDate DateTime
   endDate   DateTime?
+  isDeleted Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   user      User        @relation(fields: [userId], references: [id])
@@ -61,6 +63,8 @@ model FarmProject {
   workEntries   WorkEntry[]
   harvests      Harvest[]
   sales         Sale[]
+  inventoryItems InventoryItem[]
+  employees     Employee[]
 }
 
 model BudgetItem {
@@ -98,15 +102,17 @@ model Expense {
 }
 
 model Employee {
-  id          String      @id @default(uuid())
+  id          String       @id @default(uuid())
   userId      String
+  projectId   String?
   name        String
   phone       String?
   role        String?
-  isDeleted   Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  user        User        @relation(fields: [userId], references: [id])
+  isDeleted   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id])
+  project     FarmProject? @relation(fields: [projectId], references: [id])
   workEntries WorkEntry[]
   payments    Payment[]
 }
@@ -193,4 +199,5 @@ model InventoryItem {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  project   FarmProject @relation(fields: [projectId], references: [id])
 }

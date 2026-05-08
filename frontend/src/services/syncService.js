@@ -17,7 +17,7 @@ export async function syncAll() {
     await synchronize({
       database,
       pullChanges: async ({ lastPulledAt, schemaVersion, migration }) => {
-        const response = await api.get('/sync/pull', {
+        const response = await api.get('sync/pull', {
           params: {
             last_pulled_at: lastPulledAt || 0,
             schema_version: schemaVersion,
@@ -29,7 +29,7 @@ export async function syncAll() {
         return { changes, timestamp };
       },
       pushChanges: async ({ changes, lastPulledAt }) => {
-        await api.post('/sync/push', { changes, lastPulledAt });
+        await api.post('sync/push', { changes, lastPulledAt });
       },
       migrationsEnabledAtVersion: 10,
     });

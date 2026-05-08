@@ -65,5 +65,21 @@ export default schemaMigrations({
         addColumns({ table: 'employees', columns: [{ name: 'project_id', type: 'string', isOptional: true }] }),
       ],
     },
+    {
+      toVersion: 11,
+      steps: [],
+    },
+    {
+      toVersion: 12,
+      steps: [
+        addColumns({
+          table: 'budget_items',
+          columns: [
+            { name: 'total', type: 'number' },
+            { name: 'notes', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });

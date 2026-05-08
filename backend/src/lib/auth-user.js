@@ -7,6 +7,7 @@ const AUTH_USER_SELECT = {
   role: true,
   currency: true,
   locale: true,
+  isDeleted: true,
   createdAt: true,
 };
 
@@ -16,6 +17,7 @@ const LEGACY_AUTH_USER_SELECT = {
   phone: true,
   currency: true,
   locale: true,
+  isDeleted: true,
   createdAt: true,
 };
 
@@ -48,7 +50,9 @@ async function findAuthUserByPhone(phone, options = {}) {
   };
 
   try {
-    return await prisma.user.findUnique({ where: { phone }, select });
+    const user = await prisma.user.findUnique({ where: { phone }, select });
+    if (!user || user.isDeleted) return null;
+    return user;
   } catch (error) {
     if (!isMissingRoleColumnError(error)) {
       throw error;
@@ -62,13 +66,17 @@ async function findAuthUserByPhone(phone, options = {}) {
       },
     });
 
-    return withLegacyRole(legacyUser);
+    const user = withLegacyRole(legacyUser);
+    if (!user || user.isDeleted) return null;
+    return user;
   }
 }
 
 async function findAuthUserById(id) {
   try {
-    return await prisma.user.findUnique({ where: { id }, select: AUTH_USER_SELECT });
+    const user = await prisma.user.findUnique({ where: { id }, select: AUTH_USER_SELECT });
+    if (!user || user.isDeleted) return null;
+    return user;
   } catch (error) {
     if (!isMissingRoleColumnError(error)) {
       throw error;
@@ -79,7 +87,9 @@ async function findAuthUserById(id) {
       select: LEGACY_AUTH_USER_SELECT,
     });
 
-    return withLegacyRole(legacyUser);
+    const user = withLegacyRole(legacyUser);
+    if (!user || user.isDeleted) return null;
+    return user;
   }
 }
 

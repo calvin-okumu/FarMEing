@@ -1,0 +1,226 @@
+const prisma = require('../lib/prisma');
+
+const tableMap = {
+  farm_projects: 'farmProject',
+  budget_items: 'budgetItem',
+  expenses: 'expense',
+  employees: 'employee',
+  work_entries: 'workEntry',
+  payments: 'payment',
+  harvests: 'harvest',
+  sales: 'sale',
+  inventory_items: 'inventoryItem',
+};
+
+// Models that have a direct userId field
+const modelsWithDirectUserId = ['farmProject', 'employee'];
+
+// Mapping of Prisma fields (camelCase) to Watermelon fields (snake_case)
+const fieldMapping = {
+  userId: 'user_id',
+  seasonId: 'season_id',
+  landSize: 'land_size',
+  landUnit: 'land_unit',
+  startDate: 'start_date',
+  endDate: 'end_date',
+  expectedYield: 'expected_yield',
+  contractUrl: 'contract_url',
+  isDeleted: 'is_deleted',
+  projectId: 'project_id',
+  unitPrice: 'unit_price',
+  expenseType: 'expense_type',
+  isRecurring: 'is_recurring',
+  receiptUrl: 'receipt_url',
+  employeeId: 'employee_id',
+  daysWorked: 'days_worked',
+  ratePerDay: 'rate_per_day',
+  totalCost: 'total_cost',
+  hoursWorked: 'hours_worked',
+  imageUrl: 'image_url',
+  locationLat: 'location_lat',
+  locationLng: 'location_lng',
+  isPaid: 'is_paid',
+  weightSold: 'weight_sold',
+  totalAmount: 'total_amount',
+  unitCost: 'unit_cost',
+  usedQty: 'used_qty',
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+};
+
+const reverseMapping = Object.fromEntries(
+  Object.entries(fieldMapping).map(([k, v]) => [v, k])
+);
+
+// Helper to convert Prisma record to WatermelonDB format
+const toWatermelon = (record) => {
+  const result = {};
+  for (const [key, value] of Object.entries(record)) {
+    const watermelonKey = fieldMapping[key] || key;
+    if (value instanceof Date) {
+      result[watermelonKey] = value.getTime();
+    } else {
+      result[watermelonKey] = value;
+    }
+  }
+  return result;
+};
+
+// Helper to convert WatermelonDB record to Prisma format
+const fromWatermelon = (record) => {
+  const result = {};
+  for (const [key, value] of Object.entries(record)) {
+    // Skip internal Watermelon fields (like _status, _changed)
+    if (key.startsWith('_')) continue;
+    
+    const prismaKey = reverseMapping[key] || key;
+    result[prismaKey] = value;
+  }
+
+  // Date fields in the schema that might come as timestamps
+  const dateFields = ['date', 'startDate', 'endDate', 'createdAt', 'updatedAt'];
+  dateFields.forEach(field => {
+    if (result[field] !== undefined && result[field] !== null) {
+      if (typeof result[field] === 'number') {
+        result[field] = new Date(result[field]);
+      } else if (typeof result[field] === 'string' && result[field].length > 0) {
+        result[field] = new Date(result[field]);
+      }
+    }
+  });
+
+  return result;
+};
+
+exports.pull = async (req, res) => {
+  try {
+    const { last_pulled_at } = req.query;
+    const lastPulledAtDate = last_pulled_at && last_pulled_at !== 'null' && last_pulled_at !== '0'
+      ? new Date(parseInt(last_pulled_at))
+      : new Date(0);
+    
+    const currentTimestamp = Date.now();
+    const changes = {};
+
+    for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
+      let where = {
+        updatedAt: { gt: lastPulledAtDate },
+      };
+
+      // Apply security scoping
+      if (prismaModel === 'user') {
+        where.id = req.user.id;
+      } else if (modelsWithDirectUserId.includes(prismaModel)) {
+        where.userId = req.user.id;
+      } else {
+        // For other models, they are linked via farmProject or employee
+        // This is a bit more complex for a generic pull.
+        // For now, we'll assume they don't have a direct userId but we might want to filter them.
+        // In a real app, you'd use includes or nested queries.
+        // Given the prompt's request for "significant shift", we'll keep it simple 
+        // but acknowledge the need for scoping.
+        // To be safe, we'll only pull if they are associated with the user.
+        
+        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem'].includes(prismaModel)) {
+          where.project = { userId: req.user.id };
+        } else if (prismaModel === 'payment') {
+          where.employee = { userId: req.user.id };
+        } else if (prismaModel === 'workEntry') {
+          where.OR = [
+            { project: { userId: req.user.id } },
+            { employee: { userId: req.user.id } }
+          ];
+        }
+      }
+
+      const records = await prisma[prismaModel].findMany({ where });
+
+      const created = [];
+      const updated = [];
+      const deleted = [];
+
+      records.forEach(record => {
+        if (record.isDeleted) {
+          deleted.push(record.id);
+        } else if (record.createdAt > lastPulledAtDate) {
+          created.push(toWatermelon(record));
+        } else {
+          updated.push(toWatermelon(record));
+        }
+      });
+
+      changes[watermelonTable] = { created, updated, deleted };
+    }
+
+    res.json({
+      timestamp: currentTimestamp,
+      changes,
+    });
+  } catch (error) {
+    console.error('Pull Error:', error);
+    res.status(500).json({ error: 'Failed to pull changes' });
+  }
+};
+
+exports.push = async (req, res) => {
+  const { changes } = req.body;
+  if (!changes) return res.status(400).json({ error: 'Missing changes' });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
+        const tableChanges = changes[watermelonTable];
+        if (!tableChanges) continue;
+
+        const { created, updated, deleted } = tableChanges;
+
+        // Handle Created & Updated (Upsert for both to be safe and handle conflicts)
+        const allChanges = [...created, ...updated];
+        for (const record of allChanges) {
+          const data = fromWatermelon(record);
+          
+          // Ensure userId is set for models that have it
+          if (modelsWithDirectUserId.includes(prismaModel)) {
+            data.userId = req.user.id;
+          } else if (prismaModel === 'user') {
+            data.id = req.user.id; // Don't let them change other users' IDs
+          }
+          
+          await tx[prismaModel].upsert({
+            where: { id: data.id },
+            create: data,
+            update: data, // Client Wins
+          });
+        }
+
+        // Handle Deleted
+        if (deleted && deleted.length > 0) {
+          for (const id of deleted) {
+            let where = { id };
+            
+            // Security scoping for deletion
+            if (modelsWithDirectUserId.includes(prismaModel)) {
+              where.userId = req.user.id;
+            } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem'].includes(prismaModel)) {
+              where.project = { userId: req.user.id };
+            } else if (prismaModel === 'payment') {
+              where.employee = { userId: req.user.id };
+            }
+
+            await tx[prismaModel].updateMany({
+              where,
+              data: { isDeleted: true },
+            });
+          }
+        }
+      }
+    }, {
+      timeout: 10000 // Increase timeout for potentially large batches
+    });
+
+    res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('Push Error:', error);
+    res.status(500).json({ error: 'Failed to push changes' });
+  }
+};

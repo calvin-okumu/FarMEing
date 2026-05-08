@@ -10,6 +10,8 @@ export default class BudgetItem extends Model {
   @field('quantity')   quantity;
   @text('unit')       unit;
   @field('unit_price') unitPrice;
+  @field('total')      total;
+  @text('notes')       notes;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;

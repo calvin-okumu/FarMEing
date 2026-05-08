@@ -140,9 +140,11 @@ Applied as `router.use(authenticate)` on every route group except `/auth` and `/
 
 ---
 
-## API Endpoints
+## API Endpoints (Prefix: `/api`)
 
 All protected endpoints require the `Authorization: Bearer <token>` header.
+
+**Note on Prefixing:** All routes listed below are prefixed with `/api` in the final URL (e.g., `https://api.carlhub.uk/api/auth/login`).
 
 **Common Response Formats:**
 *   **Validation Errors:** `400 Bad Request`
@@ -178,6 +180,15 @@ Base path: `/projects` — **Protected**
 | `PUT` | `/:id` | Update project |
 | `DELETE` | `/:id` | Soft delete project |
 | `GET` | `/:id/summary` | Get financial summary (budget vs actuals) |
+
+### Sync
+
+Base path: `/sync` — **Protected**
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/pull` | Pull changes from server |
+| `POST` | `/push` | Push changes to server |
 
 ### Budget Items
 
@@ -275,7 +286,7 @@ Base path: `/inventory` — **Protected**
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
 | `GET` | `/health` | Health check | Public |
-| `GET` | `/api/me` | Get current user details | Protected |
+| `GET` | `/me` | Get current user details | Protected |
 
 ---
 

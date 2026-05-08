@@ -423,13 +423,59 @@ Install the APK on any Android device by opening the link on the device or sidel
 
 ## Redeploying After Code Changes
 
+Whenever you update the backend code (e.g., via `rsync` or `git pull`), follow these steps to ensure the database and server are in sync:
+
 ```bash
 # From local machine — sync updated backend code
-rsync -avz /home/xorb/Project/Node_Proj/backend/ user@YOUR_SERVER_IP:/opt/farmtrack/backend/
+rsync -avz /home/xorb/Project/Node_Proj/backend/ xorb@stagin:/opt/farmtrack/backend/
 
 # On the server
 cd /opt/farmtrack/backend
 npm install                    # only needed if package.json changed
-npx prisma migrate deploy      # only needed if schema changed
+
+# CRITICAL: Synchronize the database schema
+# Use this if you have new migration files:
+npx prisma migrate deploy
+
+# OR use this to force the DB to match the schema.prisma immediately (recommended for rapid dev/fixes):
+npx prisma db push
+
+# Update the Prisma client code
+npx prisma generate
+
+# Restart the service
 pm2 restart farmtrack-api
 ```
+
+---
+
+## Troubleshooting
+
+### "Failed to pull changes" or 500 Errors
+If the mobile app shows sync errors, check the server logs:
+```bash
+pm2 logs farmtrack-api
+```
+
+**Common Cause: Database out of sync**
+If you see errors like `The column X does not exist` or `Unknown argument Y`, your database structure is older than your code. 
+
+**The "Silver Bullet" Fix:**
+Run this combined command on the server to force everything into alignment:
+```bash
+cd /opt/farmtrack/backend && npx prisma db push && npx prisma generate && pm2 restart farmtrack-api
+```
+
+### 404 Route Not Found
+All API routes are now grouped under the `/api/` prefix.
+- **Backend:** Ensure `server.js` mounts routes using `app.use('/api', apiRouter)`.
+- **Frontend:** Ensure `BASE_URL` in `frontend/src/lib/api.js` includes the trailing slash: `.../api/`.
+- **Paths:** All service calls should use relative paths (e.g., `auth/login` instead of `/auth/login`) to ensure correct concatenation.
+
+### Package Name Mismatch
+The Android package name is standardized as `com.farmtrack.app`. If you change it in `app.json`, you must run:
+```bash
+npx expo prebuild --clean
+```
+Note that this will regenerate the `android` folder and may overwrite manual native changes.
+

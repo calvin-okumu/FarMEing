@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 11, // Incremented version since schema changed
+  version: 12, // Incremented version since schema changed
   tables: [
     // ── FarmProject ─────────────────────────────────────────────────────────
     tableSchema({
@@ -35,6 +35,8 @@ export default appSchema({
         { name: 'quantity',    type: 'number' },
         { name: 'unit',        type: 'string' },
         { name: 'unit_price',  type: 'number' },
+        { name: 'total',       type: 'number' },
+        { name: 'notes',       type: 'string', isOptional: true },
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
