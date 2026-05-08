@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
 import useSettingsStore from '../store/useSettingsStore';
 import useSyncStore from '../store/useSyncStore';
-import { hasUnsyncedChanges, syncAll } from '../services/syncService';
+import { syncAll } from '../services/syncService';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
@@ -36,39 +36,10 @@ export default function SettingsScreen({ navigation }) {
   const { status, lastSyncAt, failedCount } = useSyncStore();
 
   const handleLogout = async () => {
-    const unsynced = await hasUnsyncedChanges();
-
-    if (!unsynced) {
-      Alert.alert(t('settings.logout'), t('settings.confirm_logout'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('settings.logout'), style: 'destructive', onPress: logout },
-      ]);
-      return;
-    }
-
-    Alert.alert(
-      t('settings.unsynced_title'),
-      t('settings.unsynced_message'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('settings.logout_anyway'),
-          style: 'destructive',
-          onPress: logout,
-        },
-        {
-          text: t('settings.sync_logout'),
-          onPress: async () => {
-            const result = await syncAll();
-            if (result.failedCount === 0 && !result.error) {
-              logout();
-            } else {
-              Alert.alert(t('common.error'), t('settings.sync_states.error'));
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert(t('settings.logout'), t('settings.confirm_logout'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.logout'), style: 'destructive', onPress: logout },
+    ]);
   };
 
   const changeLanguage = async (lang) => {

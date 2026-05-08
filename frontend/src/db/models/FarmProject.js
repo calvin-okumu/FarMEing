@@ -7,7 +7,6 @@ export default class FarmProject extends Model {
     employees: { type: 'has_many', foreignKey: 'project_id' },
   };
 
-  @text('remote_id')  remoteId;
   @text('user_id')    userId;
   @text('season_id')  seasonId;
   @text('name')       name;
@@ -23,9 +22,6 @@ export default class FarmProject extends Model {
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
-  @text('sync_status') syncStatus;
-  @field('last_synced_at') lastSyncedAt;
-  @text('last_error') lastError;
 
   @children('employees') employees;
 }

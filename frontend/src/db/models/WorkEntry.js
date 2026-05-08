@@ -4,7 +4,6 @@ import { field, text } from '@nozbe/watermelondb/decorators';
 export default class WorkEntry extends Model {
   static table = 'work_entries';
 
-  @text('remote_id')    remoteId;
   @text('project_id')   projectId;
   @text('employee_id')  employeeId;
   @text('activity')     activity;
@@ -24,7 +23,4 @@ export default class WorkEntry extends Model {
   @field('is_deleted')  isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
-  @text('sync_status') syncStatus;
-  @field('last_synced_at') lastSyncedAt;
-  @text('last_error') lastError;
 }

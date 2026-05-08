@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { getFailedRecords, syncAll } from '../services/syncService';
+import { syncAll } from '../services/syncService';
 import { stitchTheme, stitchShadows } from '../theme/stitchTheme';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { formatAppDate } from '../utils/date';
@@ -12,14 +12,12 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 export default function SyncErrorsScreen() {
   const { t } = useTranslation();
   const [errors, setErrors] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const syncStatus = useSyncStore((s) => s.status);
 
   const loadErrors = async () => {
-    setIsLoading(true);
-    const failed = await getFailedRecords();
-    setErrors(failed);
-    setIsLoading(false);
+    // With native sync, we no longer track individual failed records this way
+    setErrors([]);
   };
 
   useEffect(() => {

@@ -424,10 +424,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
     try {
       await database.write(async () => {
         const record = await database.get('work_entries').find(item.id);
-        await record.update((draft) => {
+        await updateLocalModel(record, (draft) => {
           draft.status = status;
-          draft.updatedAt = Date.now();
-          draft.syncStatus = draft.remoteId ? 'pending_update' : draft.syncStatus;
         });
       });
       syncAll().catch(() => {});

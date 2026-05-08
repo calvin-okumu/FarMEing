@@ -7,7 +7,6 @@ export default class Employee extends Model {
     farm_projects: { type: 'belongs_to', key: 'project_id' },
   };
 
-  @text('remote_id')  remoteId;
   @text('user_id')    userId;
   @text('project_id') projectId;
   @text('name')       name;
@@ -16,9 +15,6 @@ export default class Employee extends Model {
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
-  @text('sync_status') syncStatus;
-  @field('last_synced_at') lastSyncedAt;
-  @text('last_error') lastError;
 
   @relation('farm_projects', 'project_id') project;
 }

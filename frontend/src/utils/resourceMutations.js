@@ -1,5 +1,5 @@
 import { Q } from '@nozbe/watermelondb';
-import { markRecordDeleted, markRecordUpdated, markRecordSynced, SYNC_STATUS } from './localRecord';
+import { markRecordDeleted, markRecordUpdated } from './localRecord';
 import { syncAll } from '../services/syncService';
 
 const PROJECT_BOUND_TABLES = [
@@ -11,17 +11,10 @@ const PROJECT_BOUND_TABLES = [
   'inventory_items',
 ];
 
-export async function updateLocalModel(record, applyChanges, remoteId) {
+export async function updateLocalModel(record, applyChanges) {
   await record.update((draft) => {
     applyChanges(draft);
-    if (remoteId) {
-      markRecordSynced(draft, remoteId);
-    } else if (draft.remoteId) {
-      markRecordUpdated(draft);
-    } else {
-      markRecordUpdated(draft);
-      draft.syncStatus = SYNC_STATUS.PENDING_CREATE;
-    }
+    markRecordUpdated(draft);
   });
   // Trigger sync in background
   syncAll();
