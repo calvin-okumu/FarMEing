@@ -67,6 +67,7 @@ const createExpense = async (req, res) => {
       note:       data.note       ?? null,
       receiptUrl: data.receiptUrl ?? null,
       payee:      data.payee      ?? null,
+      payeeId:    data.payeeId    ?? null,
     },
   });
 
@@ -83,6 +84,7 @@ const listExpenses = async (req, res) => {
   const expenses = await prisma.expense.findMany({
     where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { date: 'desc' },
+    include: { payeeRecord: true },
   });
 
   const totalAmount = parseFloat(

@@ -24,6 +24,24 @@ model User {
   projects  FarmProject[]
   employees Employee[]
   seasons   Season[]
+  payees    Payee[]
+}
+
+model Payee {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  category  String?  // e.g. Supplier, Contractor, Individual
+  notes     String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  expenses  Expense[]
+  inventoryItems InventoryItem[]
 }
 
 model Season {
@@ -95,10 +113,12 @@ model Expense {
   note        String?
   receiptUrl  String?
   payee       String?
+  payeeId     String?
   isDeleted   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   project     FarmProject @relation(fields: [projectId], references: [id])
+  payeeRecord Payee?       @relation(fields: [payeeId], references: [id])
 }
 
 model Employee {
@@ -196,8 +216,10 @@ model InventoryItem {
   usedQty   Float    @default(0)
   notes     String?
   payee     String?
+  payeeId   String?
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   project   FarmProject @relation(fields: [projectId], references: [id])
+  payeeRecord Payee?    @relation(fields: [payeeId], references: [id])
 }

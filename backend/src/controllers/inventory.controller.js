@@ -74,6 +74,7 @@ const createInventoryItem = async (req, res) => {
       usedQty,
       notes:     data.notes ?? null,
       payee:     data.payee ?? null,
+      payeeId:   data.payeeId ?? null,
     },
   });
 
@@ -90,6 +91,7 @@ const listInventoryItems = async (req, res) => {
   const items = await prisma.inventoryItem.findMany({
     where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'asc' },
+    include: { payeeRecord: true },
   });
 
   const grandTotalCost = parseFloat(
