@@ -14,6 +14,21 @@ const tableMap = {
   employee_project_assignments: 'employeeProject',
 };
 
+// Order matters for push to avoid foreign key violations
+const SYNC_ORDER = [
+  'payees',
+  'farm_projects',
+  'employees',
+  'employee_project_assignments',
+  'budget_items',
+  'inventory_items',
+  'expenses',
+  'work_entries',
+  'payments',
+  'harvests',
+  'sales',
+];
+
 // Models that have a direct userId field
 const modelsWithDirectUserId = ['farmProject', 'employee', 'payee'];
 
@@ -173,7 +188,8 @@ exports.push = async (req, res) => {
 
   try {
     await prisma.$transaction(async (tx) => {
-      for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
+      for (const watermelonTable of SYNC_ORDER) {
+        const prismaModel = tableMap[watermelonTable];
         const tableChanges = changes[watermelonTable];
         if (!tableChanges) continue;
 
