@@ -107,6 +107,14 @@ const fromWatermelon = (record) => {
     }
   });
 
+  // Foreign keys or IDs should be null if they are empty strings
+  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId'];
+  idFields.forEach(field => {
+    if (result[field] === '') {
+      result[field] = null;
+    }
+  });
+
   return result;
 };
 
