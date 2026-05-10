@@ -39,7 +39,16 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { useForm, Controller } from 'react-hook-form';
 function WorkerCard({ item, onPress, t, projectMap }) {
   const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
-  const projectName = projectMap?.get(item.projectId) || t('employees.no_project', { defaultValue: 'No Project' });
+
+  // We need to handle that item.assignments is an observable children collection
+  const [assignmentCount, setAssignmentCount] = useState(0);
+
+  useEffect(() => {
+    const subscription = item.assignments.observe().subscribe((assignments) => {
+      setAssignmentCount(assignments.length);
+    });
+    return () => subscription.unsubscribe();
+  }, [item]);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.92}>
@@ -64,8 +73,12 @@ function WorkerCard({ item, onPress, t, projectMap }) {
 
       <View style={styles.cardBottom}>
         <View style={styles.metaGroup}>
-          <Text style={styles.metaLabel}>{t('employees.fields.project', { defaultValue: 'Project' })}</Text>
-          <Text style={styles.metaValue} numberOfLines={1}>{projectName}</Text>
+          <Text style={styles.metaLabel}>{t('employees.fields.project', { defaultValue: 'Projects' })}</Text>
+          <Text style={styles.metaValue} numberOfLines={1}>
+            {assignmentCount === 0
+              ? t('employees.no_project', { defaultValue: 'No Project' })
+              : t('employees.project_count', { count: assignmentCount, defaultValue: `${assignmentCount} Projects` })}
+          </Text>
         </View>
         <View style={[styles.metaGroup, styles.metaMiddle]}>
           <Text style={styles.metaLabel}>{t('employees.fields.phone')}</Text>
@@ -89,13 +102,20 @@ export default function EmployeesScreen({ navigation }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { control, handleSubmit, reset, watch, setValue } = useForm({
-    defaultValues: { name: '', phone: '', role: '', projectId: '' }
+    defaultValues: { name: '', phone: '', role: '', projectIds: [] }
   });
 
-  const selectedProjectId = watch('projectId');
+  const selectedProjectIds = watch('projectIds');
+
+  const toggleProject = (projectId) => {
+    if (selectedProjectIds.includes(projectId)) {
+      setValue('projectIds', selectedProjectIds.filter(id => id !== projectId));
+    } else {
+      setValue('projectIds', [...selectedProjectIds, projectId]);
+    }
+  };
 
   const employeesQuery = useMemo(() => database.get('employees').query(Q.where('is_deleted', false)), []);
-
   const projectsQuery = useMemo(() => database.get('farm_projects').query(Q.where('is_deleted', false)), []);
 
   const employees = useObservable(employeesQuery, null);
@@ -122,7 +142,7 @@ export default function EmployeesScreen({ navigation }) {
     if (!employees) return [];
     const normalized = query.trim().toLowerCase();
     const searched = !normalized ? employees : employees.filter((employee) =>
-      [employee.name, employee.phone, employee.role, projectMap.get(employee.projectId)]
+      [employee.name, employee.phone, employee.role]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(normalized))
     );
@@ -131,16 +151,12 @@ export default function EmployeesScreen({ navigation }) {
     if (activeFilter === 'synced') return searched.filter((employee) => !!employee.remoteId);
     if (activeFilter === 'local') return searched.filter((employee) => !employee.remoteId);
     return searched;
-  }, [employees, query, activeFilter, projectMap]);
+  }, [employees, query, activeFilter]);
 
   const syncedEmployees = useMemo(
     () => employees ? employees.filter((employee) => employee.remoteId).length : 0,
     [employees]
   );
-
-  const rolesCount = useMemo(() => {
-    return employees ? new Set(employees.map((employee) => employee.role).filter(Boolean)).size : 0;
-  }, [employees]);
 
   const assignedEmployees = useMemo(
     () => filteredEmployees.filter((employee) => !!employee.role).length,
@@ -151,25 +167,34 @@ export default function EmployeesScreen({ navigation }) {
     try {
       setBanner(null);
       await database.write(async () => {
-        await database.get('employees').create((record) => {
+        const newEmployee = await database.get('employees').create((record) => {
           initializeLocalRecord(record);
           record.userId = '';
           record.name = data.name.trim();
           record.phone = data.phone.trim();
           record.role = data.role.trim();
-          record.projectId = data.projectId || null;
           record.isDeleted = false;
         });
+
+        // Create assignments
+        for (const projectId of data.projectIds) {
+          await database.get('employee_project_assignments').create((assignment) => {
+            assignment.employeeId = newEmployee.id;
+            assignment.projectId = projectId;
+            assignment.createdAt = Date.now();
+          });
+        }
       });
       syncAll().catch(() => {});
       setModalVisible(false);
-      reset({ name: '', phone: '', role: '', projectId: '' });
+      reset({ name: '', phone: '', role: '', projectIds: [] });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (createError) {
       setBanner({ tone: 'error', title: t('common.error'), message: createError.message });
       Alert.alert(t('common.error'), createError.message);
     }
   };
+
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -289,21 +314,15 @@ export default function EmployeesScreen({ navigation }) {
                 )}
               />
 
-              <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Project' })}</StitchSectionLabel>
+              <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionLabel>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
-                <TouchableOpacity
-                  style={[styles.projectChip, !selectedProjectId && styles.projectChipActive]}
-                  onPress={() => setValue('projectId', '')}
-                >
-                  <Text style={[styles.projectChipText, !selectedProjectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
-                </TouchableOpacity>
                 {projects && projects.map((proj) => (
                   <TouchableOpacity
                     key={proj.id}
-                    style={[styles.projectChip, selectedProjectId === proj.id && styles.projectChipActive]}
-                    onPress={() => setValue('projectId', proj.id)}
+                    style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
+                    onPress={() => toggleProject(proj.id)}
                   >
-                    <Text style={[styles.projectChipText, selectedProjectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
+                    <Text style={[styles.projectChipText, selectedProjectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

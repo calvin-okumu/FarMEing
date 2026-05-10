@@ -16,6 +16,7 @@ import QuickEntryScreen from '../screens/QuickEntryScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SyncErrorsScreen from '../screens/SyncErrorsScreen';
+import PayeesScreen from '../screens/PayeesScreen';
 import StitchTabBar from '../components/navigation/StitchTabBar';
 import { stitchTheme } from '../theme/stitchTheme';
 
@@ -115,6 +116,11 @@ function SettingsStackNavigator() {
         name="SyncErrors"
         component={SyncErrorsScreen}
         options={{ title: t('settings.sync_errors.title'), headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="Payees"
+        component={PayeesScreen}
+        options={{ headerShown: false }}
       />
     </SettingsStack.Navigator>
   );

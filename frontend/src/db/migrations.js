@@ -81,5 +81,41 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 13,
+      steps: [
+        createTable({
+          name: 'payees',
+          columns: [
+            { name: 'user_id',    type: 'string' },
+            { name: 'name',       type: 'string' },
+            { name: 'phone',      type: 'string', isOptional: true },
+            { name: 'email',      type: 'string', isOptional: true },
+            { name: 'address',    type: 'string', isOptional: true },
+            { name: 'category',   type: 'string', isOptional: true },
+            { name: 'notes',      type: 'string', isOptional: true },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        addColumns({ table: 'expenses', columns: [{ name: 'payee_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'inventory_items', columns: [{ name: 'payee_id', type: 'string', isOptional: true }] }),
+      ],
+    },
+    {
+      toVersion: 14,
+      steps: [
+        createTable({
+          name: 'employee_project_assignments',
+          columns: [
+            { name: 'employee_id', type: 'string' },
+            { name: 'project_id',  type: 'string' },
+            { name: 'created_at',  type: 'number' },
+          ],
+        }),
+        // project_id remains in SQLite for existing users but will be ignored by the model
+      ],
+    },
   ],
 });

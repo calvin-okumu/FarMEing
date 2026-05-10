@@ -82,7 +82,7 @@ model FarmProject {
   harvests      Harvest[]
   sales         Sale[]
   inventoryItems InventoryItem[]
-  employees     Employee[]
+  employees     EmployeeProject[]
 }
 
 model BudgetItem {
@@ -124,7 +124,6 @@ model Expense {
 model Employee {
   id          String       @id @default(uuid())
   userId      String
-  projectId   String?
   name        String
   phone       String?
   role        String?
@@ -132,9 +131,20 @@ model Employee {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   user        User         @relation(fields: [userId], references: [id])
-  project     FarmProject? @relation(fields: [projectId], references: [id])
   workEntries WorkEntry[]
   payments    Payment[]
+  assignments EmployeeProject[]
+}
+
+model EmployeeProject {
+  id        String      @id @default(uuid())
+  employeeId String
+  projectId String
+  createdAt DateTime    @default(now())
+  employee  Employee    @relation(fields: [employeeId], references: [id])
+  project   FarmProject @relation(fields: [projectId], references: [id])
+
+  @@unique([employeeId, projectId])
 }
 
 model WorkEntry {

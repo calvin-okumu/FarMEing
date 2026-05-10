@@ -4,11 +4,10 @@ import { field, relation, text } from '@nozbe/watermelondb/decorators';
 export default class Employee extends Model {
   static table = 'employees';
   static associations = {
-    farm_projects: { type: 'belongs_to', key: 'project_id' },
+    employee_project_assignments: { type: 'has_many', foreignKey: 'employee_id' },
   };
 
   @text('user_id')    userId;
-  @text('project_id') projectId;
   @text('name')       name;
   @text('phone')      phone;
   @text('role')       role;
@@ -16,5 +15,5 @@ export default class Employee extends Model {
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
 
-  @relation('farm_projects', 'project_id') project;
+  @children('employee_project_assignments') assignments;
 }

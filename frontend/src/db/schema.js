@@ -1,8 +1,35 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 12, // Incremented version since schema changed
+  version: 14, // Incremented version since schema changed
   tables: [
+    // ── EmployeeProjectAssignment ───────────────────────────────────────────
+    tableSchema({
+      name: 'employee_project_assignments',
+      columns: [
+        { name: 'employee_id', type: 'string' },
+        { name: 'project_id',  type: 'string' },
+        { name: 'created_at',  type: 'number' },
+      ],
+    }),
+
+    // ── Payee ───────────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'payees',
+      columns: [
+        { name: 'user_id',    type: 'string' },
+        { name: 'name',       type: 'string' },
+        { name: 'phone',      type: 'string', isOptional: true },
+        { name: 'email',      type: 'string', isOptional: true },
+        { name: 'address',    type: 'string', isOptional: true },
+        { name: 'category',   type: 'string', isOptional: true },
+        { name: 'notes',      type: 'string', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+
     // ── FarmProject ─────────────────────────────────────────────────────────
     tableSchema({
       name: 'farm_projects',
@@ -57,6 +84,7 @@ export default appSchema({
         { name: 'note',         type: 'string', isOptional: true },
         { name: 'receipt_url',  type: 'string', isOptional: true },
         { name: 'payee',        type: 'string', isOptional: true },
+        { name: 'payee_id',     type: 'string', isOptional: true },
         { name: 'is_deleted',   type: 'boolean' },
         { name: 'created_at',   type: 'number' },
         { name: 'updated_at',   type: 'number' },
@@ -94,7 +122,6 @@ export default appSchema({
       name: 'employees',
       columns: [
         { name: 'user_id',    type: 'string' },
-        { name: 'project_id', type: 'string', isOptional: true },
         { name: 'name',       type: 'string' },
         { name: 'phone',      type: 'string', isOptional: true },
         { name: 'role',       type: 'string', isOptional: true },
@@ -165,6 +192,7 @@ export default appSchema({
         { name: 'used_qty', type: 'number' },
         { name: 'notes', type: 'string', isOptional: true },
         { name: 'payee', type: 'string', isOptional: true },
+        { name: 'payee_id', type: 'string', isOptional: true },
         { name: 'is_deleted', type: 'boolean' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },

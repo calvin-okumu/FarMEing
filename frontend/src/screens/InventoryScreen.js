@@ -31,6 +31,7 @@ import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import { useObservable } from '../hooks/useWatermelon';
 
 const DEFAULT_FORM = {
   name: '',
@@ -41,6 +42,7 @@ const DEFAULT_FORM = {
   usedQty: '',
   notes: '',
   payee: '',
+  payeeId: null,
 };
 
 export default function InventoryScreen({ route, navigation }) {
@@ -130,6 +132,7 @@ export default function InventoryScreen({ route, navigation }) {
             draft.totalCost = parseFloat((quantity * unitCost).toFixed(2));
             draft.notes = formData.notes.trim();
             draft.payee = formData.payee.trim();
+            draft.payeeId = formData.payeeId;
           });
         } else {
           await database.get('inventory_items').create((record) => {
@@ -144,6 +147,7 @@ export default function InventoryScreen({ route, navigation }) {
             record.totalCost = parseFloat((quantity * unitCost).toFixed(2));
             record.notes = formData.notes.trim();
             record.payee = formData.payee.trim();
+            record.payeeId = formData.payeeId;
             record.isDeleted = false;
           });
         }
@@ -240,8 +244,9 @@ export default function InventoryScreen({ route, navigation }) {
                 <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
                 <StitchSectionLabel>{t('inventory.fields.category')}</StitchSectionLabel>
                 <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
-                <StitchSectionLabel>Supplier / Payee</StitchSectionLabel>
-                <TextInput style={styles.input} value={formData.payee} onChangeText={(payee) => setFormData((p) => ({ ...p, payee }))} placeholderTextColor="#8a9388" />
+                
+                <PayeePicker selectedId={formData.payeeId} onSelect={onPayeeSelect} t={t} />
+
                 <View style={styles.row}>
                   <View style={styles.half}>
                     <StitchSectionLabel>{t('inventory.fields.quantity')}</StitchSectionLabel>
@@ -330,4 +335,10 @@ const styles = StyleSheet.create({
   input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
   notesInput: { minHeight: 96, textAlignVertical: 'top' },
   saveButton: { marginTop: stitchTheme.spacing.lg },
+  payeePickerContainer: { marginBottom: stitchTheme.spacing.sm },
+  payeePickerRow: { gap: 8, paddingVertical: 4 },
+  payeeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
+  payeeChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  payeeChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  payeeChipTextActive: { color: stitchTheme.colors.primary },
 });

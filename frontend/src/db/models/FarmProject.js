@@ -4,7 +4,7 @@ import { children, field, text } from '@nozbe/watermelondb/decorators';
 export default class FarmProject extends Model {
   static table = 'farm_projects';
   static associations = {
-    employees: { type: 'has_many', foreignKey: 'project_id' },
+    employee_project_assignments: { type: 'has_many', foreignKey: 'project_id' },
   };
 
   @text('user_id')    userId;
@@ -23,5 +23,5 @@ export default class FarmProject extends Model {
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
 
-  @children('employees') employees;
+  @children('employee_project_assignments') assignments;
 }

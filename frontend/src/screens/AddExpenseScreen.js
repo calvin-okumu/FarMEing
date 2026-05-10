@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { initializeLocalRecord } from '../utils/localRecord';
@@ -27,6 +28,7 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
+import { useObservable } from '../hooks/useWatermelon';
 
 const CATEGORIES = [
   { key: 'seeds', icon: 'leaf-outline' },
@@ -41,6 +43,34 @@ const CATEGORIES = [
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
+function PayeePicker({ selectedId, onSelect, t }) {
+  const payeesQuery = useMemo(() => database.get('payees').query(Q.where('is_deleted', false)), []);
+  const payees = useObservable(payeesQuery, []);
+
+  return (
+    <View style={styles.payeePickerContainer}>
+      <StitchSectionLabel>{t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}</StitchSectionLabel>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payeePickerRow}>
+        <TouchableOpacity
+          style={[styles.payeeChip, !selectedId && styles.payeeChipActive]}
+          onPress={() => onSelect(null)}
+        >
+          <Text style={[styles.payeeChipText, !selectedId && styles.payeeChipTextActive]}>{t('common.none', { defaultValue: 'None' })}</Text>
+        </TouchableOpacity>
+        {payees && payees.map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={[styles.payeeChip, selectedId === p.id && styles.payeeChipActive]}
+            onPress={() => onSelect(p)}
+          >
+            <Text style={[styles.payeeChipText, selectedId === p.id && styles.payeeChipTextActive]}>{p.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params || {};
@@ -54,6 +84,7 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [frequency, setFrequency] = useState('monthly');
   const [note, setNote] = useState('');
   const [payee, setPayee] = useState('');
+  const [payeeId, setPayeeId] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
@@ -71,6 +102,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       setFrequency(item.frequency?.toLowerCase() || 'monthly');
       setNote(item.note || '');
       setPayee(item.payee || '');
+      setPayeeId(item.payeeId || null);
       setPhoto(item.receiptUrl || null);
     }).catch(() => {});
   }, [itemId]);
@@ -99,6 +131,16 @@ export default function AddExpenseScreen({ route, navigation }) {
   const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) setDate(selectedDate);
+  };
+
+  const onPayeeSelect = (selectedPayee) => {
+    if (!selectedPayee) {
+      setPayee('');
+      setPayeeId(null);
+    } else {
+      setPayee(selectedPayee.name);
+      setPayeeId(selectedPayee.id);
+    }
   };
 
   const toggleLanguage = async () => {
@@ -133,6 +175,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.note = note.trim();
             draft.receiptUrl = photo || '';
             draft.payee = payee.trim();
+            draft.payeeId = payeeId;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -148,6 +191,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             record.note = note.trim();
             record.receiptUrl = photo || '';
             record.payee = payee.trim();
+            record.payeeId = payeeId;
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -243,14 +287,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           <Text style={styles.fieldMuted}>{draftId}</Text>
         </View>
 
-        <StitchSectionLabel>{t('expenses.fields.payee', { defaultValue: 'Payee / Vendor' })}</StitchSectionLabel>
-        <TextInput
-          style={styles.inputField}
-          value={payee}
-          onChangeText={setPayee}
-          placeholder={t('expenses.placeholders.payee', { defaultValue: 'e.g. Mark, AgroVet' })}
-          placeholderTextColor="#7a8296"
-        />
+        <PayeePicker selectedId={payeeId} onSelect={onPayeeSelect} t={t} />
 
         <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
         <TextInput
@@ -386,4 +423,10 @@ const styles = StyleSheet.create({
   frequencyChip: { flex: 1 },
   frequencyText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown },
   saveButton: { marginTop: stitchTheme.spacing.md },
+  payeePickerContainer: { marginBottom: stitchTheme.spacing.sm },
+  payeePickerRow: { gap: 8, paddingVertical: 4 },
+  payeeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
+  payeeChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  payeeChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  payeeChipTextActive: { color: stitchTheme.colors.primary },
 });

@@ -111,6 +111,9 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.sectionBlock}>
           <StitchDashboardSectionHeader title={t('settings.account_details')} />
           <View style={styles.listCardStack}>
+            <TouchableOpacity onPress={() => navigation.navigate('Payees')}>
+              <DetailRow icon='business' title={t('payees.title', { defaultValue: 'Payees & Vendors' })} subtitle={t('payees.manage_subtitle', { defaultValue: 'Manage your suppliers and contractors' })} tint={stitchTheme.colors.surfaceMuted} />
+            </TouchableOpacity>
             <DetailRow icon='notifications' title={t('settings.notifications')} subtitle={t('settings.notifications_subtitle')} />
             <DetailRow icon='help-circle' title={t('settings.help_support')} subtitle={t('settings.help_support_subtitle')} tint={stitchTheme.colors.surfaceSubtle} />
             <DetailRow icon='document-text' title={t('settings.terms')} subtitle={t('settings.terms_subtitle')} />
