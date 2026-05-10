@@ -152,8 +152,22 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const handleExportPDF = async () => {
     if (!project?.remoteId) {
-      Alert.alert('Sync Required', 'Please sync this project to the server before exporting a report.');
-      return;
+      // Try to sync first
+      setExporting(true);
+      try {
+        await syncAll();
+        // The subscription will update the project object, but we need the latest for this function
+        const freshProject = await database.get('farm_projects').find(project.id);
+        if (!freshProject.remoteId) {
+          Alert.alert('Sync Required', 'This project is still saving to the cloud. Please wait a moment and try again.');
+          return;
+        }
+      } catch (e) {
+        Alert.alert('Sync Failed', 'Please ensure you have an internet connection to sync this project before exporting.');
+        return;
+      } finally {
+        setExporting(false);
+      }
     }
 
     setExporting(true);
@@ -161,10 +175,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
       const token = useAuthStore.getState().token;
       // Get base URL from axios config if possible, else use env
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.carlhub.uk/api';
-      const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.pdf`;
+      const freshProject = await database.get('farm_projects').find(project.id);
+      const fileUri = `${FileSystem.documentDirectory}Report_${freshProject.name.replace(/\s+/g, '_')}.pdf`;
 
       const downloadRes = await FileSystem.downloadAsync(
-        `${apiUrl}/reports/project/${project.remoteId}/pdf`,
+        `${apiUrl}/reports/project/${freshProject.remoteId}/pdf`,
         fileUri,
         {
           headers: {
