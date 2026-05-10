@@ -119,5 +119,17 @@ export default schemaMigrations({
         // project_id remains in SQLite for existing users but will be ignored by the model
       ],
     },
+    {
+      toVersion: 15,
+      steps: [
+        addColumns({
+          table: 'employee_project_assignments',
+          columns: [
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
   ],
 });

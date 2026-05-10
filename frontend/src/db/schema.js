@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 14, // Incremented version since schema changed
+  version: 15, // Incremented version since schema changed
   tables: [
     // ── EmployeeProjectAssignment ───────────────────────────────────────────
     tableSchema({

@@ -144,7 +144,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         // Remove those not in data.projectIds
         for (const ca of currentAssignments) {
           if (!data.projectIds.includes(ca.projectId)) {
-            await ca.markAsDeleted();
+            await deleteLocalModel(ca);
           }
         }
 
