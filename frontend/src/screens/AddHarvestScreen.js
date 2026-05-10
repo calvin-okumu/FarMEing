@@ -20,7 +20,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -152,7 +152,7 @@ export default function AddHarvestScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSectionLabel>{t('harvest.crop_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('harvest.crop_heading')}</StitchSectionTitle>
         <TextInput
           style={styles.field}
           value={crop}
@@ -161,7 +161,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           placeholderTextColor="#7a7b73"
         />
 
-        <StitchSectionLabel>{t('harvest.quantity_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('harvest.quantity_heading')}</StitchSectionTitle>
         <TextInput
           style={styles.quantityField}
           value={weight}
@@ -176,7 +176,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           <Text style={styles.liveValue}>{liveTotal}</Text>
         </StitchSurface>
 
-        <StitchSectionLabel>{t('harvest.quality_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('harvest.quality_heading')}</StitchSectionTitle>
         <View style={styles.qualityRow}>
           {QUALITIES.map((item) => {
             const active = quality === item;
@@ -194,7 +194,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionLabel>{t('harvest.fields.unit')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('harvest.fields.unit')}</StitchSectionTitle>
         <View style={styles.unitRow}>
           {UNITS.map((item) => {
             const active = unit === item;
@@ -211,7 +211,7 @@ export default function AddHarvestScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionLabel>{t('harvest.date_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('harvest.date_heading')}</StitchSectionTitle>
         <TouchableOpacity style={styles.field} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
           <Text style={styles.fieldText}>{formatAppDate(date)}</Text>
           <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />

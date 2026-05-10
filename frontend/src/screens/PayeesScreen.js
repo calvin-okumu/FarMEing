@@ -26,7 +26,7 @@ import {
   StitchChip,
   StitchIconButton,
   StitchPrimaryButton,
-  StitchSectionLabel,
+  StitchSectionTitle,
 } from '../components/ui/StitchPrimitives';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
@@ -191,7 +191,7 @@ export default function PayeesScreen({ navigation }) {
                 <StitchIconButton icon='close' onPress={() => setModalVisible(false)} />
               </View>
 
-              <StitchSectionLabel>{t('payees.fields.name', { defaultValue: 'Name' })} *</StitchSectionLabel>
+              <StitchSectionTitle>{t('payees.fields.name', { defaultValue: 'Name' })} *</StitchSectionTitle>
               <Controller
                 control={control}
                 name="name"
@@ -201,7 +201,7 @@ export default function PayeesScreen({ navigation }) {
                 )}
               />
 
-              <StitchSectionLabel>{t('payees.fields.phone', { defaultValue: 'Phone' })}</StitchSectionLabel>
+              <StitchSectionTitle>{t('payees.fields.phone', { defaultValue: 'Phone' })}</StitchSectionTitle>
               <Controller
                 control={control}
                 name="phone"
@@ -210,7 +210,7 @@ export default function PayeesScreen({ navigation }) {
                 )}
               />
 
-              <StitchSectionLabel>{t('payees.fields.category', { defaultValue: 'Category' })}</StitchSectionLabel>
+              <StitchSectionTitle>{t('payees.fields.category', { defaultValue: 'Category' })}</StitchSectionTitle>
               <View style={styles.categoryRow}>
                 {['Supplier', 'Contractor', 'Individual', 'Other'].map((cat) => (
                   <Controller
@@ -224,7 +224,7 @@ export default function PayeesScreen({ navigation }) {
                 ))}
               </View>
 
-              <StitchSectionLabel>{t('payees.fields.notes', { defaultValue: 'Notes' })}</StitchSectionLabel>
+              <StitchSectionTitle>{t('payees.fields.notes', { defaultValue: 'Notes' })}</StitchSectionTitle>
               <Controller
                 control={control}
                 name="notes"

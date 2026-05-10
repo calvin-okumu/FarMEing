@@ -23,7 +23,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -43,36 +43,36 @@ const CATEGORIES = [
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
+const PayeePicker = ({ selectedId, onSelect, t }) => {
+  const payeesQuery = useMemo(() => database.get('payees').query(Q.where('is_deleted', false)), []);
+  const payees = useObservable(payeesQuery, []);
+
+  return (
+    <View style={styles.payeePickerContainer}>
+      <StitchSectionTitle>{t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}</StitchSectionTitle>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payeePickerRow}>
+        <TouchableOpacity
+          style={[styles.payeeChip, !selectedId && styles.payeeChipActive]}
+          onPress={() => onSelect(null)}
+        >
+          <Text style={[styles.payeeChipText, !selectedId && styles.payeeChipTextActive]}>{t('common.none', { defaultValue: 'None' })}</Text>
+        </TouchableOpacity>
+        {payees && payees.map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={[styles.payeeChip, selectedId === p.id && styles.payeeChipActive]}
+            onPress={() => onSelect(p)}
+          >
+            <Text style={[styles.payeeChipText, selectedId === p.id && styles.payeeChipTextActive]}>{p.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-
-  function PayeePicker({ selectedId, onSelect, t }) {
-    const payeesQuery = useMemo(() => database.get('payees').query(Q.where('is_deleted', false)), []);
-    const payees = useObservable(payeesQuery, []);
-
-    return (
-      <View style={styles.payeePickerContainer}>
-        <StitchSectionLabel>{t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}</StitchSectionLabel>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payeePickerRow}>
-          <TouchableOpacity
-            style={[styles.payeeChip, !selectedId && styles.payeeChipActive]}
-            onPress={() => onSelect(null)}
-          >
-            <Text style={[styles.payeeChipText, !selectedId && styles.payeeChipTextActive]}>{t('common.none', { defaultValue: 'None' })}</Text>
-          </TouchableOpacity>
-          {payees && payees.map((p) => (
-            <TouchableOpacity
-              key={p.id}
-              style={[styles.payeeChip, selectedId === p.id && styles.payeeChipActive]}
-              onPress={() => onSelect(p)}
-            >
-              <Text style={[styles.payeeChipText, selectedId === p.id && styles.payeeChipTextActive]}>{p.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  }
 ...
   const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
@@ -236,7 +236,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       >
 
         <StitchSurface style={styles.amountCard}>
-          <StitchSectionLabel>{t('expenses.fields.amount')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('expenses.fields.amount')}</StitchSectionTitle>
           <View style={styles.amountRow}>
             <Text style={styles.amountCurrency}>{currency}</Text>
             <TextInput
@@ -250,7 +250,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           </View>
         </StitchSurface>
 
-        <StitchSectionLabel>{t('expenses.category_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('expenses.category_heading')}</StitchSectionTitle>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((item) => {
             const active = category === item.key;
@@ -268,7 +268,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('common.date')}</StitchSectionTitle>
         <TouchableOpacity style={styles.field} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
           <Text style={styles.fieldText}>{formatAppDate(date)}</Text>
           <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.text} />
@@ -283,14 +283,14 @@ export default function AddExpenseScreen({ route, navigation }) {
           />
         ) : null}
 
-        <StitchSectionLabel>{t('expenses.reference_id')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('expenses.reference_id')}</StitchSectionTitle>
         <View style={styles.field}>
           <Text style={styles.fieldMuted}>{draftId}</Text>
         </View>
 
         <PayeePicker selectedId={payeeId} onSelect={onPayeeSelect} t={t} />
 
-        <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
         <TextInput
           style={styles.noteField}
           value={note}
@@ -331,7 +331,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         ) : null}
 
         <View style={styles.inlineRow}>
-          <StitchSectionLabel>{t('expenses.fields.type')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('expenses.fields.type')}</StitchSectionTitle>
           <View style={styles.pillToggle}>
             {['OPEX', 'CAPEX'].map((type) => {
               const active = expenseType === type;
@@ -350,7 +350,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         </View>
 
         <View style={styles.inlineRow}>
-          <StitchSectionLabel>{t('common.recurring')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('common.recurring')}</StitchSectionTitle>
           <TouchableOpacity
             style={[styles.switchTrack, isRecurring && styles.switchTrackActive]}
             onPress={() => setIsRecurring((value) => !value)}

@@ -117,7 +117,7 @@ export function StitchDisplayTitle({ children, style }) {
   return <Text style={[styles.displayTitle, style]}>{children}</Text>;
 }
 
-export function StitchSectionLabel({ children, style }) {
+export function StitchSectionTitle({ children, style }) {
   return <Text style={[styles.sectionLabel, style]}>{children}</Text>;
 }
 

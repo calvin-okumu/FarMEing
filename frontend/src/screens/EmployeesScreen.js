@@ -27,7 +27,7 @@ import {
   StitchChip,
   StitchIconButton,
   StitchPrimaryButton,
-  StitchSectionLabel,
+  StitchSectionTitle,
 } from '../components/ui/StitchPrimitives';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
@@ -267,7 +267,7 @@ export default function EmployeesScreen({ navigation }) {
                 <StitchIconButton icon='close' onPress={() => setModalVisible(false)} />
               </View>
 
-              <StitchSectionLabel>{t('employees.fields.name')} *</StitchSectionLabel>
+              <StitchSectionTitle>{t('employees.fields.name')} *</StitchSectionTitle>
               <Controller
                 control={control}
                 name="name"
@@ -283,7 +283,7 @@ export default function EmployeesScreen({ navigation }) {
                 )}
               />
 
-              <StitchSectionLabel>{t('employees.fields.phone')}</StitchSectionLabel>
+              <StitchSectionTitle>{t('employees.fields.phone')}</StitchSectionTitle>
               <Controller
                 control={control}
                 name="phone"
@@ -299,7 +299,7 @@ export default function EmployeesScreen({ navigation }) {
                 )}
               />
 
-              <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
+              <StitchSectionTitle>{t('employees.fields.role')}</StitchSectionTitle>
               <Controller
                 control={control}
                 name="role"
@@ -314,7 +314,7 @@ export default function EmployeesScreen({ navigation }) {
                 )}
               />
 
-              <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionLabel>
+              <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
                 {projects && projects.map((proj) => (
                   <TouchableOpacity

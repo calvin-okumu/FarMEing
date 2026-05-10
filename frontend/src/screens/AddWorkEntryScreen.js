@@ -25,7 +25,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
@@ -228,7 +228,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('labor.select_task')}</StitchSectionTitle>
         <View style={styles.taskGrid}>
           {ACTIVITIES.map((item) => {
             const active = formData.activity === item.key;
@@ -247,7 +247,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionLabel>{t('labor.employee')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('labor.employee')}</StitchSectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.employeeRow}>
           {employees.length === 0 ? (
             <TouchableOpacity style={styles.employeeEmpty} onPress={() => navigation.navigate('Employees')} activeOpacity={0.88}>
@@ -283,7 +283,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           })}
         </ScrollView>
 
-        <StitchSectionLabel>{t('labor.hours_counter')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('labor.hours_counter')}</StitchSectionTitle>
         <View style={styles.counterCard}>
           <TouchableOpacity style={styles.counterButton} onPress={() => adjustHours(-1)} activeOpacity={0.88}>
             <Ionicons name="remove" size={24} color={stitchTheme.colors.text} />
@@ -299,7 +299,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <View style={styles.fieldRow}>
           <View style={styles.fieldHalf}>
-            <StitchSectionLabel style={styles.fieldLabel}>{t('labor.days_worked')}</StitchSectionLabel>
+            <StitchSectionTitle style={styles.fieldLabel}>{t('labor.days_worked')}</StitchSectionTitle>
             <Controller
               control={control}
               name="daysWorked"
@@ -316,7 +316,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.fieldHalf}>
-            <StitchSectionLabel style={styles.fieldLabel}>{t('labor.rate_day')}</StitchSectionLabel>
+            <StitchSectionTitle style={styles.fieldLabel}>{t('labor.rate_day')}</StitchSectionTitle>
             <Controller
               control={control}
               name="ratePerDay"
@@ -334,7 +334,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </View>
 
-        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('common.date')}</StitchSectionTitle>
         <TouchableOpacity style={styles.dateField} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
           <Text style={styles.dateFieldText}>{formatAppDate(formData.date)}</Text>
           <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
@@ -359,7 +359,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         ) : null}
 
         <View style={styles.sectionInline}>
-          <StitchSectionLabel style={styles.sectionInlineLabel}>{t('common.recurring')}</StitchSectionLabel>
+          <StitchSectionTitle style={styles.sectionInlineLabel}>{t('common.recurring')}</StitchSectionTitle>
           <TouchableOpacity style={[styles.switchTrack, formData.isRecurring && styles.switchTrackActive]} onPress={() => setValue('isRecurring', !formData.isRecurring)} activeOpacity={0.9}>
             <View style={[styles.switchKnob, formData.isRecurring && styles.switchKnobActive]} />
           </TouchableOpacity>
@@ -383,7 +383,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        <StitchSectionLabel>{t('labor.evidence_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('labor.evidence_heading')}</StitchSectionTitle>
         <TouchableOpacity style={styles.photoPanel} onPress={formData.photo ? () => setValue('photo', null) : takePhoto} activeOpacity={0.92}>
           {formData.photo ? <Image source={{ uri: formData.photo }} style={styles.photoBackground} /> : null}
           <View style={styles.photoOverlay}>
@@ -395,7 +395,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
 
-        <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
         <Controller
           control={control}
           name="notes"

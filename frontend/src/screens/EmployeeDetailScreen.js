@@ -24,7 +24,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeEmployeeBalance } from '../utils/localAnalytics';
-import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
@@ -95,6 +95,10 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   // Forms
   const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEdit, watch: watchEdit, setValue: setEditValue } = useForm({
     defaultValues: { name: '', phone: '', role: '', projectIds: [] }
+  });
+
+  const { control: paymentControl, handleSubmit: handlePaymentSubmit, reset: resetPayment } = useForm({
+    defaultValues: { amount: '', note: '', date: new Date() }
   });
 
   const selectedProjectIds = watchEdit('projectIds');
@@ -337,7 +341,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           
-          <StitchSectionLabel>{t('employees.fields.name')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('employees.fields.name')}</StitchSectionTitle>
           <Controller
             control={editControl}
             name="name"
@@ -347,7 +351,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             )}
           />
 
-          <StitchSectionLabel>{t('employees.fields.phone')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('employees.fields.phone')}</StitchSectionTitle>
           <Controller
             control={editControl}
             name="phone"
@@ -356,7 +360,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             )}
           />
 
-          <StitchSectionLabel>{t('employees.fields.role')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('employees.fields.role')}</StitchSectionTitle>
           <Controller
             control={editControl}
             name="role"
@@ -365,7 +369,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             )}
           />
           
-          <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionLabel>
+          <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
             {projects && projects.map((proj) => (
               <TouchableOpacity
@@ -386,7 +390,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           
-          <StitchSectionLabel>{t('payments.fields.amount')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('payments.fields.amount')}</StitchSectionTitle>
           <Controller
             control={paymentControl}
             name="amount"
@@ -396,7 +400,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             )}
           />
 
-          <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
           <Controller
             control={paymentControl}
             name="note"

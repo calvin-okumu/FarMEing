@@ -32,7 +32,7 @@ import {
   StitchChip,
   StitchMiniBars,
   StitchPrimaryButton,
-  StitchSectionLabel,
+  StitchSectionTitle,
 } from '../components/ui/StitchPrimitives';
 
 const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
@@ -265,7 +265,7 @@ export default function QuickEntryScreen({ navigation }) {
           <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <View style={styles.formCard}>
-            <StitchSectionLabel>{t('quick_entry.mode')}</StitchSectionLabel>
+            <StitchSectionTitle>{t('quick_entry.mode')}</StitchSectionTitle>
             <View style={styles.chipsRow}>
               {ENTRY_MODES.map((mode) => (
                 <StitchChip
@@ -283,7 +283,7 @@ export default function QuickEntryScreen({ navigation }) {
               ))}
             </View>
 
-            <StitchSectionLabel>{t('quick_entry.fields.project')} *</StitchSectionLabel>
+            <StitchSectionTitle>{t('quick_entry.fields.project')} *</StitchSectionTitle>
             <TouchableOpacity style={styles.inputShell} onPress={() => setProjectDropdownVisible((value) => !value)} activeOpacity={0.88}>
               <Text style={[styles.inputText, !selectedProject && styles.placeholder]}>{selectedProject?.name || t('quick_entry.select_project')}</Text>
               <Ionicons name={projectDropdownVisible ? 'chevron-up' : 'chevron-down'} size={18} color={stitchTheme.colors.primary} />
@@ -316,7 +316,7 @@ export default function QuickEntryScreen({ navigation }) {
               </View>
             ) : null}
 
-            <StitchSectionLabel>{employeeLabel} *</StitchSectionLabel>
+            <StitchSectionTitle>{employeeLabel} *</StitchSectionTitle>
             <TextInput
               ref={employeeInputRef}
               style={styles.inputShell}
@@ -351,14 +351,14 @@ export default function QuickEntryScreen({ navigation }) {
               </View>
             ) : null}
 
-            <StitchSectionLabel>{t('quick_entry.fields.activity')}</StitchSectionLabel>
+            <StitchSectionTitle>{t('quick_entry.fields.activity')}</StitchSectionTitle>
             <View style={styles.chipsRow}>
               {ACTIVITIES.map((item) => (
                 <StitchChip key={item} label={t(`common.activities.${item}`)} active={activity === item} onPress={() => setActivity(item)} style={styles.activityChip} />
               ))}
             </View>
 
-            <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
+            <StitchSectionTitle>{t('common.date')}</StitchSectionTitle>
             <TouchableOpacity style={styles.inputShell} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
               <Text style={styles.inputText}>{formatAppDate(date)}</Text>
               <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
@@ -375,15 +375,15 @@ export default function QuickEntryScreen({ navigation }) {
 
             <View style={styles.row}>
               <View style={styles.third}>
-                <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionLabel>
+                <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionTitle>
                 <TextInput style={styles.inputShell} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
               </View>
               <View style={styles.third}>
-                <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionLabel>
+                <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionTitle>
                 <TextInput style={styles.inputShell} value={days} onChangeText={setDays} keyboardType="numeric" />
               </View>
               <View style={styles.third}>
-                <StitchSectionLabel style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionLabel>
+                <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionTitle>
                 <TextInput style={styles.inputShell} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
               </View>
             </View>

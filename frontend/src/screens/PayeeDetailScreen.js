@@ -23,7 +23,7 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import useSettingsStore from '../store/useSettingsStore';
-import { StitchChip, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 
 export default function PayeeDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
@@ -121,7 +121,7 @@ export default function PayeeDetailScreen({ route, navigation }) {
         
         {payee.notes ? (
           <View style={styles.notesSection}>
-            <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
+            <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
             <View style={styles.notesCard}>
               <Text style={styles.notesText}>{payee.notes}</Text>
             </View>

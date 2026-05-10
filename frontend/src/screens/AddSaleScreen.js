@@ -21,7 +21,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -158,7 +158,7 @@ export default function AddSaleScreen({ route, navigation }) {
         onDismissBanner={() => setBanner(null)}
       >
         <StitchSurface style={styles.panel}>
-          <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('sales.quantity_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
             <TextInput
               style={styles.largeInput}
@@ -171,7 +171,7 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.unitBadge}>{t('harvest.units.kg')}</Text>
           </View>
 
-          <StitchSectionLabel>{t('sales.price_heading')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('sales.price_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
             <Text style={styles.currencyText}>{currency}</Text>
             <TextInput
@@ -189,7 +189,7 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
           </View>
 
-          <StitchSectionLabel>{t('sales.buyer_heading')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
             <Ionicons name="person" size={20} color="#76806f" />
             <TextInput

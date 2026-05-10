@@ -22,7 +22,7 @@ import {
   StitchChip,
   StitchMiniBars,
   StitchPrimaryButton,
-  StitchSectionLabel,
+  StitchSectionTitle,
 } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
@@ -137,14 +137,14 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSectionLabel>{t('budget.fields.category')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('budget.fields.category')}</StitchSectionTitle>
         <View style={styles.chipsRow}>
           {CATEGORIES.map((cat) => (
             <StitchChip key={cat} label={t(`budget.categories.${cat}`)} active={category === cat} onPress={() => setCategory(cat)} style={styles.chipWrap} />
           ))}
         </View>
 
-        <StitchSectionLabel>{t('budget.fields.name')} *</StitchSectionLabel>
+        <StitchSectionTitle>{t('budget.fields.name')} *</StitchSectionTitle>
         <TextInput
           style={styles.input}
           value={name}
@@ -155,7 +155,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <StitchSectionLabel>{t('budget.fields.quantity')} *</StitchSectionLabel>
+            <StitchSectionTitle>{t('budget.fields.quantity')} *</StitchSectionTitle>
             <TextInput
               style={styles.input}
               value={quantity}
@@ -166,7 +166,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             />
           </View>
           <View style={styles.half}>
-            <StitchSectionLabel>{t('budget.fields.unit')}</StitchSectionLabel>
+            <StitchSectionTitle>{t('budget.fields.unit')}</StitchSectionTitle>
             <TextInput
               style={styles.input}
               value={unit}
@@ -177,7 +177,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           </View>
         </View>
 
-        <StitchSectionLabel>{t('budget.fields.unit_price')} *</StitchSectionLabel>
+        <StitchSectionTitle>{t('budget.fields.unit_price')} *</StitchSectionTitle>
         <TextInput
           style={styles.input}
           value={unitPrice}

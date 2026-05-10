@@ -20,7 +20,7 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import SearchBar from '../components/ui/SearchBar';
@@ -302,7 +302,7 @@ export default function ProjectsScreen({ navigation, route }) {
 
       <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={closeModal}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <StitchSectionLabel>{t('projects.fields.name')} *</StitchSectionLabel>
+          <StitchSectionTitle>{t('projects.fields.name')} *</StitchSectionTitle>
           <Controller
             control={control}
             name="name"
@@ -312,7 +312,7 @@ export default function ProjectsScreen({ navigation, route }) {
             )}
           />
 
-          <StitchSectionLabel>{t('projects.fields.crop')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('projects.fields.crop')}</StitchSectionTitle>
           <Controller
             control={control}
             name="crop"
@@ -323,7 +323,7 @@ export default function ProjectsScreen({ navigation, route }) {
 
           <View style={styles.row}>
             <View style={styles.halfInput}>
-              <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionLabel>
+              <StitchSectionTitle style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionTitle>
               <Controller
                 control={control}
                 name="landSize"
@@ -333,7 +333,7 @@ export default function ProjectsScreen({ navigation, route }) {
               />
             </View>
             <View style={styles.halfInput}>
-              <StitchSectionLabel style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionLabel>
+              <StitchSectionTitle style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionTitle>
               <Controller
                 control={control}
                 name="landUnit"
@@ -344,7 +344,7 @@ export default function ProjectsScreen({ navigation, route }) {
             </View>
           </View>
 
-          <StitchSectionLabel>{t('projects.fields.expected_yield')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('projects.fields.expected_yield')}</StitchSectionTitle>
           <Controller
             control={control}
             name="expectedYield"
@@ -353,7 +353,7 @@ export default function ProjectsScreen({ navigation, route }) {
             )}
           />
 
-          <StitchSectionLabel>Contract / Lease URL</StitchSectionLabel>
+          <StitchSectionTitle>Contract / Lease URL</StitchSectionTitle>
           <Controller
             control={control}
             name="contractUrl"
@@ -362,7 +362,7 @@ export default function ProjectsScreen({ navigation, route }) {
             )}
           />
 
-          <StitchSectionLabel>{t('projects.fields.start_date')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('projects.fields.start_date')}</StitchSectionTitle>
           <TouchableOpacity style={styles.dateSelector} onPress={openStartDatePicker} activeOpacity={0.88}>
             <Text style={styles.dateSelectorText}>{formatAppDate(formData.startDate)}</Text>
             <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
