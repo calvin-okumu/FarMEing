@@ -194,12 +194,16 @@ exports.push = async (req, res) => {
   const { changes } = req.body;
   if (!changes) return res.status(400).json({ error: 'Missing changes' });
 
+  console.log(`[sync] Push started for user ${req.user.id}`);
+
   try {
     await prisma.$transaction(async (tx) => {
       for (const watermelonTable of SYNC_ORDER) {
         const prismaModel = tableMap[watermelonTable];
         const tableChanges = changes[watermelonTable];
-        if (!tableChanges) continue;
+        if (!tableChanges || (!tableChanges.created.length && !tableChanges.updated.length && !tableChanges.deleted.length)) continue;
+
+        console.log(`[sync] Processing ${watermelonTable} (${prismaModel}): +${tableChanges.created.length} ~${tableChanges.updated.length} -${tableChanges.deleted.length}`);
 
         const { created, updated, deleted } = tableChanges;
 
@@ -216,7 +220,6 @@ exports.push = async (req, res) => {
           }
           
           // Safety Check: If payeeId is provided, verify it exists. If not, set to null.
-          // This prevents foreign key crashes if a payee was deleted or sync is mismatched.
           if (data.payeeId) {
             const payeeExists = await tx.payee.findUnique({ where: { id: data.payeeId } });
             if (!payeeExists) {
@@ -233,7 +236,7 @@ exports.push = async (req, res) => {
             });
           } catch (upsertError) {
             console.error(`[sync] Upsert failed for ${prismaModel} ${data.id}:`, upsertError.message);
-            console.error('[sync] Data:', JSON.stringify(data, null, 2));
+            console.error('[sync] Data payload:', JSON.stringify(data, null, 2));
             throw upsertError; // Re-throw to fail the transaction
           }
         }
@@ -254,20 +257,28 @@ exports.push = async (req, res) => {
               where.project = { userId: req.user.id };
             }
 
-            await tx[prismaModel].updateMany({
-              where,
-              data: { isDeleted: true },
-            });
+            try {
+              await tx[prismaModel].updateMany({
+                where,
+                data: { isDeleted: true },
+              });
+            } catch (deleteError) {
+              console.error(`[sync] Delete failed for ${prismaModel} ${id}:`, deleteError.message);
+              throw deleteError;
+            }
           }
         }
       }
     }, {
-      timeout: 10000 // Increase timeout for potentially large batches
+      timeout: 15000 // Increase timeout
     });
 
+    console.log('[sync] Push completed successfully');
     res.status(200).json({ status: 'ok' });
   } catch (error) {
-    console.error('Push Error:', error);
+    console.error('[sync] Global Push Error:', error.message);
+    if (error.code) console.error('[sync] Error Code:', error.code);
+    if (error.meta) console.error('[sync] Error Meta:', JSON.stringify(error.meta));
     res.status(500).json({ error: 'Failed to push changes' });
   }
 };
