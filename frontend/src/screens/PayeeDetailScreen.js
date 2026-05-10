@@ -23,7 +23,7 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import useSettingsStore from '../store/useSettingsStore';
-import { StitchChip } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchSectionLabel } from '../components/ui/StitchPrimitives';
 
 export default function PayeeDetailScreen({ route, navigation }) {
   const { t } = useTranslation();

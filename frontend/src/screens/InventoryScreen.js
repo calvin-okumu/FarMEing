@@ -48,6 +48,35 @@ const DEFAULT_FORM = {
 export default function InventoryScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, projectName } = route.params || {};
+
+  function PayeePicker({ selectedId, onSelect, t }) {
+    const payeesQuery = useMemo(() => database.get('payees').query(Q.where('is_deleted', false)), []);
+    const payees = useObservable(payeesQuery, []);
+
+    return (
+      <View style={styles.payeePickerContainer}>
+        <StitchSectionLabel>{t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}</StitchSectionLabel>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payeePickerRow}>
+          <TouchableOpacity
+            style={[styles.payeeChip, !selectedId && styles.payeeChipActive]}
+            onPress={() => onSelect(null)}
+          >
+            <Text style={[styles.payeeChipText, !selectedId && styles.payeeChipTextActive]}>{t('common.none', { defaultValue: 'None' })}</Text>
+          </TouchableOpacity>
+          {payees && payees.map((p) => (
+            <TouchableOpacity
+              key={p.id}
+              style={[styles.payeeChip, selectedId === p.id && styles.payeeChipActive]}
+              onPress={() => onSelect(p)}
+            >
+              <Text style={[styles.payeeChipText, selectedId === p.id && styles.payeeChipTextActive]}>{p.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+...
   const currency = useSettingsStore((s) => s.currency);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [query, setQuery] = useState('');
@@ -108,8 +137,17 @@ export default function InventoryScreen({ route, navigation }) {
       usedQty: String(item.usedQty ?? ''),
       notes: item.notes || '',
       payee: item.payee || '',
+      payeeId: item.payeeId || null,
     });
     setModalVisible(true);
+  };
+
+  const onPayeeSelect = (selectedPayee) => {
+    if (!selectedPayee) {
+      setFormData((p) => ({ ...p, payee: '', payeeId: null }));
+    } else {
+      setFormData((p) => ({ ...p, payee: selectedPayee.name, payeeId: selectedPayee.id }));
+    }
   };
 
   const handleSubmit = async () => {
