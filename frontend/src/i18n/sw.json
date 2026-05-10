@@ -302,6 +302,8 @@
     "team_subtitle": "Wafanyakazi waliochaguliwa kwa mradi huu",
     "none": "Hakuna",
     "no_project": "Hakuna Mradi",
+    "project_count_one": "Mradi 1",
+    "project_count_other": "Miradi {{count}}",
     "empty_subtitle": "Vuta chini kusawazisha au ongeza mfanyakazi mpya.",
     "directory_subtitle": "Orodha ya API yenye mizania na vitendo.",
     "search_placeholder": "Tafuta wafanyakazi, majukumu au simu",
@@ -330,6 +332,26 @@
       "delete_local": "Imeshindikana kufuta mfanyakazi",
       "not_found": "Mfanyakazi hajapatikana"
     }
+  },
+  "payees": {
+    "title": "Wakulima na Wauzaji",
+    "manage_subtitle": "Simamia wasambazaji na wakandarasi wako",
+    "directory": "Orodha ya Wauzaji",
+    "new_payee": "Mlipwaji Mpya",
+    "edit_payee": "Hariri Mlipwaji",
+    "save": "Hifadhi Mlipwaji",
+    "total": "Jumla ya Walipwaji",
+    "search_placeholder": "Tafuta walipwaji...",
+    "empty_title": "Hakuna Walipwaji Bado",
+    "empty_subtitle": "Ongeza wauzaji au wakandarasi ili kufuatilia matumizi yako vizuri.",
+    "fields": {
+      "name": "Jina",
+      "phone": "Simu",
+      "email": "Barua Pepe",
+      "category": "Kategoria",
+      "notes": "Maelezo"
+    },
+    "no_category": "Jumla"
   },
   "labor": {
     "screen_title": "Worker Activity",

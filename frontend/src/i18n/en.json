@@ -302,6 +302,8 @@
     "team_subtitle": "Assigned workers for this project",
     "none": "None",
     "no_project": "No Project",
+    "project_count_one": "1 Project",
+    "project_count_other": "{{count}} Projects",
     "empty_subtitle": "Pull down to sync or add a new employee.",
     "directory_subtitle": "API-backed directory with balances and actions.",
     "search_placeholder": "Search workers, roles, or phone",
@@ -330,6 +332,26 @@
       "delete_local": "Failed to delete employee",
       "not_found": "Employee not found"
     }
+  },
+  "payees": {
+    "title": "Payees & Vendors",
+    "manage_subtitle": "Manage your suppliers and contractors",
+    "directory": "Vendor Directory",
+    "new_payee": "New Payee",
+    "edit_payee": "Edit Payee",
+    "save": "Save Payee",
+    "total": "Total Payees",
+    "search_placeholder": "Search payees...",
+    "empty_title": "No Payees Yet",
+    "empty_subtitle": "Add vendors or contractors to track your spending better.",
+    "fields": {
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email",
+      "category": "Category",
+      "notes": "Notes"
+    },
+    "no_category": "General"
   },
   "labor": {
     "screen_title": "Worker Activity",

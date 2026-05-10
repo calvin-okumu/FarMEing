@@ -1,5 +1,5 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, relation, text } from '@nozbe/watermelondb/decorators';
+import { field, children, text } from '@nozbe/watermelondb/decorators';
 
 export default class Employee extends Model {
   static table = 'employees';

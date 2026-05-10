@@ -178,7 +178,7 @@ export default function PayeesScreen({ navigation }) {
         <StitchDashboardSectionHeader title={t('payees.directory', { defaultValue: 'Vendor Directory' })} actionLabel={String(filteredPayees.length)} />
         
         {filteredPayees.length ? filteredPayees.map((item) => (
-          <PayeeCard key={item.id} item={item} t={t} onPress={() => {}} />
+          <PayeeCard key={item.id} item={item} t={t} onPress={() => navigation.navigate('PayeeDetail', { payeeId: item.id })} />
         )) : <EmptyState icon='business-outline' title={t('payees.empty_title', { defaultValue: 'No Payees Yet' })} subtitle={t('payees.empty_subtitle', { defaultValue: 'Add vendors or contractors to track your spending better.' })} />}
       </StitchDashboardShell>
 

@@ -140,7 +140,9 @@ model EmployeeProject {
   id        String      @id @default(uuid())
   employeeId String
   projectId String
+  isDeleted Boolean     @default(false)
   createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
   employee  Employee    @relation(fields: [employeeId], references: [id])
   project   FarmProject @relation(fields: [projectId], references: [id])
 

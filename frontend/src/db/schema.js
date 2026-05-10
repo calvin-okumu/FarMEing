@@ -9,7 +9,9 @@ export default appSchema({
       columns: [
         { name: 'employee_id', type: 'string' },
         { name: 'project_id',  type: 'string' },
+        { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
+        { name: 'updated_at',  type: 'number' },
       ],
     }),
 

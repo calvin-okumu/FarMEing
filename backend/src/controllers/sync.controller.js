@@ -10,10 +10,12 @@ const tableMap = {
   harvests: 'harvest',
   sales: 'sale',
   inventory_items: 'inventoryItem',
+  payees: 'payee',
+  employee_project_assignments: 'employeeProject',
 };
 
 // Models that have a direct userId field
-const modelsWithDirectUserId = ['farmProject', 'employee'];
+const modelsWithDirectUserId = ['farmProject', 'employee', 'payee'];
 
 // Mapping of Prisma fields (camelCase) to Watermelon fields (snake_case)
 const fieldMapping = {
@@ -25,6 +27,7 @@ const fieldMapping = {
   endDate: 'end_date',
   expectedYield: 'expected_yield',
   contractUrl: 'contract_url',
+  payeeId: 'payee_id',
   isDeleted: 'is_deleted',
   projectId: 'project_id',
   unitPrice: 'unit_price',
@@ -125,6 +128,8 @@ exports.pull = async (req, res) => {
           where.project = { userId: req.user.id };
         } else if (prismaModel === 'payment') {
           where.employee = { userId: req.user.id };
+        } else if (prismaModel === 'employeeProject') {
+          where.project = { userId: req.user.id };
         } else if (prismaModel === 'workEntry') {
           where.OR = [
             { project: { userId: req.user.id } },
@@ -205,6 +210,8 @@ exports.push = async (req, res) => {
               where.project = { userId: req.user.id };
             } else if (prismaModel === 'payment') {
               where.employee = { userId: req.user.id };
+            } else if (prismaModel === 'employeeProject') {
+              where.project = { userId: req.user.id };
             }
 
             await tx[prismaModel].updateMany({

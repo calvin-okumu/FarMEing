@@ -80,18 +80,32 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const workEntries = useObservable(workQuery, []);
   const payments = useObservable(paymentQuery, []);
 
+  // Assignments Observation
+  const [assignmentIds, setAssignmentIds] = useState([]);
+  useEffect(() => {
+    if (!employee) return;
+    const sub = employee.assignments.observe().subscribe((as) => {
+      setAssignmentIds(as.filter(a => !a.isDeleted).map(a => a.projectId));
+    });
+    return () => sub.unsubscribe();
+  }, [employee]);
+
   const isLoading = employee === null || projects === null;
 
   // Forms
   const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEdit, watch: watchEdit, setValue: setEditValue } = useForm({
-    defaultValues: { name: '', phone: '', role: '', projectId: '' }
+    defaultValues: { name: '', phone: '', role: '', projectIds: [] }
   });
 
-  const { control: paymentControl, handleSubmit: handlePaymentSubmit, reset: resetPayment } = useForm({
-    defaultValues: { amount: '', note: '', date: new Date() }
-  });
+  const selectedProjectIds = watchEdit('projectIds');
 
-  const editProjectId = watchEdit('projectId');
+  const toggleProject = (projectId) => {
+    if (selectedProjectIds.includes(projectId)) {
+      setEditValue('projectIds', selectedProjectIds.filter(id => id !== projectId));
+    } else {
+      setEditValue('projectIds', [...selectedProjectIds, projectId]);
+    }
+  };
 
   useEffect(() => {
     if (employee) {
@@ -99,10 +113,10 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         name: employee.name || '',
         phone: employee.phone || '',
         role: employee.role || '',
-        projectId: employee.projectId || '',
+        projectIds: assignmentIds,
       });
     }
-  }, [employee]);
+  }, [employee, assignmentIds]);
 
   const balance = useMemo(() => computeEmployeeBalance(workEntries || [], payments || []), [workEntries, payments]);
 
@@ -118,8 +132,29 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           draft.name = data.name.trim();
           draft.phone = data.phone.trim();
           draft.role = data.role.trim();
-          draft.projectId = data.projectId || null;
         });
+
+        // Sync assignments
+        const currentAssignments = await record.assignments.fetch();
+        
+        // Remove those not in data.projectIds
+        for (const ca of currentAssignments) {
+          if (!data.projectIds.includes(ca.projectId)) {
+            await ca.markAsDeleted();
+          }
+        }
+
+        // Add new ones
+        for (const pid of data.projectIds) {
+          if (!currentAssignments.some(ca => ca.projectId === pid)) {
+            await database.get('employee_project_assignments').create(a => {
+              a.employeeId = employeeId;
+              a.projectId = pid;
+              a.createdAt = Date.now();
+              a.isDeleted = false;
+            });
+          }
+        }
       });
       syncAll().catch(() => {});
       setEditVisible(false);
@@ -129,6 +164,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       Alert.alert(t('common.error'), error.message);
     }
   };
+
 
   const handleDelete = async () => {
     try {
@@ -329,21 +365,15 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             )}
           />
           
-          <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Project' })}</StitchSectionLabel>
+          <StitchSectionLabel>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
-            <TouchableOpacity
-              style={[styles.projectChip, !editProjectId && styles.projectChipActive]}
-              onPress={() => setEditValue('projectId', '')}
-            >
-              <Text style={[styles.projectChipText, !editProjectId && styles.projectChipTextActive]}>{t('employees.none', { defaultValue: 'None' })}</Text>
-            </TouchableOpacity>
             {projects && projects.map((proj) => (
               <TouchableOpacity
                 key={proj.id}
-                style={[styles.projectChip, editProjectId === proj.id && styles.projectChipActive]}
-                onPress={() => setEditValue('projectId', proj.id)}
+                style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
+                onPress={() => toggleProject(proj.id)}
               >
-                <Text style={[styles.projectChipText, editProjectId === proj.id && styles.projectChipTextActive]}>{proj.name}</Text>
+                <Text style={[styles.projectChipText, selectedProjectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>

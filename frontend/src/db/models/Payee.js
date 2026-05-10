@@ -1,5 +1,5 @@
 import { Model } from '@nozbe/watermelondb';
-import { text, field, date, children, readonly } from '@nozbe/watermelondb/decorators';
+import { text, field, children } from '@nozbe/watermelondb/decorators';
 
 export default class Payee extends Model {
   static table = 'payees';
@@ -18,8 +18,8 @@ export default class Payee extends Model {
   @text('notes')      notes;
   @field('is_deleted') isDeleted;
 
-  @readonly @date('created_at') createdAt;
-  @readonly @date('updated_at') updatedAt;
+  @field('created_at') createdAt;
+  @field('updated_at') updatedAt;
 
   @children('expenses')        expenses;
   @children('inventory_items') inventoryItems;
