@@ -215,11 +215,27 @@ exports.push = async (req, res) => {
             data.id = req.user.id; // Don't let them change other users' IDs
           }
           
-          await tx[prismaModel].upsert({
-            where: { id: data.id },
-            create: data,
-            update: data, // Client Wins
-          });
+          // Safety Check: If payeeId is provided, verify it exists. If not, set to null.
+          // This prevents foreign key crashes if a payee was deleted or sync is mismatched.
+          if (data.payeeId) {
+            const payeeExists = await tx.payee.findUnique({ where: { id: data.payeeId } });
+            if (!payeeExists) {
+              console.warn(`[sync] Skipping non-existent payeeId ${data.payeeId} for ${prismaModel} ${data.id}`);
+              data.payeeId = null;
+            }
+          }
+
+          try {
+            await tx[prismaModel].upsert({
+              where: { id: data.id },
+              create: data,
+              update: data, // Client Wins
+            });
+          } catch (upsertError) {
+            console.error(`[sync] Upsert failed for ${prismaModel} ${data.id}:`, upsertError.message);
+            console.error('[sync] Data:', JSON.stringify(data, null, 2));
+            throw upsertError; // Re-throw to fail the transaction
+          }
         }
 
         // Handle Deleted
