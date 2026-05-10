@@ -10,6 +10,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
@@ -146,6 +148,43 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState('latest');
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!project?.remoteId) {
+      Alert.alert('Sync Required', 'Please sync this project to the server before exporting a report.');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const token = useAuthStore.getState().token;
+      // Get base URL from axios config if possible, else use env
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.carlhub.uk/api';
+      const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.pdf`;
+
+      const downloadRes = await FileSystem.downloadAsync(
+        `${apiUrl}/reports/project/${project.remoteId}/pdf`,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (downloadRes.status !== 200) {
+        throw new Error('Failed to download report');
+      }
+
+      await Sharing.shareAsync(downloadRes.uri);
+    } catch (err) {
+      console.error('[Export] Error:', err.message);
+      Alert.alert('Export Failed', 'Could not generate or download the report.');
+    } finally {
+      setExporting(false);
+    }
+  };
   const [banner, setBanner] = useState(null);
 
   const remoteProjectId = project?.remoteId || null;
@@ -534,7 +573,14 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
               <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
-              <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' style={styles.heroPillTertiary} />
+              <TouchableOpacity onPress={handleExportPDF} disabled={exporting}>
+                <StitchHeroPill 
+                  label={exporting ? 'Generating...' : 'Export PDF'} 
+                  value={exporting ? 'Wait' : 'Cost Report'} 
+                  icon={exporting ? 'refresh-outline' : 'download-outline'} 
+                  style={styles.heroPillTertiary}
+                />
+              </TouchableOpacity>
             </View>
           ),
         }}

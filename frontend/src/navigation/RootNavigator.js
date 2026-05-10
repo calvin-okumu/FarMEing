@@ -4,6 +4,7 @@ import useAuthStore from '../store/useAuthStore';
 import useBackendStore from '../store/useBackendStore';
 import AuthNavigator from './AuthNavigator';
 import TabNavigator  from './TabNavigator';
+import GlobalSyncStatus from '../components/ui/GlobalSyncStatus';
 import { stitchTheme } from '../theme/stitchTheme';
 
 export default function RootNavigator() {
@@ -66,7 +67,12 @@ export default function RootNavigator() {
   // when `token` changes (login → tabs, logout → auth)
   return (
     <View style={styles.appShell}>
-      {token ? <TabNavigator /> : <AuthNavigator />}
+      {token ? (
+        <>
+          <TabNavigator />
+          <GlobalSyncStatus />
+        </>
+      ) : <AuthNavigator />}
       {backendStatus === 'offline' ? (
         <View pointerEvents="none" style={styles.offlineBannerWrap}>
           <View style={styles.offlineBanner}>

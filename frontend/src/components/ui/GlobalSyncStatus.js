@@ -1,66 +1,75 @@
-import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useSyncStore from '../../store/useSyncStore';
-import { stitchTheme, stitchShadows } from '../../theme/stitchTheme';
-import { useTranslation } from 'react-i18next';
+import { stitchTheme } from '../../theme/stitchTheme';
 
 export default function GlobalSyncStatus() {
-  const { t } = useTranslation();
-  const syncStatus = useSyncStore((s) => s.status);
-  const failedCount = useSyncStore((s) => s.failedCount);
+  const status = useSyncStore((s) => s.status); // 'idle', 'syncing', 'error'
+  const lastSync = useSyncStore((s) => s.lastSync);
 
-  if (syncStatus === 'idle' && failedCount === 0) return null;
+  const config = useMemo(() => {
+    switch (status) {
+      case 'syncing':
+        return {
+          icon: 'sync-outline',
+          color: stitchTheme.colors.primary,
+          label: 'Syncing...',
+          spinning: true,
+        };
+      case 'error':
+        return {
+          icon: 'cloud-offline-outline',
+          color: stitchTheme.colors.accentRed,
+          label: 'Sync Error',
+          spinning: false,
+        };
+      default:
+        return {
+          icon: 'cloud-done-outline',
+          color: stitchTheme.colors.textMuted,
+          label: lastSync ? `Last sync: ${new Date(lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Up to date',
+          spinning: false,
+        };
+    }
+  }, [status, lastSync]);
 
   return (
-    <View style={[styles.container, syncStatus === 'error' ? styles.errorContainer : styles.syncingContainer]}>
-      {syncStatus === 'syncing' ? (
-        <>
-          <Animated.View style={styles.spinner}>
-            <Ionicons name="sync" size={12} color="#fff" />
-          </Animated.View>
-          <Text style={styles.text}>{t('common.loading', { defaultValue: 'Syncing...' })}</Text>
-        </>
-      ) : (
-        <>
-          <Ionicons name="warning" size={12} color="#fff" />
-          <Text style={styles.text}>{failedCount} {t('settings.sync_errors.title', { defaultValue: 'Errors' })}</Text>
-        </>
-      )}
+    <View style={styles.container}>
+      <View style={styles.pill}>
+        {config.spinning ? (
+          <ActivityIndicator size="small" color={config.color} style={styles.spinner} />
+        ) : (
+          <Ionicons name={config.icon} size={14} color={config.color} />
+        )}
+        <Text style={[styles.text, { color: config.color }]}>{config.label}</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 10,
-    right: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
-    zIndex: 100,
-    gap: 4,
-    ...stitchShadows.float,
-  },
-  syncingContainer: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  errorContainer: {
-    backgroundColor: stitchTheme.colors.danger,
+    borderRadius: 20,
+    gap: 6,
   },
   text: {
-    color: '#fff',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   spinner: {
-    // In a real app, this would use an Animated rotation, 
-    // but for simplicity we just show the icon.
-  }
+    transform: [{ scale: 0.7 }],
+  },
 });
