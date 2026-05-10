@@ -73,7 +73,6 @@ const PayeePicker = ({ selectedId, onSelect, t }) => {
 
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-...
   const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [category, setCategory] = useState('other');

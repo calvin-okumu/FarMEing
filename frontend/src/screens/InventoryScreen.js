@@ -76,7 +76,6 @@ const PayeePicker = ({ selectedId, onSelect, t }) => {
 export default function InventoryScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, projectName } = route.params || {};
-...
   const currency = useSettingsStore((s) => s.currency);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [query, setQuery] = useState('');
