@@ -15,6 +15,7 @@ const workEntryRoutes = require('./src/routes/workEntry.routes');
 const harvestRoutes   = require('./src/routes/harvest.routes');
 const saleRoutes      = require('./src/routes/sale.routes');
 const syncRoutes      = require('./src/routes/sync.routes');
+const reportRoutes    = require('./src/routes/report.routes');
 const { authenticate } = require('./src/middleware/auth.middleware');
 
 const app = express();
@@ -51,6 +52,7 @@ apiRouter.use('/work-entries', workEntryRoutes);
 apiRouter.use('/harvests', harvestRoutes);
 apiRouter.use('/sales', saleRoutes);
 apiRouter.use('/sync', syncRoutes);
+apiRouter.use('/reports', reportRoutes);
 
 apiRouter.get('/me', authenticate, (req, res) => {
   res.json({ user: req.user });

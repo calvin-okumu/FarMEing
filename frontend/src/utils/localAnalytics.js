@@ -36,3 +36,30 @@ export function computeProjectSummary({ budgetItems = [], expenses = [], workEnt
     netProfit: parseFloat((totalRevenue - totalCost).toFixed(2)),
   };
 }
+
+export function computePortfolioSummary(projectsData = []) {
+  // projectsData is an array of summaries returned by computeProjectSummary
+  const initial = {
+    totalBudget: 0,
+    totalExpenses: 0,
+    totalLaborCost: 0,
+    totalInventoryCost: 0,
+    totalCost: 0,
+    totalHarvest: 0,
+    totalRevenue: 0,
+    netProfit: 0,
+    projectCount: projectsData.length,
+  };
+
+  return projectsData.reduce((acc, curr) => ({
+    totalBudget: acc.totalBudget + curr.totalBudget,
+    totalExpenses: acc.totalExpenses + curr.totalExpenses,
+    totalLaborCost: acc.totalLaborCost + curr.totalLaborCost,
+    totalInventoryCost: acc.totalInventoryCost + curr.totalInventoryCost,
+    totalCost: acc.totalCost + curr.totalCost,
+    totalHarvest: acc.totalHarvest + curr.totalHarvest,
+    totalRevenue: acc.totalRevenue + curr.totalRevenue,
+    netProfit: acc.netProfit + curr.netProfit,
+    projectCount: acc.projectCount,
+  }), initial);
+}
