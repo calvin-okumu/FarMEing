@@ -139,6 +139,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [workEntries, setWorkEntries] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [sales, setSales] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
@@ -186,6 +187,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
     const workSub = database.get('work_entries').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setWorkEntries);
     const harvestSub = database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests);
     const saleSub = database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales);
+    const inventorySub = database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems);
     const empSub = database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees);
 
     return () => {
@@ -194,11 +196,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
       workSub.unsubscribe();
       harvestSub.unsubscribe();
       saleSub.unsubscribe();
+      inventorySub.unsubscribe();
       empSub.unsubscribe();
     };
   }, [projectId, project?.remoteId]);
 
-  const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales }), [budgetItems, expenses, workEntries, harvests, sales]);
+  const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales, inventoryItems }), [budgetItems, expenses, workEntries, harvests, sales, inventoryItems]);
   const totalBudget = summary.totalBudget;
   const totalExpenses = summary.totalExpenses;
   const totalLabor = summary.totalLaborCost;

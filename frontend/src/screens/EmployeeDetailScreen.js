@@ -12,6 +12,7 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -30,7 +31,6 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import StatusBanner from '../components/ui/StatusBanner';
 import useSettingsStore from '../store/useSettingsStore';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
 import { initializeLocalRecord } from '../utils/localRecord';
@@ -57,6 +57,16 @@ function BalanceBars({ earned, paid, balance }) {
   );
 }
 
+function StatCard({ label, title, value, tone = 'soft' }) {
+  return (
+    <View style={[styles.statCard, tone === 'accent' ? styles.statCardAccent : styles.statCardSoft]}>
+      <Text style={styles.statEyebrow}>{label}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
 export default function EmployeeDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { employeeId } = route.params || {};
@@ -76,21 +86,26 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const paymentQuery = useMemo(() => database.get('payments').query(Q.where('employee_id', employeeId), Q.where('is_deleted', false)), [employeeId]);
 
   const employee = useObservable(employeeObservable, null);
-  const projects = useObservable(projectsQuery, null);
+  const allProjects = useObservable(projectsQuery, null);
   const workEntries = useObservable(workQuery, []);
   const payments = useObservable(paymentQuery, []);
 
   // Assignments Observation
+  const [assignedProjects, setAssignedProjects] = useState([]);
   const [assignmentIds, setAssignmentIds] = useState([]);
+
   useEffect(() => {
-    if (!employee) return;
+    if (!employee || !allProjects) return;
     const sub = employee.assignments.observe().subscribe((as) => {
-      setAssignmentIds(as.filter(a => !a.isDeleted).map(a => a.projectId));
+      const activeAs = as.filter(a => !a.isDeleted);
+      const pids = activeAs.map(a => a.projectId);
+      setAssignmentIds(pids);
+      setAssignedProjects(allProjects.filter(p => pids.includes(p.id) || (p.remoteId && pids.includes(p.remoteId))));
     });
     return () => sub.unsubscribe();
-  }, [employee]);
+  }, [employee, allProjects]);
 
-  const isLoading = employee === null || projects === null;
+  const isLoading = employee === null || allProjects === null;
 
   // Forms
   const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEdit, watch: watchEdit, setValue: setEditValue } = useForm({
@@ -169,7 +184,6 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
-
   const handleDelete = async () => {
     try {
       await database.write(async () => {
@@ -178,10 +192,8 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       });
       syncAll().catch(() => {});
       setDeleteVisible(false);
-      setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
       navigation.goBack();
     } catch (error) {
-      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
     }
   };
@@ -203,7 +215,6 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       resetPayment({ amount: '', note: '', date: new Date() });
       setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (error) {
-      setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
     }
   };
@@ -237,9 +248,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
-  if (isLoading) {
-    return <StitchScreenSkeleton />;
-  }
+  if (isLoading) return <StitchScreenSkeleton />;
 
   if (!employee) {
     return (
@@ -253,15 +262,15 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <StitchDashboardShell
         hero={{
-          eyebrow: t('employees.title'),
+          eyebrow: employee.role || t('employees.role_unset'),
           title: employee.name,
-          subtitle: employee.role || employee.phone || t('employees.work_history'),
-          actionIcon: 'create-outline',
-          onActionPress: () => setEditVisible(true),
+          subtitle: employee.phone || t('employees.no_phone'),
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('employees.outstanding_balance')} value={formatCurrency(balance.outstanding, currency)} icon='wallet-outline' />
-              <StitchHeroPill label={t('payments.title')} value={String(payments.length)} icon='cash-outline' />
+              <StitchHeroPill label={t('dashboard.outstanding')} value={formatCurrency(balance.outstanding, currency)} icon='wallet-outline' style={styles.heroPillAccent} />
+              <StitchHeroPill label="Assigned" value={t('employees.project_count', { count: assignedProjects.length, defaultValue: `${assignedProjects.length} Projects` })} icon='apps-outline' />
             </View>
           ),
         }}
@@ -270,71 +279,111 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-
-      <StitchSurface style={styles.header}>
-        <View style={styles.avatarLarge}><Text style={styles.avatarTextLarge}>{(employee.name || '?').charAt(0).toUpperCase()}</Text></View>
-        <Text style={styles.employeeName}>{employee.name}</Text>
-        {employee.role ? <Text style={styles.employeeRole}>{employee.role}</Text> : null}
-        <BalanceBars earned={balance.totalEarned} paid={balance.totalPaid} balance={balance.outstanding} />
-      </StitchSurface>
-
-      <View style={styles.analyticsRow}>
-        <View style={styles.analyticsCard}>
-          <Text style={styles.analyticsLabel}>{t('employees.total_earned')}</Text>
-          <Text style={styles.analyticsValue}>{formatCurrency(balance.totalEarned, currency)}</Text>
-        </View>
-        <View style={styles.analyticsCard}>
-          <Text style={styles.analyticsLabel}>{t('payments.title')}</Text>
-          <Text style={styles.analyticsValue}>{formatCurrency(balance.totalPaid, currency)}</Text>
-        </View>
-        <View style={styles.analyticsCard}>
-          <Text style={styles.analyticsLabel}>{t('employees.entries_count')}</Text>
-          <Text style={styles.analyticsValue}>{String(workEntries.length)}</Text>
-        </View>
-      </View>
-
-      <View style={styles.balanceCard}>
-        <View>
-          <Text style={styles.balanceLabel}>{t('employees.outstanding_balance')}</Text>
-          <Text style={[styles.balanceValue, balance.outstanding > 0 ? styles.balancePositive : styles.balanceNeutral]}>{formatCurrency(balance.outstanding, currency)}</Text>
-        </View>
-        <StitchPrimaryButton label={t('payments.pay_worker')} onPress={() => setPaymentVisible(true)} disabled={balance.outstanding <= 0} icon="cash-outline" style={styles.payButton} />
-      </View>
-
-      <StitchDashboardSectionHeader title={t('employees.title')} subtitle={activeTab === 'work' ? t('employees.work_log') : t('payments.title')} actionLabel={String(activeTab === 'work' ? workEntries.length : payments.length)} />
-
-      <View style={styles.tabs}>
-        <StitchChip label={t('employees.work_log')} active={activeTab === 'work'} onPress={() => setActiveTab('work')} style={styles.tabButton} />
-        <StitchChip label={t('payments.title')} active={activeTab === 'payments'} onPress={() => setActiveTab('payments')} style={styles.tabButton} />
-      </View>
-
-      {(activeTab === 'work' ? workEntries : payments).map((item) => (
-        <View key={item.id} style={styles.listItem}>
-          <View style={styles.listItemHeader}>
-            <Text style={styles.listItemTitle}>{activeTab === 'work' ? item.activity : t('payments.title')}</Text>
-            <View style={styles.listItemActions}>
-              <Text style={styles.listItemAmount}>{formatCurrency(activeTab === 'work' ? item.totalCost : item.amount, currency)}</Text>
-              {activeTab === 'payments' ? (
-                <TouchableOpacity onPress={() => setDeletePaymentTarget(item)} activeOpacity={0.8} style={styles.inlineDeleteButton}>
-                  <Ionicons name="trash-outline" size={16} color="#9c1111" />
-                </TouchableOpacity>
-              ) : null}
+        <StitchSurface style={styles.summarySurface}>
+          <View style={styles.summaryTop}>
+            <View style={styles.avatarLarge}>
+              <Text style={styles.avatarTextLarge}>{(employee.name || '?').charAt(0).toUpperCase()}</Text>
+            </View>
+            <View style={styles.summaryMeta}>
+              <Text style={styles.summaryName}>{employee.name}</Text>
+              <Text style={styles.summaryRole}>{employee.role || 'Unset Role'}</Text>
             </View>
           </View>
-          <Text style={styles.listItemMeta}>{formatAppDate(item.date)}{item.note ? ` • ${item.note}` : ''}</Text>
+          <BalanceBars earned={balance.totalEarned} paid={balance.totalPaid} balance={balance.outstanding} />
+        </StitchSurface>
+
+        <View style={styles.statGrid}>
+          <StatCard label="Earnings" title={t('employees.earned')} value={formatCurrency(balance.totalEarned, currency)} tone="accent" />
+          <StatCard label="Payments" title={t('employees.paid')} value={formatCurrency(balance.totalPaid, currency)} />
         </View>
-      ))}
-      {activeTab === 'work' && !workEntries.length ? <Text style={styles.emptyText}>{t('labor.empty_state')}</Text> : null}
-      {activeTab === 'payments' && !payments.length ? <Text style={styles.emptyText}>{t('payments.empty')}</Text> : null}
-      <TouchableOpacity style={styles.deleteTrigger} onPress={() => setDeleteVisible(true)} activeOpacity={0.88}>
-        <Ionicons name="trash-outline" size={18} color="#9c1111" />
-        <Text style={styles.deleteTriggerText}>{t('common.delete')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.refreshTrigger} onPress={handleRefresh} activeOpacity={0.88}>
-        <Ionicons name="sync-outline" size={18} color={stitchTheme.colors.primary} />
-        <Text style={styles.refreshTriggerText}>{isRefreshing ? t('common.loading') : t('common.refresh')}</Text>
-      </TouchableOpacity>
-      <View style={{ height: 40 }} />
+
+        <View style={styles.actionRow}>
+          {employee.phone ? (
+            <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(`tel:${employee.phone}`)} activeOpacity={0.88}>
+              <View style={[styles.actionIconBox, { backgroundColor: stitchTheme.colors.primarySoft }]}>
+                <Ionicons name="call-outline" size={20} color={stitchTheme.colors.primary} />
+              </View>
+              <Text style={styles.actionBtnText}>Call</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setEditVisible(true)} activeOpacity={0.88}>
+            <View style={[styles.actionIconBox, { backgroundColor: stitchTheme.colors.surfaceMuted }]}>
+              <Ionicons name="create-outline" size={20} color={stitchTheme.colors.textSoft} />
+            </View>
+            <Text style={styles.actionBtnText}>{t('common.edit')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, styles.payBtn]} onPress={() => setPaymentVisible(true)} activeOpacity={0.88}>
+            <Ionicons name="cash-outline" size={18} color="#fff" />
+            <Text style={[styles.actionBtnText, { color: '#fff' }]}>{t('employees.pay_worker')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {assignedProjects.length > 0 ? (
+          <View style={styles.section}>
+            <StitchDashboardSectionHeader 
+              title={t('employees.fields.project', { defaultValue: 'Assigned Projects' })} 
+              subtitle="Current farm project assignments"
+              actionLabel={String(assignedProjects.length)}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectScroll}>
+              {assignedProjects.map(proj => (
+                <TouchableOpacity 
+                  key={proj.id} 
+                  style={styles.projectCard}
+                  onPress={() => navigation.navigate('ProjectDetail', { projectId: proj.id })}
+                >
+                  <View style={styles.projectIcon}>
+                    <Ionicons name="leaf" size={16} color={stitchTheme.colors.primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.projectName} numberOfLines={1}>{proj.name}</Text>
+                    <Text style={styles.projectCrop}>{proj.crop}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        <StitchDashboardSectionHeader title={t('employees.activity_history', { defaultValue: 'Activity History' })} subtitle="Work logs and payouts" />
+        <View style={styles.tabs}>
+          <StitchChip label={t('projects.tabs.labor')} active={activeTab === 'work'} onPress={() => setActiveTab('work')} style={styles.tabButton} />
+          <StitchChip label={t('payments.title', { defaultValue: 'Payments' })} active={activeTab === 'payments'} onPress={() => setActiveTab('payments')} style={styles.tabButton} />
+        </View>
+
+        {activeTab === 'work' ? (
+          workEntries.length ? workEntries.map(entry => (
+            <View key={entry.id} style={styles.listItem}>
+              <View style={styles.listItemHeader}>
+                <Text style={styles.listItemTitle}>{entry.activity}</Text>
+                <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost, currency)}</Text>
+              </View>
+              <Text style={styles.listItemMeta}>{formatAppDate(entry.date)} • {entry.daysWorked} {t('labor.days')}</Text>
+            </View>
+          )) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
+        ) : (
+          payments.length ? payments.map(payment => (
+            <View key={payment.id} style={styles.listItem}>
+              <View style={styles.listItemHeader}>
+                <Text style={styles.listItemTitle}>{payment.note || t('payments.payment_recorded')}</Text>
+                <Text style={[styles.listItemAmount, { color: stitchTheme.colors.primary }]}>{formatCurrency(payment.amount, currency)}</Text>
+              </View>
+              <View style={styles.listItemFooter}>
+                <Text style={styles.listItemMeta}>{formatAppDate(payment.date)}</Text>
+                <TouchableOpacity onPress={() => setDeletePaymentTarget(payment)}>
+                  <Ionicons name="trash-outline" size={14} color={stitchTheme.colors.accentRed} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )) : <Text style={styles.emptyText}>{t('payments.empty')}</Text>
+        )}
+
+        <TouchableOpacity style={styles.deleteTrigger} onPress={() => setDeleteVisible(true)} activeOpacity={0.88}>
+          <Ionicons name="trash-outline" size={18} color="#9c1111" />
+          <Text style={styles.deleteTriggerText}>{t('common.delete')}</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </StitchDashboardShell>
 
       <Modal visible={editVisible} animationType="slide" transparent>
@@ -371,7 +420,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           
           <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
-            {projects && projects.map((proj) => (
+            {allProjects && allProjects.map((proj) => (
               <TouchableOpacity
                 key={proj.id}
                 style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
@@ -424,49 +473,56 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: stitchTheme.spacing.screen },
   errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted },
   contentWrap: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
-  header: { padding: stitchTheme.spacing.md, alignItems: 'center', borderRadius: stitchTheme.radius.card },
-  avatarLarge: { width: 50, height: 50, borderRadius: 25, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: stitchTheme.spacing.xs },
-  avatarTextLarge: { color: '#fff', fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800' },
-  employeeName: { fontSize: stitchTheme.typography.section.fontSize, lineHeight: stitchTheme.typography.section.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary, textAlign: 'center' },
-  employeeRole: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, marginTop: 3, fontWeight: '700' },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  heroPillAccent: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
+  summarySurface: { padding: stitchTheme.spacing.md, borderRadius: stitchTheme.radius.card, marginBottom: 12 },
+  summaryTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  avatarLarge: { width: 52, height: 52, borderRadius: 20, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarTextLarge: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  summaryMeta: { flex: 1 },
+  summaryName: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary },
+  summaryRole: { fontSize: 12, fontWeight: '700', color: stitchTheme.colors.accentBrown, marginTop: 2 },
   balanceBars: { height: 42, flexDirection: 'row', alignItems: 'flex-end', gap: 5, marginTop: stitchTheme.spacing.sm },
   balanceBar: { width: 14, borderTopLeftRadius: 8, borderTopRightRadius: 8, minHeight: 14 },
-  analyticsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm },
-  analyticsCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.lg, paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: stitchTheme.spacing.sm },
-  analyticsLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.7 },
-  analyticsValue: { marginTop: 3, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
-  balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.surfaceHighlight, marginTop: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.md, padding: stitchTheme.spacing.md, borderRadius: stitchTheme.radius.card, ...stitchShadows.card },
-  balanceLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, marginBottom: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  balanceValue: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900' },
-  balancePositive: { color: '#ef4444' },
-  balanceNeutral: { color: stitchTheme.colors.primary },
-  payButton: { minHeight: 46, paddingHorizontal: stitchTheme.spacing.md },
-  tabs: { flexDirection: 'row', marginBottom: stitchTheme.spacing.xs, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: 6 },
+  statGrid: { flexDirection: 'row', gap: 8, marginBottom: 12, paddingHorizontal: stitchTheme.spacing.screen },
+  statCard: { flex: 1, borderRadius: 15, padding: 12, ...stitchShadows.soft },
+  statCardSoft: { backgroundColor: stitchTheme.colors.surfaceHighlight },
+  statCardAccent: { backgroundColor: stitchTheme.colors.surfaceTint },
+  statEyebrow: { fontSize: 10, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  statTitle: { marginTop: 3, fontSize: 11, fontWeight: '800', color: stitchTheme.colors.text },
+  statValue: { marginTop: 2, fontSize: 16, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.5 },
+  actionRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, paddingHorizontal: stitchTheme.spacing.screen, marginBottom: stitchTheme.spacing.lg },
+  actionBtn: { flex: 1, height: 44, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceHighlight, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, ...stitchShadows.soft },
+  payBtn: { flex: 1.5, backgroundColor: stitchTheme.colors.primaryContainer },
+  actionIconBox: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  actionBtnText: { fontSize: 11, fontWeight: '800', color: stitchTheme.colors.text, textTransform: 'uppercase' },
+  section: { marginBottom: stitchTheme.spacing.lg },
+  projectScroll: { gap: 10, paddingHorizontal: stitchTheme.spacing.screen, paddingVertical: 4 },
+  projectCard: { width: 160, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, ...stitchShadows.card },
+  projectIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  projectName: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
+  projectCrop: { fontSize: 11, fontWeight: '600', color: stitchTheme.colors.textMuted },
+  tabs: { flexDirection: 'row', marginBottom: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: 6, marginHorizontal: stitchTheme.spacing.screen },
   tabButton: { flex: 1 },
-  listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.sm + 2, marginBottom: stitchTheme.spacing.xs, ...stitchShadows.card },
-  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: stitchTheme.spacing.sm },
-  listItemActions: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs },
-  listItemTitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, flex: 1, textTransform: 'uppercase', letterSpacing: 0.7 },
-  listItemAmount: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
-  inlineDeleteButton: { padding: 6, borderRadius: stitchTheme.radius.sm, backgroundColor: 'rgba(156,17,17,0.08)' },
-  listItemMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
-  emptyText: { color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, textAlign: 'center', marginTop: stitchTheme.spacing.lg },
-  deleteTrigger: { marginTop: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.xs, marginHorizontal: stitchTheme.spacing.screen, ...stitchShadows.card },
+  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  listItemTitle: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.text, textTransform: 'uppercase' },
+  listItemAmount: { fontSize: 14, fontWeight: '900', color: stitchTheme.colors.text },
+  listItemMeta: { fontSize: 11, color: stitchTheme.colors.textMuted },
+  listItemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  emptyText: { color: stitchTheme.colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: stitchTheme.spacing.xl },
+  deleteTrigger: { marginTop: stitchTheme.spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   deleteTriggerText: { color: '#9c1111', fontWeight: '800' },
-  refreshTrigger: { marginTop: stitchTheme.spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  refreshTriggerText: { color: stitchTheme.colors.primary, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  projectSelectionRow: { gap: 8, paddingVertical: 4 },
+  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border, marginBottom: stitchTheme.spacing.md },
+  projectSelectionRow: { gap: 8, paddingVertical: 4, marginBottom: stitchTheme.spacing.md },
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
   projectChipTextActive: { color: stitchTheme.colors.primary },
-  saveButton: { marginTop: stitchTheme.spacing.lg },
+  saveButton: { marginTop: stitchTheme.spacing.md },
 });
-
