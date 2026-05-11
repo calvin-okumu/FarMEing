@@ -28,7 +28,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchPrimaryButton, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -181,15 +181,20 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [inviteVisible, setInviteVisible] = useState(false);
   const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER' });
   const [banner, setBanner] = useState(null);
+  const apiProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
 
   const fetchTeam = async () => {
-    if (!projectId) return;
+    if (!apiProjectId) return;
     setTeamLoading(true);
     try {
-      const res = await api.get(`/projects/${projectId}/members`);
+      const res = await api.get(`/projects/${apiProjectId}/members`);
       setTeam(res.data.members);
     } catch (err) {
-      console.warn('[Team] Fetch error:', err.message);
+      if (err.statusCode === 404) {
+        setTeam([]);
+      } else {
+        console.warn('[Team] Fetch error:', err.message);
+      }
     } finally {
       setTeamLoading(false);
     }
@@ -199,12 +204,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
     if (activeTab === 'team') {
       fetchTeam();
     }
-  }, [activeTab]);
+  }, [activeTab, apiProjectId]);
 
   const handleInvite = async () => {
-    if (!inviteForm.phone) return;
+    if (!inviteForm.phone || !apiProjectId) return;
     try {
-      await api.post(`/projects/${projectId}/members`, inviteForm);
+      await api.post(`/projects/${apiProjectId}/members`, inviteForm);
       setInviteVisible(false);
       setInviteForm({ phone: '', role: 'MANAGER' });
       fetchTeam();
@@ -215,8 +220,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
   };
 
   const handleRemoveMember = async (targetUserId) => {
+    if (!apiProjectId) return;
     try {
-      await api.delete(`/projects/${projectId}/members/${targetUserId}`);
+      await api.delete(`/projects/${apiProjectId}/members/${targetUserId}`);
       fetchTeam();
       setBanner({ tone: 'success', title: 'Removed', message: 'Member access revoked.' });
     } catch (err) {
@@ -229,13 +235,17 @@ export default function ProjectDetailScreen({ route, navigation }) {
     setExporting(true);
     try {
       await syncAll();
+      const resolvedProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
+      if (!resolvedProjectId) {
+        throw new Error('Project is not available for export yet');
+      }
       const token = useAuthStore.getState().token;
       const extension = format === 'excel' ? 'xlsx' : 'pdf';
       const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.${extension}`;
       const endpoint = format === 'excel' ? 'excel' : 'pdf';
       
       const downloadRes = await FileSystem.downloadAsync(
-        `${BASE_URL}reports/project/${project.id}/${endpoint}`,
+        `${BASE_URL}reports/project/${resolvedProjectId}/${endpoint}`,
         fileUri,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -362,7 +372,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   }, [workEntries, expenses, harvests, sales, employeeMap, t]);
 
   const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => (
-    <View style={styles.collectionCard}>
+    <View key={item.id} style={styles.collectionCard}>
       <View style={styles.collectionTopRow}>
         <Text style={styles.collectionTitle}>{title}</Text>
         <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
@@ -497,8 +507,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {activeTab === 'timeline' && localTimeline.map((item, i) => (
-          <View key={i} style={styles.listItem}>
+        {activeTab === 'timeline' && localTimeline.map((item) => (
+          <View key={`${item.type}-${item.date}-${item.title}`} style={styles.listItem}>
              <View style={styles.listItemHeader}>
                 <Text style={styles.listItemTitle}>{item.title}</Text>
                 <Text style={styles.listItemAmount}>{formatCurrency(item.amount || 0, currency)}</Text>

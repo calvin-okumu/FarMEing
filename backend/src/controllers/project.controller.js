@@ -41,21 +41,57 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
+const ensureOwnerAccess = async (projectId, userId) => {
+  if (!prisma.projectAccess) {
+    return null;
+  }
+
+  return prisma.projectAccess.upsert({
+    where: {
+      userId_projectId: {
+        userId,
+        projectId,
+      },
+    },
+    create: {
+      userId,
+      projectId,
+      role: 'OWNER',
+    },
+    update: {
+      role: 'OWNER',
+    },
+  });
+};
+
 /**
  * Find a project that the authenticated user has access to.
  * Sends 404 if not found. Returns { project, accessRole } or null.
  */
 const findAccessible = async (id, userId, res, includeDeleted = false) => {
-  const access = await prisma.projectAccess.findFirst({
-    where: { projectId: id, userId },
-    include: { project: { select: PROJECT_SELECT } },
+  const access = prisma.projectAccess
+    ? await prisma.projectAccess.findFirst({
+        where: { projectId: id, userId },
+        include: { project: { select: PROJECT_SELECT } },
+      })
+    : null;
+
+  if (access && (includeDeleted || !access.project.isDeleted)) {
+    return { project: access.project, accessRole: access.role };
+  }
+
+  const project = await prisma.farmProject.findUnique({
+    where: { id },
+    select: PROJECT_SELECT,
   });
 
-  if (!access || (!includeDeleted && access.project.isDeleted)) {
+  if (!project || project.userId !== userId || (!includeDeleted && project.isDeleted)) {
     res.status(404).json({ error: 'Project not found' });
     return null;
   }
-  return { project: access.project, accessRole: access.role };
+
+  await ensureOwnerAccess(id, userId);
+  return { project, accessRole: 'OWNER' };
 };
 
 // ── POST /projects ────────────────────────────────────────────────────────────

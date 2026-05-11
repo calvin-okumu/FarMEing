@@ -7,6 +7,10 @@ export default class FarmProject extends Model {
     employee_project_assignments: { type: 'has_many', foreignKey: 'project_id' },
   };
 
+  get remoteId() {
+    return this._raw.remote_id || null;
+  }
+
   @text('user_id')    userId;
   @text('season_id')  seasonId;
   @text('name')       name;

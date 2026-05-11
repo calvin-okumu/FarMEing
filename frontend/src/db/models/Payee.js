@@ -9,6 +9,10 @@ export default class Payee extends Model {
     inventory_items: { type: 'has_many', foreignKey: 'payee_id' },
   };
 
+  get remoteId() {
+    return this._raw.remote_id || null;
+  }
+
   @text('user_id')    userId;
   @text('name')       name;
   @text('phone')      phone;

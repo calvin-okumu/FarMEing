@@ -7,6 +7,10 @@ export default class Employee extends Model {
     employee_project_assignments: { type: 'has_many', foreignKey: 'employee_id' },
   };
 
+  get remoteId() {
+    return this._raw.remote_id || null;
+  }
+
   @text('user_id')    userId;
   @text('name')       name;
   @text('phone')      phone;

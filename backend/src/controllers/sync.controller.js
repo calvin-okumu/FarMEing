@@ -70,6 +70,30 @@ const reverseMapping = Object.fromEntries(
   Object.entries(fieldMapping).map(([k, v]) => [v, k])
 );
 
+const getAccessibleProjectIdsForUser = async (userId) => {
+  const projectIds = new Set();
+
+  const ownedProjects = await prisma.farmProject.findMany({
+    where: { userId, isDeleted: false },
+    select: { id: true },
+  });
+
+  ownedProjects.forEach((project) => projectIds.add(project.id));
+
+  if (!prisma.projectAccess) {
+    console.warn('[sync] prisma.projectAccess is unavailable; falling back to owned projects only');
+    return Array.from(projectIds);
+  }
+
+  const accessRecords = await prisma.projectAccess.findMany({
+    where: { userId },
+    select: { projectId: true },
+  });
+
+  accessRecords.forEach((access) => projectIds.add(access.projectId));
+  return Array.from(projectIds);
+};
+
 // Helper to convert Prisma record to WatermelonDB format
 const toWatermelon = (record) => {
   const result = {};
@@ -129,11 +153,7 @@ exports.pull = async (req, res) => {
     const changes = {};
 
     // 1. Get all project IDs this user has access to
-    const accessRecords = await prisma.projectAccess.findMany({
-      where: { userId: req.user.id },
-      select: { projectId: true }
-    });
-    const accessibleProjectIds = accessRecords.map(a => a.projectId);
+    const accessibleProjectIds = await getAccessibleProjectIdsForUser(req.user.id);
 
     for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
       try {
@@ -253,6 +273,25 @@ exports.push = async (req, res) => {
               create: data,
               update: data, // Client Wins
             });
+
+            if (prismaModel === 'farmProject' && tx.projectAccess) {
+              await tx.projectAccess.upsert({
+                where: {
+                  userId_projectId: {
+                    userId: req.user.id,
+                    projectId: data.id,
+                  },
+                },
+                create: {
+                  userId: req.user.id,
+                  projectId: data.id,
+                  role: 'OWNER',
+                },
+                update: {
+                  role: 'OWNER',
+                },
+              });
+            }
           } catch (upsertError) {
             console.error(`[sync] Upsert failed for ${prismaModel} ${data.id}:`, upsertError.message);
             console.error('[sync] Data payload:', JSON.stringify(data, null, 2));
