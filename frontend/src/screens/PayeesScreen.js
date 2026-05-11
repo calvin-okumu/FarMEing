@@ -25,6 +25,7 @@ import {
   StitchBadge,
   StitchChip,
   StitchIconButton,
+  StitchInput,
   StitchSearchBar,
   StitchPrimaryButton,
   StitchSectionTitle,
@@ -96,7 +97,7 @@ export default function PayeesScreen({ navigation }) {
   const [banner, setBanner] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { control, handleSubmit, reset, watch } = useForm({
+  const { control, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: { name: '', phone: '', email: '', category: '', notes: '' }
   });
 
