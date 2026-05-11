@@ -16,6 +16,7 @@ import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import { BASE_URL } from '../lib/api';
 import useSettingsStore from '../store/useSettingsStore';
 import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
@@ -157,12 +158,10 @@ export default function ProjectDetailScreen({ route, navigation }) {
       await syncAll();
 
       const token = useAuthStore.getState().token;
-      // Get base URL from axios config if possible, else use env
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.carlhub.uk/api';
       const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.pdf`;
 
       const downloadRes = await FileSystem.downloadAsync(
-        `${apiUrl}/reports/project/${project.id}/pdf`,
+        `${BASE_URL}reports/project/${project.id}/pdf`,
         fileUri,
         {
           headers: {
@@ -217,7 +216,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
     if (!projectId) return;
 
     const projectIds = [projectId];
-    if (project?.remoteId) projectIds.push(project.remoteId);
 
     const budgetSub = database.get('budget_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setBudgetItems);
     const expenseSub = database.get('expenses').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setExpenses);
@@ -236,7 +234,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       inventorySub.unsubscribe();
       empSub.unsubscribe();
     };
-  }, [projectId, project?.remoteId]);
+  }, [projectId]);
 
   const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales, inventoryItems }), [budgetItems, expenses, workEntries, harvests, sales, inventoryItems]);
   const totalBudget = summary.totalBudget;
