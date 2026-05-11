@@ -1,23 +1,33 @@
 const PDFDocument = require('pdfkit');
+const ExcelJS = require('exceljs');
 const prisma = require('../lib/prisma');
+const { checkProjectAccess } = require('../lib/project-access');
+
+const getProjectData = async (id, userId) => {
+  const { hasAccess, project } = await checkProjectAccess(id, userId);
+  
+  if (!hasAccess) return null;
+
+  return await prisma.farmProject.findUnique({
+    where: { id },
+    include: {
+      budgetItems: { where: { isDeleted: false } },
+      expenses: { where: { isDeleted: false }, include: { payeeRecord: true } },
+      workEntries: { where: { isDeleted: false }, include: { employee: true } },
+      harvests: { where: { isDeleted: false } },
+      sales: { where: { isDeleted: false } },
+      inventoryItems: { where: { isDeleted: false } },
+    },
+  });
+};
 
 const generateProjectReport = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const project = await prisma.farmProject.findUnique({
-      where: { id },
-      include: {
-        budgetItems: { where: { isDeleted: false } },
-        expenses: { where: { isDeleted: false }, include: { payeeRecord: true } },
-        workEntries: { where: { isDeleted: false }, include: { employee: true } },
-        harvests: { where: { isDeleted: false } },
-        sales: { where: { isDeleted: false } },
-        inventoryItems: { where: { isDeleted: false } },
-      },
-    });
+    const project = await getProjectData(id, req.user.id);
 
-    if (!project || project.userId !== req.user.id) {
+    if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
@@ -88,6 +98,97 @@ const generateProjectReport = async (req, res) => {
   }
 };
 
+const generateProjectExcelReport = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const project = await getProjectData(id, req.user.id);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Shamba Mkononi';
+    workbook.created = new Date();
+
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.columns = [
+      { header: 'Property', key: 'prop', width: 25 },
+      { header: 'Value', key: 'val', width: 30 },
+    ];
+
+    summarySheet.addRow({ prop: 'Project Name', val: project.name });
+    summarySheet.addRow({ prop: 'Crop', val: project.crop || 'N/A' });
+    summarySheet.addRow({ prop: 'Status', val: project.status });
+    summarySheet.addRow({ prop: 'Land Size', val: `${project.landSize} ${project.landUnit}` });
+    summarySheet.addRow({});
+
+    // Financials
+    const totalExpenses = project.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalLabor = project.workEntries.reduce((sum, w) => sum + (w.totalCost || 0), 0);
+    const totalInventory = project.inventoryItems.reduce((sum, i) => sum + (i.totalCost || 0), 0);
+    const totalRevenue = project.sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    const totalCost = totalExpenses + totalLabor + totalInventory;
+
+    summarySheet.addRow({ prop: 'Total Revenue', val: totalRevenue });
+    summarySheet.addRow({ prop: 'Total Cost', val: totalCost });
+    summarySheet.addRow({ prop: 'Net Profit/Loss', val: totalRevenue - totalCost });
+
+    // Expenses Sheet
+    const expenseSheet = workbook.addWorksheet('Expenses');
+    expenseSheet.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Payee', key: 'payee', width: 25 },
+      { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Note', key: 'note', width: 40 },
+    ];
+    project.expenses.forEach(e => {
+      expenseSheet.addRow({
+        date: e.date.toLocaleDateString(),
+        category: e.category,
+        payee: e.payee || e.payeeRecord?.name || 'N/A',
+        amount: e.amount,
+        note: e.note
+      });
+    });
+
+    // Labor Sheet
+    const laborSheet = workbook.addWorksheet('Labor');
+    laborSheet.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Worker', key: 'name', width: 25 },
+      { header: 'Activity', key: 'activity', width: 25 },
+      { header: 'Days', key: 'days', width: 10 },
+      { header: 'Cost', key: 'cost', width: 15 },
+    ];
+    project.workEntries.forEach(w => {
+      laborSheet.addRow({
+        date: w.date.toLocaleDateString(),
+        name: w.employee.name,
+        activity: w.activity,
+        days: w.daysWorked,
+        cost: w.totalCost
+      });
+    });
+
+    const filename = `Report_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Excel Export Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate Excel report' });
+    }
+  }
+};
+
 module.exports = {
   generateProjectReport,
+  generateProjectExcelReport,
 };

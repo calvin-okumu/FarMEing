@@ -7,5 +7,6 @@ const { authenticate } = require('../middleware/auth.middleware');
 router.use(authenticate);
 
 router.get('/project/:id/pdf', reportController.generateProjectReport);
+router.get('/project/:id/excel', reportController.generateProjectExcelReport);
 
 module.exports = router;

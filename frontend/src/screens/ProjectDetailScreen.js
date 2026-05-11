@@ -16,7 +16,7 @@ import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { BASE_URL } from '../lib/api';
+import api, { BASE_URL } from '../lib/api';
 import useSettingsStore from '../store/useSettingsStore';
 import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
@@ -28,6 +28,11 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
+import { BarChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
+
+const screenWidth = Dimensions.get('window').width;
+
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
 import StatusBanner from '../components/ui/StatusBanner';
@@ -35,7 +40,7 @@ import { deleteLocalModel } from '../utils/resourceMutations';
 import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
 
-const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
+const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'team', 'timeline'];
 
 function SummaryCard({ label, value, tone = 'default' }) {
   return (
@@ -129,6 +134,33 @@ function WorkspaceAction({ label, icon, onPress, tone = 'default' }) {
   );
 }
 
+function TeamMemberCard({ member, isOwner, onRemove, t }) {
+  return (
+    <View style={styles.collectionCard}>
+      <View style={styles.collectionTopRow}>
+        <View style={styles.teamInfo}>
+          <View style={styles.teamAvatar}>
+            <Text style={styles.teamAvatarText}>{member.name.charAt(0).toUpperCase()}</Text>
+          </View>
+          <View>
+            <Text style={styles.collectionTitle}>{member.name}</Text>
+            <Text style={styles.collectionMeta}>{member.phone}</Text>
+          </View>
+        </View>
+        <View style={styles.roleBadge}>
+          <Text style={styles.roleText}>{member.role}</Text>
+        </View>
+      </View>
+      {isOwner && member.role !== 'OWNER' ? (
+        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)}>
+          <Ionicons name="person-remove-outline" size={16} color={stitchTheme.colors.accentRed} />
+          <Text style={styles.removeMemberText}>Revoke Access</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
 export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, initialTab } = route.params || {};
@@ -150,18 +182,23 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState('latest');
   const [exporting, setExporting] = useState(false);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
 
-  const handleExportPDF = async () => {
+  const handleExport = async (format = 'pdf') => {
+    setExportModalVisible(false);
     setExporting(true);
     try {
-      // Ensure we are synced first so the server has the latest data
+      // Ensure we are synced first
       await syncAll();
 
       const token = useAuthStore.getState().token;
-      const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.pdf`;
+      const extension = format === 'excel' ? 'xlsx' : 'pdf';
+      const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.${extension}`;
 
+      const endpoint = format === 'excel' ? 'excel' : 'pdf';
+      
       const downloadRes = await FileSystem.downloadAsync(
-        `${BASE_URL}reports/project/${project.id}/pdf`,
+        `${BASE_URL}reports/project/${project.id}/${endpoint}`,
         fileUri,
         {
           headers: {
@@ -171,13 +208,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
       );
 
       if (downloadRes.status !== 200) {
-        throw new Error('Failed to download report');
+        throw new Error(`Failed to download ${format} report`);
       }
 
       await Sharing.shareAsync(downloadRes.uri);
     } catch (err) {
       console.error('[Export] Error:', err.message);
-      Alert.alert('Export Failed', 'Could not generate or download the report. Please ensure you have an internet connection.');
+      Alert.alert('Export Failed', `Could not generate or download the ${format} report.`);
     } finally {
       setExporting(false);
     }
@@ -569,10 +606,10 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
               <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
-              <TouchableOpacity onPress={handleExportPDF} disabled={exporting}>
+              <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
                 <StitchHeroPill 
-                  label={exporting ? 'Generating...' : 'Export PDF'} 
-                  value={exporting ? 'Wait' : 'Cost Report'} 
+                  label={exporting ? 'Wait...' : 'Export'} 
+                  value={exporting ? 'Working' : 'Reports'} 
                   icon={exporting ? 'refresh-outline' : 'download-outline'} 
                   style={styles.heroPillTertiary}
                 />
@@ -602,6 +639,33 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={[styles.progressBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && styles.progressBarFillDanger]} />
           </View>
           <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.total_spent')}</Text>
+
+          <View style={styles.inlineChartBox}>
+            <BarChart
+              data={{
+                labels: ['Budget', 'Actual'],
+                datasets: [{
+                  data: [totalBudget, totalSpent]
+                }]
+              }}
+              width={screenWidth - 64}
+              height={160}
+              yAxisLabel={currency === 'TZS' ? 'T' : '$'}
+              chartConfig={{
+                backgroundColor: stitchTheme.colors.surfaceInset,
+                backgroundGradientFrom: stitchTheme.colors.surfaceInset,
+                backgroundGradientTo: stitchTheme.colors.surfaceInset,
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(122, 130, 150, ${opacity})`,
+                style: { borderRadius: 12 },
+                propsForLabels: { fontSize: 10, fontWeight: '700' }
+              }}
+              style={{ borderRadius: 12, marginTop: 12 }}
+              fromZero
+              showValuesOnTopOfBars
+            />
+          </View>
         </StitchSurface>
 
         <View style={styles.overviewGrid}>
@@ -781,6 +845,87 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </>
         ) : null}
 
+function TeamMemberCard({ member, isOwner, onRemove, t }) {
+  return (
+    <View style={styles.collectionCard}>
+      <View style={styles.collectionTopRow}>
+        <View style={styles.teamInfo}>
+          <View style={styles.teamAvatar}>
+            <Text style={styles.teamAvatarText}>{member.name.charAt(0).toUpperCase()}</Text>
+          </View>
+          <View>
+            <Text style={styles.collectionTitle}>{member.name}</Text>
+            <Text style={styles.collectionMeta}>{member.phone}</Text>
+          </View>
+        </View>
+        <View style={styles.roleBadge}>
+          <Text style={styles.roleText}>{member.role}</Text>
+        </View>
+      </View>
+      {isOwner && member.role !== 'OWNER' ? (
+        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)}>
+          <Ionicons name="person-remove-outline" size={16} color={stitchTheme.colors.accentRed} />
+          <Text style={styles.removeMemberText}>Revoke Access</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+export default function ProjectDetailScreen({ route, navigation }) {
+...
+  const [activeTab, setActiveTab] = useState('timeline');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState('latest');
+  const [exporting, setExporting] = useState(false);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [team, setTeam] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [inviteVisible, setInviteVisible] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER' });
+
+  const fetchTeam = async () => {
+    if (!project?.remoteId && !projectId) return;
+    setTeamLoading(true);
+    try {
+      const res = await api.get(`/projects/${project.id}/members`);
+      setTeam(res.data.members);
+    } catch (err) {
+      console.warn('[Team] Fetch error:', err.message);
+    } finally {
+      setTeamLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'team') {
+      fetchTeam();
+    }
+  }, [activeTab]);
+
+  const handleInvite = async () => {
+    if (!inviteForm.phone) return;
+    try {
+      await api.post(`/projects/${project.id}/members`, inviteForm);
+      setInviteVisible(false);
+      setInviteForm({ phone: '', role: 'MANAGER' });
+      fetchTeam();
+      setBanner({ tone: 'success', title: 'Success', message: 'Team member invited successfully.' });
+    } catch (err) {
+      Alert.alert('Invitation Failed', err.response?.data?.error || 'Could not invite user.');
+    }
+  };
+
+  const handleRemoveMember = async (targetUserId) => {
+    try {
+      await api.delete(`/projects/${project.id}/members/${targetUserId}`);
+      fetchTeam();
+    } catch (err) {
+      Alert.alert('Error', 'Could not remove team member.');
+    }
+  };
+...
         {activeTab === 'timeline' ? (
           <View style={styles.timelineContainer}>
             <View style={styles.timelineHeaderBlock}>
@@ -792,8 +937,77 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
         ) : null}
 
+        {activeTab === 'team' ? (
+          <View style={styles.teamTab}>
+            <StitchDashboardSectionHeader 
+              title="Project Team" 
+              subtitle="Members with access to this project"
+              actionLabel={team.length > 0 ? "Invite" : "Add"}
+              onActionPress={() => setInviteVisible(true)}
+            />
+            {teamLoading && !team.length ? <ActivityIndicator color={stitchTheme.colors.primary} style={{ marginTop: 20 }} /> : null}
+            {team.map(member => (
+              <TeamMemberCard 
+                key={member.id} 
+                member={member} 
+                isOwner={project?.accessRole === 'OWNER'} 
+                onRemove={handleRemoveMember}
+                t={t}
+              />
+            ))}
+            {!teamLoading && !team.length ? <Text style={styles.emptyText}>No other members have access yet.</Text> : null}
+          </View>
+        ) : null}
+
         <View style={{ height: 40 }} />
       </StitchDashboardShell>
+
+      <Modal visible={exportModalVisible} animationType="fade" transparent>
+        <TouchableOpacity style={styles.modalOverlay} onPress={() => setExportModalVisible(false)}>
+          <View style={styles.formatMenu}>
+            <Text style={styles.formatTitle}>Export Report</Text>
+            <TouchableOpacity style={styles.formatOption} onPress={() => handleExport('pdf')}>
+              <Ionicons name="file-tray-full-outline" size={20} color={stitchTheme.colors.primary} />
+              <Text style={styles.formatText}>Portable Document (PDF)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.formatOption} onPress={() => handleExport('excel')}>
+              <Ionicons name="grid-outline" size={20} color={stitchTheme.colors.primary} />
+              <Text style={styles.formatText}>Excel Spreadsheet (XLSX)</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={inviteVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior='padding' style={styles.keyboardView}><View style={styles.modalContent}>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>Invite Member</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          
+          <StitchSectionTitle>User Phone Number</StitchSectionTitle>
+          <TextInput 
+            style={styles.input} 
+            value={inviteForm.phone} 
+            onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} 
+            placeholder="e.g. 0712345678"
+            keyboardType="phone-pad"
+            placeholderTextColor="#8a9388" 
+          />
+
+          <StitchSectionTitle>Assigned Role</StitchSectionTitle>
+          <View style={styles.roleRow}>
+            {['MANAGER', 'VIEWER'].map(role => (
+              <TouchableOpacity 
+                key={role}
+                style={[styles.roleChip, inviteForm.role === role && styles.roleChipActive]}
+                onPress={() => setInviteForm(f => ({ ...f, role }))}
+              >
+                <Text style={[styles.roleChipText, inviteForm.role === role && styles.roleChipTextActive]}>{role}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <StitchPrimaryButton label="Send Invitation" onPress={handleInvite} icon="send-outline" style={styles.saveButton} />
+        </View></KeyboardAvoidingView></View>
+      </Modal>
 
       <ConfirmDialog
         visible={!!deleteTarget}
@@ -919,5 +1133,27 @@ const styles = StyleSheet.create({
   timelinePreviewRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
   timelinePreview: { width: 80, height: 80, borderRadius: stitchTheme.radius.lg, alignItems: 'center', justifyContent: 'center' },
   timelineFooterValue: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  
+  // Enhanced UI Styles
+  inlineChartBox: { marginTop: 12, alignItems: 'center' },
+  formatMenu: { backgroundColor: stitchTheme.colors.background, borderRadius: 20, padding: 20, width: '85%', alignSelf: 'center', ...stitchShadows.card },
+  formatTitle: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: 16, textAlign: 'center' },
+  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceHighlight, marginBottom: 8 },
+  formatText: { fontSize: 14, fontWeight: '700', color: stitchTheme.colors.text },
+  
+  teamTab: { paddingBottom: 20 },
+  teamInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  teamAvatar: { width: 40, height: 40, borderRadius: 12, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  teamAvatarText: { color: stitchTheme.colors.primary, fontSize: 16, fontWeight: '800' },
+  roleBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceInset },
+  roleText: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted },
+  removeMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
+  removeMemberText: { color: stitchTheme.colors.accentRed, fontSize: 12, fontWeight: '700' },
+  
+  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  roleChip: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', borderWidth: 1, borderColor: 'transparent' },
+  roleChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  roleChipText: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.textMuted },
+  roleChipTextActive: { color: stitchTheme.colors.primary },
 });
 

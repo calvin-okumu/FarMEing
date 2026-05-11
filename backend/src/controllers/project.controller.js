@@ -265,6 +265,60 @@ const addProjectMember = async (req, res) => {
   });
 };
 
+// ── GET /projects/:id/members ────────────────────────────────────────────────
+
+const getProjectMembers = async (req, res) => {
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
+
+  const members = await prisma.projectAccess.findMany({
+    where: { projectId: req.params.id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          phone: true
+        }
+      }
+    }
+  });
+
+  return res.json({ members: members.map(m => ({
+    id: m.user.id,
+    name: m.user.name,
+    phone: m.user.phone,
+    role: m.role,
+    accessId: m.id
+  })) });
+};
+
+// ── DELETE /projects/:id/members/:userId ──────────────────────────────────────
+
+const removeProjectMember = async (req, res) => {
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
+
+  if (result.accessRole !== 'OWNER') {
+    return res.status(403).json({ error: 'Only owners can remove members' });
+  }
+
+  const { userId } = req.params;
+
+  if (userId === req.user.id) {
+    return res.status(400).json({ error: 'You cannot remove yourself. Delete the project instead.' });
+  }
+
+  await prisma.projectAccess.deleteMany({
+    where: {
+      projectId: req.params.id,
+      userId: userId
+    }
+  });
+
+  return res.json({ message: 'Member removed' });
+};
+
 // ── GET /projects/:id/summary ─────────────────────────────────────────────────
 
 const getProjectSummary = async (req, res) => {
@@ -346,4 +400,6 @@ module.exports = {
   deleteProject,
   getProjectSummary,
   addProjectMember,
+  getProjectMembers,
+  removeProjectMember,
 };
