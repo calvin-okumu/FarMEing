@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     resourceTileOrb: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     resourceTileTitle: { fontSize: 12, fontWeight: '800', color: colors.text, textAlign: 'center' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.38)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
     modalSheet: { backgroundColor: colors.backgroundAccent, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '78%' },
     modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: spacing.sm },
     modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },

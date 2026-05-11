@@ -25,6 +25,7 @@ import {
   StitchBadge,
   StitchChip,
   StitchIconButton,
+  StitchInput,
   StitchPrimaryButton,
   StitchSectionTitle,
   StitchSurface,
@@ -95,7 +96,7 @@ export default function PayeesScreen({ navigation }) {
   const [banner, setBanner] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { control, handleSubmit, reset } = useForm({
+  const { control, handleSubmit, reset, watch } = useForm({
     defaultValues: { name: '', phone: '', email: '', category: '', notes: '' }
   });
 
@@ -235,23 +236,18 @@ export default function PayeesScreen({ navigation }) {
                 <StitchIconButton icon='close' onPress={() => setModalVisible(false)} />
               </View>
 
-              <StitchSectionTitle>{t('payees.fields.name', { defaultValue: 'Name' })} *</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="name"
-                rules={{ required: true }}
-                render={({ field: { onChange, value } }) => (
-                  <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder='e.g. AgroVet Center' placeholderTextColor={stitchTheme.colors.textMuted} />
-                )}
+              <StitchInput
+                label={t('payees.fields.name', { defaultValue: 'Name' })}
+                value={watch('name')}
+                onChangeText={(val) => setValue('name', val)}
+                placeholder='e.g. AgroVet Center'
               />
 
-              <StitchSectionTitle>{t('payees.fields.phone', { defaultValue: 'Phone' })}</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType='phone-pad' placeholderTextColor={stitchTheme.colors.textMuted} />
-                )}
+              <StitchInput
+                label={t('payees.fields.phone', { defaultValue: 'Phone' })}
+                value={watch('phone')}
+                onChangeText={(val) => setValue('phone', val)}
+                keyboardType='phone-pad'
               />
 
               <StitchSectionTitle>{t('payees.fields.category', { defaultValue: 'Category' })}</StitchSectionTitle>
@@ -268,13 +264,11 @@ export default function PayeesScreen({ navigation }) {
                 ))}
               </View>
 
-              <StitchSectionTitle>{t('payees.fields.notes', { defaultValue: 'Notes' })}</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="notes"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput style={[styles.input, styles.textArea]} value={value} onChangeText={onChange} multiline numberOfLines={3} placeholderTextColor={stitchTheme.colors.textMuted} />
-                )}
+              <StitchInput
+                label={t('payees.fields.notes', { defaultValue: 'Notes' })}
+                value={watch('notes')}
+                onChangeText={(val) => setValue('notes', val)}
+                multiline
               />
 
               <StitchPrimaryButton label={t('payees.save', { defaultValue: 'Save Payee' })} onPress={handleSubmit(handleCreate)} icon='save' style={styles.saveButton} />

@@ -23,7 +23,7 @@ export default function ResourceFormModal({ visible, title, onClose, children })
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(12, 18, 12, 0.42)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   content: {
     backgroundColor: stitchTheme.colors.background,

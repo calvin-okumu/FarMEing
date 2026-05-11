@@ -9,18 +9,16 @@ import {
   Alert,
   TextInput,
   ScrollView,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchChip, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import SearchBar from '../components/ui/SearchBar';
@@ -123,19 +121,6 @@ export default function ProjectsScreen({ navigation, route }) {
   };
 
   const openStartDatePicker = () => {
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: formData.startDate,
-        mode: 'date',
-        onChange: (_event, selectedDate) => {
-          if (selectedDate) {
-            setValue('startDate', selectedDate);
-          }
-        },
-      });
-      return;
-    }
-
     setShowDatePicker(true);
   };
 
@@ -424,18 +409,24 @@ export default function ProjectsScreen({ navigation, route }) {
             )}
           />
 
-          <StitchSectionTitle>{t('projects.fields.start_date')}</StitchSectionTitle>
-          <TouchableOpacity style={styles.dateSelector} onPress={openStartDatePicker} activeOpacity={0.88}>
-            <Text style={styles.dateSelectorText}>{formatAppDate(formData.startDate)}</Text>
-            <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
-          </TouchableOpacity>
+          <StitchInput
+            label={t('projects.fields.start_date')}
+            value={formatAppDate(formData.startDate)}
+            onPress={openStartDatePicker}
+            icon='calendar-outline'
+          />
 
-          {Platform.OS === 'ios' && showDatePicker ? (
+          {showDatePicker ? (
             <Controller
               control={control}
               name="startDate"
               render={({ field: { onChange, value } }) => (
-                <DateTimePicker value={value} mode="date" display="spinner" onChange={(_event, selectedDate) => { if (selectedDate) onChange(selectedDate); }} />
+                <StitchDatePicker
+                  visible={showDatePicker}
+                  date={value}
+                  onDateChange={(d) => { onChange(d); setShowDatePicker(false); }}
+                  onClose={() => setShowDatePicker(false)}
+                />
               )}
             />
           ) : null}

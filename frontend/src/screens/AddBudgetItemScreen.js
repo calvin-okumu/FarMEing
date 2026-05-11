@@ -20,6 +20,7 @@ import { updateLocalModel } from '../utils/resourceMutations';
 import { stitchTheme } from '../theme/stitchTheme';
 import {
   StitchChip,
+  StitchInput,
   StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionTitle,
@@ -144,47 +145,39 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           ))}
         </View>
 
-        <StitchSectionTitle>{t('budget.fields.name')} *</StitchSectionTitle>
-        <TextInput
-          style={styles.input}
+        <StitchInput
+          label={t('budget.fields.name')}
           value={name}
           onChangeText={setName}
           placeholder={t('budget.placeholders.name')}
-          placeholderTextColor="#8a9388"
         />
 
         <View style={styles.row}>
           <View style={styles.half}>
-            <StitchSectionTitle>{t('budget.fields.quantity')} *</StitchSectionTitle>
-            <TextInput
-              style={styles.input}
+            <StitchInput
+              label={t('budget.fields.quantity')}
               value={quantity}
               onChangeText={setQuantity}
-              placeholder="0"
-              placeholderTextColor="#8a9388"
-              keyboardType="numeric"
+              placeholder='0'
+              keyboardType='numeric'
             />
           </View>
           <View style={styles.half}>
-            <StitchSectionTitle>{t('budget.fields.unit')}</StitchSectionTitle>
-            <TextInput
-              style={styles.input}
+            <StitchInput
+              label={t('budget.fields.unit')}
               value={unit}
               onChangeText={setUnit}
               placeholder={t('budget.placeholders.unit')}
-              placeholderTextColor="#8a9388"
             />
           </View>
         </View>
 
-        <StitchSectionTitle>{t('budget.fields.unit_price')} *</StitchSectionTitle>
-        <TextInput
-          style={styles.input}
+        <StitchInput
+          label={t('budget.fields.unit_price')}
           value={unitPrice}
           onChangeText={setUnitPrice}
-          placeholder="0.00"
-          placeholderTextColor="#8a9388"
-          keyboardType="decimal-pad"
+          placeholder='0.00'
+          keyboardType='decimal-pad'
         />
 
         <StitchPrimaryButton

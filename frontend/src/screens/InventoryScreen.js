@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchMiniBars, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import SearchBar from '../components/ui/SearchBar';
@@ -31,7 +31,6 @@ import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
-import { useObservable } from '../hooks/useWatermelon';
 
 const DEFAULT_FORM = {
   name: '',
@@ -43,34 +42,6 @@ const DEFAULT_FORM = {
   notes: '',
   payee: '',
   payeeId: null,
-};
-
-const PayeePicker = ({ selectedId, onSelect, t }) => {
-  const payeesQuery = useMemo(() => database.get('payees').query(Q.where('is_deleted', false)), []);
-  const payees = useObservable(payeesQuery, []);
-
-  return (
-    <View style={styles.payeePickerContainer}>
-      <StitchSectionTitle>{t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}</StitchSectionTitle>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payeePickerRow}>
-        <TouchableOpacity
-          style={[styles.payeeChip, !selectedId && styles.payeeChipActive]}
-          onPress={() => onSelect(null)}
-        >
-          <Text style={[styles.payeeChipText, !selectedId && styles.payeeChipTextActive]}>{t('common.none', { defaultValue: 'None' })}</Text>
-        </TouchableOpacity>
-        {payees && payees.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[styles.payeeChip, selectedId === p.id && styles.payeeChipActive]}
-            onPress={() => onSelect(p)}
-          >
-            <Text style={[styles.payeeChipText, selectedId === p.id && styles.payeeChipTextActive]}>{p.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
 };
 
 export default function InventoryScreen({ route, navigation }) {
@@ -86,6 +57,12 @@ export default function InventoryScreen({ route, navigation }) {
   const [banner, setBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [payees, setPayees] = useState([]);
+
+  useEffect(() => {
+    const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
+    return () => sub.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!projectId) {
@@ -139,14 +116,6 @@ export default function InventoryScreen({ route, navigation }) {
       payeeId: item.payeeId || null,
     });
     setModalVisible(true);
-  };
-
-  const onPayeeSelect = (selectedPayee) => {
-    if (!selectedPayee) {
-      setFormData((p) => ({ ...p, payee: '', payeeId: null }));
-    } else {
-      setFormData((p) => ({ ...p, payee: selectedPayee.name, payeeId: selectedPayee.id }));
-    }
   };
 
   const handleSubmit = async () => {
@@ -277,35 +246,41 @@ export default function InventoryScreen({ route, navigation }) {
                   <Text style={styles.modalTitle}>{editingItem ? t('inventory.edit_title') : t('inventory.create_title')}</Text>
                   <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={22} color={stitchTheme.colors.text} /></TouchableOpacity>
                 </View>
-                <StitchSectionTitle>{t('inventory.fields.name')}</StitchSectionTitle>
-                <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
-                <StitchSectionTitle>{t('inventory.fields.category')}</StitchSectionTitle>
-                <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
-                
-                <PayeePicker selectedId={formData.payeeId} onSelect={onPayeeSelect} t={t} />
+                <StitchInput label={t('inventory.fields.name')} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} />
+                <StitchInput label={t('inventory.fields.category')} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} />
+
+                <StitchPicker
+                  label={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+                  options={[{ label: t('common.none', { defaultValue: 'None' }), value: null }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
+                  selectedValue={formData.payeeId}
+                  onSelect={(val) => {
+                    if (!val) {
+                      setFormData((p) => ({ ...p, payee: '', payeeId: null }));
+                    } else {
+                      setFormData((p) => ({ ...p, payee: (payees || []).find((pay) => pay.id === val)?.name || '', payeeId: val }));
+                    }
+                  }}
+                  searchable
+                  placeholder={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+                />
 
                 <View style={styles.row}>
                   <View style={styles.half}>
-                    <StitchSectionTitle>{t('inventory.fields.quantity')}</StitchSectionTitle>
-                    <TextInput style={styles.input} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.quantity')} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType='decimal-pad' />
                   </View>
                   <View style={styles.half}>
-                    <StitchSectionTitle>{t('inventory.fields.unit')}</StitchSectionTitle>
-                    <TextInput style={styles.input} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.unit')} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} />
                   </View>
                 </View>
                 <View style={styles.row}>
                   <View style={styles.half}>
-                    <StitchSectionTitle>{t('inventory.fields.unit_cost')}</StitchSectionTitle>
-                    <TextInput style={styles.input} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.unit_cost')} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType='decimal-pad' />
                   </View>
                   <View style={styles.half}>
-                    <StitchSectionTitle>{t('inventory.fields.used_qty')}</StitchSectionTitle>
-                    <TextInput style={styles.input} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.used_qty')} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType='decimal-pad' />
                   </View>
                 </View>
-                <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
-                <TextInput style={[styles.input, styles.notesInput]} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline placeholderTextColor="#8a9388" />
+                <StitchInput label={t('common.notes')} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline />
                 <StitchPrimaryButton
                   label={editingItem ? t('common.save') : t('inventory.create_title')}
                   onPress={handleSubmit}
@@ -369,13 +344,6 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
-  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  notesInput: { minHeight: 96, textAlignVertical: 'top' },
   saveButton: { marginTop: stitchTheme.spacing.lg },
-  payeePickerContainer: { marginBottom: stitchTheme.spacing.sm },
-  payeePickerRow: { gap: 8, paddingVertical: 4 },
-  payeeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
-  payeeChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
-  payeeChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
   payeeChipTextActive: { color: stitchTheme.colors.primary },
 });

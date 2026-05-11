@@ -12,15 +12,14 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { initializeLocalRecord } from '../utils/localRecord';
-import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
+import { formatAppDate } from '../utils/date';
+import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -152,23 +151,19 @@ export default function AddHarvestScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSectionTitle>{t('harvest.crop_heading')}</StitchSectionTitle>
-        <TextInput
-          style={styles.field}
+        <StitchInput
+          label={t('harvest.crop_heading')}
           value={crop}
           onChangeText={setCrop}
           placeholder={t('harvest.placeholders.crop')}
-          placeholderTextColor="#7a7b73"
         />
 
-        <StitchSectionTitle>{t('harvest.quantity_heading')}</StitchSectionTitle>
-        <TextInput
-          style={styles.quantityField}
+        <StitchInput
+          label={t('harvest.quantity_heading')}
           value={weight}
           onChangeText={setWeight}
-          placeholder="0.00"
-          keyboardType="decimal-pad"
-          placeholderTextColor="#bcc7b6"
+          placeholder='0.00'
+          keyboardType='decimal-pad'
         />
 
         <StitchSurface style={styles.liveCard}>
@@ -211,38 +206,27 @@ export default function AddHarvestScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionTitle>{t('harvest.date_heading')}</StitchSectionTitle>
-        <TouchableOpacity style={styles.field} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
-          <Text style={styles.fieldText}>{formatAppDate(date)}</Text>
-          <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
-        </TouchableOpacity>
+        <StitchInput
+          label={t('harvest.date_heading')}
+          value={formatAppDate(date)}
+          onPress={() => setShowDatePicker(true)}
+          icon='calendar-outline'
+        />
 
-        {showDatePicker ? (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-          />
-        ) : null}
+        <StitchDatePicker
+          visible={showDatePicker}
+          date={date}
+          onDateChange={(d) => { setDate(d); setShowDatePicker(false); }}
+          onClose={() => setShowDatePicker(false)}
+        />
 
-        <View style={styles.notesCard}>
-          <View style={styles.notesHeader}>
-            <View style={styles.notesIconWrap}>
-              <Ionicons name="document-text-outline" size={18} color={stitchTheme.colors.accentBrown} />
-            </View>
-            <Text style={styles.notesTitle}>{t('harvest.field_notes')}</Text>
-          </View>
-          <TextInput
-            style={styles.notesInput}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={t('harvest.placeholders.notes')}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#7b7d72"
-          />
-        </View>
+        <StitchInput
+          label={t('harvest.field_notes')}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={t('harvest.placeholders.notes')}
+          multiline
+        />
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
 

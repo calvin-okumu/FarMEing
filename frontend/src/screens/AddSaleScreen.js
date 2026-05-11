@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
@@ -21,7 +20,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -223,25 +222,28 @@ export default function AddSaleScreen({ route, navigation }) {
             </View>
           </View>
 
-          <TextInput
-            style={styles.notesField}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={t('sales.placeholders.notes')}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#76806f"
-          />
+          <StitchInput
+          label={t('common.notes')}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={t('sales.placeholders.notes')}
+          multiline
+        />
         </StitchSurface>
 
-        {showDatePicker ? (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-          />
-        ) : null}
+        <StitchInput
+          label={t('sales.date_label')}
+          value={formatAppDate(date)}
+          onPress={() => setShowDatePicker(true)}
+          icon='calendar-outline'
+        />
+
+        <StitchDatePicker
+          visible={showDatePicker}
+          date={date}
+          onDateChange={(d) => { setDate(d); setShowDatePicker(false); }}
+          onClose={() => setShowDatePicker(false)}
+        />
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>

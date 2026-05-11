@@ -15,7 +15,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
@@ -25,7 +24,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
@@ -334,29 +333,25 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </View>
 
-        <StitchSectionTitle>{t('common.date')}</StitchSectionTitle>
-        <TouchableOpacity style={styles.dateField} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
-          <Text style={styles.dateFieldText}>{formatAppDate(formData.date)}</Text>
-          <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
-        </TouchableOpacity>
+        <StitchInput
+          label={t('common.date')}
+          value={formatAppDate(formData.date)}
+          onPress={() => setShowDatePicker(true)}
+          icon='calendar-outline'
+        />
 
-        {showDatePicker ? (
-          <Controller
-            control={control}
-            name="date"
-            render={({ field: { onChange, value } }) => (
-              <DateTimePicker
-                value={value}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_event, selectedDate) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (selectedDate) onChange(selectedDate);
-                }}
-              />
-            )}
-          />
-        ) : null}
+        <Controller
+          control={control}
+          name="date"
+          render={({ field: { onChange, value } }) => (
+            <StitchDatePicker
+              visible={showDatePicker}
+              date={value}
+              onDateChange={(d) => { onChange(d); setShowDatePicker(false); }}
+              onClose={() => setShowDatePicker(false)}
+            />
+          )}
+        />
 
         <View style={styles.sectionInline}>
           <StitchSectionTitle style={styles.sectionInlineLabel}>{t('common.recurring')}</StitchSectionTitle>

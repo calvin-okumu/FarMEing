@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
@@ -30,6 +29,7 @@ import StitchDashboardShell, { StitchDashboardSectionHeader } from '../component
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import {
   StitchChip,
+  StitchDatePicker,
   StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionTitle,
@@ -426,14 +426,12 @@ export default function QuickEntryScreen({ navigation }) {
               <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
             </TouchableOpacity>
 
-            {showDatePicker ? (
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onDateChange}
-              />
-            ) : null}
+            <StitchDatePicker
+              visible={showDatePicker}
+              date={date}
+              onDateChange={(d) => { setDate(d); setShowDatePicker(false); }}
+              onClose={() => setShowDatePicker(false)}
+            />
 
             <View style={styles.row}>
               <View style={styles.third}>

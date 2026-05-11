@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useState, useMemo } from 'react';
+import { Modal, TextInput, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
 
@@ -215,6 +216,200 @@ export function StitchPrimaryButton({ label, onPress, disabled, loading, icon = 
       <Ionicons name={icon} size={20} color={stitchTheme.colors.primary} />
       <Text style={styles.primaryButtonText}>{loading ? '...' : label}</Text>
     </TouchableOpacity>
+  );
+}
+
+export function StitchInput({ label, value, onChangeText, placeholder, error, icon, secureTextEntry, keyboardType, multiline, style, onPress }) {
+  const [focused, setFocused] = useState(false);
+
+  const shell = (
+    <View style={[styles.inputShell, focused && styles.inputShellFocused, error && styles.inputShellError]}>
+      {icon ? <Ionicons name={icon} size={18} color={error ? stitchTheme.colors.accentRed : focused ? stitchTheme.colors.primaryContainer : stitchTheme.colors.textMuted} /> : null}
+      <TextInput
+        style={[styles.inputField, multiline && styles.inputFieldMultiline]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={stitchTheme.colors.textMuted}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        multiline={multiline}
+        editable={!onPress}
+        onFocus={() => { if (!onPress) setFocused(true); }}
+        onBlur={() => setFocused(false)}
+      />
+    </View>
+  );
+
+  return (
+    <View style={[styles.inputWrap, style]}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      {onPress ? (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.88}>
+          {shell}
+        </TouchableOpacity>
+      ) : shell}
+      {error ? <Text style={styles.inputError}>{error}</Text> : null}
+    </View>
+  );
+}
+
+export function StitchPicker({ label, options, selectedValue, onSelect, searchable, placeholder }) {
+  const [visible, setVisible] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = searchable && search.trim()
+    ? options.filter((opt) => opt.label.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const selected = options.find((opt) => opt.value === selectedValue);
+
+  return (
+    <View style={styles.pickerWrap}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <TouchableOpacity style={styles.pickerShell} onPress={() => setVisible(true)} activeOpacity={0.88}>
+        <Ionicons name='chevron-down' size={16} color={stitchTheme.colors.textMuted} />
+        <Text style={[styles.pickerText, !selected && styles.pickerPlaceholder]} numberOfLines={1}>
+          {selected ? selected.label : (placeholder || 'Select')}
+        </Text>
+      </TouchableOpacity>
+      <Modal visible={visible} transparent animationType='fade' onRequestClose={() => setVisible(false)}>
+        <TouchableOpacity style={styles.pickerOverlay} onPress={() => setVisible(false)}>
+          <View style={styles.pickerSheet}>
+            {searchable ? (
+              <TextInput
+                style={styles.pickerSearch}
+                value={search}
+                onChangeText={setSearch}
+                placeholder='Search...'
+                placeholderTextColor={stitchTheme.colors.textMuted}
+              />
+            ) : null}
+            <ScrollView style={styles.pickerOptions}>
+              {filtered.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.pickerOption, opt.value === selectedValue && styles.pickerOptionActive]}
+                  onPress={() => { onSelect(opt.value); setVisible(false); setSearch(''); }}
+                  activeOpacity={0.88}
+                >
+                  <Text style={[styles.pickerOptionText, opt.value === selectedValue && styles.pickerOptionTextActive]}>{opt.label}</Text>
+                  {opt.value === selectedValue ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function getMonthGrid(year, month) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const grid = [];
+  let week = new Array(7).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayOfWeek = (firstDay + d - 1) % 7;
+    week[dayOfWeek] = d;
+    if (dayOfWeek === 6 || d === daysInMonth) {
+      grid.push(week);
+      week = new Array(7).fill(null);
+    }
+  }
+  return grid;
+}
+
+export function StitchDatePicker({ visible, date, onDateChange, onClose }) {
+  const [viewYear, setViewYear] = useState(date.getFullYear());
+  const [viewMonth, setViewMonth] = useState(date.getMonth());
+  const today = new Date();
+  const grid = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
+
+  const isToday = (d) => d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+  const isSelected = (d) => d === date.getDate() && viewMonth === date.getMonth() && viewYear === date.getFullYear();
+
+  return (
+    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose}>
+      <TouchableOpacity style={styles.pickerOverlay} onPress={onClose}>
+        <View style={styles.datePickerSheet}>
+          <View style={styles.pickerHandle} />
+
+          <View style={styles.datePickerHeader}>
+            <Text style={styles.datePickerTitle}>Select Date</Text>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.88}>
+              <Ionicons name='close-outline' size={24} color={stitchTheme.colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.datePickerNav}>
+            <TouchableOpacity onPress={() => {
+              if (viewMonth === 0) { setViewYear(viewYear - 1); setViewMonth(11); }
+              else { setViewMonth(viewMonth - 1); }
+            }} activeOpacity={0.8} style={styles.datePickerNavBtn}>
+              <Ionicons name='chevron-back' size={20} color={stitchTheme.colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.datePickerNavLabel}>{MONTHS[viewMonth]} {viewYear}</Text>
+            <TouchableOpacity onPress={() => {
+              if (viewMonth === 11) { setViewYear(viewYear + 1); setViewMonth(0); }
+              else { setViewMonth(viewMonth + 1); }
+            }} activeOpacity={0.8} style={styles.datePickerNavBtn}>
+              <Ionicons name='chevron-forward' size={20} color={stitchTheme.colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.datePickerWeekRow}>
+            {DAYS.map((d) => (
+              <View key={d} style={styles.datePickerWeekCell}>
+                <Text style={styles.datePickerWeekText}>{d}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.datePickerGrid}>
+            {grid.map((week, wi) => (
+              <View key={wi} style={styles.datePickerWeekRow}>
+                {week.map((d, di) => (
+                  <TouchableOpacity
+                    key={`${wi}-${di}`}
+                    style={[
+                      styles.datePickerDayCell,
+                      isSelected(d) && styles.datePickerDayCellSelected,
+                      isToday(d) && !isSelected(d) && styles.datePickerDayCellToday,
+                    ]}
+                    onPress={() => {
+                      if (d) onDateChange(new Date(viewYear, viewMonth, d));
+                    }}
+                    activeOpacity={0.88}
+                    disabled={!d}
+                  >
+                    <Text style={[
+                      styles.datePickerDayText,
+                      isSelected(d) && styles.datePickerDayTextSelected,
+                      isToday(d) && !isSelected(d) && styles.datePickerDayTextToday,
+                      !d && styles.datePickerDayTextEmpty,
+                    ]}>{d || ''}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={styles.datePickerTodayBtn}
+            onPress={() => { onDateChange(new Date()); setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); }}
+            activeOpacity={0.88}
+          >
+            <Ionicons name='calendar-outline' size={16} color={stitchTheme.colors.primary} />
+            <Text style={styles.datePickerTodayText}>Today</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -511,4 +706,108 @@ const styles = StyleSheet.create({
     backgroundColor: stitchTheme.colors.surfaceInset,
     borderRadius: 10,
   },
+
+  inputWrap: { gap: 6 },
+  inputLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  inputShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 50,
+    borderRadius: stitchTheme.radius.md,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderWidth: 1,
+    borderColor: stitchTheme.colors.border,
+    paddingHorizontal: stitchTheme.spacing.md,
+  },
+  inputShellFocused: { borderColor: stitchTheme.colors.primaryContainer },
+  inputShellError: { borderColor: stitchTheme.colors.accentRed },
+  inputField: {
+    flex: 1,
+    fontSize: stitchTheme.typography.body.fontSize,
+    lineHeight: stitchTheme.typography.body.lineHeight,
+    color: stitchTheme.colors.text,
+    fontWeight: '700',
+    paddingVertical: 12,
+  },
+  inputFieldMultiline: { minHeight: 80, textAlignVertical: 'top' },
+  inputError: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
+
+  pickerWrap: { gap: 6 },
+  pickerShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 50,
+    borderRadius: stitchTheme.radius.md,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderWidth: 1,
+    borderColor: stitchTheme.colors.border,
+    paddingHorizontal: stitchTheme.spacing.md,
+  },
+  pickerText: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
+  pickerPlaceholder: { color: stitchTheme.colors.textMuted },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
+  pickerSheet: {
+    backgroundColor: stitchTheme.colors.background,
+    borderTopLeftRadius: stitchTheme.radius.xl,
+    borderTopRightRadius: stitchTheme.radius.xl,
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingTop: stitchTheme.spacing.sm,
+    paddingBottom: stitchTheme.spacing.lg,
+    maxHeight: '70%',
+  },
+  pickerSearch: {
+    minHeight: 48,
+    borderRadius: stitchTheme.radius.md,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    paddingHorizontal: stitchTheme.spacing.md,
+    fontSize: stitchTheme.typography.body.fontSize,
+    lineHeight: stitchTheme.typography.body.lineHeight,
+    color: stitchTheme.colors.text,
+    marginBottom: stitchTheme.spacing.sm,
+  },
+  pickerOptions: { gap: 4 },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 50,
+    borderRadius: stitchTheme.radius.md,
+    paddingHorizontal: stitchTheme.spacing.md,
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    marginBottom: stitchTheme.spacing.xs,
+  },
+  pickerOptionActive: { backgroundColor: stitchTheme.colors.surfaceTint },
+  pickerOptionText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  pickerOptionTextActive: { color: stitchTheme.colors.primary },
+
+  pickerHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: stitchTheme.colors.line, marginBottom: stitchTheme.spacing.sm },
+
+  datePickerSheet: {
+    backgroundColor: stitchTheme.colors.background,
+    borderTopLeftRadius: stitchTheme.radius.xl,
+    borderTopRightRadius: stitchTheme.radius.xl,
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingTop: stitchTheme.spacing.sm,
+    paddingBottom: stitchTheme.spacing.lg,
+  },
+  datePickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: stitchTheme.spacing.sm },
+  datePickerTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  datePickerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: stitchTheme.spacing.sm },
+  datePickerNavBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  datePickerNavLabel: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  datePickerWeekRow: { flexDirection: 'row', marginBottom: 4 },
+  datePickerWeekCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
+  datePickerWeekText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase' },
+  datePickerGrid: { gap: 2, marginBottom: stitchTheme.spacing.sm },
+  datePickerDayCell: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 40, borderRadius: stitchTheme.radius.md },
+  datePickerDayCellSelected: { backgroundColor: stitchTheme.colors.primaryContainer },
+  datePickerDayCellToday: { backgroundColor: stitchTheme.colors.surfaceTint },
+  datePickerDayText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
+  datePickerDayTextSelected: { color: stitchTheme.colors.surfaceHighlight, fontWeight: '900' },
+  datePickerDayTextToday: { color: stitchTheme.colors.primaryContainer, fontWeight: '900' },
+  datePickerDayTextEmpty: { color: 'transparent' },
+  datePickerTodayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.md, borderWidth: 1, borderColor: stitchTheme.colors.border, backgroundColor: stitchTheme.colors.surfaceHighlight },
+  datePickerTodayText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.primary, fontWeight: '800' },
 });
