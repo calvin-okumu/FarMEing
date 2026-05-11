@@ -30,6 +30,29 @@
       "other": "Nyingine"
     }
   },
+  "team": {
+    "invite_title": "Alika Mwanachama",
+    "invite_phone": "Nambari ya Simu ya Mtumiaji",
+    "send_invitation": "Tuma Mwaliko",
+    "invited_success": "Mwanachama amealikwa kwa mafanikio.",
+    "access_revoked": "Ufikiaji umeondolewa.",
+    "revoke_access": "Ondoa Ufikiaji",
+    "no_members": "Hakuna wanachama wengine wenye ufikiaji bado."
+  },
+  "export": {
+    "title": "Hamisha Ripoti",
+    "pdf": "Hati ya PDF",
+    "excel": "Lahajedwali ya Excel (XLSX)",
+    "not_available": "Mradi haupatikani kwa ajili ya kusafirishwa bado",
+    "failed": "Imeshindwa kutengeneza au kupakua ripoti ya {{format}}."
+  },
+  "status": {
+    "synced": "Imeunganishwa",
+    "local_only": "Ndani ya kifaa pekee",
+    "sort_latest": "Mpya",
+    "top_value": "Thamani ya juu",
+    "pending_labor": "Kazi inayosubiri"
+  },
   "dashboard": {
     "title": "Dashibodi",
     "active_project": "Mradi unaotumika",
@@ -673,7 +696,9 @@
     "syncing": "Inasawazisha...",
     "loading_title": "Inasasisha",
     "loading_body": "Inapakua data mpya ya rasilimali kutoka kwenye seva.",
-    "loading_error": "Imeshindikana kupakia data mpya ya rasilimali."
+    "loading_error": "Imeshindikana kupakia data mpya ya rasilimali.",
+    "show_less": "Onyesha machache",
+    "view_all": "Angalia rasilimali zote {{count}}"
   },
   "feedback": {
     "created": "Imeundwa",

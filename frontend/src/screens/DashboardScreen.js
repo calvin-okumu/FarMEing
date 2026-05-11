@@ -301,7 +301,7 @@ export default function DashboardScreen({ navigation }) {
                 ))}
 
                 <TouchableOpacity style={styles.viewAllRow} onPress={() => setShowAllResources(!showAllResources)} activeOpacity={0.8}>
-                    <Text style={styles.viewAllText}>{showAllResources ? 'Show less' : `View all ${allResourceCards.length} resources`}</Text>
+                    <Text style={styles.viewAllText}>{showAllResources ? t('resource.show_less') : t('resource.view_all', { count: allResourceCards.length })}</Text>
                     <Ionicons name={showAllResources ? 'chevron-up' : 'chevron-down'} size={16} color={colors.accentBrown} />
                 </TouchableOpacity>
 

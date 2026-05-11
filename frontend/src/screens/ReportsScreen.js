@@ -159,15 +159,15 @@ export default function ReportsScreen({ navigation }) {
   return (
     <StitchDashboardShell
       hero={{
-        eyebrow: 'Portfolio Performance',
+        eyebrow: t('dashboard.portfolio_performance', { defaultValue: 'Portfolio Performance' }),
         title: formatCurrency(portfolio.netProfit, currency),
-        subtitle: portfolio.netProfit >= 0 ? 'Your overall portfolio is profitable.' : 'Portfolio is currently at a loss.',
+        subtitle: portfolio.netProfit >= 0 ? t('dashboard.portfolio_profitable', { defaultValue: 'Your overall portfolio is profitable.' }) : t('dashboard.portfolio_at_loss', { defaultValue: 'Portfolio is currently at a loss.' }),
         actionIcon: 'sync-outline',
         onActionPress: handleRefresh,
         children: (
           <View style={styles.heroPills}>
-            <StitchHeroPill label='Revenue' value={formatCurrency(portfolio.totalRevenue, currency)} icon='cash-outline' style={styles.heroPillPrimary} />
-            <StitchHeroPill label='Total Cost' value={formatCurrency(portfolio.totalCost, currency)} icon='wallet-outline' style={styles.heroPillSecondary} />
+            <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(portfolio.totalRevenue, currency)} icon='cash-outline' style={styles.heroPillPrimary} />
+            <StitchHeroPill label={t('dashboard.total_cost')} value={formatCurrency(portfolio.totalCost, currency)} icon='wallet-outline' style={styles.heroPillSecondary} />
           </View>
         ),
       }}
@@ -175,8 +175,8 @@ export default function ReportsScreen({ navigation }) {
       bodyContentStyle={styles.bodyContent}
     >
       <StitchDashboardSectionHeader 
-        title='Seasonal Summary' 
-        subtitle='Financial breakdown per project' 
+        title={t('dashboard.seasonal_summary', { defaultValue: 'Seasonal Summary' })} 
+        subtitle={t('dashboard.financial_breakdown', { defaultValue: 'Financial breakdown per project' })} 
         actionLabel={`${data.projects.length} Projects`} 
       />
 

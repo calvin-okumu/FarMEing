@@ -27,8 +27,43 @@
       "harvesting": "Harvesting",
       "spraying": "Spraying",
       "irrigation": "Irrigation",
-      "other": "Other"
+    "other": "Other"
     }
+  },
+  "resource": {
+    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?",
+    "search_in_tab": "Search this section",
+    "sort_latest": "Latest",
+    "sort_amount": "Amount",
+    "syncing": "Syncing...",
+    "loading_title": "Refreshing",
+    "loading_body": "Loading the latest resource data from the server.",
+    "loading_error": "Could not load the latest resource data.",
+    "show_less": "Show less",
+    "view_all": "View all {{count}} resources"
+  },
+  "team": {
+    "invite_title": "Invite Member",
+    "invite_phone": "User Phone Number",
+    "send_invitation": "Send Invitation",
+    "invited_success": "Team member invited successfully.",
+    "access_revoked": "Member access revoked.",
+    "revoke_access": "Revoke Access",
+    "no_members": "No other members have access yet."
+  },
+  "export": {
+    "title": "Export Report",
+    "pdf": "Portable Document (PDF)",
+    "excel": "Excel Spreadsheet (XLSX)",
+    "not_available": "Project is not available for export yet",
+    "failed": "Could not generate or download the {{format}} report."
+  },
+  "status": {
+    "synced": "Synced",
+    "local_only": "Local only",
+    "sort_latest": "Latest",
+    "top_value": "Top value",
+    "pending_labor": "Pending labor"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -664,16 +699,6 @@
   "tab": {
     "workers": "Workers",
     "profile": "Profile"
-  },
-  "resource": {
-    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?",
-    "search_in_tab": "Search this section",
-    "sort_latest": "Latest",
-    "sort_amount": "Amount",
-    "syncing": "Syncing...",
-    "loading_title": "Refreshing",
-    "loading_body": "Loading the latest resource data from the server.",
-    "loading_error": "Could not load the latest resource data."
   },
   "feedback": {
     "created": "Created",

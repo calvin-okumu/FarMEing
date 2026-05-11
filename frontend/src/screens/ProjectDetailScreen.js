@@ -120,7 +120,7 @@ function TeamMemberCard({ member, isOwner, onRemove, t }) {
       {isOwner && member.role !== 'OWNER' ? (
         <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)} activeOpacity={0.8}>
           <Ionicons name="person-remove-outline" size={15} color={stitchTheme.colors.accentRed} />
-          <Text style={styles.removeMemberText}>Revoke Access</Text>
+          <Text style={styles.removeMemberText}>{t('team.revoke_access')}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -184,7 +184,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       setInviteVisible(false);
       setInviteForm({ phone: '', role: 'MANAGER' });
       fetchTeam();
-      setBanner({ tone: 'success', title: 'Success', message: 'Team member invited successfully.' });
+      setBanner({ tone: 'success', title: t('common.success'), message: t('team.invited_success') });
     } catch (err) {
       Alert.alert('Invitation Failed', err.response?.data?.error || 'Could not invite user.');
     }
@@ -195,7 +195,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
     try {
       await api.delete(`/projects/${apiProjectId}/members/${targetUserId}`);
       fetchTeam();
-      setBanner({ tone: 'success', title: 'Removed', message: 'Member access revoked.' });
+      setBanner({ tone: 'success', title: t('common.success'), message: t('team.access_revoked') });
     } catch (err) {
       Alert.alert('Error', 'Could not remove team member.');
     }
@@ -208,7 +208,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       await syncAll();
       const resolvedProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
       if (!resolvedProjectId) {
-        throw new Error('Project is not available for export yet');
+        throw new Error(t('export.not_available'));
       }
       const token = useAuthStore.getState().token;
       const extension = format === 'excel' ? 'xlsx' : 'pdf';
@@ -450,8 +450,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
               <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
               <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
                 <StitchHeroPill
-                  label={exporting ? 'Wait...' : 'Export'}
-                  value={exporting ? 'Working' : 'Reports'}
+                  label={exporting ? t('resource.syncing') : t('export.title')}
+                  value={exporting ? 'Working' : t('export.title')}
                   icon={exporting ? 'refresh-outline' : 'download-outline'}
                   style={styles.heroPillTertiary}
                 />
@@ -469,21 +469,21 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={styles.insightItem}>
               <View style={[styles.insightDot, { backgroundColor: project.status === 'ACTIVE' ? stitchTheme.colors.primaryDim : stitchTheme.colors.textMuted }]} />
               <View>
-                <Text style={styles.insightLabel}>Status</Text>
-                <Text style={styles.insightValue}>{project.status || 'ACTIVE'}</Text>
+                <Text style={styles.insightLabel}>{t('projects.fields.status')}</Text>
+                <Text style={styles.insightValue}>{project?.status || 'ACTIVE'}</Text>
               </View>
             </View>
             <View style={styles.insightItem}>
               <View style={[styles.insightDot, { backgroundColor: isLocalOnly ? stitchTheme.colors.accentBrown : stitchTheme.colors.primaryDim }]} />
               <View>
-                <Text style={styles.insightLabel}>Sync</Text>
-                <Text style={styles.insightValue}>{isLocalOnly ? 'Local only' : 'Synced'}</Text>
+                <Text style={styles.insightLabel}>{t('settings.sync_status')}</Text>
+                <Text style={styles.insightValue}>{isLocalOnly ? t('status.local_only') : t('status.synced')}</Text>
               </View>
             </View>
             <View style={styles.insightItem}>
               <View style={[styles.insightDot, { backgroundColor: team.length > 0 ? stitchTheme.colors.primaryDim : stitchTheme.colors.textMuted }]} />
               <View>
-                <Text style={styles.insightLabel}>Team</Text>
+                <Text style={styles.insightLabel}>{t('team.invite_title')}</Text>
                 <Text style={styles.insightValue}>{String(team.length)}</Text>
               </View>
             </View>
@@ -513,7 +513,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             </View>
             <BarChart
               data={{
-                labels: ['Budget', 'Spent'],
+                labels: [t('dashboard.budget'), t('dashboard.total_spent')],
                 datasets: [{ data: [totalBudget, totalSpent] }]
               }}
               width={screenWidth - 80}
@@ -549,8 +549,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
           <StitchSurface style={styles.controlsCard} contentStyle={styles.controlsContent} tone='raised' compact>
             <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
             <View style={styles.sortRow}>
-              <StitchChip label='Latest' active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
-              <StitchChip label='Top value' active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
+              <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
+              <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
             </View>
           </StitchSurface>
         ) : null}
@@ -585,14 +585,14 @@ export default function ProjectDetailScreen({ route, navigation }) {
                 t={t}
               />
             ))}
-            {!teamLoading && team.length === 0 && <Text style={styles.emptyText}>No other members have access yet.</Text>}
+            {!teamLoading && team.length === 0 && <Text style={styles.emptyText}>{t('team.no_members')}</Text>}
             <StitchPrimaryButton label="Invite Member" onPress={() => setInviteVisible(true)} icon="person-add-outline" style={{ marginTop: 20, marginHorizontal: 16 }} />
           </View>
         )}
 
         {activeTab === 'inventory' && (
           <View style={styles.teamTab}>
-            <Text style={styles.emptyText}>Inventory management available from the workspace menu.</Text>
+            <Text style={styles.emptyText}>{t('inventory.accessible_from_workspace', { defaultValue: 'Inventory management available from the workspace menu.' })}</Text>
           </View>
         )}
 
@@ -628,8 +628,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
       <Modal visible={inviteVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior='padding' style={styles.keyboardView}><View style={styles.modalContent}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>Invite Member</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
-          <StitchInput label='User Phone Number' value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' />
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('team.invite_title')}</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          <StitchInput label={t('team.invite_phone')} value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' />
           <StitchSectionTitle>Assigned Role</StitchSectionTitle>
           <View style={styles.roleRow}>
             {['MANAGER', 'VIEWER'].map(role => (
@@ -638,7 +638,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
               </TouchableOpacity>
             ))}
           </View>
-          <StitchPrimaryButton label="Send Invitation" onPress={handleInvite} icon="send-outline" />
+          <StitchPrimaryButton label={t('team.send_invitation')} onPress={handleInvite} icon="send-outline" />
         </View></KeyboardAvoidingView></View>
       </Modal>
 
