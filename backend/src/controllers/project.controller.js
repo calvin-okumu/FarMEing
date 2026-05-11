@@ -19,7 +19,6 @@ const PROJECT_SELECT = {
   createdAt: true,
   updatedAt: true,
   projectAccess: true,
-};
   userId: true,
   season: { select: { id: true, name: true } },
 };
