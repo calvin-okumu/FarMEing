@@ -17,14 +17,20 @@ const spacing = stitchTheme.spacing;
 const radius = stitchTheme.radius;
 const type = stitchTheme.typography;
 
-const RESOURCE_CARDS = [
-    { id: 'budget', titleKey: 'projects.tabs.budget', icon: 'card-outline', color: colors.primaryDim },
-    { id: 'expenses', titleKey: 'projects.tabs.expenses', icon: 'receipt-outline', color: colors.accentBrown },
-    { id: 'labor', titleKey: 'projects.tabs.labor', icon: 'people-outline', color: colors.primaryDim },
-    { id: 'harvest', titleKey: 'projects.tabs.harvest', icon: 'leaf-outline', color: colors.primary },
-    { id: 'sales', titleKey: 'projects.tabs.sales', icon: 'cash-outline', color: colors.accentBrown },
-    { id: 'inventory', titleKey: 'projects.tabs.inventory', icon: 'cube-outline', color: colors.primaryDim },
-    { id: 'payees', titleKey: 'payees.title', icon: 'business-outline', color: colors.accentPeach },
+const RESOURCE_GROUPS = [
+    { key: 'financial', label: 'Financial', cards: [
+        { id: 'budget', titleKey: 'projects.tabs.budget', icon: 'card-outline', color: colors.primaryDim },
+        { id: 'expenses', titleKey: 'projects.tabs.expenses', icon: 'receipt-outline', color: colors.accentBrown },
+        { id: 'sales', titleKey: 'projects.tabs.sales', icon: 'cash-outline', color: colors.accentBrown },
+    ]},
+    { key: 'fieldwork', label: 'Field Work', cards: [
+        { id: 'labor', titleKey: 'projects.tabs.labor', icon: 'people-outline', color: colors.primaryDim },
+        { id: 'harvest', titleKey: 'projects.tabs.harvest', icon: 'leaf-outline', color: colors.primary },
+    ]},
+    { key: 'admin', label: 'Admin', cards: [
+        { id: 'inventory', titleKey: 'projects.tabs.inventory', icon: 'cube-outline', color: colors.primaryDim },
+        { id: 'payees', titleKey: 'payees.title', icon: 'business-outline', color: colors.accentPeach },
+    ]},
 ];
 
 function MetricBlock({ label, value, note, icon, accent, reversed }) {
@@ -56,14 +62,13 @@ function MiniStat({ label, value, icon, accent }) {
     );
 }
 
-function ResourceRow({ card, onPress, t }) {
+function ResourceTile({ card, onPress, t }) {
     return (
-        <TouchableOpacity activeOpacity={0.8} style={styles.resourceRow} onPress={onPress}>
-            <View style={[styles.resourceRowIcon, { backgroundColor: `${card.color}16` }]}>
-                <Ionicons name={card.icon} size={15} color={card.color} />
+        <TouchableOpacity activeOpacity={0.8} style={styles.resourceTile} onPress={onPress}>
+            <View style={[styles.resourceTileOrb, { backgroundColor: `${card.color}16` }]}>
+                <Ionicons name={card.icon} size={18} color={card.color} />
             </View>
-            <Text style={styles.resourceRowTitle} numberOfLines={1}>{t(card.titleKey)}</Text>
-            <Ionicons name='chevron-forward' size={16} color={colors.textMuted} />
+            <Text style={styles.resourceTileTitle} numberOfLines={2}>{t(card.titleKey)}</Text>
         </TouchableOpacity>
     );
 }
@@ -97,6 +102,7 @@ export default function DashboardScreen({ navigation }) {
     const [selectedProjectId, setSelectedProjectId] = useState('all');
     const [projectPickerVisible, setProjectPickerVisible] = useState(false);
     const [projectSearch, setProjectSearch] = useState('');
+    const [showAllResources, setShowAllResources] = useState(false);
 
     useEffect(() => {
         Animated.timing(headerAnim, {
@@ -177,6 +183,10 @@ export default function DashboardScreen({ navigation }) {
     const selectorMeta = selectedProject
         ? `${selectedProject.crop || t('projects.fields.crop')} • ${selectedProject.landSize || 0} ${selectedProject.landUnit || 'acres'}`
         : `${activeProjects.length} active projects`;
+
+    const allResourceCards = RESOURCE_GROUPS.flatMap((group) => group.cards);
+    const pinnedCards = allResourceCards.slice(0, 3);
+    const moreCards = allResourceCards.slice(3);
 
     const handleResourceOpen = (resourceId) => {
         if (!selectedProject) {
@@ -280,11 +290,28 @@ export default function DashboardScreen({ navigation }) {
                 {/* Quick Actions */}
                 <StitchDashboardSectionHeader title={t('dashboard.manage_resources')} style={styles.sectionSpacing} />
 
-                <StitchSurface style={styles.actionsCard} contentStyle={styles.actionsContent} tone='raised' compact>
-                    {RESOURCE_CARDS.map((card) => (
-                        <ResourceRow key={card.id} card={card} onPress={() => handleResourceOpen(card.id)} t={t} />
-                    ))}
-                </StitchSurface>
+                {pinnedCards.map((card) => (
+                    <TouchableOpacity key={card.id} activeOpacity={0.8} style={styles.resourcePinned} onPress={() => handleResourceOpen(card.id)}>
+                        <View style={[styles.resourcePinnedOrb, { backgroundColor: `${card.color}16` }]}>
+                            <Ionicons name={card.icon} size={20} color={card.color} />
+                        </View>
+                        <Text style={styles.resourcePinnedTitle} numberOfLines={1}>{t(card.titleKey)}</Text>
+                        <Ionicons name='chevron-forward' size={18} color={colors.textMuted} />
+                    </TouchableOpacity>
+                ))}
+
+                <TouchableOpacity style={styles.viewAllRow} onPress={() => setShowAllResources(!showAllResources)} activeOpacity={0.8}>
+                    <Text style={styles.viewAllText}>{showAllResources ? 'Show less' : `View all ${allResourceCards.length} resources`}</Text>
+                    <Ionicons name={showAllResources ? 'chevron-up' : 'chevron-down'} size={16} color={colors.accentBrown} />
+                </TouchableOpacity>
+
+                {showAllResources ? (
+                    <View style={styles.resourceGrid}>
+                        {moreCards.map((card) => (
+                            <ResourceTile key={card.id} card={card} onPress={() => handleResourceOpen(card.id)} t={t} />
+                        ))}
+                    </View>
+                ) : null}
             </StitchDashboardShell>
 
             <Modal visible={projectPickerVisible} animationType='slide' transparent onRequestClose={() => setProjectPickerVisible(false)}>
@@ -408,19 +435,52 @@ const styles = StyleSheet.create({
   miniStatValue: { fontSize: 15, fontWeight: '900', color: colors.text },
 
     sectionSpacing: { marginTop: spacing.md },
-    actionsCard: { marginBottom: spacing.lg, marginHorizontal: 16 },
-    actionsContent: { backgroundColor: colors.surfaceHighlight, gap: 0 },
-    resourceRow: {
+    resourcePinned: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        paddingVertical: 14,
+        marginHorizontal: 16,
+        marginBottom: spacing.xs,
+        backgroundColor: colors.surfaceHighlight,
+        borderRadius: radius.lg,
+        paddingVertical: spacing.sm + 2,
         paddingHorizontal: spacing.sm + 2,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.line,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.5)',
+        ...stitchShadows.card,
     },
-    resourceRowIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    resourceRowTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: colors.text },
+    resourcePinnedOrb: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+    resourcePinnedTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: colors.text },
+    viewAllRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginHorizontal: 16,
+        marginBottom: spacing.sm,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.lg,
+        backgroundColor: colors.surfaceHighlight,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.5)',
+        ...stitchShadows.card,
+    },
+    viewAllText: { fontSize: 13, fontWeight: '800', color: colors.accentBrown },
+    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, paddingHorizontal: 16 },
+    resourceTile: {
+        backgroundColor: colors.surfaceHighlight,
+        width: '48.5%',
+        borderRadius: radius.lg,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.sm + 2,
+        alignItems: 'center',
+        gap: spacing.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.5)',
+        ...stitchShadows.card,
+    },
+    resourceTileOrb: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    resourceTileTitle: { fontSize: 12, fontWeight: '800', color: colors.text, textAlign: 'center' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.38)', justifyContent: 'flex-end' },
     modalSheet: { backgroundColor: colors.backgroundAccent, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '78%' },
