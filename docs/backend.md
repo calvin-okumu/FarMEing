@@ -19,8 +19,10 @@
    - [Harvests](#harvests)
    - [Sales](#sales)
    - [Inventory](#inventory)
+   - [Reports](#reports)
    - [System](#system)
 6. [Prisma Schema](#prisma-schema)
+7. [Sync And Access Notes](#sync-and-access-notes)
 
 ---
 
@@ -63,10 +65,13 @@ npm install
 # 2. Apply database migrations
 npx prisma migrate deploy
 
+# 3. Regenerate Prisma client after schema changes
+npx prisma generate
+
 # (Optional) Seed or inspect the DB
 npx prisma studio
 
-# 3. Start the server
+# 4. Start the server
 node server.js
 ```
 
@@ -180,6 +185,9 @@ Base path: `/projects` — **Protected**
 | `PUT` | `/:id` | Update project |
 | `DELETE` | `/:id` | Soft delete project |
 | `GET` | `/:id/summary` | Get financial summary (budget vs actuals) |
+| `GET` | `/:id/members` | List project members and roles |
+| `POST` | `/:id/members` | Invite a member to a project |
+| `DELETE` | `/:id/members/:userId` | Remove a member from a project |
 
 ### Sync
 
@@ -189,6 +197,15 @@ Base path: `/sync` — **Protected**
 |---|---|---|
 | `GET` | `/pull` | Pull changes from server |
 | `POST` | `/push` | Push changes to server |
+
+### Reports
+
+Base path: `/reports` — **Protected**
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/project/:id/pdf` | Download a PDF report for a project |
+| `GET` | `/project/:id/excel` | Download an Excel report for a project |
 
 ### Budget Items
 
@@ -298,6 +315,7 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 *   **User:** Central entity. Contains credentials, role (`ADMIN`, `WORKER`), and localization settings (`currency`, `locale`).
 *   **Season:** Represents a farming season, linked to a user.
 *   **FarmProject:** Represents a specific crop cycle on a plot of land. Linked to `User` and optional `Season`. Tracks status (`PLANNING`, `ACTIVE`, `HARVESTED`, `CLOSED`).
+*   **ProjectAccess:** Join model for collaborative project access. Stores per-user membership and role (`OWNER`, `MANAGER`, `VIEWER`).
 
 ### Financials
 *   **BudgetItem:** Planned costs for a project.
@@ -313,5 +331,16 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 
 ### Relationships
 *   **User** has many **Projects** and **Employees**.
-*   **Project** has many **BudgetItems**, **Expenses**, **WorkEntries**, **Harvests**, and **Sales**.
+*   **Project** has many **BudgetItems**, **Expenses**, **WorkEntries**, **Harvests**, **Sales**, and **ProjectAccess** rows.
 *   **Employee** has many **WorkEntries** and **Payments**.
+*   **ProjectAccess** links a **User** to a **Project** with a collaborative role.
+
+---
+
+## Sync And Access Notes
+
+- Project ownership and collaboration are modeled through `ProjectAccess`, but the backend also falls back to `FarmProject.userId` for owner access when older or partially synced data is encountered.
+- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows so owner data still syncs if membership rows are temporarily missing.
+- `/sync/push` upserts an owner `ProjectAccess` row whenever a `farmProject` is created or updated from the mobile client.
+- Project-scoped APIs such as members and reports expect the server-side project ID. Mobile clients should prefer `remoteId` when present.
+- After deploying schema or access-model changes, run `npx prisma generate` and restart the process manager so runtime code and Prisma delegates stay aligned.

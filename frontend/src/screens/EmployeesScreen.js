@@ -28,6 +28,7 @@ import {
   StitchIconButton,
   StitchPrimaryButton,
   StitchSectionTitle,
+  StitchSurface,
 } from '../components/ui/StitchPrimitives';
 import SearchBar from '../components/ui/SearchBar';
 import EmptyState from '../components/ui/EmptyState';
@@ -37,8 +38,10 @@ import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
 import { useForm, Controller } from 'react-hook-form';
-function WorkerCard({ item, onPress, t, projectMap }) {
+function WorkerCard({ item, onPress, t }) {
   const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
+  const isLocalOnly = !item.remoteId;
+  const roleLabel = item.role || t('employees.role_unset');
 
   // We need to handle that item.assignments is an observable children collection
   const [assignmentCount, setAssignmentCount] = useState(0);
@@ -62,8 +65,8 @@ function WorkerCard({ item, onPress, t, projectMap }) {
           <Text style={styles.workerRole}>{item.phone || t('employees.no_phone')}</Text>
         </View>
         <StitchBadge
-          label={item.role || t('employees.role_unset')}
-          tone='success'
+          label={roleLabel}
+          tone={item.role ? 'success' : 'warning'}
           style={styles.badge}
           textStyle={styles.badgeText}
         />
@@ -71,22 +74,41 @@ function WorkerCard({ item, onPress, t, projectMap }) {
 
       <View style={styles.divider} />
 
+      <View style={styles.cardInsightRow}>
+        <View style={styles.cardInsightPill}>
+          <Ionicons name='briefcase-outline' size={13} color={stitchTheme.colors.primaryContainer} />
+          <Text style={styles.cardInsightText}>{item.role || t('employees.role_unset')}</Text>
+        </View>
+        <View style={styles.cardInsightPill}>
+          <Ionicons name='git-network-outline' size={13} color={stitchTheme.colors.accentBrown} />
+          <Text style={styles.cardInsightText}>
+            {assignmentCount === 0
+              ? t('employees.no_project', { defaultValue: 'No Project' })
+              : t('employees.project_count', { count: assignmentCount, defaultValue: `${assignmentCount} Projects` })}
+          </Text>
+        </View>
+        <View style={[styles.statusPill, isLocalOnly && styles.statusPillWarning]}>
+          <View style={[styles.statusDot, isLocalOnly && styles.statusDotWarning]} />
+          <Text style={[styles.statusText, isLocalOnly && styles.statusTextWarning]}>{statusLabel}</Text>
+        </View>
+      </View>
+
       <View style={styles.cardBottom}>
         <View style={styles.metaGroup}>
           <Text style={styles.metaLabel}>{t('employees.fields.project', { defaultValue: 'Projects' })}</Text>
           <Text style={styles.metaValue} numberOfLines={1}>
             {assignmentCount === 0
               ? t('employees.no_project', { defaultValue: 'No Project' })
-              : t('employees.project_count', { count: assignmentCount, defaultValue: `${assignmentCount} Projects` })}
+              : `${assignmentCount} ${assignmentCount === 1 ? 'assignment' : 'assignments'}`}
           </Text>
         </View>
         <View style={[styles.metaGroup, styles.metaMiddle]}>
           <Text style={styles.metaLabel}>{t('employees.fields.phone')}</Text>
           <Text style={styles.metaValue}>{item.phone || t('employees.no_phone')}</Text>
         </View>
-        <View style={styles.statusPill}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>{statusLabel}</Text>
+        <View style={styles.metaGroupEnd}>
+          <Text style={styles.metaLabel}>Open</Text>
+          <Text style={styles.metaValue}>Profile</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -127,17 +149,6 @@ export default function EmployeesScreen({ navigation }) {
     syncAll().catch(() => {});
   }, []);
 
-  const projectMap = useMemo(() => {
-    const map = new Map();
-    if (projects) {
-      projects.forEach(p => {
-        map.set(p.id, p.name);
-        if (p.remoteId) map.set(p.remoteId, p.name);
-      });
-    }
-    return map;
-  }, [projects]);
-
   const filteredEmployees = useMemo(() => {
     if (!employees) return [];
     const normalized = query.trim().toLowerCase();
@@ -161,6 +172,11 @@ export default function EmployeesScreen({ navigation }) {
   const assignedEmployees = useMemo(
     () => filteredEmployees.filter((employee) => !!employee.role).length,
     [filteredEmployees]
+  );
+
+  const localOnlyEmployees = useMemo(
+    () => employees ? employees.filter((employee) => !employee.remoteId).length : 0,
+    [employees]
   );
 
   const handleCreate = async (data) => {
@@ -246,13 +262,37 @@ export default function EmployeesScreen({ navigation }) {
           <StitchChip label={t('employees.filters.synced')} active={activeFilter === 'synced'} onPress={() => setActiveFilter('synced')} />
           <StitchChip label={t('employees.filters.local')} active={activeFilter === 'local'} onPress={() => setActiveFilter('local')} />
         </View>
+        <StitchSurface style={styles.snapshotCard} contentStyle={styles.snapshotContent} tone='raised' compact>
+          <View style={styles.snapshotHeader}>
+            <View>
+              <Text style={styles.snapshotEyebrow}>Team Snapshot</Text>
+              <Text style={styles.snapshotTitle}>See who is assigned, synced, and ready for payroll follow-up.</Text>
+            </View>
+            <View style={styles.snapshotOrb}>
+              <Ionicons name='people-circle-outline' size={18} color={stitchTheme.colors.primaryContainer} />
+            </View>
+          </View>
+          <View style={styles.snapshotMetricsRow}>
+            <View style={styles.snapshotMetric}>
+              <Text style={styles.snapshotMetricValue}>{String(filteredEmployees.length)}</Text>
+              <Text style={styles.snapshotMetricLabel}>Visible</Text>
+            </View>
+            <View style={styles.snapshotMetric}>
+              <Text style={styles.snapshotMetricValue}>{String(syncedEmployees)}</Text>
+              <Text style={styles.snapshotMetricLabel}>Synced</Text>
+            </View>
+            <View style={styles.snapshotMetric}>
+              <Text style={styles.snapshotMetricValue}>{String(localOnlyEmployees)}</Text>
+              <Text style={styles.snapshotMetricLabel}>Local only</Text>
+            </View>
+          </View>
+        </StitchSurface>
         <StitchDashboardSectionHeader title={t('employees.directory_title', { defaultValue: 'People & Payments' })} subtitle='Browse and open worker records' actionLabel={String(filteredEmployees.length)} />
         {filteredEmployees.length ? filteredEmployees.map((item) => (
           <WorkerCard
             key={item.id}
             item={item}
             t={t}
-            projectMap={projectMap}
             onPress={() => navigation.navigate('EmployeeDetail', { employeeId: item.id })}
           />
         )) : <EmptyState icon='people-outline' title={t('employees.empty_title')} subtitle={t('employees.empty_subtitle')} />}
@@ -357,13 +397,25 @@ const styles = StyleSheet.create({
     gap: stitchTheme.spacing.xs,
     marginBottom: stitchTheme.spacing.md,
   },
+  snapshotCard: { marginBottom: stitchTheme.spacing.xs },
+  snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
+  snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
+  snapshotEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
+  snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
+  snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  snapshotMetricValue: { fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.4 },
+  snapshotMetricLabel: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 },
   card: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     marginBottom: 10,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
     ...stitchShadows.card,
   },
   cardAccent: {
@@ -385,10 +437,10 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: stitchTheme.colors.primary,
+    backgroundColor: 'rgba(26,61,43,0.12)',
   },
   avatarText: {
-    color: stitchTheme.colors.warmWhite,
+    color: stitchTheme.colors.primaryContainer,
     fontSize: stitchTheme.typography.cardTitle.fontSize,
     lineHeight: stitchTheme.typography.cardTitle.lineHeight,
     fontWeight: '800',
@@ -428,10 +480,13 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     opacity: 0.8,
   },
+  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, marginBottom: 12 },
+  cardInsightPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
+  cardInsightText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
   cardBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 8,
   },
   metaGroup: {
@@ -439,6 +494,10 @@ const styles = StyleSheet.create({
   },
   metaMiddle: {
     alignItems: 'center',
+  },
+  metaGroupEnd: {
+    alignItems: 'flex-end',
+    minWidth: 52,
   },
   metaLabel: {
     fontSize: stitchTheme.typography.caption.fontSize,
@@ -461,8 +520,12 @@ const styles = StyleSheet.create({
     gap: 5,
     backgroundColor: stitchTheme.colors.mintLight,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 8,
     borderRadius: 20,
+    marginLeft: 'auto',
+  },
+  statusPillWarning: {
+    backgroundColor: stitchTheme.colors.warningSurface,
   },
   statusDot: {
     width: 6,
@@ -470,11 +533,19 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: stitchTheme.colors.primaryDim,
   },
+  statusDotWarning: {
+    backgroundColor: stitchTheme.colors.accentBrown,
+  },
   statusText: {
     fontSize: stitchTheme.typography.caption.fontSize,
     lineHeight: stitchTheme.typography.caption.lineHeight,
-    fontWeight: '700',
+    fontWeight: '800',
     color: stitchTheme.colors.primaryContainer,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  statusTextWarning: {
+    color: stitchTheme.colors.accentBrown,
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(18,23,20,0.26)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
@@ -489,4 +560,3 @@ const styles = StyleSheet.create({
   projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.xl },
 });
-

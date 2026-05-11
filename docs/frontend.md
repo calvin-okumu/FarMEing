@@ -72,6 +72,10 @@ Supports **English (en)** and **Kiswahili (sw)**.
 - **Expense:** Added `expenseType`, `isRecurring`, `frequency`.
 - **WorkEntry:** Added `hoursWorked`, `status`, `isRecurring`, `frequency`.
 
+### Sync identity helpers:
+- **FarmProject**, **Employee**, and **Payee** expose `remoteId` from the underlying Watermelon `remote_id` column.
+- Project-scoped API calls should prefer `remoteId` over the local Watermelon `id` when a record has already synced.
+
 ---
 
 ## Sync Service
@@ -80,6 +84,7 @@ The `syncService.js` handles bi-directional synchronization:
 - **Push:** Local changes (with `pending_` IDs) are sent to the server.
 - **Pull:** Latest data is fetched from the server and upserted locally.
 - **ID Resolution:** After a successful push, local `pending_` records are replaced with server-confirmed UUIDs.
+- **Project access recovery:** Sync-created projects now receive owner access rows on the backend during push, which keeps team-management and export endpoints usable after local-first project creation.
 
 ---
 
@@ -87,7 +92,7 @@ The `syncService.js` handles bi-directional synchronization:
 
 ### Projects
 - `ProjectsScreen`: List with "New Project" modal.
-- `ProjectDetailScreen`: Multi-tab view (Budget, Expenses, Labor, Harvest, Sales, Timeline).
+- `ProjectDetailScreen`: Multi-tab view (Budget, Expenses, Labor, Harvest, Sales, Inventory, Team, Timeline) with export actions and member management.
 - `AddHarvestScreen`: Form to record crop yields.
 - `AddSaleScreen`: Form to record revenue.
 

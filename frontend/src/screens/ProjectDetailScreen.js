@@ -8,8 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  RefreshControl,
-  Linking,
   Modal,
   KeyboardAvoidingView,
   TextInput,
@@ -23,12 +21,11 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import api, { BASE_URL } from '../lib/api';
 import useSettingsStore from '../store/useSettingsStore';
-import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchPrimaryButton, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -37,18 +34,25 @@ import { BarChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SearchBar from '../components/ui/SearchBar';
-import StatusBanner from '../components/ui/StatusBanner';
-import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import { deleteLocalModel } from '../utils/resourceMutations';
 import useAuthStore from '../store/useAuthStore';
 
 const screenWidth = Dimensions.get('window').width;
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'team', 'timeline'];
 
-function SummaryCard({ label, value, tone = 'default' }) {
+function MetricCard({ title, value, note, icon, accent, tone = 'default' }) {
   return (
-    <View style={[styles.summaryCard, tone === 'accent' && styles.summaryCardAccent]}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={[styles.summaryValue, tone === 'accent' && styles.summaryValueAccent]}>{value}</Text>
+    <View style={[styles.metricCard, tone === 'accent' && styles.metricCardAccent]}>
+      <View style={styles.metricInner}>
+        <View style={styles.metricTop}>
+          <Text style={[styles.metricTitle, tone === 'accent' && styles.metricTitleAccent]}>{title}</Text>
+          <View style={[styles.metricIconWrap, tone === 'accent' && styles.metricIconWrapAccent, { backgroundColor: accent ? `${accent}22` : stitchTheme.colors.surfaceTint }]}>
+            <Ionicons name={icon} size={15} color={tone === 'accent' ? stitchTheme.colors.surfaceHighlight : accent || stitchTheme.colors.primaryContainer} />
+          </View>
+        </View>
+        <Text style={[styles.metricValue, tone === 'accent' && styles.metricValueAccent]}>{value}</Text>
+        <Text style={[styles.metricNote, tone === 'accent' && styles.metricNoteAccent]}>{note}</Text>
+      </View>
     </View>
   );
 }
@@ -59,7 +63,7 @@ function TimelineSection({ title, tone, items, t, currency }) {
   return (
     <View style={styles.timelineSection}>
       <View style={styles.timelineSectionHeader}>
-        <View style={[styles.timelineSectionChip, tone === 'today' ? styles.timelineSectionChipToday : styles.timelineSectionChipPast]}>
+        <View style={[styles.timelineSectionChip, tone === 'today' && styles.timelineSectionChipToday]}>
           <Text style={[styles.timelineSectionChipText, tone === 'today' && styles.timelineSectionChipTextToday]}>{title}</Text>
         </View>
         <View style={styles.timelineSectionLine} />
@@ -69,7 +73,7 @@ function TimelineSection({ title, tone, items, t, currency }) {
         <View key={`${title}-${index}`} style={styles.timelineItemWrap}>
           <View style={styles.timelineRail}>
             <View style={[styles.timelineDot, { backgroundColor: item.dotColor }]}>
-              <Ionicons name={item.icon} size={15} color={item.iconColor || '#ffffff'} />
+              <Ionicons name={item.icon} size={11} color={item.iconColor || stitchTheme.colors.surfaceHighlight} />
             </View>
             {index !== items.length - 1 ? <View style={styles.timelineVertical} /> : null}
           </View>
@@ -78,52 +82,23 @@ function TimelineSection({ title, tone, items, t, currency }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.timelineTitle}>{item.title}</Text>
                 <View style={styles.timelineMetaRow}>
-                  <Ionicons name={item.timeIcon || 'time-outline'} size={13} color={stitchTheme.colors.textMuted} />
+                  <Ionicons name={item.timeIcon || 'time-outline'} size={10} color={stitchTheme.colors.textMuted} />
                   <Text style={styles.timelineMetaText}>{item.timeLabel}</Text>
                 </View>
               </View>
-              {item.badge ? (
-                <View style={[styles.timelineBadge, { backgroundColor: item.badgeBackground || stitchTheme.colors.successSurface }]}>
-                  <Text style={[styles.timelineBadgeText, { color: item.badgeColor || stitchTheme.colors.primary }]}>{item.badge}</Text>
-                </View>
-              ) : null}
+              {item.badge ? <StitchBadge label={item.badge} tone={item.status === 'APPROVED' ? 'success' : 'warning'} /> : null}
               {item.amountLabel ? <Text style={styles.timelineAmountText}>{item.amountLabel}</Text> : null}
             </View>
             <Text style={styles.timelineBody}>{item.body}</Text>
             {item.type === 'HARVEST' ? (
               <Text style={styles.timelineFooterValue}>{`${item.amount} ${t('harvest.units.kg')}`}</Text>
-            ) : item.type === 'SALE' || item.type === 'EXPENSE' ? (
+            ) : item.type === 'SALE' || item.type === 'EXPENSE' || item.type === 'WORK' ? (
               <Text style={styles.timelineFooterValue}>{formatCurrency(item.amount || 0, currency)}</Text>
             ) : null}
           </View>
         </View>
       ))}
     </View>
-  );
-}
-
-function ResourceOverviewCard({ eyebrow, title, value, tone = 'soft' }) {
-  return (
-    <View style={[styles.resourceOverviewCard, tone === 'accent' ? styles.resourceOverviewCardAccent : styles.resourceOverviewCardSoft]}>
-      <Text style={styles.resourceOverviewEyebrow}>{eyebrow}</Text>
-      <Text style={styles.resourceOverviewTitle}>{title}</Text>
-      <Text style={styles.resourceOverviewValue}>{value}</Text>
-    </View>
-  );
-}
-
-function WorkspaceAction({ label, icon, onPress, tone = 'default' }) {
-  return (
-    <TouchableOpacity
-      style={[styles.workspaceAction, tone === 'accent' && styles.workspaceActionAccent]}
-      onPress={onPress}
-      activeOpacity={0.88}
-    >
-      <View style={[styles.workspaceActionIcon, tone === 'accent' && styles.workspaceActionIconAccent]}>
-        <Ionicons name={icon} size={16} color={tone === 'accent' ? '#ffffff' : stitchTheme.colors.primary} />
-      </View>
-      <Text style={[styles.workspaceActionText, tone === 'accent' && styles.workspaceActionTextAccent]}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -140,13 +115,11 @@ function TeamMemberCard({ member, isOwner, onRemove, t }) {
             <Text style={styles.collectionMeta}>{member.phone}</Text>
           </View>
         </View>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>{member.role}</Text>
-        </View>
+        <StitchBadge label={member.role} tone={member.role === 'OWNER' ? 'success' : 'neutral'} />
       </View>
       {isOwner && member.role !== 'OWNER' ? (
-        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)}>
-          <Ionicons name="person-remove-outline" size={16} color={stitchTheme.colors.accentRed} />
+        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)} activeOpacity={0.8}>
+          <Ionicons name="person-remove-outline" size={15} color={stitchTheme.colors.accentRed} />
           <Text style={styles.removeMemberText}>Revoke Access</Text>
         </TouchableOpacity>
       ) : null}
@@ -158,8 +131,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, initialTab } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
-  const user = useAuthStore((s) => s.user);
-  const syncStatus = useSyncStore((s) => s.status);
 
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -243,7 +214,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       const extension = format === 'excel' ? 'xlsx' : 'pdf';
       const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.${extension}`;
       const endpoint = format === 'excel' ? 'excel' : 'pdf';
-      
+
       const downloadRes = await FileSystem.downloadAsync(
         `${BASE_URL}reports/project/${resolvedProjectId}/${endpoint}`,
         fileUri,
@@ -328,8 +299,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
       title: `${entry.activity}`,
       body: entry.notes || `Activity by ${employeeMap.get(entry.employeeId) || 'Staff'}`,
       badge: entry.status === 'APPROVED' ? t('timeline.completed') : t(`labor.status.${entry.status.toLowerCase()}`),
-      badgeBackground: entry.status === 'APPROVED' ? stitchTheme.colors.successSurface : stitchTheme.colors.warningSurface,
-      badgeColor: entry.status === 'APPROVED' ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown,
       timeLabel: formatAppDate(entry.date),
       dotColor: stitchTheme.colors.primary,
       amount: entry.totalCost,
@@ -371,43 +340,108 @@ export default function ProjectDetailScreen({ route, navigation }) {
     return [...workItems, ...expenseItems, ...harvestItems, ...saleItems].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [workEntries, expenses, harvests, sales, employeeMap, t]);
 
-  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => (
-    <View key={item.id} style={styles.collectionCard}>
-      <View style={styles.collectionTopRow}>
-        <Text style={styles.collectionTitle}>{title}</Text>
-        <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
+  const collectionSearch = searchQuery.trim().toLowerCase();
+  const isLocalOnly = !project?.remoteId;
+
+  const filteredBudgetItems = useMemo(() => {
+    const base = collectionSearch
+      ? budgetItems.filter((item) => [item.name, item.category].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : budgetItems;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
+  }, [budgetItems, collectionSearch, sortMode]);
+
+  const filteredExpenses = useMemo(() => {
+    const base = collectionSearch
+      ? expenses.filter((item) => [item.category, item.note].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : expenses;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.amount || 0) - (a.amount || 0));
+  }, [expenses, collectionSearch, sortMode]);
+
+  const filteredWorkEntries = useMemo(() => {
+    const base = collectionSearch
+      ? workEntries.filter((item) => [item.activity, employeeMap.get(item.employeeId), item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : workEntries;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalCost || 0) - (a.totalCost || 0));
+  }, [workEntries, collectionSearch, sortMode, employeeMap]);
+
+  const filteredHarvests = useMemo(() => {
+    const base = collectionSearch
+      ? harvests.filter((item) => [item.crop, item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : harvests;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.weight || 0) - (a.weight || 0));
+  }, [harvests, collectionSearch, sortMode]);
+
+  const filteredSales = useMemo(() => {
+    const base = collectionSearch
+      ? sales.filter((item) => [item.customer, item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : sales;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalAmount || 0) - (a.totalAmount || 0));
+  }, [sales, collectionSearch, sortMode]);
+
+  const filteredTeam = useMemo(() => {
+    const base = collectionSearch
+      ? team.filter((item) => [item.name, item.phone, item.role].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : team;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (a.role || '').localeCompare(b.role || '') : (a.name || '').localeCompare(b.name || ''));
+  }, [team, collectionSearch, sortMode]);
+
+  const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'team'].includes(activeTab);
+
+  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => {
+    const accentColor = tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown;
+    return (
+      <View key={item.id} style={styles.collectionCard}>
+        <View style={styles.collectionTopRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.collectionTitle}>{title}</Text>
+            <Text style={styles.collectionMeta}>{meta}</Text>
+          </View>
+          <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
+        </View>
+        <View style={styles.collectionActionRow}>
+          <TouchableOpacity
+            style={styles.collectionActionButton}
+            activeOpacity={0.8}
+            onPress={() => {
+              const params = { projectId: project.id, itemId: item.id };
+              if (type === 'budget') navigation.navigate('AddBudgetItem', params);
+              if (type === 'expenses') navigation.navigate('AddExpense', params);
+              if (type === 'labor') navigation.navigate('AddWorkEntry', params);
+              if (type === 'harvest') navigation.navigate('AddHarvest', params);
+              if (type === 'sales') navigation.navigate('AddSale', params);
+            }}
+          >
+            <Ionicons name="create-outline" size={14} color={stitchTheme.colors.primary} />
+            <Text style={styles.collectionActionText}>{t('common.edit')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.collectionActionButton, styles.collectionActionButtonDanger]}
+            activeOpacity={0.8}
+            onPress={() => setDeleteTarget({ type, item })}
+          >
+            <Ionicons name="trash-outline" size={14} color={stitchTheme.colors.accentRed} />
+            <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <Text style={styles.collectionMeta}>{meta}</Text>
-      <View style={styles.collectionActionRow}>
-        <TouchableOpacity style={styles.collectionActionButton} onPress={() => {
-          const params = { projectId: project.id, itemId: item.id };
-          if (type === 'budget') navigation.navigate('AddBudgetItem', params);
-          if (type === 'expenses') navigation.navigate('AddExpense', params);
-          if (type === 'labor') navigation.navigate('AddWorkEntry', params);
-          if (type === 'harvest') navigation.navigate('AddHarvest', params);
-          if (type === 'sales') navigation.navigate('AddSale', params);
-        }}>
-          <Ionicons name="create-outline" size={16} color={stitchTheme.colors.primary} />
-          <Text style={styles.collectionActionText}>{t('common.edit')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.collectionActionButton, styles.collectionActionButtonDanger]} onPress={() => setDeleteTarget({ type, item })}>
-          <Ionicons name="trash-outline" size={16} color={stitchTheme.colors.accentRed} />
-          <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) return <StitchScreenSkeleton />;
   if (!project) return null;
+
+  const timelineGroups = [
+    { title: t('common.today'), tone: 'today', items: localTimeline.slice(0, 3) },
+    { title: t('common.earlier'), tone: 'past', items: localTimeline.slice(3) },
+  ];
 
   return (
     <View style={styles.screen}>
       <StitchDashboardShell
         hero={{
-          eyebrow: t('timeline.project_activity'),
+          eyebrow: project.crop || t('projects.fields.crop'),
           title: project.name,
-          subtitle: `${project.crop} • ${project.landSize} ${project.landUnit}`,
+          subtitle: `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
           children: (
@@ -415,10 +449,10 @@ export default function ProjectDetailScreen({ route, navigation }) {
               <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
               <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
               <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
-                <StitchHeroPill 
-                  label={exporting ? 'Wait...' : 'Export'} 
-                  value={exporting ? 'Working' : 'Reports'} 
-                  icon={exporting ? 'refresh-outline' : 'download-outline'} 
+                <StitchHeroPill
+                  label={exporting ? 'Wait...' : 'Export'}
+                  value={exporting ? 'Working' : 'Reports'}
+                  icon={exporting ? 'refresh-outline' : 'download-outline'}
                   style={styles.heroPillTertiary}
                 />
               </TouchableOpacity>
@@ -429,49 +463,97 @@ export default function ProjectDetailScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSurface style={styles.heroCard}>
-          <View style={styles.heroRow}>
-            <Text style={styles.heroMeta}>{project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}</Text>
-            <View style={[styles.heroStatus, project.status === 'ACTIVE' ? styles.heroStatusActive : styles.heroStatusMuted]}>
-              <Text style={[styles.heroStatusText, project.status === 'ACTIVE' ? styles.heroStatusTextActive : styles.heroStatusTextMuted]}>{project.status}</Text>
+        {/* --- Insights Strip --- */}
+        <StitchSurface style={styles.insightsCard} contentStyle={styles.insightsContent} tone='raised' compact>
+          <View style={styles.insightsRow}>
+            <View style={styles.insightItem}>
+              <View style={[styles.insightDot, { backgroundColor: project.status === 'ACTIVE' ? stitchTheme.colors.primaryDim : stitchTheme.colors.textMuted }]} />
+              <View>
+                <Text style={styles.insightLabel}>Status</Text>
+                <Text style={styles.insightValue}>{project.status || 'ACTIVE'}</Text>
+              </View>
+            </View>
+            <View style={styles.insightItem}>
+              <View style={[styles.insightDot, { backgroundColor: isLocalOnly ? stitchTheme.colors.accentBrown : stitchTheme.colors.primaryDim }]} />
+              <View>
+                <Text style={styles.insightLabel}>Sync</Text>
+                <Text style={styles.insightValue}>{isLocalOnly ? 'Local only' : 'Synced'}</Text>
+              </View>
+            </View>
+            <View style={styles.insightItem}>
+              <View style={[styles.insightDot, { backgroundColor: team.length > 0 ? stitchTheme.colors.primaryDim : stitchTheme.colors.textMuted }]} />
+              <View>
+                <Text style={styles.insightLabel}>Team</Text>
+                <Text style={styles.insightValue}>{String(team.length)}</Text>
+              </View>
             </View>
           </View>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && styles.progressBarFillDanger]} />
-          </View>
-          <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.total_spent')}</Text>
+        </StitchSurface>
 
-          <View style={styles.inlineChartBox}>
+        {/* --- Metric Cards --- */}
+        <View style={styles.overviewGrid}>
+          <MetricCard title={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} note={t('dashboard.planned_allocation')} icon='card-outline' accent={stitchTheme.colors.primaryDim} />
+          <MetricCard title={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} note={`${budgetProgress.toFixed(1)}% used`} icon='wallet-outline' accent={stitchTheme.colors.accentBrown} />
+        </View>
+
+        {/* --- Budget Chart --- */}
+        {totalBudget > 0 ? (
+          <StitchSurface style={styles.chartCard} contentStyle={styles.chartContent} tone='raised' compact>
+            <View style={styles.chartTopRow}>
+              <View>
+                <Text style={styles.chartEyebrow}>Budget vs Actual</Text>
+                <Text style={styles.chartTitle}>{formatCurrency(totalBudget - totalSpent, currency)} remaining</Text>
+              </View>
+              <View style={[styles.chartProgressRing, budgetProgress > 100 && styles.chartProgressRingDanger]}>
+                <Text style={[styles.chartProgressText, budgetProgress > 100 && styles.chartProgressTextDanger]}>{Math.min(budgetProgress, 999).toFixed(0)}%</Text>
+              </View>
+            </View>
+            <View style={styles.chartBarTrack}>
+              <View style={[styles.chartBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, budgetProgress > 100 && styles.chartBarFillDanger]} />
+            </View>
             <BarChart
               data={{
-                labels: ['Budget', 'Actual'],
+                labels: ['Budget', 'Spent'],
                 datasets: [{ data: [totalBudget, totalSpent] }]
               }}
-              width={screenWidth - 64}
-              height={160}
+              width={screenWidth - 80}
+              height={130}
               yAxisLabel={currency === 'TZS' ? 'T' : '$'}
               chartConfig={{
-                backgroundColor: stitchTheme.colors.surfaceInset,
+                backgroundColor: 'transparent',
                 backgroundGradientFrom: stitchTheme.colors.surfaceInset,
                 backgroundGradientTo: stitchTheme.colors.surfaceInset,
                 decimalPlaces: 0,
                 color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(122, 130, 150, ${opacity})`,
+                labelColor: () => stitchTheme.colors.textMuted,
                 style: { borderRadius: 12 },
-                propsForLabels: { fontSize: 10, fontWeight: '700' }
+                propsForLabels: { fontSize: 10, fontWeight: '700' },
+                barPercentage: 0.5,
               }}
               style={{ borderRadius: 12, marginTop: 12 }}
               fromZero
               showValuesOnTopOfBars
             />
-          </View>
-        </StitchSurface>
+          </StitchSurface>
+        ) : null}
 
+        {/* --- Tabs --- */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TAB_ORDER.map((tab) => (
             <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
           ))}
         </ScrollView>
+
+        {/* --- Controls --- */}
+        {showCollectionControls ? (
+          <StitchSurface style={styles.controlsCard} contentStyle={styles.controlsContent} tone='raised' compact>
+            <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
+            <View style={styles.sortRow}>
+              <StitchChip label='Latest' active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
+              <StitchChip label='Top value' active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
+            </View>
+          </StitchSurface>
+        ) : null}
 
         <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} actionLabel="Add" onActionPress={() => {
           const params = { projectId: project.id };
@@ -484,37 +566,45 @@ export default function ProjectDetailScreen({ route, navigation }) {
           else setActiveTab('timeline');
         }} />
 
-        {activeTab === 'budget' && budgetItems.map(item => renderCollectionCard(item.name, item.category, formatCurrency(item.total, currency), 'default', 'budget', item))}
-        {activeTab === 'expenses' && expenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item))}
-        {activeTab === 'labor' && workEntries.map(item => renderCollectionCard(item.activity, employeeMap.get(item.employeeId), formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
-        {activeTab === 'harvest' && harvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item))}
-        {activeTab === 'sales' && sales.map(item => renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item))}
-        
+        {/* --- Content Tabs --- */}
+        {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, item.category, formatCurrency(item.total, currency), 'default', 'budget', item))}
+        {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item))}
+        {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(item.activity, employeeMap.get(item.employeeId), formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
+        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item))}
+        {activeTab === 'sales' && filteredSales.map(item => renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item))}
+
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
-            {teamLoading ? <ActivityIndicator color={stitchTheme.colors.primary} /> : null}
-            {team.map(member => (
-              <TeamMemberCard 
-                key={member.id} 
-                member={member} 
-                isOwner={project.accessRole === 'OWNER'} 
+            {teamLoading ? <ActivityIndicator color={stitchTheme.colors.primary} style={{ marginVertical: 20 }} /> : null}
+            {filteredTeam.map(member => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                isOwner={project.accessRole === 'OWNER'}
                 onRemove={handleRemoveMember}
                 t={t}
               />
             ))}
             {!teamLoading && team.length === 0 && <Text style={styles.emptyText}>No other members have access yet.</Text>}
-            <StitchPrimaryButton label="Invite Member" onPress={() => setInviteVisible(true)} icon="person-add-outline" style={{ marginTop: 20 }} />
+            <StitchPrimaryButton label="Invite Member" onPress={() => setInviteVisible(true)} icon="person-add-outline" style={{ marginTop: 20, marginHorizontal: 16 }} />
           </View>
         )}
 
-        {activeTab === 'timeline' && localTimeline.map((item) => (
-          <View key={`${item.type}-${item.date}-${item.title}`} style={styles.listItem}>
-             <View style={styles.listItemHeader}>
-                <Text style={styles.listItemTitle}>{item.title}</Text>
-                <Text style={styles.listItemAmount}>{formatCurrency(item.amount || 0, currency)}</Text>
-              </View>
-              <Text style={styles.listItemMeta}>{item.timeLabel} • {item.body}</Text>
+        {activeTab === 'inventory' && (
+          <View style={styles.teamTab}>
+            <Text style={styles.emptyText}>Inventory management available from the workspace menu.</Text>
           </View>
+        )}
+
+        {activeTab === 'timeline' && timelineGroups.map((group) => (
+          <TimelineSection
+            key={group.title}
+            title={group.title}
+            tone={group.tone}
+            items={group.items}
+            t={t}
+            currency={currency}
+          />
         ))}
 
         <View style={{ height: 40 }} />
@@ -574,60 +664,133 @@ const styles = StyleSheet.create({
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  heroCard: { borderRadius: stitchTheme.radius.card, padding: 16, marginBottom: 12 },
-  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  heroMeta: { fontSize: 12, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
-  heroStatus: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  heroStatusActive: { backgroundColor: stitchTheme.colors.primarySoft },
-  heroStatusMuted: { backgroundColor: stitchTheme.colors.surfaceMuted },
-  heroStatusText: { fontSize: 10, fontWeight: '800' },
-  heroStatusTextActive: { color: stitchTheme.colors.primary },
-  heroStatusTextMuted: { color: stitchTheme.colors.textMuted },
-  progressBarTrack: { height: 6, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceMuted, overflow: 'hidden', marginTop: 8 },
-  progressBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryContainer },
-  progressBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
-  progressText: { marginTop: 4, fontSize: 10, color: stitchTheme.colors.textMuted, textAlign: 'right' },
-  inlineChartBox: { marginTop: 12, alignItems: 'center' },
-  tabsRow: { gap: 8, paddingVertical: 12, paddingHorizontal: 16 },
-  collectionCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 16, padding: 16, marginBottom: 10, marginHorizontal: 16, ...stitchShadows.soft },
-  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  /* Insights Strip */
+  insightsCard: { marginBottom: 12, marginHorizontal: 16 },
+  insightsContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm },
+  insightsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
+  insightItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, padding: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset },
+  insightDot: { width: 8, height: 8, borderRadius: 4 },
+  insightLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  insightValue: { marginTop: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+
+  /* Metric Cards */
+  overviewGrid: { flexDirection: 'row', gap: stitchTheme.spacing.sm, paddingHorizontal: 16, marginBottom: 10 },
+  metricCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    flex: 1,
+    borderRadius: stitchTheme.radius.lg,
+    overflow: 'hidden',
+    ...stitchShadows.soft,
+  },
+  metricCardAccent: { backgroundColor: stitchTheme.colors.primary },
+  metricInner: { padding: 14 },
+  metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  metricTitle: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  metricTitleAccent: { color: 'rgba(255,255,255,0.7)' },
+  metricIconWrap: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  metricIconWrapAccent: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  metricValue: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  metricValueAccent: { color: stitchTheme.colors.surfaceHighlight },
+  metricNote: { marginTop: 2, fontSize: 10, color: stitchTheme.colors.textMuted, fontWeight: '700' },
+  metricNoteAccent: { color: 'rgba(255,255,255,0.6)' },
+
+  /* Chart Card */
+  chartCard: { marginBottom: 12, marginHorizontal: 16 },
+  chartContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, gap: 12 },
+  chartTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  chartEyebrow: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  chartTitle: { marginTop: 2, fontSize: 15, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  chartProgressRing: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.surfaceTint, alignItems: 'center', justifyContent: 'center' },
+  chartProgressRingDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
+  chartProgressText: { fontSize: 12, fontWeight: '900', color: stitchTheme.colors.primaryContainer },
+  chartProgressTextDanger: { color: stitchTheme.colors.accentRed },
+  chartProgressInner: {},
+  chartBarTrack: { height: 6, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceInset, overflow: 'hidden' },
+  chartBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryDim },
+  chartBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
+
+  /* Tabs & Controls */
+  tabsRow: { gap: 8, paddingVertical: 10, paddingHorizontal: 16 },
+  controlsCard: { marginBottom: 10, marginHorizontal: 16 },
+  controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
+
+  /* Collection Cards */
+  collectionCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    padding: 14,
+    marginBottom: 8,
+    marginHorizontal: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...stitchShadows.card,
+  },
+  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   collectionTitle: { fontSize: 14, fontWeight: '800', color: stitchTheme.colors.text },
-  collectionAmount: { fontSize: 14, fontWeight: '900', color: stitchTheme.colors.text },
-  collectionAmountPositive: { color: stitchTheme.colors.primary },
+  collectionAmount: { fontSize: 14, fontWeight: '900', color: stitchTheme.colors.text, marginLeft: 8 },
+  collectionAmountPositive: { color: stitchTheme.colors.primaryContainer },
   collectionAmountNegative: { color: stitchTheme.colors.accentRed },
-  collectionMeta: { marginTop: 4, fontSize: 12, color: stitchTheme.colors.textMuted },
-  collectionActionRow: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
-  collectionActionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceInset },
+  collectionMeta: { marginTop: 2, fontSize: 11, color: stitchTheme.colors.textMuted, fontWeight: '600' },
+  collectionActionRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  collectionActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+  },
   collectionActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
   collectionActionText: { color: stitchTheme.colors.primary, fontSize: 11, fontWeight: '800' },
   collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: 11, fontWeight: '800' },
-  listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 16, padding: 16, marginBottom: 8, marginHorizontal: 16, ...stitchShadows.soft },
-  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  listItemTitle: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
-  listItemAmount: { fontSize: 13, fontWeight: '900', color: stitchTheme.colors.text },
-  listItemMeta: { fontSize: 11, color: stitchTheme.colors.textMuted },
+
+  /* Timeline */
+  timelineSection: { paddingHorizontal: 16, marginBottom: 20 },
+  timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  timelineSectionChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceMuted },
+  timelineSectionChipToday: { backgroundColor: stitchTheme.colors.primaryContainer },
+  timelineSectionChipText: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textSoft, textTransform: 'uppercase', letterSpacing: 0.5 },
+  timelineSectionChipTextToday: { color: stitchTheme.colors.surfaceHighlight },
+  timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.line, marginLeft: 10 },
+  timelineItemWrap: { flexDirection: 'row', minHeight: 70 },
+  timelineRail: { width: 28, alignItems: 'center' },
+  timelineDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', zIndex: 2, ...stitchShadows.soft },
+  timelineVertical: { position: 'absolute', top: 22, bottom: 0, width: 2, backgroundColor: stitchTheme.colors.line, zIndex: 1 },
+  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 14, padding: 14, marginBottom: 10, marginLeft: 6, ...stitchShadows.soft },
+  timelineTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+  timelineTitle: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
+  timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  timelineMetaText: { fontSize: 10, color: stitchTheme.colors.textMuted, fontWeight: '600' },
+  timelineBody: { fontSize: 12, color: stitchTheme.colors.textSoft, lineHeight: 16 },
+  timelineFooterValue: { marginTop: 6, fontSize: 13, fontWeight: '900', color: stitchTheme.colors.primaryContainer },
+
+  /* Team */
   teamTab: { paddingBottom: 20 },
-  teamInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  teamAvatar: { width: 40, height: 40, borderRadius: 12, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  teamAvatarText: { color: stitchTheme.colors.primary, fontSize: 16, fontWeight: '800' },
-  roleBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceInset },
-  roleText: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted },
-  removeMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
-  removeMemberText: { color: stitchTheme.colors.accentRed, fontSize: 12, fontWeight: '700' },
+  teamInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  teamAvatar: { width: 36, height: 36, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceTint, alignItems: 'center', justifyContent: 'center' },
+  teamAvatarText: { color: stitchTheme.colors.primary, fontSize: 15, fontWeight: '800' },
+  removeMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  removeMemberText: { color: stitchTheme.colors.accentRed, fontSize: 12, fontWeight: '800' },
+
+  /* Overlays */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  formatMenu: { backgroundColor: '#fff', borderRadius: 20, padding: 20, width: '90%', alignSelf: 'center', marginBottom: 40, ...stitchShadows.card },
+  formatMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 24, padding: 20, width: '94%', alignSelf: 'center', marginBottom: 32, ...stitchShadows.float },
   formatTitle: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: 16, textAlign: 'center' },
-  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceHighlight, marginBottom: 8 },
-  formatText: { fontSize: 14, fontWeight: '700' },
+  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: stitchTheme.colors.surfaceInset, marginBottom: 8 },
+  formatText: { fontSize: 14, fontWeight: '700', color: stitchTheme.colors.text },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '900', color: stitchTheme.colors.primary },
-  input: { borderRadius: 12, padding: 14, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border, marginBottom: 16 },
-  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  roleChip: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', borderWidth: 1, borderColor: 'transparent' },
-  roleChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
-  roleChipText: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.textMuted },
+  modalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: stitchTheme.colors.primary },
+  input: { borderRadius: 14, padding: 16, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, fontSize: 16, marginBottom: 20 },
+  roleRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  roleChip: { flex: 1, height: 50, borderRadius: 14, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  roleChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
+  roleChipText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.textMuted },
   roleChipTextActive: { color: stitchTheme.colors.primary },
-  emptyText: { textAlign: 'center', marginTop: 30, color: stitchTheme.colors.textMuted, fontSize: 13 },
+  emptyText: { textAlign: 'center', marginTop: 40, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
 });

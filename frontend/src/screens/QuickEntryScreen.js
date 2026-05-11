@@ -33,6 +33,7 @@ import {
   StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionTitle,
+  StitchSurface,
 } from '../components/ui/StitchPrimitives';
 
 const ACTIVITIES = ['planting', 'weeding', 'harvesting', 'spraying', 'other'];
@@ -70,6 +71,8 @@ export default function QuickEntryScreen({ navigation }) {
   const employeePlaceholder = entryMode === 'crew' ? t('quick_entry.placeholders.crew_name') : t('quick_entry.placeholders.employee');
   const helperText = entryMode === 'crew' ? t('quick_entry.crew_hint') : t('quick_entry.single_worker_hint');
   const graphValues = useMemo(() => [parseFloat(workers) || 1, parseFloat(days) || 1, parseFloat(rate) || 1, total || 1], [workers, days, rate, total]);
+  const syncedProjectCount = useMemo(() => projects.filter((project) => !!project.remoteId).length, [projects]);
+  const crewModeActive = entryMode === 'crew';
 
   useEffect(() => {
     const projectQuery = database.get('farm_projects').query(Q.where('is_deleted', false));
@@ -264,6 +267,65 @@ export default function QuickEntryScreen({ navigation }) {
         >
           <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
+          <StitchSurface style={styles.snapshotCard} contentStyle={styles.snapshotContent} tone='raised' compact>
+            <View style={styles.snapshotHeader}>
+              <View>
+                <Text style={styles.snapshotEyebrow}>Field Snapshot</Text>
+                <Text style={styles.snapshotTitle}>Build a labor record in seconds with project, worker mode, and payout preview in one place.</Text>
+              </View>
+              <View style={styles.snapshotOrb}>
+                <Ionicons name='flash-outline' size={18} color={stitchTheme.colors.primaryContainer} />
+              </View>
+            </View>
+            <View style={styles.snapshotMetricsRow}>
+              <View style={styles.snapshotMetric}>
+                <Text style={styles.snapshotMetricValue}>{String(projects.length)}</Text>
+                <Text style={styles.snapshotMetricLabel}>Projects</Text>
+              </View>
+              <View style={styles.snapshotMetric}>
+                <Text style={styles.snapshotMetricValue}>{String(syncedProjectCount)}</Text>
+                <Text style={styles.snapshotMetricLabel}>Synced</Text>
+              </View>
+              <View style={styles.snapshotMetric}>
+                <Text style={styles.snapshotMetricValue}>{crewModeActive ? workers : '1'}</Text>
+                <Text style={styles.snapshotMetricLabel}>{crewModeActive ? 'Crew size' : 'Single entry'}</Text>
+              </View>
+            </View>
+          </StitchSurface>
+
+          <StitchSurface style={styles.formSummaryCard} contentStyle={styles.formSummaryContent} tone='raised' compact>
+            <View style={styles.summaryTopRow}>
+              <View>
+                <Text style={styles.summaryEyebrow}>Entry Summary</Text>
+                <Text style={styles.summaryTitle}>{selectedProject?.name || t('quick_entry.select_project')}</Text>
+              </View>
+              <View style={[styles.summaryModeBadge, crewModeActive && styles.summaryModeBadgeWarm]}>
+                <Text style={[styles.summaryModeText, crewModeActive && styles.summaryModeTextWarm]}>{t(`quick_entry.modes.${entryMode}`)}</Text>
+              </View>
+            </View>
+            <View style={styles.summaryMetaRow}>
+              <View style={styles.summaryPill}>
+                <Ionicons name='calendar-outline' size={14} color={stitchTheme.colors.accentBrown} />
+                <Text style={styles.summaryPillText}>{formatAppDate(date)}</Text>
+              </View>
+              <View style={styles.summaryPill}>
+                <Ionicons name='flash-outline' size={14} color={stitchTheme.colors.primaryContainer} />
+                <Text style={styles.summaryPillText}>{t(`common.activities.${activity}`)}</Text>
+              </View>
+            </View>
+            <StitchMiniBars values={graphValues} activeIndex={3} softIndex={crewModeActive ? 0 : 1} style={styles.summaryGraph} />
+            <View style={styles.summaryFooter}>
+              <View>
+                <Text style={styles.summaryLabel}>Estimated payout</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(total, currency)}</Text>
+              </View>
+              <View style={styles.summaryRightBlock}>
+                <Text style={styles.summaryLabel}>Workers x days</Text>
+                <Text style={styles.summaryValueSmall}>{`${workers} x ${days}`}</Text>
+              </View>
+            </View>
+          </StitchSurface>
+
           <View style={styles.formCard}>
             <StitchSectionTitle>{t('quick_entry.mode')}</StitchSectionTitle>
             <View style={styles.chipsRow}>
@@ -376,15 +438,15 @@ export default function QuickEntryScreen({ navigation }) {
             <View style={styles.row}>
               <View style={styles.third}>
                 <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionTitle>
-                <TextInput style={styles.inputShell} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
+                <TextInput style={styles.numericInput} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
               </View>
               <View style={styles.third}>
                 <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionTitle>
-                <TextInput style={styles.inputShell} value={days} onChangeText={setDays} keyboardType="numeric" />
+                <TextInput style={styles.numericInput} value={days} onChangeText={setDays} keyboardType="numeric" />
               </View>
               <View style={styles.third}>
                 <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionTitle>
-                <TextInput style={styles.inputShell} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
+                <TextInput style={styles.numericInput} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
               </View>
             </View>
 
@@ -408,11 +470,41 @@ const styles = StyleSheet.create({
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   banner: { marginBottom: stitchTheme.spacing.md },
+  snapshotCard: { marginBottom: stitchTheme.spacing.xs },
+  snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
+  snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
+  snapshotEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
+  snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
+  snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  snapshotMetricValue: { fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.4 },
+  snapshotMetricLabel: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 },
+  formSummaryCard: { marginBottom: stitchTheme.spacing.xs },
+  formSummaryContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, gap: stitchTheme.spacing.md },
+  summaryTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
+  summaryEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  summaryTitle: { marginTop: 4, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  summaryModeBadge: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.successSurface },
+  summaryModeBadgeWarm: { backgroundColor: stitchTheme.colors.warningSurface },
+  summaryModeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  summaryModeTextWarm: { color: stitchTheme.colors.accentBrown },
+  summaryMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
+  summaryPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
+  summaryPillText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
+  summaryGraph: { height: 68, marginTop: 2 },
+  summaryFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: stitchTheme.spacing.sm },
+  summaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.7 },
+  summaryValue: { marginTop: 4, fontSize: 24, lineHeight: 28, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.5 },
+  summaryRightBlock: { alignItems: 'flex-end' },
+  summaryValueSmall: { marginTop: 4, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
   formCard: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
     padding: stitchTheme.spacing.md,
     gap: stitchTheme.spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
     ...stitchShadows.card,
   },
   inputShell: {
@@ -432,7 +524,7 @@ const styles = StyleSheet.create({
   },
   inputText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
   placeholder: { color: '#8a9388' },
-  dropdownMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, marginTop: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', ...stitchShadows.card },
+  dropdownMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, marginTop: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
   dropdownItem: { minHeight: 50, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 14, backgroundColor: stitchTheme.colors.surfaceHighlight, borderBottomWidth: 1, borderBottomColor: stitchTheme.colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
   dropdownItemActive: { backgroundColor: stitchTheme.colors.successSurface },
   dropdownItemLast: { borderBottomWidth: 0 },
@@ -443,6 +535,20 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   third: { flex: 1 },
   smallLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
+  numericInput: {
+    minHeight: 50,
+    borderRadius: stitchTheme.radius.md,
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingVertical: 13,
+    fontSize: stitchTheme.typography.body.fontSize,
+    lineHeight: stitchTheme.typography.body.lineHeight,
+    color: stitchTheme.colors.text,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderWidth: 1,
+    borderColor: stitchTheme.colors.border,
+    textAlign: 'center',
+    fontWeight: '700',
+  },
   button: { marginTop: stitchTheme.spacing.md },
   loader: { marginTop: stitchTheme.spacing.sm },
 });
