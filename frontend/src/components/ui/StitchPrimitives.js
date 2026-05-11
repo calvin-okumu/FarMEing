@@ -419,7 +419,7 @@ export function StitchMiniBars({ values, activeIndex = -1, softIndex = -1, style
   return (
     <View style={[styles.miniBars, style]}>
       {values.map((value, index) => {
-        let backgroundColor = '#e2ddd8';
+        let backgroundColor = stitchTheme.colors.surfaceMuted;
         if (index === activeIndex) backgroundColor = stitchTheme.colors.primaryContainer;
         else if (index === softIndex) backgroundColor = stitchTheme.colors.primarySoft;
 
@@ -442,6 +442,21 @@ export function StitchMiniBars({ values, activeIndex = -1, softIndex = -1, style
 
 export function StitchSkeletonBlock({ style }) {
   return <View style={[styles.skeletonBlock, style]} />;
+}
+
+export function StitchSearchBar({ value, onChangeText, placeholder }) {
+  return (
+    <View style={styles.searchBar}>
+      <Ionicons name='search-outline' size={16} color={stitchTheme.colors.textMuted} />
+      <TextInput
+        style={styles.searchBarInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={stitchTheme.colors.textMuted}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -701,6 +716,23 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
     minHeight: 20,
+  },
+  searchBar: {
+    minHeight: 48,
+    borderRadius: stitchTheme.radius.md,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderWidth: 1,
+    borderColor: stitchTheme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: stitchTheme.spacing.sm,
+    paddingHorizontal: 14,
+  },
+  searchBarInput: {
+    flex: 1,
+    fontSize: stitchTheme.typography.bodySmall.fontSize,
+    lineHeight: stitchTheme.typography.bodySmall.lineHeight,
+    color: stitchTheme.colors.text,
   },
   skeletonBlock: {
     backgroundColor: stitchTheme.colors.surfaceInset,

@@ -10,7 +10,7 @@ import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
-import { StitchBadge, StitchChip } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 
 function DetailRow({ icon, title, subtitle, tint = stitchTheme.colors.successSurface, iconColor = stitchTheme.colors.primary, rightText }) {
@@ -69,25 +69,28 @@ export default function SettingsScreen({ navigation }) {
         }}
         bodyContentStyle={styles.content}
       >
-        <View style={styles.profileCard}>
-          <View style={styles.avatarShell}>
-            <View style={styles.avatarCard}>
-              <Ionicons name='person' size={38} color={stitchTheme.colors.primarySoft} />
+        <StitchSurface style={styles.profileCard} tone='raised' compact>
+          <View style={styles.profileRow}>
+            <View style={styles.avatarShell}>
+              <View style={styles.avatarCard}>
+                <Ionicons name='person' size={38} color={stitchTheme.colors.primarySoft} />
+              </View>
+              <View style={styles.verifiedBadge}>
+                <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primary} />
+              </View>
             </View>
-            <View style={styles.verifiedBadge}>
-              <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primary} />
-            </View>
-          </View>
 
-          <View style={styles.profileTextWrap}>
-            <Text style={styles.profileName}>{user?.name || t('settings.unknown_user')}</Text>
-            <Text style={styles.profileMeta}>{syncSummary}</Text>
-            <StitchBadge label={t('settings.premium_plan')} tone='success' style={styles.planBadge} />
+            <View style={styles.profileTextWrap}>
+              <Text style={styles.profileName}>{user?.name || t('settings.unknown_user')}</Text>
+              <Text style={styles.profileMeta}>{syncSummary}</Text>
+              <StitchBadge label={t('settings.premium_plan')} tone='success' style={styles.planBadge} />
+            </View>
           </View>
-        </View>
+        </StitchSurface>
 
         <View style={styles.sectionBlock}>
           <StitchDashboardSectionHeader title={t('settings.language_heading')} subtitle={t('settings.preferred')} />
+        <StitchSurface style={styles.langCard} tone='raised' compact>
           <View style={styles.toggleShell}>
             <TouchableOpacity
               style={[styles.toggleOption, language === 'en' && styles.toggleOptionActive]}
@@ -106,6 +109,7 @@ export default function SettingsScreen({ navigation }) {
               <Text style={[styles.toggleText, language === 'sw' && styles.toggleTextActive]}>{t('settings.languages.sw')}</Text>
             </TouchableOpacity>
           </View>
+        </StitchSurface>
         </View>
 
         <View style={styles.sectionBlock}>
@@ -168,28 +172,28 @@ const styles = StyleSheet.create({
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.md },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   profileCard: {
+    marginBottom: 0,
+  },
+  profileRow: {
     flexDirection: 'row',
     gap: stitchTheme.spacing.md,
-    borderRadius: stitchTheme.radius.card,
-    padding: stitchTheme.spacing.md,
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    ...stitchShadows.card,
   },
   avatarShell: { position: 'relative', width: 82, alignItems: 'center' },
   avatarCard: { width: 76, height: 92, borderRadius: stitchTheme.radius.xl, backgroundColor: stitchTheme.colors.primaryContainer, alignItems: 'center', justifyContent: 'center', ...stitchShadows.soft },
-  verifiedBadge: { position: 'absolute', right: 0, bottom: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  verifiedBadge: { position: 'absolute', right: 0, bottom: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: stitchTheme.colors.surfaceHighlight },
   profileTextWrap: { flex: 1, justifyContent: 'center', gap: 4 },
   profileName: { fontSize: stitchTheme.typography.section.fontSize, lineHeight: stitchTheme.typography.section.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, fontFamily: stitchTheme.fonts.heading },
   profileMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
   planBadge: { marginTop: stitchTheme.spacing.xs },
   sectionBlock: { gap: stitchTheme.spacing.sm },
-  toggleShell: { flexDirection: 'row', gap: stitchTheme.spacing.xs, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.xxs },
+  langCard: { marginBottom: 0 },
+  toggleShell: { flexDirection: 'row', gap: stitchTheme.spacing.xs, padding: stitchTheme.spacing.xxs },
   toggleOption: { flex: 1, minHeight: 52, borderRadius: stitchTheme.radius.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.sm },
   toggleOptionActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, ...stitchShadows.soft },
   toggleText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '700', color: stitchTheme.colors.accentBrown },
   toggleTextActive: { color: stitchTheme.colors.text },
   listCardStack: { gap: stitchTheme.spacing.sm },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 15, ...stitchShadows.soft },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...stitchShadows.card },
   detailIconWrap: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   detailBody: { flex: 1 },
   detailTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, fontFamily: stitchTheme.fonts.heading },
@@ -199,6 +203,6 @@ const styles = StyleSheet.create({
   currencyChip: { minWidth: 72, alignItems: 'center' },
   currencyChipText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },
   logoutButton: { minHeight: 52, borderRadius: stitchTheme.radius.card, marginTop: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.warningSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, ...stitchShadows.soft },
-  logoutButtonText: { color: '#8b0e0e', fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800' },
-  versionText: { textAlign: 'center', marginTop: stitchTheme.spacing.md, color: '#6f786b', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
+  logoutButtonText: { color: stitchTheme.colors.accentRed, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800' },
+  versionText: { textAlign: 'center', marginTop: stitchTheme.spacing.md, color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
 });

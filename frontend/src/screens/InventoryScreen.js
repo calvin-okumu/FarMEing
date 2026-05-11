@@ -18,10 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSearchBar } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
-import SearchBar from '../components/ui/SearchBar';
+
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
@@ -216,7 +216,7 @@ export default function InventoryScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
+        <StitchSearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
         <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel='New Item' onActionPress={openCreate} />
         {filteredItems.length ? filteredItems.map((item) => (
           <TouchableOpacity key={item.id} style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>

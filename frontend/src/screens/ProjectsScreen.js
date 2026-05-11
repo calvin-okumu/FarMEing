@@ -18,10 +18,10 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchDatePicker, StitchInput, StitchSearchBar, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
-import SearchBar from '../components/ui/SearchBar';
+
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
@@ -249,7 +249,7 @@ export default function ProjectsScreen({ navigation, route }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <SearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
+        <StitchSearchBar value={query} onChangeText={setQuery} placeholder={t('projects.search_placeholder')} />
 
         <View style={styles.filterRow}>
           <StitchChip label={t('common.all', { defaultValue: 'All' })} active={activeFilter === 'all'} onPress={() => setActiveFilter('all')} />

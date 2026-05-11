@@ -27,11 +27,12 @@ import {
   StitchChip,
   StitchIconButton,
   StitchInput,
+  StitchSearchBar,
   StitchPrimaryButton,
   StitchSectionTitle,
   StitchSurface,
 } from '../components/ui/StitchPrimitives';
-import SearchBar from '../components/ui/SearchBar';
+
 import EmptyState from '../components/ui/EmptyState';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
@@ -254,7 +255,7 @@ export default function EmployeesScreen({ navigation }) {
       >
         <View style={styles.searchRow}>
           <View style={styles.searchWrap}>
-            <SearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />
+            <StitchSearchBar value={query} onChangeText={setQuery} placeholder={t('employees.search_placeholder')} />
           </View>
         </View>
         <View style={styles.filterRow}>

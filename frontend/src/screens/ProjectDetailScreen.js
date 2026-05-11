@@ -25,7 +25,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSearchBar, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -33,7 +33,7 @@ import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { BarChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import SearchBar from '../components/ui/SearchBar';
+
 import { deleteLocalModel } from '../utils/resourceMutations';
 import useAuthStore from '../store/useAuthStore';
 
@@ -547,7 +547,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         {/* --- Controls --- */}
         {showCollectionControls ? (
           <StitchSurface style={styles.controlsCard} contentStyle={styles.controlsContent} tone='raised' compact>
-            <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
+            <StitchSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
             <View style={styles.sortRow}>
               <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
               <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />

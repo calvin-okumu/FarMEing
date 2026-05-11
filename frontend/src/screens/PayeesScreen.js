@@ -25,12 +25,12 @@ import {
   StitchBadge,
   StitchChip,
   StitchIconButton,
-  StitchInput,
+  StitchSearchBar,
   StitchPrimaryButton,
   StitchSectionTitle,
   StitchSurface,
 } from '../components/ui/StitchPrimitives';
-import SearchBar from '../components/ui/SearchBar';
+
 import EmptyState from '../components/ui/EmptyState';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { initializeLocalRecord } from '../utils/localRecord';
@@ -184,7 +184,7 @@ export default function PayeesScreen({ navigation }) {
         onDismissBanner={() => setBanner(null)}
       >
         <View style={styles.searchRow}>
-          <SearchBar value={query} onChangeText={setQuery} placeholder={t('payees.search_placeholder', { defaultValue: 'Search payees...' })} />
+          <StitchSearchBar value={query} onChangeText={setQuery} placeholder={t('payees.search_placeholder', { defaultValue: 'Search payees...' })} />
         </View>
         
         <View style={styles.filterRow}>
