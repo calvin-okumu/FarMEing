@@ -30,6 +30,7 @@ import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import {
   StitchChip,
   StitchDatePicker,
+  StitchInput,
   StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionTitle,
@@ -435,16 +436,13 @@ export default function QuickEntryScreen({ navigation }) {
 
             <View style={styles.row}>
               <View style={styles.third}>
-                <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.workers')}</StitchSectionTitle>
-                <TextInput style={styles.numericInput} value={workers} onChangeText={setWorkers} keyboardType="numeric" />
+                <StitchInput label={t('quick_entry.fields.workers')} value={workers} onChangeText={setWorkers} keyboardType='numeric' />
               </View>
               <View style={styles.third}>
-                <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.days')}</StitchSectionTitle>
-                <TextInput style={styles.numericInput} value={days} onChangeText={setDays} keyboardType="numeric" />
+                <StitchInput label={t('quick_entry.fields.days')} value={days} onChangeText={setDays} keyboardType='numeric' />
               </View>
               <View style={styles.third}>
-                <StitchSectionTitle style={styles.smallLabel}>{t('quick_entry.fields.rate')}</StitchSectionTitle>
-                <TextInput style={styles.numericInput} value={rate} onChangeText={setRate} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#8a9388" />
+                <StitchInput label={t('quick_entry.fields.rate')} value={rate} onChangeText={setRate} keyboardType='decimal-pad' placeholder='0' />
               </View>
             </View>
 

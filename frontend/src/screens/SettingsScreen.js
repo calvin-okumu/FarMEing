@@ -72,7 +72,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.profileCard}>
           <View style={styles.avatarShell}>
             <View style={styles.avatarCard}>
-              <Ionicons name='person' size={38} color='#d7ffd1' />
+              <Ionicons name='person' size={38} color={stitchTheme.colors.primarySoft} />
             </View>
             <View style={styles.verifiedBadge}>
               <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primary} />
@@ -114,6 +114,9 @@ export default function SettingsScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('Payees')}>
               <DetailRow icon='business' title={t('payees.title', { defaultValue: 'Payees & Vendors' })} subtitle={t('payees.manage_subtitle', { defaultValue: 'Manage your suppliers and contractors' })} tint={stitchTheme.colors.surfaceMuted} />
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
+              <DetailRow icon='bar-chart' title={t('settings.reports', { defaultValue: 'Reports & Analytics' })} subtitle={t('settings.reports_subtitle', { defaultValue: 'View project performance and portfolio insights' })} tint={stitchTheme.colors.surfaceTint} />
+            </TouchableOpacity>
             <DetailRow icon='notifications' title={t('settings.notifications')} subtitle={t('settings.notifications_subtitle')} />
             <DetailRow icon='help-circle' title={t('settings.help_support')} subtitle={t('settings.help_support_subtitle')} tint={stitchTheme.colors.surfaceSubtle} />
             <DetailRow icon='document-text' title={t('settings.terms')} subtitle={t('settings.terms_subtitle')} />
@@ -150,7 +153,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.92}>
-          <Ionicons name='log-out-outline' size={18} color='#8b0e0e' />
+          <Ionicons name='log-out-outline' size={18} color={stitchTheme.colors.accentRed} />
           <Text style={styles.logoutButtonText}>{t('settings.logout_action')}</Text>
         </TouchableOpacity>
 

@@ -26,6 +26,7 @@ import {
   StitchBadge,
   StitchChip,
   StitchIconButton,
+  StitchInput,
   StitchPrimaryButton,
   StitchSectionTitle,
   StitchSurface,
@@ -37,7 +38,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 function WorkerCard({ item, onPress, t }) {
   const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
   const isLocalOnly = !item.remoteId;
@@ -307,51 +308,26 @@ export default function EmployeesScreen({ navigation }) {
                 <StitchIconButton icon='close' onPress={() => setModalVisible(false)} />
               </View>
 
-              <StitchSectionTitle>{t('employees.fields.name')} *</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="name"
-                rules={{ required: true }}
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={styles.input}
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder={t('employees.placeholders.name')}
-                    placeholderTextColor={stitchTheme.colors.textMuted}
-                  />
-                )}
+              <StitchInput
+                label={t('employees.fields.name')}
+                value={watch('name')}
+                onChangeText={(val) => setValue('name', val)}
+                placeholder={t('employees.placeholders.name')}
               />
 
-              <StitchSectionTitle>{t('employees.fields.phone')}</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={styles.input}
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder={t('employees.placeholders.phone')}
-                    placeholderTextColor={stitchTheme.colors.textMuted}
-                    keyboardType='phone-pad'
-                  />
-                )}
+              <StitchInput
+                label={t('employees.fields.phone')}
+                value={watch('phone')}
+                onChangeText={(val) => setValue('phone', val)}
+                placeholder={t('employees.placeholders.phone')}
+                keyboardType='phone-pad'
               />
 
-              <StitchSectionTitle>{t('employees.fields.role')}</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="role"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={styles.input}
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder={t('employees.placeholders.role')}
-                    placeholderTextColor={stitchTheme.colors.textMuted}
-                  />
-                )}
+              <StitchInput
+                label={t('employees.fields.role')}
+                value={watch('role')}
+                onChangeText={(val) => setValue('role', val)}
+                placeholder={t('employees.placeholders.role')}
               />
 
               <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
@@ -552,7 +528,6 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
   projectSelectionRow: { gap: 8, paddingVertical: 4 },
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },

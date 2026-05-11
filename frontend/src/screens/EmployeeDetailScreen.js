@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -17,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { database } from '../db';
 import { useObservable } from '../hooks/useWatermelon';
 import { syncAll } from '../services/syncService';
@@ -25,7 +24,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeEmployeeBalance } from '../utils/localAnalytics';
-import { StitchChip, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
@@ -112,7 +111,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     defaultValues: { name: '', phone: '', role: '', projectIds: [] }
   });
 
-  const { control: paymentControl, handleSubmit: handlePaymentSubmit, reset: resetPayment } = useForm({
+  const { control: paymentControl, handleSubmit: handlePaymentSubmit, reset: resetPayment, watch: watchPayment, setValue: setPaymentValue } = useForm({
     defaultValues: { amount: '', note: '', date: new Date() }
   });
 
@@ -390,32 +389,22 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           
-          <StitchSectionTitle>{t('employees.fields.name')}</StitchSectionTitle>
-          <Controller
-            control={editControl}
-            name="name"
-            rules={{ required: true }}
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
-            )}
+          <StitchInput
+            label={t('employees.fields.name')}
+            value={watchEdit('name')}
+            onChangeText={(val) => setEditValue('name', val)}
           />
 
-          <StitchSectionTitle>{t('employees.fields.phone')}</StitchSectionTitle>
-          <Controller
-            control={editControl}
-            name="phone"
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
-            )}
+          <StitchInput
+            label={t('employees.fields.phone')}
+            value={watchEdit('phone')}
+            onChangeText={(val) => setEditValue('phone', val)}
           />
 
-          <StitchSectionTitle>{t('employees.fields.role')}</StitchSectionTitle>
-          <Controller
-            control={editControl}
-            name="role"
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
-            )}
+          <StitchInput
+            label={t('employees.fields.role')}
+            value={watchEdit('role')}
+            onChangeText={(val) => setEditValue('role', val)}
           />
           
           <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
@@ -439,23 +428,17 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
           
-          <StitchSectionTitle>{t('payments.fields.amount')}</StitchSectionTitle>
-          <Controller
-            control={paymentControl}
-            name="amount"
-            rules={{ required: true }}
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
-            )}
+          <StitchInput
+            label={t('payments.fields.amount')}
+            value={watchPayment('amount')}
+            onChangeText={(val) => setPaymentValue('amount', val)}
+            keyboardType='decimal-pad'
           />
 
-          <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
-          <Controller
-            control={paymentControl}
-            name="note"
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#8a9388" />
-            )}
+          <StitchInput
+            label={t('common.notes')}
+            value={watchPayment('note')}
+            onChangeText={(val) => setPaymentValue('note', val)}
           />
 
           <StitchPrimaryButton label={t('payments.confirm')} onPress={handlePaymentSubmit(handleRecordPayment)} icon="checkmark-circle" style={styles.saveButton} />
@@ -518,7 +501,6 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border, marginBottom: stitchTheme.spacing.md },
   projectSelectionRow: { gap: 8, paddingVertical: 4, marginBottom: stitchTheme.spacing.md },
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },

@@ -25,7 +25,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchChip, StitchPrimaryButton, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -629,8 +629,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       <Modal visible={inviteVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior='padding' style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>Invite Member</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
-          <StitchSectionTitle>User Phone Number</StitchSectionTitle>
-          <TextInput style={styles.input} value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder="e.g. 0712345678" keyboardType="phone-pad" placeholderTextColor="#8a9388" />
+          <StitchInput label='User Phone Number' value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' />
           <StitchSectionTitle>Assigned Role</StitchSectionTitle>
           <View style={styles.roleRow}>
             {['MANAGER', 'VIEWER'].map(role => (

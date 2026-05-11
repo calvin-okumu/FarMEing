@@ -298,38 +298,10 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <View style={styles.fieldRow}>
           <View style={styles.fieldHalf}>
-            <StitchSectionTitle style={styles.fieldLabel}>{t('labor.days_worked')}</StitchSectionTitle>
-            <Controller
-              control={control}
-              name="daysWorked"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  style={styles.fieldInput}
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="decimal-pad"
-                  placeholder="1"
-                  placeholderTextColor="#8f968d"
-                />
-              )}
-            />
+            <StitchInput label={t('labor.days_worked')} value={watch('daysWorked')} onChangeText={(val) => setValue('daysWorked', val)} keyboardType='decimal-pad' placeholder='1' />
           </View>
           <View style={styles.fieldHalf}>
-            <StitchSectionTitle style={styles.fieldLabel}>{t('labor.rate_day')}</StitchSectionTitle>
-            <Controller
-              control={control}
-              name="ratePerDay"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  style={styles.fieldInput}
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                  placeholderTextColor="#8f968d"
-                />
-              )}
-            />
+            <StitchInput label={t('labor.rate_day')} value={watch('ratePerDay')} onChangeText={(val) => setValue('ratePerDay', val)} keyboardType='decimal-pad' placeholder='0.00' />
           </View>
         </View>
 
@@ -390,21 +362,12 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         </TouchableOpacity>
 
-        <StitchSectionTitle>{t('common.notes')}</StitchSectionTitle>
-        <Controller
-          control={control}
-          name="notes"
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.notesField}
-              value={value}
-              onChangeText={onChange}
-              placeholder={t('labor.placeholders.notes')}
-              multiline
-              numberOfLines={5}
-              placeholderTextColor="#a0a59d"
-            />
-          )}
+        <StitchInput
+          label={t('common.notes')}
+          value={watch('notes')}
+          onChangeText={(val) => setValue('notes', val)}
+          placeholder={t('labor.placeholders.notes')}
+          multiline
         />
 
         <View style={styles.totalCard}>
@@ -447,10 +410,6 @@ const styles = StyleSheet.create({
   counterLabel: { marginTop: 4, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: stitchTheme.colors.accentBrown },
   fieldRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   fieldHalf: { flex: 1 },
-  fieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, marginBottom: stitchTheme.spacing.xs },
-  fieldInput: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  dateField: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
-  dateFieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   sectionInline: { marginTop: stitchTheme.spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionInlineLabel: { marginBottom: 0 },
   switchTrack: { width: 54, height: 30, borderRadius: 18, backgroundColor: stitchTheme.colors.surfaceMuted, padding: 2 },
@@ -466,7 +425,6 @@ const styles = StyleSheet.create({
   cameraBubble: { width: 92, height: 92, borderRadius: 46, backgroundColor: stitchTheme.colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
   photoTitle: { marginTop: stitchTheme.spacing.md, fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   photoSubtitle: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, textAlign: 'center' },
-  notesField: { marginTop: stitchTheme.spacing.xs, minHeight: 116, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
   totalCard: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...stitchShadows.soft },
   totalLabel: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown },
   totalValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },

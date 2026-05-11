@@ -201,7 +201,7 @@ export default function AddSaleScreen({ route, navigation }) {
           </View>
 
           <View style={styles.infoCard}>
-            <View style={[styles.infoIcon, { backgroundColor: '#e1efda' }]}>
+            <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
               <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
             </View>
             <View style={styles.infoBody}>
@@ -213,7 +213,7 @@ export default function AddSaleScreen({ route, navigation }) {
           </View>
 
           <View style={styles.infoCard}>
-            <View style={[styles.infoIcon, { backgroundColor: '#f8e8e1' }]}>
+            <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.warningSurface }]}>
               <Ionicons name="cube-outline" size={20} color={stitchTheme.colors.accentBrown} />
             </View>
             <View style={styles.infoBody}>

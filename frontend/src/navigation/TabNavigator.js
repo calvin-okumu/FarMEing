@@ -18,6 +18,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import SyncErrorsScreen from '../screens/SyncErrorsScreen';
 import PayeesScreen from '../screens/PayeesScreen';
 import PayeeDetailScreen from '../screens/PayeeDetailScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import StitchTabBar from '../components/navigation/StitchTabBar';
 import { stitchTheme } from '../theme/stitchTheme';
 
@@ -126,6 +127,11 @@ function SettingsStackNavigator() {
       <SettingsStack.Screen
         name="PayeeDetail"
         component={PayeeDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="Reports"
+        component={ReportsScreen}
         options={{ headerShown: false }}
       />
     </SettingsStack.Navigator>

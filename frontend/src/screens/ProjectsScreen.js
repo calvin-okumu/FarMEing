@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
@@ -349,64 +349,42 @@ export default function ProjectsScreen({ navigation, route }) {
 
       <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={closeModal}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <StitchSectionTitle>{t('projects.fields.name')} *</StitchSectionTitle>
-          <Controller
-            control={control}
-            name="name"
-            rules={{ required: true }}
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.name')} placeholderTextColor={stitchTheme.colors.textMuted} />
-            )}
+          <StitchInput
+            label={t('projects.fields.name')}
+            value={watch('name')}
+            onChangeText={(val) => setValue('name', val)}
+            placeholder={t('projects.placeholders.name')}
           />
 
-          <StitchSectionTitle>{t('projects.fields.crop')}</StitchSectionTitle>
-          <Controller
-            control={control}
-            name="crop"
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.crop')} placeholderTextColor={stitchTheme.colors.textMuted} />
-            )}
+          <StitchInput
+            label={t('projects.fields.crop')}
+            value={watch('crop')}
+            onChangeText={(val) => setValue('crop', val)}
+            placeholder={t('projects.placeholders.crop')}
           />
 
           <View style={styles.row}>
-            <View style={styles.halfInput}>
-              <StitchSectionTitle style={styles.compactLabel}>{t('projects.fields.land_size')}</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="landSize"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('common.zero')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
-                )}
-              />
+            <View style={styles.half}>
+              <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' />
             </View>
-            <View style={styles.halfInput}>
-              <StitchSectionTitle style={styles.compactLabel}>{t('projects.fields.unit')}</StitchSectionTitle>
-              <Controller
-                control={control}
-                name="landUnit"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.unit')} placeholderTextColor={stitchTheme.colors.textMuted} />
-                )}
-              />
+            <View style={styles.half}>
+              <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} />
             </View>
           </View>
 
-          <StitchSectionTitle>{t('projects.fields.expected_yield')}</StitchSectionTitle>
-          <Controller
-            control={control}
-            name="expectedYield"
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder={t('projects.placeholders.expected_yield')} placeholderTextColor={stitchTheme.colors.textMuted} keyboardType="decimal-pad" />
-            )}
+          <StitchInput
+            label={t('projects.fields.expected_yield')}
+            value={watch('expectedYield')}
+            onChangeText={(val) => setValue('expectedYield', val)}
+            placeholder={t('projects.placeholders.expected_yield')}
+            keyboardType='decimal-pad'
           />
 
-          <StitchSectionTitle>Contract / Lease URL</StitchSectionTitle>
-          <Controller
-            control={control}
-            name="contractUrl"
-            render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder="https://..." placeholderTextColor={stitchTheme.colors.textMuted} />
-            )}
+          <StitchInput
+            label='Contract / Lease URL'
+            value={watch('contractUrl')}
+            onChangeText={(val) => setValue('contractUrl', val)}
+            placeholder='https://...'
           />
 
           <StitchInput
@@ -492,11 +470,6 @@ const styles = StyleSheet.create({
   cardActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
   cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
   cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
-  compactLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight },
-  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  dateSelectorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '600' },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
-  halfInput: { flex: 1 },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 });
