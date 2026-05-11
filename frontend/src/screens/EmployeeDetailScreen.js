@@ -378,7 +378,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         )}
 
         <TouchableOpacity style={styles.deleteTrigger} onPress={() => setDeleteVisible(true)} activeOpacity={0.88}>
-          <Ionicons name="trash-outline" size={18} color="#9c1111" />
+          <Ionicons name="trash-outline" size={18} color={stitchTheme.colors.accentRed} />
           <Text style={styles.deleteTriggerText}>{t('common.delete')}</Text>
         </TouchableOpacity>
 
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   listItemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: stitchTheme.spacing.xl },
   deleteTrigger: { marginTop: stitchTheme.spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  deleteTriggerText: { color: '#9c1111', fontWeight: '800' },
+  deleteTriggerText: { color: stitchTheme.colors.accentRed, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },

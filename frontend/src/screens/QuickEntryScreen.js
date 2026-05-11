@@ -391,7 +391,7 @@ export default function QuickEntryScreen({ navigation }) {
               }}
               onFocus={() => employeeName.length > 0 && setEmployeeDropdownVisible(true)}
               placeholder={employeePlaceholder}
-              placeholderTextColor="#8a9388"
+              placeholderTextColor={stitchTheme.colors.textMuted}
               autoCapitalize="words"
             />
 
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   inputText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
-  placeholder: { color: '#8a9388' },
+  placeholder: { color: stitchTheme.colors.textMuted },
   dropdownMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, marginTop: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
   dropdownItem: { minHeight: 50, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 14, backgroundColor: stitchTheme.colors.surfaceHighlight, borderBottomWidth: 1, borderBottomColor: stitchTheme.colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
   dropdownItemActive: { backgroundColor: stitchTheme.colors.successSurface },

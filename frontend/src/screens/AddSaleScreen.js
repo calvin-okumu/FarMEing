@@ -165,7 +165,7 @@ export default function AddSaleScreen({ route, navigation }) {
               onChangeText={setWeightSold}
               placeholder="0.00"
               keyboardType="decimal-pad"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={stitchTheme.colors.textMuted}
             />
             <Text style={styles.unitBadge}>{t('harvest.units.kg')}</Text>
           </View>
@@ -179,7 +179,7 @@ export default function AddSaleScreen({ route, navigation }) {
               onChangeText={setUnitPrice}
               placeholder="0.00"
               keyboardType="decimal-pad"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={stitchTheme.colors.textMuted}
             />
           </View>
 
@@ -190,7 +190,7 @@ export default function AddSaleScreen({ route, navigation }) {
 
           <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
-            <Ionicons name="person" size={20} color="#76806f" />
+            <Ionicons name="person" size={20} color={stitchTheme.colors.textMuted} />
             <TextInput
               style={styles.mediumInput}
               value={customer}

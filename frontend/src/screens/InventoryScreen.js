@@ -226,7 +226,7 @@ export default function InventoryScreen({ route, navigation }) {
                 <Text style={styles.cardMeta}>{item.category} • {item.quantity} {item.unit}</Text>
               </View>
               <TouchableOpacity onPress={() => setDeleteTarget(item)} hitSlop={8}>
-                <Ionicons name="trash-outline" size={20} color="#9c1111" />
+                <Ionicons name="trash-outline" size={20} color={stitchTheme.colors.accentRed} />
               </TouchableOpacity>
             </View>
             <View style={styles.cardBottom}>
