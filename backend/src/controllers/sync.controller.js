@@ -129,65 +129,68 @@ exports.pull = async (req, res) => {
     const changes = {};
 
     for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
-      let where = {
-        updatedAt: { gt: lastPulledAtDate },
-      };
+      try {
+        let where = {
+          updatedAt: { gt: lastPulledAtDate },
+        };
 
-      // Apply security scoping
-      if (prismaModel === 'user') {
-        where.id = req.user.id;
-      } else if (prismaModel === 'employee') {
-        // Show employees created by user OR assigned to projects user has access to
-        where.OR = [
-          { userId: req.user.id },
-          { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
-        ];
-      } else if (prismaModel === 'payee') {
-        // Show payees created by user OR linked to projects user has access to
-        where.OR = [
-          { userId: req.user.id },
-          { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
-          { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
-        ];
-      } else if (prismaModel === 'farmProject') {
-        // Projects user has access to
-        where.projectAccess = { some: { userId: req.user.id } };
-      } else {
-        // For other models (budget, expense, etc.), they are linked via project or employee
-        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
-          where.project = { projectAccess: { some: { userId: req.user.id } } };
-        } else if (prismaModel === 'payment') {
-          where.employee = { 
-            OR: [
-              { userId: req.user.id },
-              { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
-            ]
-          };
-        } else if (prismaModel === 'workEntry') {
+        // Apply security scoping
+        if (prismaModel === 'employee') {
+          // Show employees created by user OR assigned to projects user has access to
           where.OR = [
-            { project: { projectAccess: { some: { userId: req.user.id } } } },
-            { employee: { userId: req.user.id } }
+            { userId: req.user.id },
+            { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
           ];
-        }
-      }
-
-      const records = await prisma[prismaModel].findMany({ where });
-
-      const created = [];
-      const updated = [];
-      const deleted = [];
-
-      records.forEach(record => {
-        if (record.isDeleted) {
-          deleted.push(record.id);
-        } else if (record.createdAt > lastPulledAtDate) {
-          created.push(toWatermelon(record));
+        } else if (prismaModel === 'payee') {
+          // Show payees created by user OR linked to projects user has access to
+          where.OR = [
+            { userId: req.user.id },
+            { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
+            { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+          ];
+        } else if (prismaModel === 'farmProject') {
+          // Projects user has access to
+          where.projectAccess = { some: { userId: req.user.id } };
         } else {
-          updated.push(toWatermelon(record));
+          // For other models (budget, expense, etc.), they are linked via project or employee
+          if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+            where.project = { projectAccess: { some: { userId: req.user.id } } };
+          } else if (prismaModel === 'payment') {
+            where.employee = { 
+              OR: [
+                { userId: req.user.id },
+                { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+              ]
+            };
+          } else if (prismaModel === 'workEntry') {
+            where.OR = [
+              { project: { projectAccess: { some: { userId: req.user.id } } } },
+              { employee: { userId: req.user.id } }
+            ];
+          }
         }
-      });
 
-      changes[watermelonTable] = { created, updated, deleted };
+        const records = await prisma[prismaModel].findMany({ where });
+
+        const created = [];
+        const updated = [];
+        const deleted = [];
+
+        records.forEach(record => {
+          if (record.isDeleted) {
+            deleted.push(record.id);
+          } else if (record.createdAt > lastPulledAtDate) {
+            created.push(toWatermelon(record));
+          } else {
+            updated.push(toWatermelon(record));
+          }
+        });
+
+        changes[watermelonTable] = { created, updated, deleted };
+      } catch (tableError) {
+        console.error(`[sync] Pull failed for ${watermelonTable} (${prismaModel}):`, tableError.message);
+        throw tableError;
+      }
     }
 
     res.json({
