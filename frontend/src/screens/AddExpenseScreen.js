@@ -22,7 +22,7 @@ import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
@@ -178,19 +178,16 @@ export default function AddExpenseScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('expenses.entry_eyebrow'),
           title: itemId ? t('expenses.edit_title') : t('expenses.entry_title'),
           subtitle: note || t('settings.brand_short'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('expenses.fields.amount')} value={amount ? `${currency} ${amount}` : `${currency} 0.00`} icon='cash-outline' />
-              <StitchHeroPill label={t('expenses.category_heading')} value={t(`expenses.categories.${category}`)} icon='receipt-outline' />
-            </View>
-          ),
-        }}
+          pills: [
+            { label: t('expenses.fields.amount'), value: amount ? `${currency} ${amount}` : `${currency} 0.00`, icon: 'cash-outline' },
+            { label: t('expenses.category_heading'), value: t(`expenses.categories.${category}`), icon: 'receipt-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
@@ -363,7 +360,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   amountCard: { padding: stitchTheme.spacing.lg, borderRadius: stitchTheme.radius.card },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   amountCurrency: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },

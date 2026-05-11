@@ -21,7 +21,7 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
@@ -139,19 +139,16 @@ export default function AddSaleScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('sales.entry_eyebrow'),
           title: itemId ? t('sales.edit_title') : t('sales.entry_title'),
           subtitle: project?.name || t('sales.screen_title'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('sales.total_revenue')} value={formatCurrency(total, currency)} icon='cash-outline' />
-              <StitchHeroPill label={t('sales.quantity_heading')} value={weightSold || '0'} icon='cube-outline' />
-            </View>
-          ),
-        }}
+          pills: [
+            { label: t('sales.total_revenue'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+            { label: t('sales.quantity_heading'), value: weightSold || '0', icon: 'cube-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
@@ -256,7 +253,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   banner: { marginTop: stitchTheme.spacing.xs },
   panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },

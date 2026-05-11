@@ -20,7 +20,7 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
@@ -134,19 +134,16 @@ export default function AddHarvestScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('harvest.entry_subtitle'),
           title: itemId ? t('harvest.edit_title') : t('harvest.entry_title'),
           subtitle: crop || t('harvest.placeholders.crop'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('harvest.live_total')} value={liveTotal} icon='leaf-outline' />
-              <StitchHeroPill label={t('harvest.fields.unit')} value={t(`harvest.units.${unit}`)} icon='scale-outline' />
-            </View>
-          ),
-        }}
+          pills: [
+            { label: t('harvest.live_total'), value: liveTotal, icon: 'leaf-outline' },
+            { label: t('harvest.fields.unit'), value: t(`harvest.units.${unit}`), icon: 'scale-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
@@ -240,7 +237,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
   fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   quantityField: { minHeight: 72, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, fontWeight: '300', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },

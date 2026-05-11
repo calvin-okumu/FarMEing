@@ -25,9 +25,7 @@ import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
-import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
-import StitchDashboardShell from '../components/ui/StitchDashboardShell';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
 import { useObservable } from '../hooks/useWatermelon';
@@ -210,19 +208,16 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView behavior={'padding'} style={styles.flex} keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('labor.entry_subtitle'),
           title: itemId ? t('labor.edit_title') : t('labor.entry_title'),
           subtitle: selectedEmployeeName || t('labor.select_employee'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(total, currency)} icon='cash-outline' />
-              <StitchHeroPill label={t('labor.days')} value={formData.daysWorked || '0'} icon='calendar-outline' />
-            </View>
-          ),
-        }}
+          pills: [
+            { label: t('dashboard.spent'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+            { label: t('labor.days'), value: formData.daysWorked || '0', icon: 'calendar-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
@@ -386,7 +381,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   banner: { marginTop: stitchTheme.spacing.xs },
   taskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
   taskCard: { width: '47.5%', minHeight: 128, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.md, ...stitchShadows.card },
