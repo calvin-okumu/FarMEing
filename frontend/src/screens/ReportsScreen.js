@@ -180,8 +180,8 @@ export default function ReportsScreen({ navigation }) {
         actionLabel={`${data.projects.length} Projects`} 
       />
 
-      <View style={[styles.chartContainer, { paddingBottom: 20 }]}>
-        <Text style={styles.chartTitle}>Project Profitability (Top 5)</Text>
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <Text style={styles.chartTitle}>{t('dashboard.project_profitability', { defaultValue: 'Project Profitability (Top 5)' })}</Text>
         <BarChart
           data={{
             labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
@@ -206,7 +206,7 @@ export default function ReportsScreen({ navigation }) {
           fromZero
           showValuesOnTopOfBars
         />
-      </View>
+      </StitchSurface>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.perfScroll}>
         {projectSummaries.map(({ project, summary }) => (
@@ -218,12 +218,12 @@ export default function ReportsScreen({ navigation }) {
             navigation={navigation}
           />
         ))}
-        {!data.projects.length ? <Text style={styles.emptyText}>No active projects found.</Text> : null}
+        {!data.projects.length ? <Text style={styles.emptyText}>{t('dashboard.no_active_projects', { defaultValue: 'No active projects found.' })}</Text> : null}
       </ScrollView>
 
-      <StitchDashboardSectionHeader title='Cost Allocation' subtitle='Portfolio spending breakdown' style={styles.sectionSpacing} />
+      <StitchDashboardSectionHeader title={t('dashboard.cost_allocation', { defaultValue: 'Cost Allocation' })} subtitle={t('dashboard.spending_breakdown', { defaultValue: 'Portfolio spending breakdown' })} style={styles.sectionSpacing} />
       
-      <View style={styles.chartContainer}>
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
         <PieChart
           data={[
             {
@@ -259,27 +259,27 @@ export default function ReportsScreen({ navigation }) {
           center={[10, 0]}
           absolute
         />
-      </View>
+      </StitchSurface>
 
-      <StitchSurface style={styles.breakdownCard}>
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
         <View style={styles.breakdownRow}>
           <View style={styles.breakdownMeta}>
             <View style={[styles.dot, { backgroundColor: stitchTheme.colors.primaryDim }]} />
-            <Text style={styles.breakdownLabel}>Labor Costs</Text>
+            <Text style={styles.breakdownLabel}>{t('dashboard.labor_costs', { defaultValue: 'Labor Costs' })}</Text>
           </View>
           <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalLaborCost, currency)}</Text>
         </View>
         <View style={styles.breakdownRow}>
           <View style={styles.breakdownMeta}>
             <View style={[styles.dot, { backgroundColor: stitchTheme.colors.accentBrown }]} />
-            <Text style={styles.breakdownLabel}>Operational Expenses</Text>
+            <Text style={styles.breakdownLabel}>{t('dashboard.operational_expenses', { defaultValue: 'Operational Expenses' })}</Text>
           </View>
           <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalExpenses, currency)}</Text>
         </View>
         <View style={styles.breakdownRow}>
           <View style={styles.breakdownMeta}>
             <View style={[styles.dot, { backgroundColor: stitchTheme.colors.primarySoft }]} />
-            <Text style={styles.breakdownLabel}>Inventory Purchases</Text>
+            <Text style={styles.breakdownLabel}>{t('dashboard.inventory_purchases', { defaultValue: 'Inventory Purchases' })}</Text>
           </View>
           <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalInventoryCost, currency)}</Text>
         </View>
@@ -287,12 +287,12 @@ export default function ReportsScreen({ navigation }) {
         <View style={styles.breakdownDivider} />
         
         <View style={styles.breakdownRow}>
-          <Text style={styles.totalLabel}>Total Spending</Text>
+          <Text style={styles.totalLabel}>{t('dashboard.total_spending', { defaultValue: 'Total Spending' })}</Text>
           <Text style={styles.totalValue}>{formatCurrency(portfolio.totalCost, currency)}</Text>
         </View>
       </StitchSurface>
 
-      <StitchDashboardSectionHeader title='Labor Contributors' subtitle='Top workers by total earned' style={styles.sectionSpacing} />
+      <StitchDashboardSectionHeader title={t('dashboard.labor_contributors', { defaultValue: 'Labor Contributors' })} subtitle={t('dashboard.top_workers_earned', { defaultValue: 'Top workers by total earned' })} style={styles.sectionSpacing} />
       <View style={styles.laborStatsRow}>
         {laborStats.workers.map(worker => (
           <View key={worker.id} style={styles.workerStatCard}>
@@ -300,18 +300,18 @@ export default function ReportsScreen({ navigation }) {
             <Text style={styles.workerStatValue}>{formatCurrency(worker.earned, currency)}</Text>
           </View>
         ))}
-        {!laborStats.workers.length ? <Text style={styles.emptySmall}>No labor data found.</Text> : null}
+        {!laborStats.workers.length ? <Text style={styles.emptySmall}>{t('dashboard.no_labor_data', { defaultValue: 'No labor data found.' })}</Text> : null}
       </View>
 
-      <StitchDashboardSectionHeader title='Activity Mix' subtitle='Days worked by activity type' style={styles.sectionSpacing} />
+      <StitchDashboardSectionHeader title={t('dashboard.activity_mix', { defaultValue: 'Activity Mix' })} subtitle={t('dashboard.days_by_activity', { defaultValue: 'Days worked by activity type' })} style={styles.sectionSpacing} />
       <View style={styles.activityGrid}>
         {laborStats.activities.map(act => (
           <View key={act.name} style={styles.activityStat}>
             <Text style={styles.activityStatLabel}>{act.name}</Text>
-            <Text style={styles.activityStatValue}>{act.days} days</Text>
+            <Text style={styles.activityStatValue}>{act.days} {t('common.days', { defaultValue: 'days' })}</Text>
           </View>
         ))}
-        {!laborStats.activities.length ? <Text style={styles.emptySmall}>No activity data found.</Text> : null}
+        {!laborStats.activities.length ? <Text style={styles.emptySmall}>{t('dashboard.no_activity_data', { defaultValue: 'No activity data found.' })}</Text> : null}
       </View>
 
       <View style={{ height: 40 }} />
@@ -342,13 +342,14 @@ const styles = StyleSheet.create({
   sectionSpacing: {
     marginTop: stitchTheme.spacing.lg,
   },
-  chartContainer: {
+  chartCard: {
+    marginBottom: stitchTheme.spacing.xs,
+    marginHorizontal: 0,
+  },
+  chartCardContent: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
-    paddingVertical: 12,
-    marginBottom: 8,
     alignItems: 'center',
-    ...stitchShadows.soft,
+    gap: stitchTheme.spacing.sm,
   },
   chartTitle: {
     fontSize: 12,
@@ -368,6 +369,8 @@ const styles = StyleSheet.create({
     borderRadius: stitchTheme.radius.card,
     padding: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
     ...stitchShadows.card,
   },
   perfAccent: {
@@ -432,10 +435,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: stitchTheme.colors.text,
-  },
-  breakdownCard: {
-    padding: stitchTheme.spacing.md,
-    borderRadius: stitchTheme.radius.card,
   },
   breakdownRow: {
     flexDirection: 'row',
