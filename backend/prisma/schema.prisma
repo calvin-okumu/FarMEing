@@ -15,7 +15,7 @@ model User {
   name      String
   phone     String   @unique
   password  String
-  role      String   @default("ADMIN") // ADMIN, WORKER
+  role      String   @default("OWNER") // OWNER, MANAGER, VIEWER
   currency  String   @default("TZS")
   locale    String   @default("sw-TZ")
   isDeleted Boolean  @default(false)
@@ -25,6 +25,20 @@ model User {
   employees Employee[]
   seasons   Season[]
   payees    Payee[]
+  projectAccess ProjectAccess[]
+}
+
+model ProjectAccess {
+  id        String      @id @default(uuid())
+  userId    String
+  projectId String
+  role      String      // OWNER, MANAGER, VIEWER
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id])
+  project   FarmProject @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
 }
 
 model Payee {
@@ -83,6 +97,7 @@ model FarmProject {
   sales         Sale[]
   inventoryItems InventoryItem[]
   employees     EmployeeProject[]
+  projectAccess ProjectAccess[]
 }
 
 model BudgetItem {

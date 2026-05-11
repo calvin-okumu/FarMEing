@@ -13,6 +13,10 @@ import { computeProjectSummary, computePortfolioSummary } from '../utils/localAn
 import useSettingsStore from '../store/useSettingsStore';
 import { syncAll } from '../services/syncService';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
+import { PieChart, BarChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
+
+const screenWidth = Dimensions.get('window').width;
 
 function ProjectPerformanceCard({ project, summary, currency, navigation }) {
   const isProfitable = summary.netProfit >= 0;
@@ -176,6 +180,34 @@ export default function ReportsScreen({ navigation }) {
         actionLabel={`${data.projects.length} Projects`} 
       />
 
+      <View style={[styles.chartContainer, { paddingBottom: 20 }]}>
+        <Text style={styles.chartTitle}>Project Profitability (Top 5)</Text>
+        <BarChart
+          data={{
+            labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
+            datasets: [{
+              data: projectSummaries.slice(0, 5).map(s => Math.max(0, s.summary.netProfit))
+            }]
+          }}
+          width={screenWidth - 48}
+          height={200}
+          yAxisLabel={currency === 'TZS' ? 'TSh ' : '$'}
+          chartConfig={{
+            backgroundColor: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientFrom: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientTo: stitchTheme.colors.surfaceHighlight,
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            style: { borderRadius: 16 },
+            propsForLabels: { fontSize: 10, fontWeight: '700' }
+          }}
+          style={{ marginVertical: 8, borderRadius: 16 }}
+          fromZero
+          showValuesOnTopOfBars
+        />
+      </View>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.perfScroll}>
         {projectSummaries.map(({ project, summary }) => (
           <ProjectPerformanceCard 
@@ -191,6 +223,44 @@ export default function ReportsScreen({ navigation }) {
 
       <StitchDashboardSectionHeader title='Cost Allocation' subtitle='Portfolio spending breakdown' style={styles.sectionSpacing} />
       
+      <View style={styles.chartContainer}>
+        <PieChart
+          data={[
+            {
+              name: 'Labor',
+              population: portfolio.totalLaborCost,
+              color: stitchTheme.colors.primaryDim,
+              legendFontColor: stitchTheme.colors.text,
+              legendFontSize: 11,
+            },
+            {
+              name: 'Ops',
+              population: portfolio.totalExpenses,
+              color: stitchTheme.colors.accentBrown,
+              legendFontColor: stitchTheme.colors.text,
+              legendFontSize: 11,
+            },
+            {
+              name: 'Stock',
+              population: portfolio.totalInventoryCost,
+              color: stitchTheme.colors.primarySoft,
+              legendFontColor: stitchTheme.colors.text,
+              legendFontSize: 11,
+            },
+          ]}
+          width={screenWidth - 32}
+          height={180}
+          chartConfig={{
+            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+          }}
+          accessor={"population"}
+          backgroundColor={"transparent"}
+          paddingLeft={"15"}
+          center={[10, 0]}
+          absolute
+        />
+      </View>
+
       <StitchSurface style={styles.breakdownCard}>
         <View style={styles.breakdownRow}>
           <View style={styles.breakdownMeta}>
@@ -271,6 +341,22 @@ const styles = StyleSheet.create({
   },
   sectionSpacing: {
     marginTop: stitchTheme.spacing.lg,
+  },
+  chartContainer: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    paddingVertical: 12,
+    marginBottom: 8,
+    alignItems: 'center',
+    ...stitchShadows.soft,
+  },
+  chartTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
   },
   perfScroll: {
     gap: 12,

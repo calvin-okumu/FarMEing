@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { createProjectSchema, updateProjectSchema } = require('../validators/project.validator');
+const { addProjectMemberSchema } = require('../validators/projectMember.validator');
 
 // Shared select shape (no sensitive fields, no deleted children)
 const PROJECT_SELECT = {
@@ -41,16 +42,20 @@ const validate = (schema, body, res) => {
 };
 
 /**
- * Find a project that belongs to the authenticated user and is not deleted.
- * Sends 404 if not found. Returns the raw project or null.
+ * Find a project that the authenticated user has access to.
+ * Sends 404 if not found. Returns { project, accessRole } or null.
  */
-const findOwned = async (id, userId, res, includeDeleted = false) => {
-  const project = await prisma.farmProject.findUnique({ where: { id } });
-  if (!project || (!includeDeleted && project.isDeleted) || project.userId !== userId) {
+const findAccessible = async (id, userId, res, includeDeleted = false) => {
+  const access = await prisma.projectAccess.findFirst({
+    where: { projectId: id, userId },
+    include: { project: { select: PROJECT_SELECT } },
+  });
+
+  if (!access || (!includeDeleted && access.project.isDeleted)) {
     res.status(404).json({ error: 'Project not found' });
     return null;
   }
-  return project;
+  return { project: access.project, accessRole: access.role };
 };
 
 // ── POST /projects ────────────────────────────────────────────────────────────
@@ -67,14 +72,26 @@ const createProject = async (req, res) => {
     }
   }
 
-  const project = await prisma.farmProject.create({
-    data: {
-      ...data,
-      startDate: new Date(data.startDate),
-      endDate:   data.endDate ? new Date(data.endDate) : null,
-      userId:    req.user.id,
-    },
-    select: PROJECT_SELECT,
+  const project = await prisma.$transaction(async (tx) => {
+    const newProject = await tx.farmProject.create({
+      data: {
+        ...data,
+        startDate: new Date(data.startDate),
+        endDate:   data.endDate ? new Date(data.endDate) : null,
+        userId:    req.user.id,
+      },
+      select: PROJECT_SELECT,
+    });
+
+    await tx.projectAccess.create({
+      data: {
+        userId: req.user.id,
+        projectId: newProject.id,
+        role: 'OWNER',
+      },
+    });
+
+    return newProject;
   });
 
   return res.status(201).json({ project });
@@ -84,11 +101,21 @@ const createProject = async (req, res) => {
 
 const listProjects = async (req, res) => {
   const includeDeleted = req.query.includeDeleted === 'true';
-  const projects = await prisma.farmProject.findMany({
-    where:   { userId: req.user.id, ...(includeDeleted ? {} : { isDeleted: false }) },
+  
+  // Find projects through projectAccess records
+  const accessRecords = await prisma.projectAccess.findMany({
+    where: { 
+      userId: req.user.id, 
+      project: { isDeleted: includeDeleted ? undefined : false } 
+    },
+    include: { project: { select: PROJECT_SELECT } },
     orderBy: { createdAt: 'desc' },
-    select:  PROJECT_SELECT,
   });
+
+  const projects = accessRecords.map(a => ({
+    ...a.project,
+    accessRole: a.role
+  }));
 
   return res.json({ projects });
 };
@@ -96,23 +123,26 @@ const listProjects = async (req, res) => {
 // ── GET /projects/:id ─────────────────────────────────────────────────────────
 
 const getProject = async (req, res) => {
-  const project = await prisma.farmProject.findUnique({
-    where:  { id: req.params.id },
-    select: PROJECT_SELECT,
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
+
+  return res.json({ 
+    project: {
+      ...result.project,
+      accessRole: result.accessRole
+    } 
   });
-
-  if (!project || project.isDeleted || project.userId !== req.user.id) {
-    return res.status(404).json({ error: 'Project not found' });
-  }
-
-  return res.json({ project });
 };
 
 // ── PUT /projects/:id ─────────────────────────────────────────────────────────
 
 const updateProject = async (req, res) => {
-  const owned = await findOwned(req.params.id, req.user.id, res);
-  if (!owned) return;
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
+
+  if (result.accessRole === 'VIEWER') {
+    return res.status(403).json({ error: 'Permission denied' });
+  }
 
   const data = validate(updateProjectSchema, req.body, res);
   if (!data) return;
@@ -141,8 +171,12 @@ const updateProject = async (req, res) => {
 // ── DELETE /projects/:id (soft delete) ────────────────────────────────────────
 
 const deleteProject = async (req, res) => {
-  const owned = await findOwned(req.params.id, req.user.id, res);
-  if (!owned) return;
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
+
+  if (result.accessRole !== 'OWNER') {
+    return res.status(403).json({ error: 'Only owners can delete projects' });
+  }
 
   await prisma.$transaction([
     prisma.farmProject.update({
@@ -178,18 +212,67 @@ const deleteProject = async (req, res) => {
   return res.json({ message: 'Project deleted' });
 };
 
+// ── POST /projects/:id/members ────────────────────────────────────────────────
+
+const addProjectMember = async (req, res) => {
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
+
+  if (result.accessRole !== 'OWNER') {
+    return res.status(403).json({ error: 'Only owners can invite members' });
+  }
+
+  const data = validate(addProjectMemberSchema, req.body, res);
+  if (!data) return;
+
+  const targetUser = await prisma.user.findUnique({ where: { phone: data.phone } });
+  if (!targetUser) {
+    return res.status(404).json({ error: 'User with this phone number not found' });
+  }
+
+  if (targetUser.id === req.user.id) {
+    return res.status(400).json({ error: 'You are already the owner of this project' });
+  }
+
+  // Check if already has access
+  const existing = await prisma.projectAccess.findUnique({
+    where: {
+      userId_projectId: {
+        userId: targetUser.id,
+        projectId: req.params.id
+      }
+    }
+  });
+
+  if (existing) {
+    return res.status(400).json({ error: 'User already has access to this project' });
+  }
+
+  const access = await prisma.projectAccess.create({
+    data: {
+      userId: targetUser.id,
+      projectId: req.params.id,
+      role: data.role
+    }
+  });
+
+  return res.status(201).json({ 
+    message: 'Member added',
+    member: {
+      name: targetUser.name,
+      role: access.role
+    }
+  });
+};
+
 // ── GET /projects/:id/summary ─────────────────────────────────────────────────
 
 const getProjectSummary = async (req, res) => {
-  const owned = await findOwned(req.params.id, req.user.id, res);
-  if (!owned) return;
+  const result = await findAccessible(req.params.id, req.user.id, res);
+  if (!result) return;
 
   // Run aggregations in parallel
-  const [project, budgetAgg, expenseAgg, laborAgg, harvestAgg, saleAgg, expenses, workEntries, harvests, sales] = await Promise.all([
-    prisma.farmProject.findUnique({
-      where:  { id: req.params.id },
-      select: PROJECT_SELECT,
-    }),
+  const [budgetAgg, expenseAgg, laborAgg, harvestAgg, saleAgg, inventoryAgg, expenses, workEntries, harvests, sales, inventoryItems] = await Promise.all([
     prisma.budgetItem.aggregate({
       where:  { projectId: req.params.id, isDeleted: false },
       _sum:   { total: true },
@@ -210,18 +293,24 @@ const getProjectSummary = async (req, res) => {
       where:  { projectId: req.params.id, isDeleted: false },
       _sum:   { totalAmount: true },
     }),
+    prisma.inventoryItem.aggregate({
+      where: { projectId: req.params.id, isDeleted: false },
+      _sum: { totalCost: true },
+    }),
     prisma.expense.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
     prisma.workEntry.findMany({ where: { projectId: req.params.id, isDeleted: false }, include: { employee: { select: { name: true } } } }),
     prisma.harvest.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
     prisma.sale.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
+    prisma.inventoryItem.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
   ]);
 
   const totalBudget   = budgetAgg._sum.total     ?? 0;
   const totalExpenses = expenseAgg._sum.amount    ?? 0;
   const totalLabor    = laborAgg._sum.totalCost   ?? 0;
+  const totalInventory = inventoryAgg._sum.totalCost ?? 0;
   const totalHarvest  = harvestAgg._sum.weight    ?? 0;
   const totalRevenue  = saleAgg._sum.totalAmount  ?? 0;
-  const totalCost     = totalExpenses + totalLabor;
+  const totalCost     = totalExpenses + totalLabor + totalInventory;
 
   const timeline = [
     ...expenses.map(e => ({ type: 'EXPENSE', date: e.date, label: e.category, amount: e.amount, icon: 'receipt-outline' })),
@@ -231,11 +320,15 @@ const getProjectSummary = async (req, res) => {
   ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return res.json({
-    project,
+    project: {
+      ...result.project,
+      accessRole: result.accessRole
+    },
     summary: {
       totalBudget,
       totalExpenses,
       totalLaborCost: totalLabor,
+      totalInventoryCost: totalInventory,
       totalCost,
       totalHarvest,
       totalRevenue,
@@ -252,4 +345,5 @@ module.exports = {
   updateProject,
   deleteProject,
   getProjectSummary,
+  addProjectMember,
 };

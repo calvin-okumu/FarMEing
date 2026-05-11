@@ -136,26 +136,36 @@ exports.pull = async (req, res) => {
       // Apply security scoping
       if (prismaModel === 'user') {
         where.id = req.user.id;
-      } else if (modelsWithDirectUserId.includes(prismaModel)) {
-        where.userId = req.user.id;
+      } else if (prismaModel === 'employee') {
+        // Show employees created by user OR assigned to projects user has access to
+        where.OR = [
+          { userId: req.user.id },
+          { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+        ];
+      } else if (prismaModel === 'payee') {
+        // Show payees created by user OR linked to projects user has access to
+        where.OR = [
+          { userId: req.user.id },
+          { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
+          { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+        ];
+      } else if (prismaModel === 'farmProject') {
+        // Projects user has access to
+        where.projectAccess = { some: { userId: req.user.id } };
       } else {
-        // For other models, they are linked via farmProject or employee
-        // This is a bit more complex for a generic pull.
-        // For now, we'll assume they don't have a direct userId but we might want to filter them.
-        // In a real app, you'd use includes or nested queries.
-        // Given the prompt's request for "significant shift", we'll keep it simple 
-        // but acknowledge the need for scoping.
-        // To be safe, we'll only pull if they are associated with the user.
-        
-        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem'].includes(prismaModel)) {
-          where.project = { userId: req.user.id };
+        // For other models (budget, expense, etc.), they are linked via project or employee
+        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+          where.project = { projectAccess: { some: { userId: req.user.id } } };
         } else if (prismaModel === 'payment') {
-          where.employee = { userId: req.user.id };
-        } else if (prismaModel === 'employeeProject') {
-          where.project = { userId: req.user.id };
+          where.employee = { 
+            OR: [
+              { userId: req.user.id },
+              { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+            ]
+          };
         } else if (prismaModel === 'workEntry') {
           where.OR = [
-            { project: { userId: req.user.id } },
+            { project: { projectAccess: { some: { userId: req.user.id } } } },
             { employee: { userId: req.user.id } }
           ];
         }
@@ -247,14 +257,16 @@ exports.push = async (req, res) => {
             let where = { id };
             
             // Security scoping for deletion
-            if (modelsWithDirectUserId.includes(prismaModel)) {
-              where.userId = req.user.id;
-            } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem'].includes(prismaModel)) {
-              where.project = { userId: req.user.id };
+            if (prismaModel === 'user') {
+              where.id = req.user.id;
+            } else if (prismaModel === 'farmProject') {
+              where.projectAccess = { some: { userId: req.user.id, role: 'OWNER' } };
+            } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+              where.project = { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } };
             } else if (prismaModel === 'payment') {
-              where.employee = { userId: req.user.id };
-            } else if (prismaModel === 'employeeProject') {
-              where.project = { userId: req.user.id };
+              where.employee = { userId: req.user.id }; // Simplified: creator can delete
+            } else if (prismaModel === 'employee' || prismaModel === 'payee') {
+              where.userId = req.user.id;
             }
 
             try {

@@ -19,16 +19,59 @@ const validate = (schema, body, res) => {
 };
 
 /**
- * Find a payee that belongs to the authenticated user and is not deleted.
- * Returns the payee or sends 404 and returns null.
+ * Find a payee that the user is authorized to see.
+ * Authorization: Either the user created the payee, 
+ * OR the payee is linked to an expense/inventory item of a project the user has access to.
  */
-const findOwnedPayee = async (payeeId, userId, res) => {
-  const payee = await prisma.payee.findUnique({ where: { id: payeeId } });
-  if (!payee || payee.isDeleted || payee.userId !== userId) {
+const findAccessiblePayee = async (payeeId, userId, res) => {
+  const payee = await prisma.payee.findUnique({ 
+    where: { id: payeeId },
+    include: {
+      expenses: {
+        where: { project: { projectAccess: { some: { userId } } } }
+      },
+      inventoryItems: {
+        where: { project: { projectAccess: { some: { userId } } } }
+      }
+    }
+  });
+
+  if (!payee || payee.isDeleted) {
     res.status(404).json({ error: 'Payee not found' });
     return null;
   }
+
+  // Check if user is the creator OR has access via linked project
+  if (payee.userId !== userId && payee.expenses.length === 0 && payee.inventoryItems.length === 0) {
+    res.status(403).json({ error: 'Permission denied' });
+    return null;
+  }
+
   return payee;
+};
+
+/**
+ * Check if the user has OWNER or MANAGER access to the payee.
+ * This means they either created the payee, OR they have an 
+ * OWNER/MANAGER role on at least one project the payee is linked to.
+ */
+const hasManagerialPayeeAccess = async (payee, userId) => {
+  if (payee.userId === userId) return true;
+
+  const access = await prisma.projectAccess.findFirst({
+    where: {
+      userId,
+      role: { in: ['OWNER', 'MANAGER'] },
+      project: {
+        OR: [
+          { expenses: { some: { payeeId: payee.id } } },
+          { inventoryItems: { some: { payeeId: payee.id } } }
+        ]
+      }
+    }
+  });
+
+  return !!access;
 };
 
 // ── POST /payees ─────────────────────────────────────────────────────────────
@@ -56,8 +99,16 @@ const createPayee = async (req, res) => {
 
 const listPayees = async (req, res) => {
   const includeDeleted = req.query.includeDeleted === 'true';
+  
   const payees = await prisma.payee.findMany({
-    where:   { userId: req.user.id, ...(includeDeleted ? {} : { isDeleted: false }) },
+    where: {
+      ...(includeDeleted ? {} : { isDeleted: false }),
+      OR: [
+        { userId: req.user.id },
+        { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
+        { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+      ]
+    },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -67,7 +118,7 @@ const listPayees = async (req, res) => {
 // ── GET /payees/:id ──────────────────────────────────────────────────────────
 
 const getPayee = async (req, res) => {
-  const payee = await findOwnedPayee(req.params.id, req.user.id, res);
+  const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
   if (!payee) return;
 
   return res.json({ payee });
@@ -76,8 +127,12 @@ const getPayee = async (req, res) => {
 // ── PUT /payees/:id ──────────────────────────────────────────────────────────
 
 const updatePayee = async (req, res) => {
-  const payee = await findOwnedPayee(req.params.id, req.user.id, res);
+  const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
   if (!payee) return;
+
+  if (!(await hasManagerialPayeeAccess(payee, req.user.id))) {
+    return res.status(403).json({ error: 'Permission denied: Requires creator OR OWNER/MANAGER role on linked project' });
+  }
 
   const data = validate(updatePayeeSchema, req.body, res);
   if (!data) return;
@@ -93,8 +148,12 @@ const updatePayee = async (req, res) => {
 // ── DELETE /payees/:id (soft delete) ─────────────────────────────────────────
 
 const deletePayee = async (req, res) => {
-  const payee = await findOwnedPayee(req.params.id, req.user.id, res);
+  const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
   if (!payee) return;
+
+  if (!(await hasManagerialPayeeAccess(payee, req.user.id))) {
+    return res.status(403).json({ error: 'Permission denied: Requires creator OR OWNER/MANAGER role on linked project' });
+  }
 
   await prisma.payee.update({
     where: { id: req.params.id },
@@ -107,7 +166,7 @@ const deletePayee = async (req, res) => {
 // ── GET /payees/:id/summary ──────────────────────────────────────────────────
 
 const getPayeeSummary = async (req, res) => {
-  const payee = await findOwnedPayee(req.params.id, req.user.id, res);
+  const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
   if (!payee) return;
 
   const [expenseAgg, inventoryAgg] = await Promise.all([
