@@ -128,6 +128,13 @@ exports.pull = async (req, res) => {
     const currentTimestamp = Date.now();
     const changes = {};
 
+    // 1. Get all project IDs this user has access to
+    const accessRecords = await prisma.projectAccess.findMany({
+      where: { userId: req.user.id },
+      select: { projectId: true }
+    });
+    const accessibleProjectIds = accessRecords.map(a => a.projectId);
+
     for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
       try {
         let where = {
@@ -139,32 +146,32 @@ exports.pull = async (req, res) => {
           // Show employees created by user OR assigned to projects user has access to
           where.OR = [
             { userId: req.user.id },
-            { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+            { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
           ];
         } else if (prismaModel === 'payee') {
           // Show payees created by user OR linked to projects user has access to
           where.OR = [
             { userId: req.user.id },
-            { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
-            { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+            { expenses: { some: { projectId: { in: accessibleProjectIds } } } },
+            { inventoryItems: { some: { projectId: { in: accessibleProjectIds } } } }
           ];
         } else if (prismaModel === 'farmProject') {
           // Projects user has access to
-          where.projectAccess = { some: { userId: req.user.id } };
+          where.id = { in: accessibleProjectIds };
         } else {
           // For other models (budget, expense, etc.), they are linked via project or employee
           if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
-            where.project = { projectAccess: { some: { userId: req.user.id } } };
+            where.projectId = { in: accessibleProjectIds };
           } else if (prismaModel === 'payment') {
             where.employee = { 
               OR: [
                 { userId: req.user.id },
-                { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+                { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
               ]
             };
           } else if (prismaModel === 'workEntry') {
             where.OR = [
-              { project: { projectAccess: { some: { userId: req.user.id } } } },
+              { projectId: { in: accessibleProjectIds } },
               { employee: { userId: req.user.id } }
             ];
           }
@@ -188,7 +195,7 @@ exports.pull = async (req, res) => {
 
         changes[watermelonTable] = { created, updated, deleted };
       } catch (tableError) {
-        console.error(`[sync] Pull failed for ${watermelonTable} (${prismaModel}):`, tableError.message);
+        console.error(`[sync] Pull failed for table ${watermelonTable} (${prismaModel}):`, tableError.message);
         throw tableError;
       }
     }
