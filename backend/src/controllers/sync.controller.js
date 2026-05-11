@@ -141,25 +141,24 @@ exports.pull = async (req, res) => {
           updatedAt: { gt: lastPulledAtDate },
         };
 
-        // Apply security scoping
-        if (prismaModel === 'employee') {
-          // Show employees created by user OR assigned to projects user has access to
+        // Apply security scoping using the pre-fetched IDs
+        if (prismaModel === 'user') {
+          where.id = req.user.id;
+        } else if (prismaModel === 'employee') {
           where.OR = [
             { userId: req.user.id },
             { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
           ];
         } else if (prismaModel === 'payee') {
-          // Show payees created by user OR linked to projects user has access to
           where.OR = [
             { userId: req.user.id },
             { expenses: { some: { projectId: { in: accessibleProjectIds } } } },
             { inventoryItems: { some: { projectId: { in: accessibleProjectIds } } } }
           ];
         } else if (prismaModel === 'farmProject') {
-          // Projects user has access to
           where.id = { in: accessibleProjectIds };
         } else {
-          // For other models (budget, expense, etc.), they are linked via project or employee
+          // All other models are directly linked to a project
           if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
             where.projectId = { in: accessibleProjectIds };
           } else if (prismaModel === 'payment') {

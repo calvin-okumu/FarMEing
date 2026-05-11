@@ -18,7 +18,8 @@ const PROJECT_SELECT = {
   isDeleted: true,
   createdAt: true,
   updatedAt: true,
-  seasonId: true,
+  projectAccess: true,
+};
   userId: true,
   season: { select: { id: true, name: true } },
 };
