@@ -39,7 +39,7 @@ import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
 import { useForm } from 'react-hook-form';
-const isSynced = (r) => r._raw?._syncStatus === 'synced';
+const isSynced = (r) => r._syncStatus === 'synced';
 function WorkerCard({ item, onPress, t }) {
   const statusLabel = isSynced(item) ? t('employees.api_live') : t('feedback.saved_local_title');
   const isLocalOnly = !isSynced(item);

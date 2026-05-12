@@ -361,7 +361,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   }, [workEntries, expenses, harvests, sales, employeeMap, t]);
 
   const collectionSearch = searchQuery.trim().toLowerCase();
-  const isLocalOnly = project?._raw?._syncStatus !== 'synced';
+  const isLocalOnly = project?._syncStatus !== 'synced';
 
   const filteredBudgetItems = useMemo(() => {
     const base = collectionSearch
