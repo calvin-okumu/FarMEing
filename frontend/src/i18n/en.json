@@ -234,6 +234,7 @@
       "harvest": "Harvest",
       "sales": "Sales",
       "inventory": "Inventory",
+      "team": "Team",
       "timeline": "Timeline"
     },
     "fields": {

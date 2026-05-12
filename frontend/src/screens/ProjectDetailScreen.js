@@ -565,8 +565,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
             else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
             else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
             else if (activeTab === 'sales') navigation.navigate('AddSale', params);
+            else if (activeTab === 'team') setInviteVisible(true);
             else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
-            else setActiveTab('timeline');
           }} activeOpacity={0.88}>
             <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
             <Text style={styles.addRowText}>Add</Text>
