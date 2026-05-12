@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Alert,
   TextInput,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -346,15 +345,17 @@ export default function ProjectsScreen({ navigation, route }) {
       </StitchDashboardShell>
 
       <ResourceFormModal visible={modalVisible} title={editingProject ? t('projects.edit_title') : t('projects.new_project')} onClose={closeModal}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.formContent}>
           <StitchInput
             label={t('projects.fields.name')}
             value={watch('name')}
             onChangeText={(val) => setValue('name', val)}
             placeholder={t('projects.placeholders.name')}
+            style={styles.formField}
           />
 
-          <View style={[styles.statusRow]}>
+          <Text style={styles.formFieldLabel}>{t('projects.fields.status')}</Text>
+          <View style={styles.statusRow}>
             {['PLANNING', 'ACTIVE'].map((s) => (
               <StitchChip key={s} label={t(`projects.status.${s.toLowerCase()}`)} active={watch('status') === s} onPress={() => setValue('status', s)} />
             ))}
@@ -362,7 +363,7 @@ export default function ProjectsScreen({ navigation, route }) {
 
           <View style={styles.row}>
             <View style={styles.half}>
-              <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} />
+              <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
             </View>
             <View style={styles.half}>
               <StitchInput
@@ -370,16 +371,17 @@ export default function ProjectsScreen({ navigation, route }) {
                 value={formatAppDate(watch('startDate'))}
                 onPress={openStartDatePicker}
                 icon='calendar-outline'
+                style={styles.formField}
               />
             </View>
           </View>
 
           <View style={styles.row}>
             <View style={styles.half}>
-              <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' />
+              <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' style={styles.formField} />
             </View>
             <View style={styles.half}>
-              <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} />
+              <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} style={styles.formField} />
             </View>
           </View>
 
@@ -389,6 +391,7 @@ export default function ProjectsScreen({ navigation, route }) {
             onChangeText={(val) => setValue('expectedYield', val)}
             placeholder={t('projects.placeholders.expected_yield')}
             keyboardType='decimal-pad'
+            style={styles.formField}
           />
 
           {showDatePicker ? (
@@ -407,7 +410,7 @@ export default function ProjectsScreen({ navigation, route }) {
           ) : null}
 
           <StitchPrimaryButton label={editingProject ? t('common.save') : t('projects.create_project')} onPress={handleSubmit(handleSave)} icon={editingProject ? 'save-outline' : 'add-circle'} style={styles.saveButton} />
-        </ScrollView>
+        </View>
       </ResourceFormModal>
 
       <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('projects.confirm_delete', { name: deleteTarget?.name || '' })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} />
@@ -469,6 +472,9 @@ const styles = StyleSheet.create({
   cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
-  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: 8 },
+  formContent: { gap: 16 },
+  formField: { marginBottom: 0 },
+  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 });
