@@ -41,7 +41,7 @@ import { useForm, Controller } from 'react-hook-form';
 const isSynced = (r) => r._raw._status === 'synced';
 
 function PayeeCard({ item, onPress, t }) {
-  const statusLabel = isSynced(item) ? t('employees.api_live') : t('feedback.saved_local_title');
+  const statusLabel = isSynced(item) ? t('status.synced') : t('status.local_only');
   const isLocalOnly = !isSynced(item);
   const categoryLabel = item.category || t('payees.no_category', { defaultValue: 'General' });
 

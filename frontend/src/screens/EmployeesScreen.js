@@ -41,7 +41,7 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { useForm } from 'react-hook-form';
 const isSynced = (r) => r._raw._status === 'synced';
 function WorkerCard({ item, onPress, t }) {
-  const statusLabel = isSynced(item) ? t('employees.api_live') : t('feedback.saved_local_title');
+  const statusLabel = isSynced(item) ? t('status.synced') : t('status.local_only');
   const isLocalOnly = !isSynced(item);
   const roleLabel = item.role || t('employees.role_unset');
 
@@ -244,7 +244,7 @@ export default function EmployeesScreen({ navigation }) {
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('employees.title', { defaultValue: 'Employees' })} value={String(filteredEmployees.length)} icon='people-outline' style={styles.heroPillPrimary} />
               <StitchHeroPill label={t('employees.with_role')} value={String(assignedEmployees)} icon='briefcase-outline' style={styles.heroPillSecondary} />
-              <StitchHeroPill label={t('employees.api_live')} value={String(syncedEmployees)} icon='cloud-done-outline' style={styles.heroPillTertiary} />
+              <StitchHeroPill label={t('status.synced')} value={String(syncedEmployees)} icon='cloud-done-outline' style={styles.heroPillTertiary} />
             </View>
           ),
         }}
