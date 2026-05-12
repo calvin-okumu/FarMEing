@@ -60,7 +60,8 @@
     "invited_success": "Mwanachama amealikwa kwa mafanikio.",
     "access_revoked": "Ufikiaji umeondolewa.",
     "revoke_access": "Ondoa Ufikiaji",
-    "no_members": "Hakuna wanachama wengine wenye ufikiaji bado."
+    "no_members": "Hakuna wanachama wengine wenye ufikiaji bado.",
+    "role": "Jukumu Liliopewa"
   },
   "export": {
     "title": "Hamisha Ripoti",

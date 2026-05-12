@@ -10,7 +10,6 @@ import {
   Platform,
   Modal,
   KeyboardAvoidingView,
-  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -25,7 +24,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSearchBar, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSearchBar, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -150,7 +149,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [team, setTeam] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
   const [inviteVisible, setInviteVisible] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER' });
+  const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
+  const [allProjects, setAllProjects] = useState([]);
   const [banner, setBanner] = useState(null);
   const apiProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
 
@@ -178,15 +178,30 @@ export default function ProjectDetailScreen({ route, navigation }) {
   }, [activeTab, apiProjectId]);
 
   const handleInvite = async () => {
-    if (!inviteForm.phone || !apiProjectId) return;
-    try {
-      await api.post(`/projects/${apiProjectId}/members`, inviteForm);
-      setInviteVisible(false);
-      setInviteForm({ phone: '', role: 'MANAGER' });
-      fetchTeam();
+    const targetProjects = inviteForm.projectIds.length > 0 ? inviteForm.projectIds : [apiProjectId];
+    if (!inviteForm.phone || targetProjects.length === 0) return;
+    let successCount = 0;
+    let failCount = 0;
+    for (const pid of targetProjects) {
+      try {
+        await api.post(`/projects/${pid}/members`, {
+          phone: inviteForm.phone,
+          role: inviteForm.role,
+          note: inviteForm.note,
+        });
+        successCount++;
+      } catch (err) {
+        failCount++;
+      }
+    }
+    setInviteVisible(false);
+    setInviteForm({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
+    fetchTeam();
+    if (successCount > 0) {
       setBanner({ tone: 'success', title: t('common.success'), message: t('team.invited_success') });
-    } catch (err) {
-      Alert.alert('Invitation Failed', err.response?.data?.error || 'Could not invite user.');
+    }
+    if (failCount > 0) {
+      Alert.alert(t('common.error'), `${failCount} invitation(s) failed.`);
     }
   };
 
@@ -260,6 +275,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
     loadProject();
     syncAll().catch(() => {});
   }, [projectId]);
+
+  useEffect(() => {
+    const sub = database.get('farm_projects').query().observe().subscribe(setAllProjects);
+    return () => sub.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!projectId) return;
@@ -636,8 +656,30 @@ export default function ProjectDetailScreen({ route, navigation }) {
       <Modal visible={inviteVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior='padding' style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('team.invite_title')}</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
-          <StitchInput label={t('team.invite_phone')} value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' />
-          <StitchSectionTitle>Assigned Role</StitchSectionTitle>
+
+          <StitchInput label={t('team.invite_phone')} value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' style={styles.formField} />
+
+          <StitchInput label={t('common.notes')} value={inviteForm.note} onChangeText={(note) => setInviteForm(f => ({ ...f, note }))} placeholder='e.g. Farm contractor, input supplier' style={styles.formField} />
+
+          <Text style={styles.formFieldLabel}>{t('projects.fields.name')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
+            {allProjects.map((proj) => (
+              <TouchableOpacity
+                key={proj.id}
+                style={[styles.projectChip, inviteForm.projectIds.includes(proj.id) && styles.projectChipActive]}
+                onPress={() => setInviteForm(f => ({
+                  ...f,
+                  projectIds: f.projectIds.includes(proj.id)
+                    ? f.projectIds.filter(id => id !== proj.id)
+                    : [...f.projectIds, proj.id],
+                }))}
+              >
+                <Text style={[styles.projectChipText, inviteForm.projectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.formFieldLabel}>{t('team.role')}</Text>
           <View style={styles.roleRow}>
             {['MANAGER', 'VIEWER'].map(role => (
               <TouchableOpacity key={role} style={[styles.roleChip, inviteForm.role === role && styles.roleChipActive]} onPress={() => setInviteForm(f => ({ ...f, role }))}>
@@ -645,6 +687,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+
           <StitchPrimaryButton label={t('team.send_invitation')} onPress={handleInvite} icon="send-outline" />
         </View></KeyboardAvoidingView></View>
       </Modal>
@@ -800,6 +843,13 @@ const styles = StyleSheet.create({
   roleChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
   roleChipText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.textMuted },
   roleChipTextActive: { color: stitchTheme.colors.primary },
+  formField: { marginBottom: 0 },
+  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  projectSelectionRow: { gap: 8, paddingVertical: 4 },
+  projectChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: 'transparent' },
+  projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  projectChipTextActive: { color: stitchTheme.colors.primary },
   emptyText: { textAlign: 'center', marginTop: 40, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
   addRowCard: { marginBottom: stitchTheme.spacing.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
   addRowContent: { backgroundColor: stitchTheme.colors.surfaceHighlight },

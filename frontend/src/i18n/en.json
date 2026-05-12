@@ -72,7 +72,8 @@
     "invited_success": "Team member invited successfully.",
     "access_revoked": "Member access revoked.",
     "revoke_access": "Revoke Access",
-    "no_members": "No other members have access yet."
+    "no_members": "No other members have access yet.",
+    "role": "Assigned Role"
   },
   "export": {
     "title": "Export Report",
