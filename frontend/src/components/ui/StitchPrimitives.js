@@ -325,16 +325,17 @@ function getMonthGrid(year, month) {
 export function StitchDatePicker({ visible, date, onDateChange, onClose }) {
   const { t } = useTranslation();
   const MONTHS = useMemo(() => [
-    t('common.months.january'), t('common.months.february'), t('common.months.march'),
-    t('common.months.april'), t('common.months.may'), t('common.months.june'),
-    t('common.months.july'), t('common.months.august'), t('common.months.september'),
-    t('common.months.october'), t('common.months.november'), t('common.months.december'),
+    t('months.january'), t('months.february'), t('months.march'),
+    t('months.april'), t('months.may'), t('months.june'),
+    t('months.july'), t('months.august'), t('months.september'),
+    t('months.october'), t('months.november'), t('months.december'),
   ], [t]);
   const DAYS = useMemo(() => [
-    t('common.days.sunday'), t('common.days.monday'), t('common.days.tuesday'),
-    t('common.days.wednesday'), t('common.days.thursday'), t('common.days.friday'),
-    t('common.days.saturday'),
+    t('days.sunday'), t('days.monday'), t('days.tuesday'),
+    t('days.wednesday'), t('days.thursday'), t('days.friday'),
+    t('days.saturday'),
   ], [t]);
+  const [viewYear, setViewYear] = useState(date.getFullYear());
   const [viewMonth, setViewMonth] = useState(date.getMonth());
   const today = new Date();
   const grid = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
