@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
@@ -38,7 +38,7 @@ const DEFAULT_FORM = {
   landUnit: 'acres',
   startDate: new Date(),
   expectedYield: '',
-  contractUrl: '',
+  status: 'ACTIVE',
 };
 
 export default function ProjectsScreen({ navigation, route }) {
@@ -109,7 +109,7 @@ export default function ProjectsScreen({ navigation, route }) {
       landUnit: project.landUnit || 'acres',
       startDate: project.startDate ? new Date(project.startDate) : new Date(),
       expectedYield: String(project.expectedYield ?? ''),
-      contractUrl: project.contractUrl || '',
+      status: project.status || 'ACTIVE',
     });
     setShowDatePicker(false);
     setModalVisible(true);
@@ -139,8 +139,7 @@ export default function ProjectsScreen({ navigation, route }) {
             draft.landUnit = data.landUnit || 'acres';
             draft.startDate = data.startDate.getTime();
             draft.expectedYield = parseFloat(data.expectedYield) || 0;
-            draft.contractUrl = data.contractUrl.trim();
-            draft.status = draft.status || 'ACTIVE';
+            draft.status = data.status || 'ACTIVE';
           });
         } else {
           await database.get('farm_projects').create((record) => {
@@ -152,8 +151,7 @@ export default function ProjectsScreen({ navigation, route }) {
             record.landUnit = data.landUnit || 'acres';
             record.startDate = data.startDate.getTime();
             record.expectedYield = parseFloat(data.expectedYield) || 0;
-            record.contractUrl = data.contractUrl.trim();
-            record.status = 'ACTIVE';
+            record.status = data.status || 'ACTIVE';
             record.notes = '';
             record.isDeleted = false;
           });
@@ -356,12 +354,25 @@ export default function ProjectsScreen({ navigation, route }) {
             placeholder={t('projects.placeholders.name')}
           />
 
-          <StitchInput
-            label={t('projects.fields.crop')}
-            value={watch('crop')}
-            onChangeText={(val) => setValue('crop', val)}
-            placeholder={t('projects.placeholders.crop')}
-          />
+          <View style={[styles.statusRow]}>
+            {['PLANNING', 'ACTIVE'].map((s) => (
+              <StitchChip key={s} label={t(`projects.status.${s.toLowerCase()}`)} active={watch('status') === s} onPress={() => setValue('status', s)} />
+            ))}
+          </View>
+
+          <View style={styles.row}>
+            <View style={styles.half}>
+              <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} />
+            </View>
+            <View style={styles.half}>
+              <StitchInput
+                label={t('projects.fields.start_date')}
+                value={formatAppDate(watch('startDate'))}
+                onPress={openStartDatePicker}
+                icon='calendar-outline'
+              />
+            </View>
+          </View>
 
           <View style={styles.row}>
             <View style={styles.half}>
@@ -378,20 +389,6 @@ export default function ProjectsScreen({ navigation, route }) {
             onChangeText={(val) => setValue('expectedYield', val)}
             placeholder={t('projects.placeholders.expected_yield')}
             keyboardType='decimal-pad'
-          />
-
-          <StitchInput
-            label='Contract / Lease URL'
-            value={watch('contractUrl')}
-            onChangeText={(val) => setValue('contractUrl', val)}
-            placeholder='https://...'
-          />
-
-          <StitchInput
-            label={t('projects.fields.start_date')}
-            value={formatAppDate(formData.startDate)}
-            onPress={openStartDatePicker}
-            icon='calendar-outline'
           />
 
           {showDatePicker ? (
@@ -471,5 +468,6 @@ const styles = StyleSheet.create({
   cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
   cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
+  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 });
