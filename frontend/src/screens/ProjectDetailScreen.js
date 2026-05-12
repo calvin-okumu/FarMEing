@@ -665,14 +665,14 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingBottom: 100 },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
 
   /* Insights Strip */
-  insightsCard: { marginBottom: 12, marginHorizontal: 16 },
+  insightsCard: { marginBottom: stitchTheme.spacing.sm },
   insightsContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm },
   insightsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   insightItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, padding: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset },
@@ -681,16 +681,19 @@ const styles = StyleSheet.create({
   insightValue: { marginTop: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
 
   /* Metric Cards */
-  overviewGrid: { flexDirection: 'row', gap: stitchTheme.spacing.sm, paddingHorizontal: 16, marginBottom: 10 },
+  overviewGrid: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
   metricCard: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     flex: 1,
-    borderRadius: stitchTheme.radius.lg,
+    borderRadius: stitchTheme.radius.card,
+    padding: stitchTheme.spacing.md,
     overflow: 'hidden',
-    ...stitchShadows.soft,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    ...stitchShadows.card,
   },
   metricCardAccent: { backgroundColor: stitchTheme.colors.primary },
-  metricInner: { padding: 14 },
+  metricInner: { padding: 0 },
   metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   metricTitle: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
   metricTitleAccent: { color: 'rgba(255,255,255,0.7)' },
@@ -702,7 +705,7 @@ const styles = StyleSheet.create({
   metricNoteAccent: { color: 'rgba(255,255,255,0.6)' },
 
   /* Chart Card */
-  chartCard: { marginBottom: 12, marginHorizontal: 16 },
+  chartCard: { marginBottom: stitchTheme.spacing.sm },
   chartContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, gap: 12 },
   chartTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   chartEyebrow: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
@@ -717,8 +720,8 @@ const styles = StyleSheet.create({
   chartBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
 
   /* Tabs & Controls */
-  tabsRow: { gap: 8, paddingVertical: 10, paddingHorizontal: 16 },
-  controlsCard: { marginBottom: 10, marginHorizontal: 16 },
+  tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: stitchTheme.spacing.sm },
+  controlsCard: { marginBottom: stitchTheme.spacing.sm },
   controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
 
@@ -727,8 +730,7 @@ const styles = StyleSheet.create({
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
     padding: 14,
-    marginBottom: 8,
-    marginHorizontal: 16,
+    marginBottom: stitchTheme.spacing.sm,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -755,7 +757,7 @@ const styles = StyleSheet.create({
   collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: 11, fontWeight: '800' },
 
   /* Timeline */
-  timelineSection: { paddingHorizontal: 16, marginBottom: 20 },
+  timelineSection: { marginBottom: stitchTheme.spacing.lg },
   timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   timelineSectionChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceMuted },
   timelineSectionChipToday: { backgroundColor: stitchTheme.colors.primaryContainer },
@@ -799,8 +801,8 @@ const styles = StyleSheet.create({
   roleChipText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.textMuted },
   roleChipTextActive: { color: stitchTheme.colors.primary },
   emptyText: { textAlign: 'center', marginTop: 40, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
-  addRowCard: { marginBottom: 12 },
+  addRowCard: { marginBottom: stitchTheme.spacing.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
   addRowContent: { backgroundColor: stitchTheme.colors.surfaceHighlight },
-  addRowButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12 },
+  addRowButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
   addRowText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800' },
 });
