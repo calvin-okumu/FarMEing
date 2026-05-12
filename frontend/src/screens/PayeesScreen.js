@@ -38,10 +38,11 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { useForm, Controller } from 'react-hook-form';
+const isSynced = (r) => r._raw?._syncStatus === 'synced';
 
 function PayeeCard({ item, onPress, t }) {
-  const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
-  const isLocalOnly = !item.remoteId;
+  const statusLabel = isSynced(item) ? t('employees.api_live') : t('feedback.saved_local_title');
+  const isLocalOnly = !isSynced(item);
   const categoryLabel = item.category || t('payees.no_category', { defaultValue: 'General' });
 
   return (
@@ -121,12 +122,9 @@ export default function PayeesScreen({ navigation }) {
 
     if (activeFilter === 'Supplier') return searched.filter((p) => p.category === 'Supplier');
     if (activeFilter === 'Contractor') return searched.filter((p) => p.category === 'Contractor');
-    if (activeFilter === 'local') return searched.filter((p) => !p.remoteId);
-    return searched;
-  }, [payees, query, activeFilter]);
-
-  const syncedPayees = useMemo(() => payees ? payees.filter((payee) => !!payee.remoteId).length : 0, [payees]);
-  const localOnlyPayees = useMemo(() => payees ? payees.filter((payee) => !payee.remoteId).length : 0, [payees]);
+    if (activeFilter === 'local') return searched.filter((p) => !isSynced(p));
+  const syncedPayees = useMemo(() => payees ? payees.filter((payee) => isSynced(payee)).length : 0, [payees]);
+  const localOnlyPayees = useMemo(() => payees ? payees.filter((payee) => !isSynced(payee)).length : 0, [payees]);
 
   const handleCreate = async (data) => {
     try {

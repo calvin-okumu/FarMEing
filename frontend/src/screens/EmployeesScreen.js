@@ -39,9 +39,10 @@ import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
 import { useForm } from 'react-hook-form';
+const isSynced = (r) => r._raw?._syncStatus === 'synced';
 function WorkerCard({ item, onPress, t }) {
-  const statusLabel = item.remoteId ? t('employees.api_live') : t('feedback.saved_local_title');
-  const isLocalOnly = !item.remoteId;
+  const statusLabel = isSynced(item) ? t('employees.api_live') : t('feedback.saved_local_title');
+  const isLocalOnly = !isSynced(item);
   const roleLabel = item.role || t('employees.role_unset');
 
   // We need to handle that item.assignments is an observable children collection
@@ -160,13 +161,13 @@ export default function EmployeesScreen({ navigation }) {
     );
 
     if (activeFilter === 'withRole') return searched.filter((employee) => !!employee.role?.trim());
-    if (activeFilter === 'synced') return searched.filter((employee) => !!employee.remoteId);
-    if (activeFilter === 'local') return searched.filter((employee) => !employee.remoteId);
+    if (activeFilter === 'synced') return searched.filter((employee) => isSynced(employee));
+    if (activeFilter === 'local') return searched.filter((employee) => !isSynced(employee));
     return searched;
   }, [employees, query, activeFilter]);
 
   const syncedEmployees = useMemo(
-    () => employees ? employees.filter((employee) => employee.remoteId).length : 0,
+    () => employees ? employees.filter((employee) => isSynced(employee)).length : 0,
     [employees]
   );
 
@@ -176,7 +177,7 @@ export default function EmployeesScreen({ navigation }) {
   );
 
   const localOnlyEmployees = useMemo(
-    () => employees ? employees.filter((employee) => !employee.remoteId).length : 0,
+    () => employees ? employees.filter((employee) => !isSynced(employee)).length : 0,
     [employees]
   );
 

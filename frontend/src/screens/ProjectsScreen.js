@@ -30,6 +30,8 @@ import { deleteProjectCascade, updateLocalModel } from '../utils/resourceMutatio
 import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
+const isSynced = (r) => r._raw?._syncStatus === 'synced';
+
 const DEFAULT_FORM = {
   name: '',
   crop: '',
@@ -78,7 +80,7 @@ export default function ProjectsScreen({ navigation, route }) {
       ? projects
       : projects.filter((project) => [project.name, project.crop, project.status].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
 
-    if (activeFilter === 'local') return searched.filter((project) => !project.remoteId);
+    if (activeFilter === 'local') return searched.filter((project) => !isSynced(project));
     if (activeFilter === 'active') return searched.filter((project) => (project.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
     if (activeFilter === 'planning') return searched.filter((project) => (project.status || '').toUpperCase() === 'PLANNING');
     if (activeFilter === 'archived') return searched.filter((project) => ['CLOSED', 'HARVESTED'].includes((project.status || '').toUpperCase()));
@@ -189,8 +191,8 @@ export default function ProjectsScreen({ navigation, route }) {
 
   const totalLand = filteredProjects.reduce((sum, project) => sum + (project.landSize || 0), 0);
   const activeProjects = filteredProjects.filter((project) => (project.status || 'ACTIVE') === 'ACTIVE').length;
-  const syncedProjects = projects.filter((project) => !!project.remoteId).length;
-  const localProjects = projects.filter((project) => !project.remoteId).length;
+  const syncedProjects = projects.filter((project) => isSynced(project)).length;
+  const localProjects = projects.filter((project) => !isSynced(project)).length;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -288,7 +290,7 @@ export default function ProjectsScreen({ navigation, route }) {
           const avatarStyle = index % 2 === 0 ? styles.cardAvatarForest : styles.cardAvatarWarm;
           const avatarIconColor = index % 2 === 0 ? stitchTheme.colors.primaryDim : stitchTheme.colors.accentBrown;
           const status = (item.status || 'ACTIVE').toUpperCase();
-          const isLocalOnly = !item.remoteId;
+          const isLocalOnly = !isSynced(item);
           const statusTone = status === 'ACTIVE' ? 'success' : status === 'PLANNING' ? 'warning' : 'neutral';
 
           return (

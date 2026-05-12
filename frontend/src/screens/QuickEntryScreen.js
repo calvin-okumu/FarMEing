@@ -43,6 +43,7 @@ const ENTRY_MODES = ['individual', 'crew'];
 function normalizeEmployeeName(value) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
+const isSynced = (r) => r._raw?._syncStatus === 'synced';
 
 export default function QuickEntryScreen({ navigation }) {
   const { t } = useTranslation();
@@ -72,7 +73,7 @@ export default function QuickEntryScreen({ navigation }) {
   const employeePlaceholder = entryMode === 'crew' ? t('quick_entry.placeholders.crew_name') : t('quick_entry.placeholders.employee');
   const helperText = entryMode === 'crew' ? t('quick_entry.crew_hint') : t('quick_entry.single_worker_hint');
   const graphValues = useMemo(() => [parseFloat(workers) || 1, parseFloat(days) || 1, parseFloat(rate) || 1, total || 1], [workers, days, rate, total]);
-  const syncedProjectCount = useMemo(() => projects.filter((project) => !!project.remoteId).length, [projects]);
+  const syncedProjectCount = useMemo(() => projects.filter((project) => isSynced(project)).length, [projects]);
   const crewModeActive = entryMode === 'crew';
 
   useEffect(() => {
