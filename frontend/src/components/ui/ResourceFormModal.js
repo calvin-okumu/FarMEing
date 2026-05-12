@@ -6,7 +6,7 @@ export default function ResourceFormModal({ visible, title, onClose, children })
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <KeyboardAvoidingView behavior='padding' style={styles.keyboardView}>
           <View style={styles.content}>
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>

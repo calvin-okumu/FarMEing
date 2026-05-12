@@ -468,6 +468,7 @@ const styles = StyleSheet.create({
   cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
   cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
+  half: { flex: 1 },
   statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 });
