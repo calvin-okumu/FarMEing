@@ -227,14 +227,14 @@ export default function ReportsScreen({ navigation }) {
         <PieChart
           data={[
             {
-              name: 'Labor',
+              name: t('dashboard.labor_costs'),
               population: portfolio.totalLaborCost,
               color: stitchTheme.colors.primaryDim,
               legendFontColor: stitchTheme.colors.text,
               legendFontSize: 11,
             },
             {
-              name: 'Ops',
+              name: t('dashboard.expenses_short'),
               population: portfolio.totalExpenses,
               color: stitchTheme.colors.accentBrown,
               legendFontColor: stitchTheme.colors.text,
