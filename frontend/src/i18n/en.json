@@ -251,6 +251,12 @@
       "unit": "acres",
       "expected_yield": "e.g. 5000"
     },
+    "status": {
+      "planning": "Planning",
+      "active": "Active",
+      "harvested": "Harvested",
+      "closed": "Closed"
+    },
     "new_project": "New Project",
     "edit_title": "Edit Project",
     "create_project": "Create Project",

@@ -239,6 +239,12 @@
       "unit": "ekari",
       "expected_yield": "mf. 5000"
     },
+    "status": {
+      "planning": "Inapangwa",
+      "active": "Inafanya Kazi",
+      "harvested": "Imevunwa",
+      "closed": "Imefungwa"
+    },
     "new_project": "Mradi Mpya",
     "edit_title": "Hariri Mradi",
     "create_project": "Unda Mradi",
