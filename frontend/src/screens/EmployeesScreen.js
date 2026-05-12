@@ -29,7 +29,6 @@ import {
   StitchInput,
   StitchSearchBar,
   StitchPrimaryButton,
-  StitchSectionTitle,
   StitchSurface,
 } from '../components/ui/StitchPrimitives';
 
@@ -303,49 +302,54 @@ export default function EmployeesScreen({ navigation }) {
       <Modal visible={modalVisible} animationType='slide' transparent>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={'padding'} style={styles.keyboardView}>
-            <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{t('employees.new_employee')}</Text>
                 <StitchIconButton icon='close' onPress={() => setModalVisible(false)} />
               </View>
 
-              <StitchInput
-                label={t('employees.fields.name')}
-                value={watch('name')}
-                onChangeText={(val) => setValue('name', val)}
-                placeholder={t('employees.placeholders.name')}
-              />
+              <View style={styles.formContent}>
+                <StitchInput
+                  label={t('employees.fields.name')}
+                  value={watch('name')}
+                  onChangeText={(val) => setValue('name', val)}
+                  placeholder={t('employees.placeholders.name')}
+                  style={styles.formField}
+                />
 
-              <StitchInput
-                label={t('employees.fields.phone')}
-                value={watch('phone')}
-                onChangeText={(val) => setValue('phone', val)}
-                placeholder={t('employees.placeholders.phone')}
-                keyboardType='phone-pad'
-              />
+                <StitchInput
+                  label={t('employees.fields.phone')}
+                  value={watch('phone')}
+                  onChangeText={(val) => setValue('phone', val)}
+                  placeholder={t('employees.placeholders.phone')}
+                  keyboardType='phone-pad'
+                  style={styles.formField}
+                />
 
-              <StitchInput
-                label={t('employees.fields.role')}
-                value={watch('role')}
-                onChangeText={(val) => setValue('role', val)}
-                placeholder={t('employees.placeholders.role')}
-              />
+                <StitchInput
+                  label={t('employees.fields.role')}
+                  value={watch('role')}
+                  onChangeText={(val) => setValue('role', val)}
+                  placeholder={t('employees.placeholders.role')}
+                  style={styles.formField}
+                />
 
-              <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
-                {projects && projects.map((proj) => (
-                  <TouchableOpacity
-                    key={proj.id}
-                    style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
-                    onPress={() => toggleProject(proj.id)}
-                  >
-                    <Text style={[styles.projectChipText, selectedProjectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                <Text style={styles.formFieldLabel}>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
+                  {projects && projects.map((proj) => (
+                    <TouchableOpacity
+                      key={proj.id}
+                      style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
+                      onPress={() => toggleProject(proj.id)}
+                    >
+                      <Text style={[styles.projectChipText, selectedProjectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
 
-              <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleSubmit(handleCreate)} icon='person-add' style={styles.saveButton} />
-            </ScrollView>
+                <StitchPrimaryButton label={t('employees.add_employee')} onPress={handleSubmit(handleCreate)} icon='person-add' style={styles.saveButton} />
+              </View>
+            </View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
@@ -524,12 +528,23 @@ const styles = StyleSheet.create({
   statusTextWarning: {
     color: stitchTheme.colors.accentBrown,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(18,23,20,0.26)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
+  modalContent: {
+    backgroundColor: stitchTheme.colors.background,
+    borderTopLeftRadius: stitchTheme.radius.xl,
+    borderTopRightRadius: stitchTheme.radius.xl,
+    paddingVertical: 36,
+    paddingHorizontal: 22,
+    maxHeight: '92%',
+    paddingBottom: Platform.OS === 'ios' ? 44 : 28,
+  },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   projectSelectionRow: { gap: 8, paddingVertical: 4 },
+  formContent: { gap: 16 },
+  formField: { marginBottom: 0 },
+  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
