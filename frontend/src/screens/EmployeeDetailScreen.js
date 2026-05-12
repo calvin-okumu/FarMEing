@@ -352,13 +352,24 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
         {activeTab === 'work' ? (
           workEntries.length ? workEntries.map(entry => (
-            <View key={entry.id} style={styles.listItem}>
+            <TouchableOpacity
+              key={entry.id}
+              style={styles.listItem}
+              activeOpacity={0.88}
+              onPress={() => navigation.navigate('Projects', {
+                screen: 'AddWorkEntry',
+                params: { projectId: entry.projectId, itemId: entry.id },
+              })}
+            >
               <View style={styles.listItemHeader}>
                 <Text style={styles.listItemTitle}>{entry.activity}</Text>
                 <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost, currency)}</Text>
               </View>
-              <Text style={styles.listItemMeta}>{formatAppDate(entry.date)} • {entry.daysWorked} {t('labor.days')}</Text>
-            </View>
+              <View style={styles.listItemFooter}>
+                <Text style={styles.listItemMeta}>{formatAppDate(entry.date)} • {entry.daysWorked} {t('labor.days')}</Text>
+                <Ionicons name="create-outline" size={14} color={stitchTheme.colors.textMuted} />
+              </View>
+            </TouchableOpacity>
           )) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
         ) : (
           payments.length ? payments.map(payment => (
