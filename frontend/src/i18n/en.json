@@ -572,6 +572,7 @@
   "payments": {
     "title": "Payment",
     "record": "Record Payment",
+    "edit_title": "Edit Payment",
     "confirm": "Confirm Payment",
     "delete_title": "Delete Payment",
     "confirm_delete": "Are you sure you want to delete this payment of {{name}}?",

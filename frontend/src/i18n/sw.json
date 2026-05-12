@@ -560,6 +560,7 @@
   "payments": {
     "title": "Malipo",
     "record": "Rekodi Malipo",
+    "edit_title": "Hariri Malipo",
     "confirm": "Thibitisha Malipo",
     "delete_title": "Futa Malipo",
     "confirm_delete": "Una uhakika unataka kufuta malipo haya ya {{name}}?",

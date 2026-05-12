@@ -74,6 +74,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
   const [editVisible, setEditVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [deletePaymentTarget, setDeletePaymentTarget] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
   const [paymentVisible, setPaymentVisible] = useState(false);
   const [banner, setBanner] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -197,22 +198,38 @@ export default function EmployeeDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleEditPayment = (payment) => {
+    setEditingPayment(payment);
+    resetPayment({ amount: String(payment.amount || ''), note: payment.note || '', date: new Date(payment.date) });
+    setPaymentVisible(true);
+  };
+
   const handleRecordPayment = async (data) => {
     try {
       await database.write(async () => {
-        await database.get('payments').create((record) => {
-          initializeLocalRecord(record);
-          record.employeeId = employeeId;
-          record.amount = parseFloat(data.amount) || 0;
-          record.date = data.date.getTime();
-          record.note = data.note.trim();
-          record.isDeleted = false;
-        });
+        if (editingPayment) {
+          const record = await database.get('payments').find(editingPayment.id);
+          await updateLocalModel(record, (draft) => {
+            draft.amount = parseFloat(data.amount) || 0;
+            draft.date = data.date.getTime();
+            draft.note = data.note.trim();
+          });
+        } else {
+          await database.get('payments').create((record) => {
+            initializeLocalRecord(record);
+            record.employeeId = employeeId;
+            record.amount = parseFloat(data.amount) || 0;
+            record.date = data.date.getTime();
+            record.note = data.note.trim();
+            record.isDeleted = false;
+          });
+        }
       });
       syncAll().catch(() => {});
       setPaymentVisible(false);
+      setEditingPayment(null);
       resetPayment({ amount: '', note: '', date: new Date() });
-      setBanner({ tone: 'success', title: t('feedback.created'), message: t('feedback.saved_remote') });
+      setBanner({ tone: 'success', title: editingPayment ? t('feedback.updated') : t('feedback.created'), message: t('feedback.saved_remote') });
     } catch (error) {
       Alert.alert(t('common.error'), error.message);
     }
@@ -311,7 +328,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             </View>
             <Text style={styles.actionBtnText}>{t('common.edit')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.payBtn]} onPress={() => setPaymentVisible(true)} activeOpacity={0.88}>
+          <TouchableOpacity style={[styles.actionBtn, styles.payBtn]} onPress={() => { setEditingPayment(null); setPaymentVisible(true); }} activeOpacity={0.88}>
             <Ionicons name="cash-outline" size={18} color="#fff" />
             <Text style={[styles.actionBtnText, { color: '#fff' }]}>{t('employees.pay_worker')}</Text>
           </TouchableOpacity>
@@ -373,18 +390,26 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           )) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
         ) : (
           payments.length ? payments.map(payment => (
-            <View key={payment.id} style={styles.listItem}>
+            <TouchableOpacity
+              key={payment.id}
+              style={styles.listItem}
+              activeOpacity={0.88}
+              onPress={() => handleEditPayment(payment)}
+            >
               <View style={styles.listItemHeader}>
                 <Text style={styles.listItemTitle}>{payment.note || t('payments.payment_recorded')}</Text>
                 <Text style={[styles.listItemAmount, { color: stitchTheme.colors.primary }]}>{formatCurrency(payment.amount, currency)}</Text>
               </View>
               <View style={styles.listItemFooter}>
                 <Text style={styles.listItemMeta}>{formatAppDate(payment.date)}</Text>
-                <TouchableOpacity onPress={() => setDeletePaymentTarget(payment)}>
-                  <Ionicons name="trash-outline" size={14} color={stitchTheme.colors.accentRed} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Ionicons name="create-outline" size={14} color={stitchTheme.colors.textMuted} />
+                  <TouchableOpacity onPress={() => setDeletePaymentTarget(payment)}>
+                    <Ionicons name="trash-outline" size={14} color={stitchTheme.colors.accentRed} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           )) : <Text style={styles.emptyText}>{t('payments.empty')}</Text>
         )}
 
@@ -442,7 +467,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
       <Modal visible={paymentVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{editingPayment ? t('payments.edit_title') : t('payments.record')}</Text><TouchableOpacity onPress={() => { setPaymentVisible(false); setEditingPayment(null); }}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
 
           <View style={styles.formContent}>
             <StitchInput
