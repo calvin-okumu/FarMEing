@@ -24,7 +24,7 @@ import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeEmployeeBalance } from '../utils/localAnalytics';
-import { StitchChip, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchInput, StitchPrimaryButton, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
@@ -386,63 +386,71 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </StitchDashboardShell>
 
       <Modal visible={editVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
-          
-          <StitchInput
-            label={t('employees.fields.name')}
-            value={watchEdit('name')}
-            onChangeText={(val) => setEditValue('name', val)}
-          />
 
-          <StitchInput
-            label={t('employees.fields.phone')}
-            value={watchEdit('phone')}
-            onChangeText={(val) => setEditValue('phone', val)}
-          />
+          <View style={styles.formContent}>
+            <StitchInput
+              label={t('employees.fields.name')}
+              value={watchEdit('name')}
+              onChangeText={(val) => setEditValue('name', val)}
+              style={styles.formField}
+            />
 
-          <StitchInput
-            label={t('employees.fields.role')}
-            value={watchEdit('role')}
-            onChangeText={(val) => setEditValue('role', val)}
-          />
-          
-          <StitchSectionTitle>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</StitchSectionTitle>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
-            {allProjects && allProjects.map((proj) => (
-              <TouchableOpacity
-                key={proj.id}
-                style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
-                onPress={() => toggleProject(proj.id)}
-              >
-                <Text style={[styles.projectChipText, selectedProjectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            <StitchInput
+              label={t('employees.fields.phone')}
+              value={watchEdit('phone')}
+              onChangeText={(val) => setEditValue('phone', val)}
+              style={styles.formField}
+            />
 
-          <StitchPrimaryButton label={t('common.save')} onPress={handleEditSubmit(handleUpdate)} icon="save-outline" style={styles.saveButton} />
-        </ScrollView></KeyboardAvoidingView></View>
+            <StitchInput
+              label={t('employees.fields.role')}
+              value={watchEdit('role')}
+              onChangeText={(val) => setEditValue('role', val)}
+              style={styles.formField}
+            />
+
+            <Text style={styles.formFieldLabel}>{t('employees.fields.project', { defaultValue: 'Assigned Projects' })}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
+              {allProjects && allProjects.map((proj) => (
+                <TouchableOpacity
+                  key={proj.id}
+                  style={[styles.projectChip, selectedProjectIds.includes(proj.id) && styles.projectChipActive]}
+                  onPress={() => toggleProject(proj.id)}
+                >
+                  <Text style={[styles.projectChipText, selectedProjectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <StitchPrimaryButton label={t('common.save')} onPress={handleEditSubmit(handleUpdate)} icon="save-outline" style={styles.saveButton} />
+          </View>
+        </View></KeyboardAvoidingView></View>
       </Modal>
 
       <Modal visible={paymentVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('payments.record')}</Text><TouchableOpacity onPress={() => setPaymentVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
-          
-          <StitchInput
-            label={t('payments.fields.amount')}
-            value={watchPayment('amount')}
-            onChangeText={(val) => setPaymentValue('amount', val)}
-            keyboardType='decimal-pad'
-          />
 
-          <StitchInput
-            label={t('common.notes')}
-            value={watchPayment('note')}
-            onChangeText={(val) => setPaymentValue('note', val)}
-          />
+          <View style={styles.formContent}>
+            <StitchInput
+              label={t('payments.fields.amount')}
+              value={watchPayment('amount')}
+              onChangeText={(val) => setPaymentValue('amount', val)}
+              keyboardType='decimal-pad'
+              style={styles.formField}
+            />
 
-          <StitchPrimaryButton label={t('payments.confirm')} onPress={handlePaymentSubmit(handleRecordPayment)} icon="checkmark-circle" style={styles.saveButton} />
-        </View></KeyboardAvoidingView></View>
+            <StitchInput
+              label={t('common.notes')}
+              value={watchPayment('note')}
+              onChangeText={(val) => setPaymentValue('note', val)}
+              style={styles.formField}
+            />
+
+            <StitchPrimaryButton label={t('payments.confirm')} onPress={handlePaymentSubmit(handleRecordPayment)} icon="checkmark-circle" style={styles.saveButton} />
+          </View></View></KeyboardAvoidingView></View>
       </Modal>
 
       <ConfirmDialog visible={deleteVisible} title={t('employees.delete_title')} message={t('employees.confirm_delete', { name: employee.name })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteVisible(false)} onConfirm={handleDelete} />
@@ -496,12 +504,15 @@ const styles = StyleSheet.create({
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: stitchTheme.spacing.xl },
   deleteTrigger: { marginTop: stitchTheme.spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   deleteTriggerText: { color: stitchTheme.colors.accentRed, fontWeight: '800' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
+  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, paddingVertical: 36, paddingHorizontal: 22, maxHeight: '92%', paddingBottom: Platform.OS === 'ios' ? 44 : 28 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   projectSelectionRow: { gap: 8, paddingVertical: 4, marginBottom: stitchTheme.spacing.md },
+  formContent: { gap: 16 },
+  formField: { marginBottom: 0 },
+  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
   projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
