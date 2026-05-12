@@ -555,16 +555,23 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </StitchSurface>
         ) : null}
 
-        <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} actionLabel="Add" onActionPress={() => {
-          const params = { projectId: project.id };
-          if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
-          else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
-          else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
-          else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
-          else if (activeTab === 'sales') navigation.navigate('AddSale', params);
-          else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
-          else setActiveTab('timeline');
-        }} />
+        <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} />
+
+        <StitchSurface style={styles.addRowCard} contentStyle={styles.addRowContent} tone='raised' compact>
+          <TouchableOpacity style={styles.addRowButton} onPress={() => {
+            const params = { projectId: project.id };
+            if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
+            else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
+            else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
+            else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
+            else if (activeTab === 'sales') navigation.navigate('AddSale', params);
+            else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
+            else setActiveTab('timeline');
+          }} activeOpacity={0.88}>
+            <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
+            <Text style={styles.addRowText}>Add</Text>
+          </TouchableOpacity>
+        </StitchSurface>
 
         {/* --- Content Tabs --- */}
         {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, item.category, formatCurrency(item.total, currency), 'default', 'budget', item))}
@@ -792,4 +799,8 @@ const styles = StyleSheet.create({
   roleChipText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.textMuted },
   roleChipTextActive: { color: stitchTheme.colors.primary },
   emptyText: { textAlign: 'center', marginTop: 40, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
+  addRowCard: { marginBottom: 12 },
+  addRowContent: { backgroundColor: stitchTheme.colors.surfaceHighlight },
+  addRowButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12 },
+  addRowText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800' },
 });
