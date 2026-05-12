@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     borderRadius: stitchTheme.radius.card,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    marginBottom: 10,
+    marginBottom: stitchTheme.spacing.sm,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.55)',
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     opacity: 0.8,
   },
-  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, marginBottom: 12 },
+  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
   cardInsightPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
   cardInsightText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
   cardBottom: {

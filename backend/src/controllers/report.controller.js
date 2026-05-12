@@ -85,6 +85,45 @@ const generateProjectReport = async (req, res) => {
     doc.fontSize(12).text(`Total Harvest: ${totalHarvest.toLocaleString()} kg`);
     doc.moveDown();
 
+    // ── Budget Breakdown ────────────────────────────────────────────────
+    if (project.budgetItems.length > 0) {
+      doc.fontSize(16).text('Budget Breakdown', { underline: true });
+      doc.fontSize(12);
+      project.budgetItems.forEach(item => {
+        doc.text(`- ${item.name} (${item.category}): ${item.quantity} ${item.unit} × ${item.unitPrice} = ${item.total}`);
+      });
+      doc.text(`Total Budget: ${totalBudget.toLocaleString()}`);
+      doc.moveDown();
+    }
+
+    // ── Harvest Records ──────────────────────────────────────────────────
+    if (project.harvests.length > 0) {
+      doc.fontSize(16).text('Harvest Records', { underline: true });
+      doc.fontSize(12);
+      const harvestByCrop = {};
+      project.harvests.forEach(h => {
+        harvestByCrop[h.crop] = (harvestByCrop[h.crop] || 0) + (h.weight || 0);
+      });
+      Object.entries(harvestByCrop).forEach(([crop, weight]) => {
+        doc.text(`- ${crop}: ${weight.toLocaleString()} kg`);
+      });
+      doc.text(`Total Harvest: ${totalHarvest.toLocaleString()} kg`);
+      doc.text(`Expected Yield: ${project.expectedYield || 'N/A'} kg`);
+      doc.moveDown();
+    }
+
+    // ── Sales Records ────────────────────────────────────────────────────
+    if (project.sales.length > 0) {
+      doc.fontSize(16).text('Sales Records', { underline: true });
+      doc.fontSize(12);
+      project.sales.forEach(sale => {
+        doc.text(`- ${sale.customer || 'Cash'}: ${sale.weightSold || 0} kg × ${sale.unitPrice} = ${sale.totalAmount}`);
+        doc.text(`  Date: ${sale.date.toLocaleDateString()}`);
+      });
+      doc.text(`Total Revenue: ${totalRevenue.toLocaleString()}`);
+      doc.moveDown();
+    }
+
     // ── Footer ───────────────────────────────────────────────────────────────
     doc.fontSize(10).text('End of Report', doc.page.width - 100, doc.page.height - 50, { align: 'right' });
 
@@ -172,6 +211,96 @@ const generateProjectExcelReport = async (req, res) => {
         cost: w.totalCost
       });
     });
+
+    // Harvest Sheet
+    if (project.harvests.length > 0) {
+      const harvestSheet = workbook.addWorksheet('Harvest');
+      harvestSheet.columns = [
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Crop', key: 'crop', width: 20 },
+        { header: 'Weight (kg)', key: 'weight', width: 15 },
+        { header: 'Notes', key: 'notes', width: 40 },
+      ];
+      project.harvests.forEach(h => {
+        harvestSheet.addRow({
+          date: h.date.toLocaleDateString(),
+          crop: h.crop,
+          weight: h.weight,
+          notes: h.notes
+        });
+      });
+    }
+
+    // Sales Sheet
+    if (project.sales.length > 0) {
+      const salesSheet = workbook.addWorksheet('Sales');
+      salesSheet.columns = [
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Customer', key: 'customer', width: 25 },
+        { header: 'Weight (kg)', key: 'weight', width: 15 },
+        { header: 'Unit Price', key: 'price', width: 15 },
+        { header: 'Total Amount', key: 'total', width: 15 },
+        { header: 'Notes', key: 'notes', width: 40 },
+      ];
+      project.sales.forEach(s => {
+        salesSheet.addRow({
+          date: s.date.toLocaleDateString(),
+          customer: s.customer || 'Cash',
+          weight: s.weightSold,
+          price: s.unitPrice,
+          total: s.totalAmount,
+          notes: s.notes
+        });
+      });
+    }
+
+    // Budget Sheet
+    if (project.budgetItems.length > 0) {
+      const budgetSheet = workbook.addWorksheet('Budget');
+      budgetSheet.columns = [
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Item', key: 'item', width: 30 },
+        { header: 'Quantity', key: 'qty', width: 12 },
+        { header: 'Unit', key: 'unit', width: 10 },
+        { header: 'Unit Price', key: 'price', width: 15 },
+        { header: 'Total', key: 'total', width: 15 },
+      ];
+      project.budgetItems.forEach(b => {
+        budgetSheet.addRow({
+          category: b.category,
+          item: b.name,
+          qty: b.quantity,
+          unit: b.unit,
+          price: b.unitPrice,
+          total: b.total
+        });
+      });
+    }
+
+    // Inventory Sheet
+    if (project.inventoryItems.length > 0) {
+      const inventorySheet = workbook.addWorksheet('Inventory');
+      inventorySheet.columns = [
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Quantity', key: 'qty', width: 12 },
+        { header: 'Unit', key: 'unit', width: 10 },
+        { header: 'Unit Cost', key: 'cost', width: 15 },
+        { header: 'Used Qty', key: 'used', width: 12 },
+        { header: 'Notes', key: 'notes', width: 40 },
+      ];
+      project.inventoryItems.forEach(i => {
+        inventorySheet.addRow({
+          name: i.name,
+          category: i.category,
+          qty: i.quantity,
+          unit: i.unit,
+          cost: i.unitCost,
+          used: i.usedQty,
+          notes: i.notes
+        });
+      });
+    }
 
     const filename = `Report_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
