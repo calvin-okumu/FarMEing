@@ -123,6 +123,9 @@ export default function PayeesScreen({ navigation }) {
     if (activeFilter === 'Supplier') return searched.filter((p) => p.category === 'Supplier');
     if (activeFilter === 'Contractor') return searched.filter((p) => p.category === 'Contractor');
     if (activeFilter === 'local') return searched.filter((p) => !isSynced(p));
+    return searched;
+  }, [payees, query, activeFilter]);
+
   const syncedPayees = useMemo(() => payees ? payees.filter((payee) => isSynced(payee)).length : 0, [payees]);
   const localOnlyPayees = useMemo(() => payees ? payees.filter((payee) => !isSynced(payee)).length : 0, [payees]);
 
