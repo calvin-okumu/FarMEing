@@ -43,7 +43,7 @@ const ENTRY_MODES = ['individual', 'crew'];
 function normalizeEmployeeName(value) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
-const isSynced = (r) => r._syncStatus === 'synced';
+const isSynced = (r) => r._raw._status === 'synced';
 
 export default function QuickEntryScreen({ navigation }) {
   const { t } = useTranslation();

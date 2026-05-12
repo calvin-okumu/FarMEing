@@ -30,7 +30,7 @@ import { deleteProjectCascade, updateLocalModel } from '../utils/resourceMutatio
 import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 
-const isSynced = (r) => r._syncStatus === 'synced';
+const isSynced = (r) => r._raw._status === 'synced';
 
 const DEFAULT_FORM = {
   name: '',

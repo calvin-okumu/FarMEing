@@ -38,7 +38,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { useForm, Controller } from 'react-hook-form';
-const isSynced = (r) => r._syncStatus === 'synced';
+const isSynced = (r) => r._raw._status === 'synced';
 
 function PayeeCard({ item, onPress, t }) {
   const statusLabel = isSynced(item) ? t('employees.api_live') : t('feedback.saved_local_title');
