@@ -54,7 +54,7 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="AddBudgetItem"
         component={AddBudgetItemScreen}
-        options={{ title: t('budget.add') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="AddExpense"
@@ -98,7 +98,7 @@ function EmployeeStackNavigator() {
       <EmployeeStack.Screen
         name="EmployeeDetail"
         component={EmployeeDetailScreen}
-        options={{ title: t('payments.pay_worker') }}
+        options={{ headerShown: false }}
       />
     </EmployeeStack.Navigator>
   );
