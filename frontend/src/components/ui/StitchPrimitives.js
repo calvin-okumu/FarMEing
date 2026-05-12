@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Modal, TextInput, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
 
 function getSurfaceTone(tone) {
@@ -305,9 +306,6 @@ export function StitchPicker({ label, options, selectedValue, onSelect, searchab
   );
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 function getMonthGrid(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -325,7 +323,18 @@ function getMonthGrid(year, month) {
 }
 
 export function StitchDatePicker({ visible, date, onDateChange, onClose }) {
-  const [viewYear, setViewYear] = useState(date.getFullYear());
+  const { t } = useTranslation();
+  const MONTHS = useMemo(() => [
+    t('common.months.january'), t('common.months.february'), t('common.months.march'),
+    t('common.months.april'), t('common.months.may'), t('common.months.june'),
+    t('common.months.july'), t('common.months.august'), t('common.months.september'),
+    t('common.months.october'), t('common.months.november'), t('common.months.december'),
+  ], [t]);
+  const DAYS = useMemo(() => [
+    t('common.days.sunday'), t('common.days.monday'), t('common.days.tuesday'),
+    t('common.days.wednesday'), t('common.days.thursday'), t('common.days.friday'),
+    t('common.days.saturday'),
+  ], [t]);
   const [viewMonth, setViewMonth] = useState(date.getMonth());
   const today = new Date();
   const grid = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);

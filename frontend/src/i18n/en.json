@@ -27,8 +27,31 @@
       "harvesting": "Harvesting",
       "spraying": "Spraying",
       "irrigation": "Irrigation",
-    "other": "Other"
+      "other": "Other"
     }
+  },
+  "months": {
+    "january": "January",
+    "february": "February",
+    "march": "March",
+    "april": "April",
+    "may": "May",
+    "june": "June",
+    "july": "July",
+    "august": "August",
+    "september": "September",
+    "october": "October",
+    "november": "November",
+    "december": "December"
+  },
+  "days": {
+    "sunday": "Sun",
+    "monday": "Mon",
+    "tuesday": "Tue",
+    "wednesday": "Wed",
+    "thursday": "Thu",
+    "friday": "Fri",
+    "saturday": "Sat"
   },
   "resource": {
     "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?",
