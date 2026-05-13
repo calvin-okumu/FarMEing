@@ -136,6 +136,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [sales, setSales] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [salePayments, setSalePayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -292,6 +293,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales),
         database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems),
         database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
+        database.get('sale_payments').query(Q.where('is_deleted', false)).observe().subscribe(setSalePayments),
       ];
 
       return () => subs.forEach(s => s.unsubscribe());
@@ -311,6 +313,16 @@ export default function ProjectDetailScreen({ route, navigation }) {
     employeeMap.set(employee.id, employee.name);
     if (employee.remoteId) employeeMap.set(employee.remoteId, employee.name);
   });
+
+  const saleCustomerMap = useMemo(() => {
+    const map = {};
+    sales.forEach(s => { map[s.id] = s.customer || 'Cash'; if (s.remoteId) map[s.remoteId] = s.customer || 'Cash'; });
+    return map;
+  }, [sales]);
+
+  const projectPayments = useMemo(() => {
+    return salePayments.filter(p => saleCustomerMap[p.saleId]).sort((a, b) => b.date - a.date);
+  }, [salePayments, saleCustomerMap]);
 
   const localTimeline = useMemo(() => {
     const workItems = workEntries.slice(0, 4).map((entry) => ({
@@ -607,6 +619,20 @@ export default function ProjectDetailScreen({ route, navigation }) {
           const desc = [statusTag, item.notes].filter(Boolean).join(' ');
           return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item, desc);
         })}
+        {activeTab === 'sales' && projectPayments.length > 0 ? (
+          <View style={{ marginTop: stitchTheme.spacing.sm }}>
+            <Text style={styles.sectionSubtitle}>Payments Received</Text>
+            {projectPayments.map(p => (
+              <View key={p.id} style={styles.paymentCard}>
+                <View style={styles.paymentLeft}>
+                  <Text style={styles.paymentAmount}>{formatCurrency(p.amount, currency)}</Text>
+                  <Text style={styles.paymentMeta}>{saleCustomerMap[p.saleId] || 'Sale'} • {formatAppDate(p.date)}</Text>
+                  {p.note ? <Text style={styles.paymentNote} numberOfLines={2} ellipsizeMode='tail'>{p.note}</Text> : null}
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
@@ -769,6 +795,12 @@ const styles = StyleSheet.create({
   chartBarTrack: { height: 6, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceInset, overflow: 'hidden' },
   chartBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryDim },
   chartBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
+  sectionSubtitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: stitchTheme.spacing.xs },
+  paymentCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: 14, paddingLeft: 18, marginBottom: stitchTheme.spacing.xs, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...stitchShadows.card },
+  paymentLeft: { flex: 1 },
+  paymentAmount: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text },
+  paymentMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.caption.fontWeight, marginTop: 2 },
+  paymentNote: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.bodySmall.fontWeight },
 
   /* Tabs & Controls */
   tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: stitchTheme.spacing.sm },
