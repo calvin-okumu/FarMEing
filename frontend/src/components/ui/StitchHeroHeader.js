@@ -51,9 +51,9 @@ export function StitchHeroPill({ label, value, icon, style }) {
 const styles = StyleSheet.create({
   hero: {
     backgroundColor: stitchTheme.colors.forestDeep,
-    paddingTop: stitchTheme.spacing.xs,
+    paddingTop: stitchTheme.spacing.xs + 6,
     paddingHorizontal: stitchTheme.spacing.screen,
-    paddingBottom: stitchTheme.spacing.sm,
+    paddingBottom: stitchTheme.spacing.sm + 2,
     overflow: 'hidden',
   },
   circleLarge: {
