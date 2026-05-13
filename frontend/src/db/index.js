@@ -14,6 +14,7 @@ import Sale        from './models/Sale';
 import InventoryItem from './models/InventoryItem';
 import Payee        from './models/Payee';
 import EmployeeProjectAssignment from './models/EmployeeProjectAssignment';
+import SalePayment  from './models/SalePayment';
 
 // SQLiteAdapter uses expo-sqlite under the hood on Expo Go
 const adapter = new SQLiteAdapter({
@@ -28,7 +29,7 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem, Payee, EmployeeProjectAssignment],
+  modelClasses: [FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem, Payee, EmployeeProjectAssignment, SalePayment],
 });
 
 export async function resetLocalDatabase() {
