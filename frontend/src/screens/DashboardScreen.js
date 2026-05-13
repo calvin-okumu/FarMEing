@@ -274,7 +274,7 @@ export default function DashboardScreen({ navigation }) {
                         <MetricBlock label={t('dashboard.total_spent')} value={formatCurrency(summary.totalCost, currency)} note={t('dashboard.costs_incurred_total')} icon='wallet-outline' accent={colors.accentBrown} />
                     </View>
                     <View style={styles.pulseGridRow}>
-                        <MetricBlock label={t('dashboard.revenue')} value={formatCurrency(summary.totalRevenue, currency)} note={summary.pendingRevenue > 0 ? `${formatCurrency(summary.collectedRevenue, currency)} collected • ${formatCurrency(summary.pendingRevenue, currency)} pending` : t('dashboard.sale_records', { count: filteredSales.length })} icon='cash-outline' accent={colors.primaryContainer} reversed />
+                        <MetricBlock label={t('dashboard.revenue')} value={formatCurrency(summary.collectedRevenue, currency)} note={summary.pendingRevenue > 0 ? `${formatCurrency(summary.pendingRevenue, currency)} pending of ${formatCurrency(summary.totalRevenue, currency)}` : t('dashboard.sale_records', { count: filteredSales.length })} icon='cash-outline' accent={colors.primaryContainer} reversed />
                         <MetricBlock label={t('dashboard.profit_loss')} value={formatCurrency(summary.netProfit, currency)} note={summary.netProfit >= 0 ? t('dashboard.positive_margin') : t('dashboard.margin_at_risk')} icon='trending-up-outline' accent={summary.netProfit >= 0 ? colors.primaryDim : colors.accentRed} />
                     </View>
 
