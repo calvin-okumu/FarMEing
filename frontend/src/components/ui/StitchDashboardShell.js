@@ -124,8 +124,7 @@ const styles = StyleSheet.create({
   stickyWrap: {
     backgroundColor: stitchTheme.colors.background,
     paddingHorizontal: stitchTheme.spacing.md,
-    paddingTop: 4,
-    paddingBottom: 4,
+    paddingVertical: 6,
   },
   body: {
     flex: 1,

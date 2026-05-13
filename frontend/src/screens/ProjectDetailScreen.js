@@ -506,20 +506,29 @@ export default function ProjectDetailScreen({ route, navigation }) {
         onDismissBanner={() => setBanner(null)}
         stickyHeader={
           <View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-              {TAB_ORDER.map((tab) => (
-                <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
-              ))}
-            </ScrollView>
-            {showCollectionControls ? (
-              <StitchSurface style={styles.controlsCard} contentStyle={styles.controlsContent} tone='raised' compact>
-                <StitchSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
-                <View style={styles.sortRow}>
+            <View style={styles.stickyTopRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+                {TAB_ORDER.map((tab) => (
+                  <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
+                ))}
+              </ScrollView>
+              {showCollectionControls ? (
+                <View style={styles.stickyControlsRow}>
+                  <View style={styles.stickySearchWrap}>
+                    <Ionicons name='search-outline' size={14} color={stitchTheme.colors.textMuted} />
+                    <TextInput
+                      style={styles.stickySearchInput}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`}
+                      placeholderTextColor={stitchTheme.colors.textMuted}
+                    />
+                  </View>
                   <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
                   <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
                 </View>
-              </StitchSurface>
-            ) : null}
+              ) : null}
+            </View>
           </View>
         }
       >
@@ -799,6 +808,10 @@ const styles = StyleSheet.create({
   tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: 6 },
   controlsCard: { marginBottom: stitchTheme.spacing.sm },
   controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
+  stickyTopRow: { gap: 8 },
+  stickyControlsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stickySearchWrap: { flex: 1, minHeight: 34, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  stickySearchInput: { flex: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: 15, color: stitchTheme.colors.text, paddingVertical: 0 },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
 
   /* Collection Cards */
