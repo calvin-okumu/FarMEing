@@ -131,5 +131,28 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 16,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [
+            { name: 'payment_status', type: 'string', isOptional: true },
+            { name: 'balance_due', type: 'number', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 17,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [
+            { name: 'receipt_url', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });

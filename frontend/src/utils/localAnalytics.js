@@ -23,6 +23,8 @@ export function computeProjectSummary({ budgetItems = [], expenses = [], workEnt
   const totalInventoryCost = inventoryItems.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalCost || 0), 0);
   const totalHarvest = harvests.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.weight || 0), 0);
   const totalRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+  const collectedRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
+  const pendingRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.balanceDue || 0), 0);
   const totalCost = totalExpenses + totalLaborCost + totalInventoryCost;
 
   return {
@@ -33,6 +35,8 @@ export function computeProjectSummary({ budgetItems = [], expenses = [], workEnt
     totalCost: parseFloat(totalCost.toFixed(2)),
     totalHarvest: parseFloat(totalHarvest.toFixed(2)),
     totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+    collectedRevenue: parseFloat(collectedRevenue.toFixed(2)),
+    pendingRevenue: parseFloat(pendingRevenue.toFixed(2)),
     netProfit: parseFloat((totalRevenue - totalCost).toFixed(2)),
   };
 }
@@ -47,6 +51,8 @@ export function computePortfolioSummary(projectsData = []) {
     totalCost: 0,
     totalHarvest: 0,
     totalRevenue: 0,
+    collectedRevenue: 0,
+    pendingRevenue: 0,
     netProfit: 0,
     projectCount: projectsData.length,
   };
@@ -59,6 +65,8 @@ export function computePortfolioSummary(projectsData = []) {
     totalCost: acc.totalCost + curr.totalCost,
     totalHarvest: acc.totalHarvest + curr.totalHarvest,
     totalRevenue: acc.totalRevenue + curr.totalRevenue,
+    collectedRevenue: acc.collectedRevenue + (curr.collectedRevenue || 0),
+    pendingRevenue: acc.pendingRevenue + (curr.pendingRevenue || 0),
     netProfit: acc.netProfit + curr.netProfit,
     projectCount: acc.projectCount,
   }), initial);

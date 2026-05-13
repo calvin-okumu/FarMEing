@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 15, // Incremented version since schema changed
+  version: 17, // Incremented version since schema changed
   tables: [
     // ── EmployeeProjectAssignment ───────────────────────────────────────────
     tableSchema({
@@ -174,6 +174,9 @@ export default appSchema({
         { name: 'weight_sold', type: 'number' },
         { name: 'unit_price',  type: 'number' },
         { name: 'total_amount',type: 'number' },
+        { name: 'payment_status', type: 'string', isOptional: true },
+        { name: 'balance_due', type: 'number', isOptional: true },
+        { name: 'receipt_url', type: 'string', isOptional: true },
         { name: 'notes',       type: 'string', isOptional: true },
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },

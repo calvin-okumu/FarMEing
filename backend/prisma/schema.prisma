@@ -217,18 +217,21 @@ model Harvest {
 }
 
 model Sale {
-  id          String      @id @default(uuid())
-  projectId   String
-  date        DateTime
-  customer    String?
-  weightSold  Float
-  unitPrice   Float
-  totalAmount Float
-  notes       String?
-  isDeleted   Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  project     FarmProject @relation(fields: [projectId], references: [id])
+  id             String      @id @default(uuid())
+  projectId      String
+  date           DateTime
+  customer       String?
+  weightSold     Float
+  unitPrice      Float
+  totalAmount    Float
+  paymentStatus  String?
+  balanceDue     Float?
+  receiptUrl     String?
+  notes          String?
+  isDeleted      Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  project        FarmProject @relation(fields: [projectId], references: [id])
 }
 
 model InventoryItem {

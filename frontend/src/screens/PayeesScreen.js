@@ -254,7 +254,7 @@ export default function PayeesScreen({ navigation }) {
 
               <StitchSectionTitle>{t('payees.fields.category', { defaultValue: 'Category' })}</StitchSectionTitle>
               <View style={styles.categoryRow}>
-                {['Supplier', 'Contractor', 'Individual', 'Other'].map((cat) => (
+                {['Supplier', 'Contractor', 'Vendor', 'Individual', 'Other'].map((cat) => (
                   <Controller
                     key={cat}
                     control={control}

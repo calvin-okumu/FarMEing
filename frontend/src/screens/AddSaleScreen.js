@@ -8,11 +8,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
@@ -20,7 +23,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -37,8 +40,12 @@ export default function AddSaleScreen({ route, navigation }) {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('paid');
+  const [amountPaid, setAmountPaid] = useState('');
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [payees, setPayees] = useState([]);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -60,8 +67,38 @@ export default function AddSaleScreen({ route, navigation }) {
       setUnitPrice(String(item.unitPrice ?? ''));
       setDate(item.date ? new Date(item.date) : new Date());
       setNotes(item.notes || '');
+      setPaymentStatus(item.paymentStatus || 'paid');
+      const paid = item.balanceDue ? item.totalAmount - item.balanceDue : item.totalAmount;
+      setAmountPaid(item.paymentStatus !== 'paid' && item.balanceDue != null ? String(paid) : '');
+      setPhoto(item.receiptUrl || null);
     }).catch(() => {});
   }, [itemId]);
+
+  useEffect(() => {
+    const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
+    return () => sub.unsubscribe();
+  }, []);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
+  };
 
   const total = (parseFloat(weightSold) || 0) * (parseFloat(unitPrice) || 0);
 
@@ -103,6 +140,10 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.totalAmount = total;
             draft.date = date.getTime();
             draft.notes = notes.trim();
+            draft.paymentStatus = paymentStatus;
+            const paid = parseFloat(amountPaid) || 0;
+            draft.balanceDue = paymentStatus !== 'paid' ? Math.max(0, total - paid) : 0;
+            draft.receiptUrl = photo || '';
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -115,6 +156,10 @@ export default function AddSaleScreen({ route, navigation }) {
             record.totalAmount = total;
             record.date = date.getTime();
             record.notes = notes.trim();
+            record.paymentStatus = paymentStatus;
+            const paid = parseFloat(amountPaid) || 0;
+            record.balanceDue = paymentStatus !== 'paid' ? Math.max(0, total - paid) : 0;
+            record.receiptUrl = photo || '';
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -185,17 +230,59 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
           </View>
 
-          <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
-          <View style={styles.fieldLarge}>
-            <Ionicons name="person" size={20} color={stitchTheme.colors.textMuted} />
-            <TextInput
-              style={styles.mediumInput}
-              value={customer}
-              onChangeText={setCustomer}
-              placeholder={t('sales.placeholders.customer')}
-              placeholderTextColor="#76806f"
-            />
+          <StitchSectionTitle>Payment Status</StitchSectionTitle>
+          <View style={styles.statusRow}>
+            {['paid', 'advance', 'partial'].map((status) => (
+              <StitchChip
+                key={status}
+                label={status.charAt(0).toUpperCase() + status.slice(1)}
+                active={paymentStatus === status}
+                onPress={() => setPaymentStatus(status)}
+              />
+            ))}
           </View>
+
+          {paymentStatus !== 'paid' && (
+            <View style={styles.fieldLarge}>
+              <Text style={styles.currencyText}>{currency}</Text>
+              <TextInput
+                style={styles.mediumInput}
+                value={amountPaid}
+                onChangeText={setAmountPaid}
+                placeholder="Amount paid"
+                keyboardType="decimal-pad"
+                placeholderTextColor={stitchTheme.colors.textMuted}
+              />
+            </View>
+          )}
+
+          <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
+          <StitchPicker
+            label=''
+            options={[{ label: 'Other (type manually)', value: '' }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
+            selectedValue={payees.find((p) => p.name === customer)?.id || ''}
+            onSelect={(val) => {
+              if (!val) {
+                setCustomer('');
+              } else {
+                setCustomer((payees || []).find((p) => p.id === val)?.name || '');
+              }
+            }}
+            searchable
+            placeholder='Select Vendor'
+          />
+          {!payees.find((p) => p.name === customer) ? (
+            <View style={styles.fieldLarge}>
+              <Ionicons name="person" size={20} color={stitchTheme.colors.textMuted} />
+              <TextInput
+                style={styles.mediumInput}
+                value={customer}
+                onChangeText={setCustomer}
+                placeholder='Or type vendor name'
+                placeholderTextColor="#76806f"
+              />
+            </View>
+          ) : null}
 
           <View style={styles.infoCard}>
             <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
@@ -226,6 +313,35 @@ export default function AddSaleScreen({ route, navigation }) {
           placeholder={t('sales.placeholders.notes')}
           multiline
         />
+
+        <View style={styles.uploadCard}>
+          <View style={styles.uploadLeft}>
+            <View style={styles.uploadIconWrap}>
+              <Ionicons name={photo ? 'image' : 'receipt-outline'} size={22} color={stitchTheme.colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.uploadTitle}>Attach Receipt</Text>
+              <Text style={styles.uploadSubtitle}>Upload a photo of the receipt or delivery note</Text>
+            </View>
+          </View>
+          <View style={styles.uploadActions}>
+            <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.88}>
+              <Text style={styles.uploadButtonText}>Album</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.uploadButton} onPress={takePhoto} activeOpacity={0.88}>
+              <Text style={styles.uploadButtonText}>Camera</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {photo ? (
+          <View style={styles.photoWrap}>
+            <Image source={{ uri: photo }} style={styles.photo} />
+            <TouchableOpacity style={styles.removePhoto} onPress={() => setPhoto(null)} activeOpacity={0.85}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
         </StitchSurface>
 
         <StitchInput
@@ -256,6 +372,7 @@ const styles = StyleSheet.create({
   banner: { marginTop: stitchTheme.spacing.xs },
   panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, flexWrap: 'wrap' },
   largeInput: { flex: 1, fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
   mediumInput: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   unitBadge: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted },
@@ -271,4 +388,16 @@ const styles = StyleSheet.create({
   notesField: { marginTop: stitchTheme.spacing.sm, minHeight: 92, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
   saveButton: { marginTop: stitchTheme.spacing.md },
   footerNote: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: '#6f786b' },
+
+  uploadCard: { marginTop: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.md, ...stitchShadows.soft },
+  uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md },
+  uploadIconWrap: { width: 44, height: 44, borderRadius: 16, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  uploadTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  uploadSubtitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
+  uploadActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  uploadButton: { flex: 1, minHeight: 40, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  uploadButtonText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  photoWrap: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card, overflow: 'hidden', position: 'relative' },
+  photo: { width: '100%', height: 160, resizeMode: 'cover' },
+  removePhoto: { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
 });

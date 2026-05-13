@@ -10,6 +10,9 @@ export default class Sale extends Model {
   @field('weight_sold') weightSold;
   @field('unit_price') unitPrice;
   @field('total_amount') totalAmount;
+  @text('payment_status') paymentStatus;
+  @field('balance_due') balanceDue;
+  @text('receipt_url') receiptUrl;
   @text('notes') notes;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;

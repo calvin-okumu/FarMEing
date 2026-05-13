@@ -302,6 +302,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const totalBudget = summary.totalBudget;
   const totalSpent = summary.totalCost;
   const totalRevenue = summary.totalRevenue;
+  const collectedRevenue = summary.collectedRevenue || 0;
+  const pendingRevenue = summary.pendingRevenue || 0;
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
   const employeeMap = new Map();
@@ -350,7 +352,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       date: sale.date,
       icon: 'cash-outline',
       title: `Sale to ${sale.customer || 'Cash'}`,
-      body: sale.notes || 'Revenue recorded',
+      body: [sale.paymentStatus !== 'paid' ? `${sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)} — ${formatCurrency(sale.totalAmount - (sale.balanceDue || 0), currency)} paid` : '', sale.notes || 'Revenue recorded'].filter(Boolean).join(' | '),
       timeLabel: formatAppDate(sale.date),
       dotColor: stitchTheme.colors.accentBrown,
       amount: sale.totalAmount,
@@ -392,7 +394,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const filteredSales = useMemo(() => {
     const base = collectionSearch
-      ? sales.filter((item) => [item.customer, item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      ? sales.filter((item) => [item.customer, item.notes, item.paymentStatus].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
       : sales;
     return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalAmount || 0) - (a.totalAmount || 0));
   }, [sales, collectionSearch, sortMode]);
@@ -465,7 +467,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           children: (
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
-              <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={pendingRevenue > 0 ? `${formatCurrency(collectedRevenue, currency)} collected` : t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
               <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
                 <StitchHeroPill
                   label={exporting ? t('resource.syncing') : t('export.title')}
@@ -575,6 +577,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} />
 
+        {activeTab !== 'timeline' && activeTab !== 'inventory' && (
         <StitchSurface style={styles.addRowCard} contentStyle={styles.addRowContent} tone='raised' compact>
           <TouchableOpacity style={styles.addRowButton} onPress={() => {
             const params = { projectId: project.id };
@@ -584,19 +587,25 @@ export default function ProjectDetailScreen({ route, navigation }) {
             else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
             else if (activeTab === 'sales') navigation.navigate('AddSale', params);
             else if (activeTab === 'team') setInviteVisible(true);
-            else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
           }} activeOpacity={0.88}>
             <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
             <Text style={styles.addRowText}>Add</Text>
           </TouchableOpacity>
         </StitchSurface>
+        )}
 
         {/* --- Content Tabs --- */}
         {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, formatAppDate(item.createdAt), formatCurrency(item.total, currency), 'negative', 'budget', item, item.notes))}
         {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item, item.note))}
         {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
         {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item, item.notes))}
-        {activeTab === 'sales' && filteredSales.map(item => renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item, item.notes))}
+        {activeTab === 'sales' && filteredSales.map(item => {
+          const statusTag = item.paymentStatus && item.paymentStatus !== 'paid'
+            ? `[${item.paymentStatus.charAt(0).toUpperCase() + item.paymentStatus.slice(1)} — ${formatCurrency(item.totalAmount - (item.balanceDue || 0), currency)} paid, ${formatCurrency(item.balanceDue || 0, currency)} due]`
+            : '';
+          const desc = [statusTag, item.notes].filter(Boolean).join(' ');
+          return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item, desc);
+        })}
 
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
