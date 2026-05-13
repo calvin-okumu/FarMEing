@@ -530,6 +530,13 @@
     "record": "Rekodi Mauzo",
     "cash_sale": "Mauzo ya Papo kwa Papo",
     "total_revenue": "Mapato Jumla:",
+    "payments_section": "Malipo",
+    "collected": "Imekusanywa",
+    "balance_due": "Salio",
+    "add_payment": "Ongeza Malipo",
+    "add": "Ongeza",
+    "amount_placeholder": "Kiasi",
+    "note_placeholder": "Maelezo (si lazima)",
     "empty": "Hakuna rekodi za mauzo",
     "errors": {
       "weight_required": "Uzito sahihi unahitajika",

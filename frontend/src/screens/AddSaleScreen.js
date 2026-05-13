@@ -311,14 +311,14 @@ export default function AddSaleScreen({ route, navigation }) {
             multiline
           />
 
-          <StitchSectionTitle>Payments</StitchSectionTitle>
+          <StitchSectionTitle>{t('sales.payments_section')}</StitchSectionTitle>
           <View style={styles.paymentSummary}>
-            <Text style={styles.paymentSummaryLabel}>Collected</Text>
+            <Text style={styles.paymentSummaryLabel}>{t('sales.collected')}</Text>
             <Text style={styles.paymentSummaryValue}>{formatCurrency(totalCollected, currency)}</Text>
           </View>
           {balanceDue > 0 ? (
             <View style={styles.paymentSummary}>
-              <Text style={styles.paymentSummaryLabel}>Balance due</Text>
+              <Text style={styles.paymentSummaryLabel}>{t('sales.balance_due')}</Text>
               <Text style={[styles.paymentSummaryValue, { color: stitchTheme.colors.accentRed }]}>{formatCurrency(balanceDue, currency)}</Text>
             </View>
           ) : null}
@@ -351,7 +351,7 @@ export default function AddSaleScreen({ route, navigation }) {
             <View style={styles.addPaymentRow}>
               <TouchableOpacity style={styles.addPaymentBtn} onPress={addPayment} activeOpacity={0.88}>
                 <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primary} />
-                <Text style={styles.addPaymentText}>Add Payment</Text>
+                <Text style={styles.addPaymentText}>{t('sales.add_payment')}</Text>
               </TouchableOpacity>
               {selectedPaymentIndex != null ? (
                 <TouchableOpacity style={styles.deletePaymentBtn} onPress={() => removePayment(selectedPaymentIndex)} activeOpacity={0.8}>
@@ -462,7 +462,7 @@ export default function AddSaleScreen({ route, navigation }) {
           <View style={styles.paymentModalOverlay}>
             <View style={styles.paymentModalContent}>
               <View style={styles.paymentModalHeader}>
-                <Text style={styles.paymentModalTitle}>Add Payment</Text>
+                <Text style={styles.paymentModalTitle}>{t('sales.add_payment')}</Text>
                 <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
                   <Ionicons name="close" size={22} color={stitchTheme.colors.text} />
                 </TouchableOpacity>
@@ -473,7 +473,7 @@ export default function AddSaleScreen({ route, navigation }) {
                   style={styles.mediumInput}
                   value={newPaymentAmount}
                   onChangeText={setNewPaymentAmount}
-                  placeholder="Amount"
+                  placeholder={t('sales.amount_placeholder')}
                   keyboardType="decimal-pad"
                   placeholderTextColor={stitchTheme.colors.textMuted}
                   autoFocus
@@ -484,7 +484,7 @@ export default function AddSaleScreen({ route, navigation }) {
                   <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
                 </View>
                 <View style={styles.infoBody}>
-                  <Text style={styles.infoLabel}>Date</Text>
+                  <Text style={styles.infoLabel}>{t('common.date')}</Text>
                   <Text style={styles.infoValue}>{formatAppDate(newPaymentDate)}</Text>
                 </View>
               </TouchableOpacity>
@@ -492,7 +492,7 @@ export default function AddSaleScreen({ route, navigation }) {
                 style={styles.modalNoteInput}
                 value={newPaymentNote}
                 onChangeText={setNewPaymentNote}
-                placeholder="Note (optional)"
+                placeholder={t('sales.note_placeholder')}
                 placeholderTextColor={stitchTheme.colors.textMuted}
               />
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
@@ -501,14 +501,14 @@ export default function AddSaleScreen({ route, navigation }) {
                   onPress={() => setPaymentModalVisible(false)}
                   activeOpacity={0.88}
                 >
-                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.textMuted }]}>Cancel</Text>
+                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.textMuted }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.uploadButton, { flex: 1, backgroundColor: stitchTheme.colors.primaryContainer }]}
                   onPress={confirmAddPayment}
                   activeOpacity={0.88}
                 >
-                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.primarySoft }]}>Add</Text>
+                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.primarySoft }]}>{t('sales.add')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

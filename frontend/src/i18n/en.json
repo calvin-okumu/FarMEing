@@ -542,6 +542,13 @@
     "record": "Record Sale",
     "cash_sale": "Cash Sale",
     "total_revenue": "Total Revenue:",
+    "payments_section": "Payments",
+    "collected": "Collected",
+    "balance_due": "Balance due",
+    "add_payment": "Add Payment",
+    "add": "Add",
+    "amount_placeholder": "Amount",
+    "note_placeholder": "Note (optional)",
     "empty": "No sales records",
     "errors": {
       "weight_required": "Valid weight is required",

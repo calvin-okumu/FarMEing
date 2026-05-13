@@ -489,13 +489,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
           children: (
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
-              <StitchHeroPill label={pendingRevenue > 0 ? `${formatCurrency(pendingRevenue, currency)} pending` : t('dashboard.revenue')} value={formatCurrency(collectedRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={pendingRevenue > 0 ? `${formatCurrency(pendingRevenue, currency)} pending` : t('dashboard.revenue')} value={formatCurrency(collectedRevenue, currency)} icon='cash-outline' style={styles.heroPillPrimary} />
               <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
                 <StitchHeroPill
-                  label={exporting ? t('resource.syncing') : t('export.title')}
-                  value={exporting ? 'Working' : t('export.title')}
+                  label=''
+                  value={exporting ? t('resource.syncing') : t('export.title')}
                   icon={exporting ? 'refresh-outline' : 'download-outline'}
-                  style={styles.heroPillTertiary}
+                  style={styles.heroPillSecondary}
                 />
               </TouchableOpacity>
             </View>
