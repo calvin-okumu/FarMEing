@@ -122,9 +122,10 @@ const styles = StyleSheet.create({
     backgroundColor: stitchTheme.colors.forestDeep,
   },
   stickyWrap: {
-    backgroundColor: stitchTheme.colors.background,
+    backgroundColor: 'transparent',
     paddingHorizontal: stitchTheme.spacing.md,
     paddingVertical: 6,
+    marginTop: -12,
   },
   body: {
     flex: 1,
