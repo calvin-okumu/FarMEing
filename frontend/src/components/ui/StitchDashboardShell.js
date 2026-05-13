@@ -39,6 +39,7 @@ export default function StitchDashboardShell({
   refreshControl,
   banner,
   onDismissBanner,
+  stickyHeader,
   statusBarStyle = 'light-content',
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
 }) {
@@ -98,6 +99,8 @@ export default function StitchDashboardShell({
         </Animated.View>
       </Animated.View>
 
+      {stickyHeader ? <View style={styles.stickyWrap}>{stickyHeader}</View> : null}
+
       <ScrollView style={[styles.body, bodyStyle]} contentContainerStyle={mergedBodyContentStyle} showsVerticalScrollIndicator={false} refreshControl={refreshControl} keyboardShouldPersistTaps='handled'>
         {children}
       </ScrollView>
@@ -117,6 +120,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingBottom: 0,
     backgroundColor: stitchTheme.colors.forestDeep,
+  },
+  stickyWrap: {
+    backgroundColor: stitchTheme.colors.background,
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   body: {
     flex: 1,

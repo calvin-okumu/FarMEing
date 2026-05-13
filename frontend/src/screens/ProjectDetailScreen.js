@@ -504,6 +504,24 @@ export default function ProjectDetailScreen({ route, navigation }) {
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
+        stickyHeader={
+          <View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+              {TAB_ORDER.map((tab) => (
+                <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
+              ))}
+            </ScrollView>
+            {showCollectionControls ? (
+              <StitchSurface style={styles.controlsCard} contentStyle={styles.controlsContent} tone='raised' compact>
+                <StitchSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
+                <View style={styles.sortRow}>
+                  <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
+                  <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
+                </View>
+              </StitchSurface>
+            ) : null}
+          </View>
+        }
       >
         {/* --- Insights Strip --- */}
         <StitchSurface style={styles.insightsCard} contentStyle={styles.insightsContent} tone='raised' compact>
@@ -579,24 +597,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </StitchSurface>
         ) : null}
 
-        {/* --- Tabs --- */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          {TAB_ORDER.map((tab) => (
-            <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
-          ))}
-        </ScrollView>
-
-        {/* --- Controls --- */}
-        {showCollectionControls ? (
-          <StitchSurface style={styles.controlsCard} contentStyle={styles.controlsContent} tone='raised' compact>
-            <StitchSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`} />
-            <View style={styles.sortRow}>
-              <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
-              <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
-            </View>
-          </StitchSurface>
-        ) : null}
-
+        {/* --- Section Header + Add Button --- */}
         <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} />
 
         {activeTab !== 'timeline' && activeTab !== 'inventory' && (
@@ -795,7 +796,7 @@ const styles = StyleSheet.create({
   salePaymentNote: { flex: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '500' },
 
   /* Tabs & Controls */
-  tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: stitchTheme.spacing.sm },
+  tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: 6 },
   controlsCard: { marginBottom: stitchTheme.spacing.sm },
   controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
