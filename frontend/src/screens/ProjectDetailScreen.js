@@ -622,7 +622,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
         {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item, item.notes))}
         {activeTab === 'sales' && filteredSales.map(item => {
-          return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), `${item.weightSold} kg`, 'positive', 'sales', item, formatCurrency(item.totalAmount, currency));
+          return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item);
         })}
 
         {activeTab === 'team' && (
