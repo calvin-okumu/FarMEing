@@ -622,48 +622,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
         {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item, item.notes))}
         {activeTab === 'sales' && filteredSales.map(item => {
-          const payments = paymentsBySale[item.id] || [];
-          const saleDetails = `${item.weightSold} kg × ${formatCurrency(item.unitPrice, currency)}/kg`;
-          const statusLabel = item.paymentStatus === 'paid' ? 'Paid' : item.paymentStatus === 'partial' ? 'Partial' : 'Advance';
-          const statusTag = item.paymentStatus && item.paymentStatus !== 'paid'
-            ? `[${statusLabel} — ${formatCurrency(item.totalAmount - (item.balanceDue || 0), currency)} collected, ${formatCurrency(item.balanceDue || 0, currency)} due]`
-            : '';
-          const desc = [saleDetails, statusTag, item.notes].filter(Boolean).join('  |  ');
-          return (
-            <TouchableOpacity key={item.id} style={styles.collectionCard} activeOpacity={0.85}
-              onPress={() => navigation.navigate('AddSale', { projectId: project.id, itemId: item.id })}
-            >
-              <View style={[styles.cardAccent, { backgroundColor: stitchTheme.colors.primaryDim }]} />
-              <View style={styles.collectionTopRow}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                  <Text style={styles.collectionTitle}>{formatAppDate(item.date)}</Text>
-                  <Text style={styles.collectionMeta}>{item.customer || 'Cash'}</Text>
-                </View>
-                <Text style={styles.collectionAmount}>{formatCurrency(item.totalAmount, currency)}</Text>
-              </View>
-              {desc ? <Text style={styles.collectionDescription} numberOfLines={3} ellipsizeMode='tail'>{desc}</Text> : null}
-              {payments.length > 0 ? (
-                <View style={styles.salePaymentsWrap}>
-                  {payments.map(p => (
-                    <View key={p.id} style={styles.salePaymentRow}>
-                      <View style={styles.salePaymentDot} />
-                      <Text style={styles.salePaymentAmount}>{formatCurrency(p.amount, currency)}</Text>
-                      <Text style={styles.salePaymentDate}>{formatAppDate(p.date)}</Text>
-                      {p.note ? <Text style={styles.salePaymentNote} numberOfLines={1}>{p.note}</Text> : null}
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              <View style={styles.collectionActionRow}>
-                <TouchableOpacity style={[styles.collectionActionButton, styles.collectionActionButtonDanger]} activeOpacity={0.8}
-                  onPress={() => setDeleteTarget({ type: 'sales', item })}
-                >
-                  <Ionicons name="trash-outline" size={14} color={stitchTheme.colors.accentRed} />
-                  <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          );
+          return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item, '');
         })}
 
         {activeTab === 'team' && (

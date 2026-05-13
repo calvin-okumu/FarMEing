@@ -390,18 +390,6 @@ export default function AddSaleScreen({ route, navigation }) {
           ) : null}
 
           <View style={styles.infoCard}>
-            <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
-              <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
-            </View>
-            <View style={styles.infoBody}>
-              <Text style={styles.infoLabel}>{t('sales.date_label')}</Text>
-              <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.86}>
-                <Text style={styles.infoValue}>{formatAppDate(date)}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.infoCard}>
             <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.warningSurface }]}>
               <Ionicons name="cube-outline" size={20} color={stitchTheme.colors.accentBrown} />
             </View>
