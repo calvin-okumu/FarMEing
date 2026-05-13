@@ -386,12 +386,31 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   perfName: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
     color: stitchTheme.colors.text,
   },
   perfCrop: {
-    fontSize: 11,
+    fontSize: stitchTheme.typography.caption.fontSize,
+    fontWeight: stitchTheme.typography.caption.fontWeight,
+    color: stitchTheme.colors.textMuted,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  perfStatus: {
+    alignItems: 'flex-end',
+  },
+  perfProfit: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+  },
+  perfLabel: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    fontWeight: stitchTheme.typography.caption.fontWeight,
+    color: stitchTheme.colors.text,
+  },
+  perfCrop: {
+    fontSize: 13,
     fontWeight: '700',
     color: stitchTheme.colors.textMuted,
     marginTop: 2,
@@ -401,8 +420,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   perfProfit: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '800',
   },
   perfLabel: {
     fontSize: 9,
@@ -425,15 +444,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   perfStatLabel: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: stitchTheme.typography.caption.fontSize,
+    fontWeight: stitchTheme.typography.caption.fontWeight,
     color: stitchTheme.colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   perfStatValue: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
     color: stitchTheme.colors.text,
   },
   breakdownRow: {

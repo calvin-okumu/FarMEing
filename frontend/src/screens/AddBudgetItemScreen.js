@@ -33,6 +33,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const { projectId, itemId } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
   const [category, setCategory] = useState('seeds');
+  const [otherCategory, setOtherCategory] = useState('');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -43,7 +44,13 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   useEffect(() => {
     if (!itemId) return;
     database.get('budget_items').find(itemId).then((item) => {
-      setCategory(item.category || 'seeds');
+      if (CATEGORIES.includes(item.category || 'seeds')) {
+        setCategory(item.category || 'seeds');
+        setOtherCategory('');
+      } else {
+        setCategory('other');
+        setOtherCategory(item.category || '');
+      }
       setName(item.name || '');
       setQuantity(String(item.quantity ?? ''));
       setUnit(item.unit || 'kg');
@@ -73,8 +80,9 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('budget_items').find(itemId);
+          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await updateLocalModel(record, (draft) => {
-            draft.category = category;
+            draft.category = effectiveCategory;
             draft.name = name.trim();
             draft.quantity = parseFloat(quantity);
             draft.unit = unit.trim();
@@ -82,10 +90,11 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
+          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await database.get('budget_items').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
-            record.category = category;
+            record.category = effectiveCategory;
             record.name = name.trim();
             record.quantity = parseFloat(quantity);
             record.unit = unit.trim();
@@ -133,6 +142,15 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             <StitchChip key={cat} label={t(`budget.categories.${cat}`)} active={category === cat} onPress={() => setCategory(cat)} />
           ))}
         </View>
+
+        {category === 'other' && (
+          <StitchInput
+            label={t('budget.specify_category', { defaultValue: 'Specify category' })}
+            value={otherCategory}
+            onChangeText={setOtherCategory}
+            placeholder={t('budget.specify_placeholder', { defaultValue: 'e.g. Custom category' })}
+          />
+        )}
 
         <StitchInput
           label={t('budget.fields.name')}

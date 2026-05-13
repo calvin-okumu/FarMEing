@@ -47,6 +47,7 @@ export default function AddExpenseScreen({ route, navigation }) {
   const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [category, setCategory] = useState('other');
+  const [otherCategory, setOtherCategory] = useState('');
   const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
@@ -71,7 +72,14 @@ export default function AddExpenseScreen({ route, navigation }) {
   useEffect(() => {
     if (!itemId) return;
     database.get('expenses').find(itemId).then((item) => {
-      setCategory(item.category || 'other');
+      const known = CATEGORIES.map(c => c.key);
+      if (known.includes(item.category || 'other')) {
+        setCategory(item.category || 'other');
+        setOtherCategory('');
+      } else {
+        setCategory('other');
+        setOtherCategory(item.category || '');
+      }
       setExpenseType(item.expenseType || 'OPEX');
       setAmount(String(item.amount ?? ''));
       setDate(item.date ? new Date(item.date) : new Date());
@@ -127,8 +135,9 @@ export default function AddExpenseScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('expenses').find(itemId);
+          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await updateLocalModel(record, (draft) => {
-            draft.category = category;
+            draft.category = effectiveCategory;
             draft.expenseType = expenseType;
             draft.amount = parseFloat(amount);
             draft.date = date.getTime();
@@ -141,10 +150,11 @@ export default function AddExpenseScreen({ route, navigation }) {
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
+          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await database.get('expenses').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
-            record.category = category;
+            record.category = effectiveCategory;
             record.expenseType = expenseType;
             record.amount = parseFloat(amount);
             record.date = date.getTime();
@@ -225,6 +235,15 @@ export default function AddExpenseScreen({ route, navigation }) {
             );
           })}
         </View>
+
+        {category === 'other' && (
+          <StitchInput
+            label={t('expenses.specify_category', { defaultValue: 'Specify category' })}
+            value={otherCategory}
+            onChangeText={setOtherCategory}
+            placeholder={t('expenses.specify_placeholder', { defaultValue: 'e.g. Custom tools' })}
+          />
+        )}
 
         <StitchInput
           label={t('common.date')}

@@ -382,6 +382,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 <Text style={styles.listItemTitle}>{entry.activity}</Text>
                 <Text style={styles.listItemAmount}>{formatCurrency(entry.totalCost, currency)}</Text>
               </View>
+              {entry.notes ? <Text style={styles.listItemDescription} numberOfLines={2} ellipsizeMode='tail'>{entry.notes}</Text> : null}
               <View style={styles.listItemFooter}>
                 <Text style={styles.listItemMeta}>{formatAppDate(entry.date)} • {entry.daysWorked} {t('labor.days')}</Text>
                 <Ionicons name="create-outline" size={14} color={stitchTheme.colors.textMuted} />
@@ -400,6 +401,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 <Text style={styles.listItemTitle}>{payment.note || t('payments.payment_recorded')}</Text>
                 <Text style={[styles.listItemAmount, { color: stitchTheme.colors.primary }]}>{formatCurrency(payment.amount, currency)}</Text>
               </View>
+              {payment.note ? <Text style={styles.listItemDescription} numberOfLines={2} ellipsizeMode='tail'>{payment.note}</Text> : null}
               <View style={styles.listItemFooter}>
                 <Text style={styles.listItemMeta}>{formatAppDate(payment.date)}</Text>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -533,9 +535,10 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1 },
   listItem: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.xs, marginHorizontal: stitchTheme.spacing.screen, ...stitchShadows.card },
   listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  listItemTitle: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.text, textTransform: 'uppercase' },
-  listItemAmount: { fontSize: 14, fontWeight: '900', color: stitchTheme.colors.text },
-  listItemMeta: { fontSize: 11, color: stitchTheme.colors.textMuted },
+  listItemTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text, textTransform: 'uppercase' },
+  listItemAmount: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text },
+  listItemMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.caption.fontWeight },
+  listItemDescription: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.bodySmall.fontWeight },
   listItemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: stitchTheme.spacing.xl },
   deleteTrigger: { marginTop: stitchTheme.spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

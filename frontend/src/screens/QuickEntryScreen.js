@@ -59,11 +59,13 @@ export default function QuickEntryScreen({ navigation }) {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [entryMode, setEntryMode] = useState('individual');
   const [activity, setActivity] = useState('planting');
+  const [otherActivity, setOtherActivity] = useState('');
   const [workers, setWorkers] = useState('1');
   const [days, setDays] = useState('1');
   const [rate, setRate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [notes, setNotes] = useState('');
   const [banner, setBanner] = useState(null);
 
   const employeeInputRef = useRef(null);
@@ -163,12 +165,14 @@ export default function QuickEntryScreen({ navigation }) {
         initializeLocalRecord(record);
         record.projectId = selectedProject.id;
         record.employeeId = employee.id;
-        record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
+        const effectiveActivity = activity === 'other' && otherActivity.trim() ? otherActivity.trim() : activity;
+        record.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
         record.date = date.getTime();
         record.daysWorked = parseFloat(days) || 1;
         record.ratePerDay = parseFloat(rate) || 0;
         record.totalCost = total;
-        record.notes = entryMode === 'crew' ? `Crew size: ${workerCount}` : '';
+        const autoNotes = entryMode === 'crew' ? `Crew size: ${workerCount}` : '';
+        record.notes = [autoNotes, notes.trim()].filter(Boolean).join(' | ');
         record.isPaid = false;
         record.isDeleted = false;
       });
@@ -209,9 +213,11 @@ export default function QuickEntryScreen({ navigation }) {
       setSelectedEmployee(null);
       setEntryMode('individual');
       setActivity('planting');
+      setOtherActivity('');
       setWorkers('1');
       setDays('1');
       setRate('');
+      setNotes('');
       setDate(new Date());
 
       setTimeout(() => {
@@ -421,6 +427,23 @@ export default function QuickEntryScreen({ navigation }) {
                 <StitchChip key={item} label={t(`common.activities.${item}`)} active={activity === item} onPress={() => setActivity(item)} style={styles.activityChip} />
               ))}
             </View>
+
+            {activity === 'other' && (
+              <StitchInput
+                label={t('quick_entry.specify_activity', { defaultValue: 'Specify activity' })}
+                value={otherActivity}
+                onChangeText={setOtherActivity}
+                placeholder={t('quick_entry.specify_placeholder', { defaultValue: 'e.g. Pruning' })}
+              />
+            )}
+
+            <StitchInput
+              label={t('common.notes')}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder={t('quick_entry.notes_placeholder', { defaultValue: 'Add notes...' })}
+              multiline
+            />
 
             <StitchSectionTitle>{t('common.date')}</StitchSectionTitle>
             <TouchableOpacity style={styles.inputShell} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>

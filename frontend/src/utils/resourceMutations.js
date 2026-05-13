@@ -1,6 +1,5 @@
 import { Q } from '@nozbe/watermelondb';
 import { markRecordDeleted, markRecordUpdated } from './localRecord';
-import { syncAll } from '../services/syncService';
 
 const PROJECT_BOUND_TABLES = [
   'budget_items',
@@ -16,16 +15,12 @@ export async function updateLocalModel(record, applyChanges) {
     applyChanges(draft);
     markRecordUpdated(draft);
   });
-  // Trigger sync in background
-  syncAll();
 }
 
 export async function deleteLocalModel(record) {
   await record.update((draft) => {
     markRecordDeleted(draft);
   });
-  // Trigger sync in background
-  syncAll();
 }
 
 export async function deleteProjectCascade(database, projectId) {

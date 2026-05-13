@@ -46,6 +46,7 @@ const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 const DEFAULT_FORM = {
   employeeId: '',
   activity: 'planting',
+  otherActivity: '',
   daysWorked: '1',
   ratePerDay: '',
   hoursWorked: '8',
@@ -91,9 +92,12 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   useEffect(() => {
     if (!itemId) return;
     database.get('work_entries').find(itemId).then((item) => {
+      const stored = (item.activity || 'planting').toLowerCase();
+      const known = ACTIVITIES.map(a => a.key);
       reset({
         employeeId: item.employeeId,
-        activity: (item.activity || 'planting').toLowerCase(),
+        activity: known.includes(stored) ? stored : 'other',
+        otherActivity: known.includes(stored) ? '' : stored,
         daysWorked: String(item.daysWorked ?? '1'),
         ratePerDay: String(item.ratePerDay ?? ''),
         hoursWorked: String(item.hoursWorked ?? '8'),
@@ -151,9 +155,10 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('work_entries').find(itemId);
+          const effectiveActivity = data.activity === 'other' && data.otherActivity?.trim() ? data.otherActivity.trim() : data.activity;
           await updateLocalModel(record, (draft) => {
             draft.employeeId = data.employeeId;
-            draft.activity = data.activity.charAt(0).toUpperCase() + data.activity.slice(1);
+            draft.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
             draft.date = data.date.getTime();
             draft.daysWorked = parseFloat(data.daysWorked);
             draft.ratePerDay = parseFloat(data.ratePerDay);
@@ -166,11 +171,12 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
+          const effectiveActivity = data.activity === 'other' && data.otherActivity?.trim() ? data.otherActivity.trim() : data.activity;
           await database.get('work_entries').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
             record.employeeId = data.employeeId;
-            record.activity = data.activity.charAt(0).toUpperCase() + data.activity.slice(1);
+            record.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
             record.date = data.date.getTime();
             record.daysWorked = parseFloat(data.daysWorked);
             record.ratePerDay = parseFloat(data.ratePerDay);
@@ -242,6 +248,15 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             );
           })}
         </View>
+
+        {formData.activity === 'other' && (
+          <StitchInput
+            label={t('labor.specify_activity', { defaultValue: 'Specify activity' })}
+            value={watch('otherActivity')}
+            onChangeText={(val) => setValue('otherActivity', val)}
+            placeholder={t('labor.specify_placeholder', { defaultValue: 'e.g. Pruning' })}
+          />
+        )}
 
         <StitchSectionTitle>{t('labor.employee')}</StitchSectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.employeeRow}>

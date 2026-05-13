@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Q } from '@nozbe/watermelondb';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
@@ -77,23 +78,19 @@ function TimelineSection({ title, tone, items, t, currency }) {
             {index !== items.length - 1 ? <View style={styles.timelineVertical} /> : null}
           </View>
           <View style={styles.timelineCard}>
-            <View style={styles.timelineTopRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.timelineTitle}>{item.title}</Text>
-                <View style={styles.timelineMetaRow}>
-                  <Ionicons name={item.timeIcon || 'time-outline'} size={10} color={stitchTheme.colors.textMuted} />
-                  <Text style={styles.timelineMetaText}>{item.timeLabel}</Text>
-                </View>
+            <View style={[styles.cardAccent, { backgroundColor: item.dotColor }]} />
+            <View style={styles.collectionTopRow}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                <Text style={styles.collectionTitle}>{item.timeLabel}</Text>
+                <Text style={styles.collectionMeta}>{item.title}</Text>
               </View>
-              {item.badge ? <StitchBadge label={item.badge} tone={item.status === 'APPROVED' ? 'success' : 'warning'} /> : null}
-              {item.amountLabel ? <Text style={styles.timelineAmountText}>{item.amountLabel}</Text> : null}
+              {item.amount ? (
+                <Text style={[styles.collectionAmount, item.type === 'SALE' ? styles.collectionAmountPositive : (item.type !== 'HARVEST' ? styles.collectionAmountNegative : null)]}>
+                  {item.type === 'HARVEST' ? `${item.amount} kg` : formatCurrency(item.amount, currency)}
+                </Text>
+              ) : null}
             </View>
-            <Text style={styles.timelineBody}>{item.body}</Text>
-            {item.type === 'HARVEST' ? (
-              <Text style={styles.timelineFooterValue}>{`${item.amount} ${t('harvest.units.kg')}`}</Text>
-            ) : item.type === 'SALE' || item.type === 'EXPENSE' || item.type === 'WORK' ? (
-              <Text style={styles.timelineFooterValue}>{formatCurrency(item.amount || 0, currency)}</Text>
-            ) : null}
+            <Text style={styles.collectionDescription} numberOfLines={2} ellipsizeMode='tail'>{item.body}</Text>
           </View>
         </View>
       ))}
@@ -281,23 +278,25 @@ export default function ProjectDetailScreen({ route, navigation }) {
     return () => sub.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!projectId) return;
+  useFocusEffect(
+    useCallback(() => {
+      if (!projectId) return;
 
-    const projectIds = [projectId];
+      const projectIds = [projectId];
 
-    const subs = [
-      database.get('budget_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setBudgetItems),
-      database.get('expenses').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setExpenses),
-      database.get('work_entries').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setWorkEntries),
-      database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests),
-      database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales),
-      database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems),
-      database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
-    ];
+      const subs = [
+        database.get('budget_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setBudgetItems),
+        database.get('expenses').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setExpenses),
+        database.get('work_entries').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setWorkEntries),
+        database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests),
+        database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales),
+        database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems),
+        database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
+      ];
 
-    return () => subs.forEach(s => s.unsubscribe());
-  }, [projectId]);
+      return () => subs.forEach(s => s.unsubscribe());
+    }, [projectId])
+  );
 
   const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales, inventoryItems }), [budgetItems, expenses, workEntries, harvests, sales, inventoryItems]);
   const totalBudget = summary.totalBudget;
@@ -407,33 +406,32 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'team'].includes(activeTab);
 
-  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => {
+  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item, description = '') => {
     const accentColor = tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown;
     return (
-      <View key={item.id} style={styles.collectionCard}>
+      <TouchableOpacity
+        key={item.id}
+        style={styles.collectionCard}
+        activeOpacity={0.85}
+        onPress={() => {
+          const params = { projectId: project.id, itemId: item.id };
+          if (type === 'budget') navigation.navigate('AddBudgetItem', params);
+          else if (type === 'expenses') navigation.navigate('AddExpense', params);
+          else if (type === 'labor') navigation.navigate('AddWorkEntry', params);
+          else if (type === 'harvest') navigation.navigate('AddHarvest', params);
+          else if (type === 'sales') navigation.navigate('AddSale', params);
+        }}
+      >
+        <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
         <View style={styles.collectionTopRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.collectionTitle}>{title}</Text>
-            <Text style={styles.collectionMeta}>{meta}</Text>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+            <Text style={styles.collectionTitle}>{meta}</Text>
+            <Text style={styles.collectionMeta}>{title}</Text>
           </View>
           <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
         </View>
+        {description ? <Text style={styles.collectionDescription} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
         <View style={styles.collectionActionRow}>
-          <TouchableOpacity
-            style={styles.collectionActionButton}
-            activeOpacity={0.8}
-            onPress={() => {
-              const params = { projectId: project.id, itemId: item.id };
-              if (type === 'budget') navigation.navigate('AddBudgetItem', params);
-              if (type === 'expenses') navigation.navigate('AddExpense', params);
-              if (type === 'labor') navigation.navigate('AddWorkEntry', params);
-              if (type === 'harvest') navigation.navigate('AddHarvest', params);
-              if (type === 'sales') navigation.navigate('AddSale', params);
-            }}
-          >
-            <Ionicons name="create-outline" size={14} color={stitchTheme.colors.primary} />
-            <Text style={styles.collectionActionText}>{t('common.edit')}</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.collectionActionButton, styles.collectionActionButtonDanger]}
             activeOpacity={0.8}
@@ -443,7 +441,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -594,11 +592,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
         </StitchSurface>
 
         {/* --- Content Tabs --- */}
-        {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, item.category, formatCurrency(item.total, currency), 'default', 'budget', item))}
-        {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item))}
-        {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(item.activity, employeeMap.get(item.employeeId), formatCurrency(item.totalCost, currency), 'default', 'labor', item))}
-        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item))}
-        {activeTab === 'sales' && filteredSales.map(item => renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item))}
+        {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, formatAppDate(item.createdAt), formatCurrency(item.total, currency), 'negative', 'budget', item, item.notes))}
+        {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item, item.note))}
+        {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
+        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item, item.notes))}
+        {activeTab === 'sales' && filteredSales.map(item => renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item, item.notes))}
 
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
@@ -773,19 +771,22 @@ const styles = StyleSheet.create({
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
     padding: 14,
+    paddingLeft: 18,
     marginBottom: stitchTheme.spacing.sm,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
     ...stitchShadows.card,
   },
+  cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  collectionTitle: { fontSize: 14, fontWeight: '800', color: stitchTheme.colors.text },
-  collectionAmount: { fontSize: 14, fontWeight: '900', color: stitchTheme.colors.text, marginLeft: 8 },
+  collectionTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text },
+  collectionAmount: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text, marginLeft: 8 },
   collectionAmountPositive: { color: stitchTheme.colors.primaryContainer },
   collectionAmountNegative: { color: stitchTheme.colors.accentRed },
-  collectionMeta: { marginTop: 2, fontSize: 11, color: stitchTheme.colors.textMuted, fontWeight: '600' },
-  collectionActionRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  collectionMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.caption.fontWeight },
+  collectionDescription: { marginTop: 8, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.bodySmall.fontWeight },
+  collectionActionRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },
   collectionActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -807,11 +808,11 @@ const styles = StyleSheet.create({
   timelineSectionChipText: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textSoft, textTransform: 'uppercase', letterSpacing: 0.5 },
   timelineSectionChipTextToday: { color: stitchTheme.colors.surfaceHighlight },
   timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.line, marginLeft: 10 },
-  timelineItemWrap: { flexDirection: 'row', minHeight: 70 },
+  timelineItemWrap: { flexDirection: 'row', minHeight: 50 },
   timelineRail: { width: 28, alignItems: 'center' },
   timelineDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', zIndex: 2, ...stitchShadows.soft },
   timelineVertical: { position: 'absolute', top: 22, bottom: 0, width: 2, backgroundColor: stitchTheme.colors.line, zIndex: 1 },
-  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 14, padding: 14, marginBottom: 10, marginLeft: 6, ...stitchShadows.soft },
+  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: 14, paddingLeft: 18, marginBottom: 10, marginLeft: 6, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...stitchShadows.card },
   timelineTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
   timelineTitle: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
   timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
