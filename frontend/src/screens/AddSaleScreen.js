@@ -282,35 +282,6 @@ export default function AddSaleScreen({ route, navigation }) {
           </View>
 
           <StitchSectionTitle>Payments</StitchSectionTitle>
-          {salePayments.map((p, i) => (
-            <View key={i} style={styles.paymentRow}>
-              <View style={styles.paymentAmountWrap}>
-                <Text style={styles.currencyText}>{currency}</Text>
-                <TextInput
-                  style={styles.mediumInput}
-                  value={p.amount}
-                  onChangeText={(v) => updatePayment(i, 'amount', v)}
-                  placeholder="Amount"
-                  keyboardType="decimal-pad"
-                  placeholderTextColor={stitchTheme.colors.textMuted}
-                />
-              </View>
-              <TouchableOpacity style={styles.paymentDateBtn} onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.8}>
-                <Text style={styles.paymentDateText}>{formatAppDate(p.date)}</Text>
-              </TouchableOpacity>
-              {salePayments.length > 1 ? (
-                <TouchableOpacity onPress={() => removePayment(i)} activeOpacity={0.8}>
-                  <Ionicons name="close-circle" size={24} color={stitchTheme.colors.accentRed} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ))}
-          {balanceDue > 0 && !itemId ? (
-            <TouchableOpacity style={styles.addPaymentBtn} onPress={addPayment} activeOpacity={0.88}>
-              <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primary} />
-              <Text style={styles.addPaymentText}>Add Payment</Text>
-            </TouchableOpacity>
-          ) : null}
           <View style={styles.paymentSummary}>
             <Text style={styles.paymentSummaryLabel}>Collected</Text>
             <Text style={styles.paymentSummaryValue}>{formatCurrency(totalCollected, currency)}</Text>
@@ -320,6 +291,36 @@ export default function AddSaleScreen({ route, navigation }) {
               <Text style={styles.paymentSummaryLabel}>Balance due</Text>
               <Text style={[styles.paymentSummaryValue, { color: stitchTheme.colors.accentRed }]}>{formatCurrency(balanceDue, currency)}</Text>
             </View>
+          ) : null}
+          {salePayments.filter(p => p.amount && parseFloat(p.amount) > 0).length > 0 ? (
+            <View style={styles.paymentBreakdownWrap}>
+              {salePayments.map((p, i) => (
+                parseFloat(p.amount) > 0 ? (
+                  <View key={i} style={styles.paymentRow}>
+                    <TouchableOpacity onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.8} style={{ flex: 1 }}>
+                      <Text style={styles.paymentRowLabel}>{formatAppDate(p.date)}</Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.paymentRowInput}
+                      value={p.amount}
+                      onChangeText={(v) => updatePayment(i, 'amount', v)}
+                      keyboardType="decimal-pad"
+                    />
+                    {salePayments.length > 1 ? (
+                      <TouchableOpacity onPress={() => removePayment(i)} activeOpacity={0.8}>
+                        <Ionicons name="close-circle" size={20} color={stitchTheme.colors.accentRed} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ) : null
+              ))}
+            </View>
+          ) : null}
+          {balanceDue > 0 ? (
+            <TouchableOpacity style={styles.addPaymentBtn} onPress={addPayment} activeOpacity={0.88}>
+              <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primary} />
+              <Text style={styles.addPaymentText}>Add Payment</Text>
+            </TouchableOpacity>
           ) : null}
 
           <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
@@ -446,11 +447,12 @@ const styles = StyleSheet.create({
   banner: { marginTop: stitchTheme.spacing.xs },
   panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  paymentRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
-  paymentAmountWrap: { flex: 1, minHeight: 48, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  paymentRowLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
+  paymentRowInput: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer, textAlign: 'right', paddingVertical: 2, minWidth: 80 },
+  paymentBreakdownWrap: { marginTop: 4 },
   paymentDateBtn: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 12, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  paymentDateText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
-  addPaymentBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingVertical: 12, borderRadius: stitchTheme.radius.md, borderWidth: 1, borderColor: stitchTheme.colors.border, borderStyle: 'dashed', marginTop: stitchTheme.spacing.xs },
+  addPaymentBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingVertical: 10, borderRadius: stitchTheme.radius.md, borderWidth: 1, borderColor: stitchTheme.colors.border, borderStyle: 'dashed', marginTop: stitchTheme.spacing.xs },
   addPaymentText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
   paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.xs, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
   paymentSummaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
