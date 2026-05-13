@@ -14,7 +14,7 @@ export function computeEmployeeBalance(workEntries = [], payments = []) {
   };
 }
 
-export function computeProjectSummary({ budgetItems = [], expenses = [], workEntries = [], harvests = [], sales = [], inventoryItems = [] } = {}) {
+export function computeProjectSummary({ budgetItems = [], expenses = [], workEntries = [], harvests = [], sales = [], inventoryItems = [], salePayments = [] } = {}) {
   const totalBudget = budgetItems.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
   const totalExpenses = expenses.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.amount || 0), 0);
   const totalLaborCost = workEntries
@@ -23,8 +23,13 @@ export function computeProjectSummary({ budgetItems = [], expenses = [], workEnt
   const totalInventoryCost = inventoryItems.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalCost || 0), 0);
   const totalHarvest = harvests.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.weight || 0), 0);
   const totalRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-  const collectedRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
-  const pendingRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.balanceDue || 0), 0);
+  const collectedFromPayments = salePayments.length > 0
+    ? salePayments.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.amount || 0), 0)
+    : 0;
+  const collectedRevenue = collectedFromPayments > 0
+    ? collectedFromPayments
+    : sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
+  const pendingRevenue = Math.max(0, totalRevenue - collectedRevenue);
   const totalCost = totalExpenses + totalLaborCost + totalInventoryCost;
 
   return {

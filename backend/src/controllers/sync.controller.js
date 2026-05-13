@@ -9,6 +9,7 @@ const tableMap = {
   payments: 'payment',
   harvests: 'harvest',
   sales: 'sale',
+  sale_payments: 'salePayment',
   inventory_items: 'inventoryItem',
   payees: 'payee',
   employee_project_assignments: 'employeeProject',
@@ -27,6 +28,7 @@ const SYNC_ORDER = [
   'payments',
   'harvests',
   'sales',
+  'sale_payments',
 ];
 
 // Models that have a direct userId field
@@ -60,6 +62,7 @@ const fieldMapping = {
   isPaid: 'is_paid',
   weightSold: 'weight_sold',
   totalAmount: 'total_amount',
+  saleId: 'sale_id',
   paymentStatus: 'payment_status',
   balanceDue: 'balance_due',
   receiptUrl: 'receipt_url',
@@ -135,7 +138,7 @@ const fromWatermelon = (record) => {
   });
 
   // Foreign keys or IDs should be null if they are empty strings
-  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId'];
+  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId'];
   idFields.forEach(field => {
     if (result[field] === '') {
       result[field] = null;
@@ -184,6 +187,8 @@ exports.pull = async (req, res) => {
           // All other models are directly linked to a project
           if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
             where.projectId = { in: accessibleProjectIds };
+          } else if (prismaModel === 'salePayment') {
+            where.sale = { projectId: { in: accessibleProjectIds } };
           } else if (prismaModel === 'payment') {
             where.employee = { 
               OR: [

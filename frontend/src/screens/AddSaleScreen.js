@@ -40,12 +40,12 @@ export default function AddSaleScreen({ route, navigation }) {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState('paid');
-  const [amountPaid, setAmountPaid] = useState('');
+  const [salePayments, setSalePayments] = useState([{ amount: '', date: new Date() }]);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [payees, setPayees] = useState([]);
+  const [paymentDateTarget, setPaymentDateTarget] = useState(null);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -61,16 +61,20 @@ export default function AddSaleScreen({ route, navigation }) {
 
   useEffect(() => {
     if (!itemId) return;
-    database.get('sales').find(itemId).then((item) => {
+    database.get('sales').find(itemId).then(async (item) => {
       setCustomer(item.customer || '');
       setWeightSold(String(item.weightSold ?? ''));
       setUnitPrice(String(item.unitPrice ?? ''));
       setDate(item.date ? new Date(item.date) : new Date());
       setNotes(item.notes || '');
-      setPaymentStatus(item.paymentStatus || 'paid');
-      const paid = item.balanceDue ? item.totalAmount - item.balanceDue : item.totalAmount;
-      setAmountPaid(item.paymentStatus !== 'paid' && item.balanceDue != null ? String(paid) : '');
       setPhoto(item.receiptUrl || null);
+      const payments = await item.salePayments.fetch();
+      if (payments.length > 0) {
+        setSalePayments(payments.map(p => ({ id: p.id, amount: String(p.amount), date: new Date(p.date), _record: p })));
+      } else if (item.balanceDue != null && item.balanceDue < item.totalAmount) {
+        const paid = item.totalAmount - item.balanceDue;
+        setSalePayments([{ amount: String(paid), date: item.date ? new Date(item.date) : new Date() }]);
+      }
     }).catch(() => {});
   }, [itemId]);
 
@@ -101,6 +105,17 @@ export default function AddSaleScreen({ route, navigation }) {
   };
 
   const total = (parseFloat(weightSold) || 0) * (parseFloat(unitPrice) || 0);
+  const totalCollected = salePayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const balanceDue = Math.max(0, total - totalCollected);
+  const paymentStatus = totalCollected <= 0 ? 'pending' : balanceDue <= 0 ? 'paid' : 'partial';
+
+  const addPayment = () => setSalePayments([...salePayments, { amount: '', date: new Date() }]);
+  const removePayment = (index) => setSalePayments(salePayments.filter((_, i) => i !== index));
+  const updatePayment = (index, field, value) => {
+    const updated = [...salePayments];
+    updated[index] = { ...updated[index], [field]: value };
+    setSalePayments(updated);
+  };
 
   const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -130,6 +145,7 @@ export default function AddSaleScreen({ route, navigation }) {
     setSaving(true);
     setBanner(null);
     try {
+      const activePayments = salePayments.filter(p => p.amount && parseFloat(p.amount) > 0);
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('sales').find(itemId);
@@ -141,13 +157,38 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.date = date.getTime();
             draft.notes = notes.trim();
             draft.paymentStatus = paymentStatus;
-            const paid = parseFloat(amountPaid) || 0;
-            draft.balanceDue = paymentStatus !== 'paid' ? Math.max(0, total - paid) : 0;
+            draft.balanceDue = balanceDue;
             draft.receiptUrl = photo || '';
           });
+          const existingPayments = await record.salePayments.fetch();
+          const existingIds = existingPayments.map(p => p.id);
+          const keptIds = activePayments.filter(p => p.id).map(p => p.id);
+          for (const ep of existingPayments) {
+            if (!keptIds.includes(ep.id)) await ep.markAsDeleted();
+          }
+          for (const p of activePayments) {
+            if (p.id) {
+              const existing = existingPayments.find(ep => ep.id === p.id);
+              if (existing) {
+                await existing.update((draft) => {
+                  draft.amount = parseFloat(p.amount);
+                  draft.date = p.date.getTime();
+                  draft.note = p.note || '';
+                });
+              }
+            } else {
+              await database.get('sale_payments').create((draft) => {
+                draft.saleId = record.id;
+                draft.amount = parseFloat(p.amount);
+                draft.date = p.date.getTime();
+                draft.note = p.note || '';
+                draft.isDeleted = false;
+              });
+            }
+          }
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          await database.get('sales').create((record) => {
+          const record = await database.get('sales').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
             record.customer = customer.trim();
@@ -157,11 +198,19 @@ export default function AddSaleScreen({ route, navigation }) {
             record.date = date.getTime();
             record.notes = notes.trim();
             record.paymentStatus = paymentStatus;
-            const paid = parseFloat(amountPaid) || 0;
-            record.balanceDue = paymentStatus !== 'paid' ? Math.max(0, total - paid) : 0;
+            record.balanceDue = balanceDue;
             record.receiptUrl = photo || '';
             record.isDeleted = false;
           });
+          for (const p of activePayments) {
+            await database.get('sale_payments').create((draft) => {
+              draft.saleId = record.id;
+              draft.amount = parseFloat(p.amount);
+              draft.date = p.date.getTime();
+              draft.note = p.note || '';
+              draft.isDeleted = false;
+            });
+          }
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
@@ -230,31 +279,46 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
           </View>
 
-          <StitchSectionTitle>Payment Status</StitchSectionTitle>
-          <View style={styles.statusRow}>
-            {['paid', 'advance', 'partial'].map((status) => (
-              <StitchChip
-                key={status}
-                label={status.charAt(0).toUpperCase() + status.slice(1)}
-                active={paymentStatus === status}
-                onPress={() => setPaymentStatus(status)}
-              />
-            ))}
-          </View>
-
-          {paymentStatus !== 'paid' && (
-            <View style={styles.fieldLarge}>
-              <Text style={styles.currencyText}>{currency}</Text>
-              <TextInput
-                style={styles.mediumInput}
-                value={amountPaid}
-                onChangeText={setAmountPaid}
-                placeholder="Amount paid"
-                keyboardType="decimal-pad"
-                placeholderTextColor={stitchTheme.colors.textMuted}
-              />
+          <StitchSectionTitle>Payments</StitchSectionTitle>
+          {salePayments.map((p, i) => (
+            <View key={i} style={styles.paymentRow}>
+              <View style={styles.paymentAmountWrap}>
+                <Text style={styles.currencyText}>{currency}</Text>
+                <TextInput
+                  style={styles.mediumInput}
+                  value={p.amount}
+                  onChangeText={(v) => updatePayment(i, 'amount', v)}
+                  placeholder="Amount"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={stitchTheme.colors.textMuted}
+                />
+              </View>
+              <TouchableOpacity style={styles.paymentDateBtn} onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.8}>
+                <Text style={styles.paymentDateText}>{formatAppDate(p.date)}</Text>
+              </TouchableOpacity>
+              {salePayments.length > 1 ? (
+                <TouchableOpacity onPress={() => removePayment(i)} activeOpacity={0.8}>
+                  <Ionicons name="close-circle" size={24} color={stitchTheme.colors.accentRed} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-          )}
+          ))}
+          {balanceDue > 0 && !itemId ? (
+            <TouchableOpacity style={styles.addPaymentBtn} onPress={addPayment} activeOpacity={0.88}>
+              <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primary} />
+              <Text style={styles.addPaymentText}>Add Payment</Text>
+            </TouchableOpacity>
+          ) : null}
+          <View style={styles.paymentSummary}>
+            <Text style={styles.paymentSummaryLabel}>Collected</Text>
+            <Text style={styles.paymentSummaryValue}>{formatCurrency(totalCollected, currency)}</Text>
+          </View>
+          {balanceDue > 0 ? (
+            <View style={styles.paymentSummary}>
+              <Text style={styles.paymentSummaryLabel}>Balance due</Text>
+              <Text style={[styles.paymentSummaryValue, { color: stitchTheme.colors.accentRed }]}>{formatCurrency(balanceDue, currency)}</Text>
+            </View>
+          ) : null}
 
           <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
           <StitchPicker
@@ -353,9 +417,17 @@ export default function AddSaleScreen({ route, navigation }) {
 
         <StitchDatePicker
           visible={showDatePicker}
-          date={date}
-          onDateChange={(d) => { setDate(d); setShowDatePicker(false); }}
-          onClose={() => setShowDatePicker(false)}
+          date={paymentDateTarget != null ? salePayments[paymentDateTarget]?.date || date : date}
+          onDateChange={(d) => {
+            if (paymentDateTarget != null) {
+              updatePayment(paymentDateTarget, 'date', d);
+              setPaymentDateTarget(null);
+            } else {
+              setDate(d);
+            }
+            setShowDatePicker(false);
+          }}
+          onClose={() => { setShowDatePicker(false); setPaymentDateTarget(null); }}
         />
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
@@ -372,6 +444,15 @@ const styles = StyleSheet.create({
   banner: { marginTop: stitchTheme.spacing.xs },
   panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  paymentRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
+  paymentAmountWrap: { flex: 1, minHeight: 48, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  paymentDateBtn: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 12, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  paymentDateText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
+  addPaymentBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingVertical: 12, borderRadius: stitchTheme.radius.md, borderWidth: 1, borderColor: stitchTheme.colors.border, borderStyle: 'dashed', marginTop: stitchTheme.spacing.xs },
+  addPaymentText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.xs, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
+  paymentSummaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
+  paymentSummaryValue: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
   statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, flexWrap: 'wrap' },
   largeInput: { flex: 1, fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
   mediumInput: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },

@@ -602,7 +602,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
         {activeTab === 'sales' && filteredSales.map(item => {
           const statusTag = item.paymentStatus && item.paymentStatus !== 'paid'
             ? `[${item.paymentStatus.charAt(0).toUpperCase() + item.paymentStatus.slice(1)} — ${formatCurrency(item.totalAmount - (item.balanceDue || 0), currency)} paid, ${formatCurrency(item.balanceDue || 0, currency)} due]`
-            : '';
+            : item.paymentStatus === 'paid' && item.balanceDue > 0
+              ? `[Paid — ${formatCurrency(item.totalAmount - item.balanceDue, currency)} collected]` : '';
           const desc = [statusTag, item.notes].filter(Boolean).join(' ');
           return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), formatCurrency(item.totalAmount, currency), 'positive', 'sales', item, desc);
         })}
