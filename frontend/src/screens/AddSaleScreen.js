@@ -50,6 +50,7 @@ export default function AddSaleScreen({ route, navigation }) {
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentDate, setNewPaymentDate] = useState(new Date());
+  const [newPaymentNote, setNewPaymentNote] = useState('');
   const [newPaymentShowDatePicker, setNewPaymentShowDatePicker] = useState(false);
 
   useEffect(() => {
@@ -117,11 +118,12 @@ export default function AddSaleScreen({ route, navigation }) {
   const addPayment = () => {
     setNewPaymentAmount('');
     setNewPaymentDate(new Date());
+    setNewPaymentNote('');
     setPaymentModalVisible(true);
   };
   const confirmAddPayment = () => {
     if (newPaymentAmount && parseFloat(newPaymentAmount) > 0) {
-      setSalePayments([...salePayments, { amount: newPaymentAmount, date: newPaymentDate }]);
+      setSalePayments([...salePayments, { amount: newPaymentAmount, date: newPaymentDate, note: newPaymentNote }]);
     }
     setPaymentModalVisible(false);
   };
@@ -314,6 +316,7 @@ export default function AddSaleScreen({ route, navigation }) {
                   <View key={i} style={styles.paymentRow}>
                     <TouchableOpacity onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.8} style={{ flex: 1 }}>
                       <Text style={styles.paymentRowLabel}>{formatAppDate(p.date)}</Text>
+                      {p.note ? <Text style={styles.paymentRowNote} numberOfLines={1}>{p.note}</Text> : null}
                     </TouchableOpacity>
                     <TextInput
                       style={styles.paymentRowInput}
@@ -321,9 +324,9 @@ export default function AddSaleScreen({ route, navigation }) {
                       onChangeText={(v) => updatePayment(i, 'amount', v)}
                       keyboardType="decimal-pad"
                     />
-                    {salePayments.length > 1 ? (
+                    {salePayments.length > 0 ? (
                       <TouchableOpacity onPress={() => removePayment(i)} activeOpacity={0.8}>
-                        <Ionicons name="close-circle" size={20} color={stitchTheme.colors.accentRed} />
+                        <Ionicons name="trash-outline" size={18} color={stitchTheme.colors.accentRed} />
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -485,6 +488,13 @@ export default function AddSaleScreen({ route, navigation }) {
                   <Text style={styles.infoValue}>{formatAppDate(newPaymentDate)}</Text>
                 </View>
               </TouchableOpacity>
+              <TextInput
+                style={styles.modalNoteInput}
+                value={newPaymentNote}
+                onChangeText={setNewPaymentNote}
+                placeholder="Note (optional)"
+                placeholderTextColor={stitchTheme.colors.textMuted}
+              />
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 <TouchableOpacity
                   style={[styles.uploadButton, { flex: 1 }]}
@@ -521,6 +531,7 @@ const styles = StyleSheet.create({
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   paymentRowLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
+  paymentRowNote: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '500', marginTop: 1 },
   paymentRowInput: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer, textAlign: 'right', paddingVertical: 2, minWidth: 80 },
   paymentBreakdownWrap: { marginTop: 4 },
   paymentDateBtn: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 12, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
@@ -530,6 +541,7 @@ const styles = StyleSheet.create({
   paymentModalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48, gap: stitchTheme.spacing.sm },
   paymentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   paymentModalTitle: { fontSize: 20, fontWeight: '900', color: stitchTheme.colors.primary },
+  modalNoteInput: { minHeight: 44, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
   paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.xs, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
   paymentSummaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
   paymentSummaryValue: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
