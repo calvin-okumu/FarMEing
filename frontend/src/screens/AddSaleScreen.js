@@ -11,6 +11,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,6 +47,10 @@ export default function AddSaleScreen({ route, navigation }) {
   const [photo, setPhoto] = useState(null);
   const [payees, setPayees] = useState([]);
   const [paymentDateTarget, setPaymentDateTarget] = useState(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentDate, setNewPaymentDate] = useState(new Date());
+  const [newPaymentShowDatePicker, setNewPaymentShowDatePicker] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -109,7 +114,17 @@ export default function AddSaleScreen({ route, navigation }) {
   const balanceDue = Math.max(0, total - totalCollected);
   const paymentStatus = totalCollected <= 0 ? 'pending' : balanceDue <= 0 ? 'paid' : 'partial';
 
-  const addPayment = () => setSalePayments([...salePayments, { amount: '', date: new Date() }]);
+  const addPayment = () => {
+    setNewPaymentAmount('');
+    setNewPaymentDate(new Date());
+    setPaymentModalVisible(true);
+  };
+  const confirmAddPayment = () => {
+    if (newPaymentAmount && parseFloat(newPaymentAmount) > 0) {
+      setSalePayments([...salePayments, { amount: newPaymentAmount, date: newPaymentDate }]);
+    }
+    setPaymentModalVisible(false);
+  };
   const removePayment = (index) => setSalePayments(salePayments.filter((_, i) => i !== index));
   const updatePayment = (index, field, value) => {
     const updated = [...salePayments];
@@ -433,6 +448,63 @@ export default function AddSaleScreen({ route, navigation }) {
           onClose={() => { setShowDatePicker(false); setPaymentDateTarget(null); }}
         />
 
+        <StitchDatePicker
+          visible={newPaymentShowDatePicker}
+          date={newPaymentDate}
+          onDateChange={(d) => { setNewPaymentDate(d); setNewPaymentShowDatePicker(false); }}
+          onClose={() => setNewPaymentShowDatePicker(false)}
+        />
+
+        <Modal visible={paymentModalVisible} animationType='slide' transparent>
+          <View style={styles.paymentModalOverlay}>
+            <View style={styles.paymentModalContent}>
+              <View style={styles.paymentModalHeader}>
+                <Text style={styles.paymentModalTitle}>Add Payment</Text>
+                <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
+                  <Ionicons name="close" size={22} color={stitchTheme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.fieldLarge}>
+                <Text style={styles.currencyText}>{currency}</Text>
+                <TextInput
+                  style={styles.mediumInput}
+                  value={newPaymentAmount}
+                  onChangeText={setNewPaymentAmount}
+                  placeholder="Amount"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={stitchTheme.colors.textMuted}
+                  autoFocus
+                />
+              </View>
+              <TouchableOpacity style={styles.infoCard} onPress={() => setNewPaymentShowDatePicker(true)} activeOpacity={0.86}>
+                <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
+                  <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
+                </View>
+                <View style={styles.infoBody}>
+                  <Text style={styles.infoLabel}>Date</Text>
+                  <Text style={styles.infoValue}>{formatAppDate(newPaymentDate)}</Text>
+                </View>
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.uploadButton, { flex: 1 }]}
+                  onPress={() => setPaymentModalVisible(false)}
+                  activeOpacity={0.88}
+                >
+                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.textMuted }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.uploadButton, { flex: 1, backgroundColor: stitchTheme.colors.primaryContainer }]}
+                  onPress={confirmAddPayment}
+                  activeOpacity={0.88}
+                >
+                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.primarySoft }]}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
       </StitchDashboardShell>
@@ -454,6 +526,10 @@ const styles = StyleSheet.create({
   paymentDateBtn: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 12, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
   addPaymentBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingVertical: 10, borderRadius: stitchTheme.radius.md, borderWidth: 1, borderColor: stitchTheme.colors.border, borderStyle: 'dashed', marginTop: stitchTheme.spacing.xs },
   addPaymentText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  paymentModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  paymentModalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48, gap: stitchTheme.spacing.sm },
+  paymentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  paymentModalTitle: { fontSize: 20, fontWeight: '900', color: stitchTheme.colors.primary },
   paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.xs, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
   paymentSummaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
   paymentSummaryValue: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
