@@ -13,6 +13,7 @@ export default class SalePayment extends Model {
   @field('date') date;
   @text('note') note;
   @field('is_deleted') isDeleted;
+  @text('sync_status') syncStatus;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
 }

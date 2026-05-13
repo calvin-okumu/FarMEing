@@ -164,7 +164,9 @@ export default function AddSaleScreen({ route, navigation }) {
           const existingIds = existingPayments.map(p => p.id);
           const keptIds = activePayments.filter(p => p.id).map(p => p.id);
           for (const ep of existingPayments) {
-            if (!keptIds.includes(ep.id)) await ep.markAsDeleted();
+            if (!keptIds.includes(ep.id)) {
+              await ep.update((draft) => { draft.isDeleted = true; });
+            }
           }
           for (const p of activePayments) {
             if (p.id) {
