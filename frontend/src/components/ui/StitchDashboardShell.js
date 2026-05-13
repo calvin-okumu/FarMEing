@@ -5,7 +5,6 @@ import { stitchTheme } from '../../theme/stitchTheme';
 import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
 import StitchHeroHeader from './StitchHeroHeader';
 import StatusBanner from './StatusBanner';
-import GlobalSyncStatus from './GlobalSyncStatus';
 
 const EXPANDED_HERO_HEIGHT = 184;
 
@@ -70,7 +69,6 @@ export default function StitchDashboardShell({
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle={statusBarStyle} backgroundColor={statusBarBackgroundColor} />
-      <GlobalSyncStatus />
       
       <StatusBanner 
         {...banner} 
@@ -137,7 +135,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: stitchTheme.spacing.md,
     paddingTop: stitchTheme.spacing.md,
-    paddingBottom: STITCH_TAB_BAR_HEIGHT + 32,
+    paddingBottom: STITCH_TAB_BAR_HEIGHT + 8,
     gap: stitchTheme.spacing.sm,
   },
   sectionHead: {
