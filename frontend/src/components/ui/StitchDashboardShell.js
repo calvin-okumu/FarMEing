@@ -7,7 +7,7 @@ import StitchHeroHeader from './StitchHeroHeader';
 import StatusBanner from './StatusBanner';
 import GlobalSyncStatus from './GlobalSyncStatus';
 
-const EXPANDED_HERO_HEIGHT = 184;
+const EXPANDED_HERO_HEIGHT = 148;
 
 export function StitchDashboardSectionHeader({ title, subtitle, badgeLabel, actionLabel, onActionPress, style }) {
   return (

@@ -484,6 +484,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           eyebrow: project.crop || t('projects.fields.crop'),
           title: project.name,
           subtitle: `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
+          variant: 'compact',
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
           children: (
