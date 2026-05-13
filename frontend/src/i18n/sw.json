@@ -65,6 +65,8 @@
   },
   "export": {
     "title": "Hamisha Ripoti",
+    "short_label": "Hamisha",
+    "short_value": "Ripoti",
     "pdf": "Hati ya PDF",
     "excel": "Lahajedwali ya Excel (XLSX)",
     "not_available": "Mradi haupatikani kwa ajili ya kusafirishwa bado",

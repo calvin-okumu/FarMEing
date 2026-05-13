@@ -77,6 +77,8 @@
   },
   "export": {
     "title": "Export Report",
+    "short_label": "Export",
+    "short_value": "Report",
     "pdf": "Portable Document (PDF)",
     "excel": "Excel Spreadsheet (XLSX)",
     "not_available": "Project is not available for export yet",
