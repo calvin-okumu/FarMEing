@@ -28,7 +28,9 @@
       "spraying": "Upuliziaji",
       "irrigation": "Umwagiliaji",
       "other": "Nyingine"
-    }
+    },
+    "today": "Leo",
+    "earlier": "Awali"
   },
   "months": {
     "january": "Januari",

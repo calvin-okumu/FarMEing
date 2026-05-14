@@ -28,7 +28,9 @@
       "spraying": "Spraying",
       "irrigation": "Irrigation",
       "other": "Other"
-    }
+    },
+    "today": "Today",
+    "earlier": "Earlier"
   },
   "months": {
     "january": "January",
