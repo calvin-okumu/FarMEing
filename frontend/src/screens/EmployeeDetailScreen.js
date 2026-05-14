@@ -285,7 +285,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
           onActionPress: () => navigation.goBack(),
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.outstanding')} value={formatCurrency(balance.outstanding, currency)} icon='wallet-outline' style={styles.heroPillAccent} />
+              <StitchHeroPill label={t('dashboard.outstanding')} value={balance.outstanding} currency={currency} icon='wallet-outline' style={styles.heroPillAccent} />
               <StitchHeroPill label="Assigned" value={t('employees.project_count', { count: assignedProjects.length, defaultValue: `${assignedProjects.length} Projects` })} icon='apps-outline' />
             </View>
           ),

@@ -80,7 +80,7 @@ export default function PayeeDetailScreen({ route, navigation }) {
           onActionPress: () => navigation.goBack(),
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(grandTotal, currency)} icon='cash-outline' style={styles.heroPillAccent} />
+              <StitchHeroPill label={t('dashboard.spent')} value={grandTotal} currency={currency} icon='cash-outline' style={styles.heroPillAccent} />
               <StitchHeroPill label={t('payees.fields.category')} value={payee.category || 'General'} icon='pricetag-outline' />
             </View>
           ),

@@ -166,8 +166,8 @@ export default function ReportsScreen({ navigation }) {
         onActionPress: handleRefresh,
         children: (
           <View style={styles.heroPills}>
-            <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(portfolio.totalRevenue, currency)} icon='cash-outline' style={styles.heroPillPrimary} />
-            <StitchHeroPill label={t('dashboard.total_cost')} value={formatCurrency(portfolio.totalCost, currency)} icon='wallet-outline' style={styles.heroPillSecondary} />
+            <StitchHeroPill label={t('dashboard.revenue')} value={portfolio.totalRevenue} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
+            <StitchHeroPill label={t('dashboard.total_cost')} value={portfolio.totalCost} currency={currency} icon='wallet-outline' style={styles.heroPillSecondary} />
           </View>
         ),
       }}

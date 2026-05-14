@@ -231,7 +231,7 @@ export default function DashboardScreen({ navigation }) {
                     children: (
                         <View style={styles.heroPills}>
                             <StitchHeroPill label={t('dashboard.scope')} value={selectedLabel} icon='albums-outline' style={styles.heroPillPrimary} />
-                            <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(summary.totalCost, currency)} icon='wallet-outline' style={styles.heroPillSecondary} />
+                            <StitchHeroPill label={t('dashboard.total_spent')} value={summary.totalCost} currency={currency} icon='wallet-outline' style={styles.heroPillSecondary} />
                         </View>
                     ),
                 }}

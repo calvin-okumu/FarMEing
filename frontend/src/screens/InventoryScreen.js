@@ -205,7 +205,7 @@ export default function InventoryScreen({ route, navigation }) {
             <>
               <View style={styles.heroPills}>
                 <StitchHeroPill label={t('inventory.title')} value={String(filteredItems.length)} icon='cube-outline' />
-                <StitchHeroPill label={t('inventory.total_value')} value={formatCurrency(grandTotalCost, currency)} icon='cash-outline' />
+                <StitchHeroPill label={t('inventory.total_value')} value={grandTotalCost} currency={currency} icon='cash-outline' />
               </View>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={1} style={styles.chartWrap} />
             </>

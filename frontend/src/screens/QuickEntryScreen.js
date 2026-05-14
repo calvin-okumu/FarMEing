@@ -263,7 +263,7 @@ export default function QuickEntryScreen({ navigation }) {
             style: styles.hero,
             children: (
               <View style={styles.heroPills}>
-                <StitchHeroPill label={t('quick_entry.total')} value={formatCurrency(total, currency)} icon='cash-outline' style={styles.heroPillPrimary} />
+                <StitchHeroPill label={t('quick_entry.total')} value={total} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
                 <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' style={styles.heroPillSecondary} />
                 <StitchHeroPill label={t('quick_entry.fields.activity')} value={t(`common.activities.${activity}`)} icon='flash-outline' style={styles.heroPillTertiary} />
               </View>
