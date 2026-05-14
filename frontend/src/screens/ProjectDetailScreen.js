@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   controlsCard: { marginBottom: stitchTheme.spacing.sm },
   controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
   stickyTopRow: { gap: 8 },
-  stickyControlsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stickyControlsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   stickySearchWrap: { flex: 1, minHeight: 34, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: stitchTheme.colors.border },
   stickySearchInput: { flex: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: 15, color: stitchTheme.colors.text, paddingVertical: 0 },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
