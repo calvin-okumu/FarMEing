@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.52)',
   },
   pillValue: {
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '900',
     fontFamily: stitchTheme.fonts.heading,
     color: '#ffffff',
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
   },
   pillNote: {
     marginTop: 2,
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    fontSize: 18,
+    lineHeight: 23,
     color: 'rgba(255,140,120,0.85)',
     fontWeight: '800',
     letterSpacing: -0.3,
