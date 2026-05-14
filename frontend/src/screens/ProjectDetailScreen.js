@@ -501,6 +501,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
                   style={styles.heroPillSecondary}
                 />
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => setInviteVisible(true)}>
+                <StitchHeroPill label='' value='Invite' icon='person-add-outline' style={styles.heroPillTertiary} />
+              </TouchableOpacity>
             </View>
           ),
         }}
