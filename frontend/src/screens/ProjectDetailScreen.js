@@ -535,33 +535,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
         }
       >
-        {/* --- Insights Strip --- */}
-        <StitchSurface style={styles.insightsCard} contentStyle={styles.insightsContent} tone='raised' compact>
-          <View style={styles.insightsRow}>
-            <View style={styles.insightItem}>
-              <View style={[styles.insightDot, { backgroundColor: project.status === 'ACTIVE' ? stitchTheme.colors.primaryDim : stitchTheme.colors.textMuted }]} />
-              <View>
-                <Text style={styles.insightLabel}>{t('projects.fields.status')}</Text>
-                <Text style={styles.insightValue}>{project?.status || 'ACTIVE'}</Text>
-              </View>
-            </View>
-            <View style={styles.insightItem}>
-              <View style={[styles.insightDot, { backgroundColor: isLocalOnly ? stitchTheme.colors.accentBrown : stitchTheme.colors.primaryDim }]} />
-              <View>
-                <Text style={styles.insightLabel}>{t('settings.sync_status')}</Text>
-                <Text style={styles.insightValue}>{isLocalOnly ? t('status.local_only') : t('status.synced')}</Text>
-              </View>
-            </View>
-            <View style={styles.insightItem}>
-              <View style={[styles.insightDot, { backgroundColor: team.length > 0 ? stitchTheme.colors.primaryDim : stitchTheme.colors.textMuted }]} />
-              <View>
-                <Text style={styles.insightLabel}>{t('team.invite_title')}</Text>
-                <Text style={styles.insightValue}>{String(team.length)}</Text>
-              </View>
-            </View>
-          </View>
-        </StitchSurface>
-
         {/* --- Metric Cards --- */}
         <View style={styles.overviewGrid}>
           <MetricCard title={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} note={t('dashboard.planned_allocation')} icon='card-outline' accent={stitchTheme.colors.primaryDim} />
