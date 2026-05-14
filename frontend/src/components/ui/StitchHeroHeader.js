@@ -217,9 +217,10 @@ const styles = StyleSheet.create({
   },
   pillNote: {
     marginTop: 2,
-    fontSize: stitchTheme.typography.caption.fontSize,
-    lineHeight: stitchTheme.typography.caption.lineHeight,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    color: stitchTheme.colors.primaryDim,
     fontWeight: '800',
+    letterSpacing: -0.3,
   },
 });
