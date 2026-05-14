@@ -190,7 +190,7 @@ export default function DashboardScreen({ navigation }) {
 
     const handleResourceOpen = (resourceId) => {
         if (!selectedProject) {
-            navigation.navigate('Projects', { screen: 'ProjectsList' });
+            setProjectPickerVisible(true);
             return;
         }
 
