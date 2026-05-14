@@ -75,8 +75,15 @@ export default function AddSaleScreen({ route, navigation }) {
       setNotes(item.notes || '');
       setPhoto(item.receiptUrl || null);
       const payments = await item.salePayments.fetch();
-      if (payments.length > 0) {
-        setSalePayments(payments.map(p => ({ id: p.id, amount: String(p.amount), date: new Date(p.date), _record: p })));
+      const seen = new Set();
+      const unique = payments.filter(p => {
+        const key = `${p.amount}_${p.date}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (unique.length > 0) {
+        setSalePayments(unique.map(p => ({ id: p.id, amount: String(p.amount), date: new Date(p.date), _record: p })));
       } else if (item.balanceDue != null && item.balanceDue < item.totalAmount) {
         const paid = item.totalAmount - item.balanceDue;
         setSalePayments([{ amount: String(paid), date: item.date ? new Date(item.date) : new Date() }]);
@@ -185,9 +192,16 @@ export default function AddSaleScreen({ route, navigation }) {
           const existingPayments = await record.salePayments.fetch();
           const existingIds = existingPayments.map(p => p.id);
           const keptIds = activePayments.filter(p => p.id).map(p => p.id);
+          const paymentKeys = new Set();
           for (const ep of existingPayments) {
-            if (!keptIds.includes(ep.id)) {
+            const key = `${ep.amount}_${ep.date}`;
+            if (paymentKeys.has(key)) {
               await ep.update((draft) => { draft.isDeleted = true; });
+            } else {
+              paymentKeys.add(key);
+              if (!keptIds.includes(ep.id)) {
+                await ep.update((draft) => { draft.isDeleted = true; });
+              }
             }
           }
           for (const p of activePayments) {
