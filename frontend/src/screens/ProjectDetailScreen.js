@@ -433,6 +433,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
   const renderCollectionCard = (title, meta, amount, tone = 'default', type, item, description = '') => {
     const accentColor = tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown;
+    const descColor = type === 'sales' && description ? stitchTheme.colors.accentRed : stitchTheme.colors.textMuted;
+    const descWeight = type === 'sales' && description ? '800' : stitchTheme.typography.bodySmall.fontWeight;
     return (
       <TouchableOpacity
         key={item.id}
@@ -455,7 +457,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           </View>
           <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
         </View>
-        {description ? <Text style={styles.collectionDescription} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
+        {description ? <Text style={[styles.collectionDescription, { color: descColor, fontWeight: descWeight }]} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
         <View style={styles.collectionActionRow}>
           <TouchableOpacity
             style={[styles.collectionActionButton, styles.collectionActionButtonDanger]}
