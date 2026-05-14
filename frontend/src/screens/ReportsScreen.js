@@ -208,6 +208,44 @@ export default function ReportsScreen({ navigation }) {
         />
       </StitchSurface>
 
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <Text style={styles.chartTitle}>Revenue Collection (Top 5)</Text>
+        <BarChart
+          data={{
+            labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
+            datasets: [
+              {
+                data: projectSummaries.slice(0, 5).map(s => s.summary.totalRevenue)
+              },
+              {
+                data: projectSummaries.slice(0, 5).map(s => s.summary.collectedRevenue || 0)
+              }
+            ]
+          }}
+          width={screenWidth - 48}
+          height={200}
+          yAxisLabel={currency === 'TZS' ? 'TSh ' : '$'}
+          chartConfig={{
+            backgroundColor: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientFrom: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientTo: stitchTheme.colors.surfaceHighlight,
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            style: { borderRadius: 16 },
+            propsForLabels: { fontSize: 10, fontWeight: '700' },
+            barPercentage: 0.4
+          }}
+          style={{ marginVertical: 8, borderRadius: 16 }}
+          fromZero
+          showValuesOnTopOfBars
+        />
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: 'rgba(17,154,84,0.5)' }]} /><Text style={styles.legendText}>Total Revenue</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: stitchTheme.colors.primaryContainer }]} /><Text style={styles.legendText}>Collected</Text></View>
+        </View>
+      </StitchSurface>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.perfScroll}>
         {projectSummaries.map(({ project, summary }) => (
           <ProjectPerformanceCard 
@@ -291,6 +329,36 @@ export default function ReportsScreen({ navigation }) {
           <Text style={styles.totalValue}>{formatCurrency(portfolio.totalCost, currency)}</Text>
         </View>
       </StitchSurface>
+
+      {data.harvests.filter(h => !h.isDeleted).length > 0 ? (
+        <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+          <Text style={styles.chartTitle}>Harvest by Crop</Text>
+          <PieChart
+            data={(() => {
+              const cropMap = {};
+              data.harvests.filter(h => !h.isDeleted).forEach(h => {
+                cropMap[h.crop] = (cropMap[h.crop] || 0) + (h.weight || 0);
+              });
+              const colors = [stitchTheme.colors.primaryDim, stitchTheme.colors.accentBrown, stitchTheme.colors.primarySoft, stitchTheme.colors.accentRed, stitchTheme.colors.primary];
+              return Object.entries(cropMap).slice(0, 5).map(([crop, weight], i) => ({
+                name: crop,
+                population: weight,
+                color: colors[i % colors.length],
+                legendFontColor: stitchTheme.colors.text,
+                legendFontSize: 11,
+              }));
+            })()}
+            width={screenWidth - 32}
+            height={180}
+            chartConfig={{ color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})` }}
+            accessor={"population"}
+            backgroundColor={"transparent"}
+            paddingLeft={"15"}
+            center={[10, 0]}
+            absolute
+          />
+        </StitchSurface>
+      ) : null}
 
       <StitchDashboardSectionHeader title={t('dashboard.labor_contributors', { defaultValue: 'Labor Contributors' })} subtitle={t('dashboard.top_workers_earned', { defaultValue: 'Top workers by total earned' })} style={styles.sectionSpacing} />
       <View style={styles.laborStatsRow}>
@@ -561,4 +629,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
   },
+  legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { fontSize: 11, fontWeight: '600', color: stitchTheme.colors.textMuted },
 });
