@@ -70,6 +70,9 @@ const fieldMapping = {
   usedQty: 'used_qty',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
+  syncStatus: 'sync_status',
+  lastSyncedAt: 'last_synced_at',
+  lastError: 'last_error',
 };
 
 const reverseMapping = Object.fromEntries(

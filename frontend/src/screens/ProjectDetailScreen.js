@@ -81,12 +81,12 @@ function TimelineSection({ title, tone, items, t, currency }) {
           <View style={styles.timelineCard}>
             <View style={[styles.cardAccent, { backgroundColor: item.dotColor }]} />
             <View style={styles.collectionTopRow}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                <Text style={styles.collectionTitle}>{item.timeLabel}</Text>
-                <Text style={styles.collectionMeta}>{item.title}</Text>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{item.timeLabel}</Text>
+                <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{item.title}</Text>
               </View>
               {item.amount ? (
-                <Text style={[styles.collectionAmount, item.type === 'SALE' ? styles.collectionAmountPositive : (item.type !== 'HARVEST' ? styles.collectionAmountNegative : null)]}>
+                <Text style={[styles.collectionAmount, { flexShrink: 0 }, item.type === 'SALE' ? styles.collectionAmountPositive : (item.type !== 'HARVEST' ? styles.collectionAmountNegative : null)]}>
                   {item.type === 'HARVEST' ? `${item.amount} kg` : formatCurrency(item.amount, currency)}
                 </Text>
               ) : null}
