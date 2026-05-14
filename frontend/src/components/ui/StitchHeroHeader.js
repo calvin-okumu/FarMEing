@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: stitchTheme.typography.cardTitle.fontSize,
     lineHeight: stitchTheme.typography.cardTitle.lineHeight,
-    color: stitchTheme.colors.primaryDim,
+    color: 'rgba(255,140,120,0.85)',
     fontWeight: '800',
     letterSpacing: -0.3,
   },
