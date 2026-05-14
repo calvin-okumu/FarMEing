@@ -492,7 +492,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
           children: (
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('dashboard.total_spent')} value={totalSpent} currency={currency} icon='wallet-outline' style={styles.heroPillPrimary} />
-              <StitchHeroPill label={t('dashboard.revenue')} value={collectedRevenue} currency={currency} note={pendingRevenue > 0 ? `${formatCurrency(pendingRevenue, currency)} due` : ''} icon='cash-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('dashboard.revenue')} value={collectedRevenue} currency={currency} hideCurrency note={pendingRevenue > 0 ? formatCurrency(pendingRevenue, currency) : ''} icon='cash-outline' style={styles.heroPillPrimary} />
               <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
                 <StitchHeroPill
                   label={t('export.short_label')}

@@ -52,8 +52,8 @@ export default function StitchHeroHeader({
   );
 }
 
-export function StitchHeroPill({ label, value, icon, style, currency, note }) {
-  const sym = currency ? (CURRENCY_META[currency]?.symbol || '$') : null;
+export function StitchHeroPill({ label, value, icon, style, currency, note, hideCurrency }) {
+  const sym = currency && !hideCurrency ? (CURRENCY_META[currency]?.symbol || '$') : null;
   const displayValue = currency && typeof value === 'number' ? formatNumeric(value, currency) : value;
   return (
     <View style={[styles.pill, style]}>
@@ -217,9 +217,9 @@ const styles = StyleSheet.create({
   },
   pillNote: {
     marginTop: 2,
-    fontSize: stitchTheme.typography.bodySmall.fontSize,
-    lineHeight: stitchTheme.typography.bodySmall.lineHeight,
-    color: stitchTheme.colors.accentRed,
+    fontSize: stitchTheme.typography.caption.fontSize,
+    lineHeight: stitchTheme.typography.caption.lineHeight,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '800',
   },
 });
