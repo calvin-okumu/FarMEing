@@ -185,21 +185,6 @@ const styles = StyleSheet.create({
   pillLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  pillLabel: {
-    fontSize: stitchTheme.typography.caption.fontSize,
-    lineHeight: stitchTheme.typography.caption.lineHeight,
-    fontWeight: '800',
-    fontFamily: stitchTheme.fonts.label,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.52)',
-  },
-  pillLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 6,
     marginBottom: 4,
@@ -220,5 +205,13 @@ const styles = StyleSheet.create({
     fontFamily: stitchTheme.fonts.label,
     letterSpacing: 0.5,
     color: 'rgba(255,255,255,0.52)',
+  },
+  pillValue: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    fontWeight: '900',
+    fontFamily: stitchTheme.fonts.heading,
+    color: '#ffffff',
+    letterSpacing: -0.3,
   },
 });
