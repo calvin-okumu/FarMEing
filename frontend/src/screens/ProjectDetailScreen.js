@@ -451,11 +451,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
       >
         <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
         <View style={styles.collectionTopRow}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
             <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{meta}</Text>
-            <Text style={styles.collectionMeta} numberOfLines={1} ellipsizeMode='tail'>{title}</Text>
+            <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{title}</Text>
           </View>
-          <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]} numberOfLines={1}>{amount}</Text>
+          <Text style={[styles.collectionAmount, { flexShrink: 0 }, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]} numberOfLines={1}>{amount}</Text>
         </View>
         {description ? <Text style={[styles.collectionDescription, { color: descColor, fontWeight: descWeight }]} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
         <View style={styles.collectionActionRow}>
