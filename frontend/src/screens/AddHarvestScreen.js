@@ -10,9 +10,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
@@ -41,6 +43,23 @@ export default function AddHarvestScreen({ route, navigation }) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [project, setProject] = useState(null);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [projectSearch, setProjectSearch] = useState('');
+
+  useEffect(() => {
+    const sub = database.get('farm_projects').query(Q.where('is_deleted', false)).observe().subscribe(setProjects);
+    return () => sub.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!projectId) return;
+    database.get('farm_projects').find(projectId).then((p) => {
+      setProject(p);
+      setCrop(p.crop || '');
+    }).catch(() => {});
+  }, [projectId]);
 
   const liveTotal = useMemo(() => {
     const value = parseFloat(weight);
@@ -57,6 +76,9 @@ export default function AddHarvestScreen({ route, navigation }) {
       setQuality(item.quality || 'grade_a');
       setDate(item.date ? new Date(item.date) : new Date());
       setNotes(item.notes || '');
+      if (item.projectId) {
+        database.get('farm_projects').find(item.projectId).then((p) => setProject(p)).catch(() => {});
+      }
     }).catch(() => {});
   }, [itemId]);
 
@@ -148,6 +170,17 @@ export default function AddHarvestScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
+        <TouchableOpacity style={styles.projectSelector} onPress={() => setShowProjectPicker(true)} activeOpacity={0.88}>
+          <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
+            <Ionicons name="folder-outline" size={20} color={stitchTheme.colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoLabel}>{t('quick_entry.fields.project')}</Text>
+            <Text style={[styles.infoValue, !project && { color: stitchTheme.colors.textMuted }]}>{project?.name || t('quick_entry.select_project')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={stitchTheme.colors.textMuted} />
+        </TouchableOpacity>
+
         <StitchInput
           label={t('harvest.crop_heading')}
           value={crop}
@@ -228,6 +261,51 @@ export default function AddHarvestScreen({ route, navigation }) {
         <StitchPrimaryButton label={itemId ? t('common.save') : t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
 
         <Text style={styles.footerNote}>{t('harvest.footer_note')}</Text>
+
+        <Modal visible={showProjectPicker} animationType='slide' transparent onRequestClose={() => setShowProjectPicker(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{t('projects.title')}</Text>
+                <TouchableOpacity onPress={() => setShowProjectPicker(false)} activeOpacity={0.88}>
+                  <Ionicons name='close-outline' size={22} color={stitchTheme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.searchShell}>
+                <Ionicons name='search-outline' size={18} color={stitchTheme.colors.textMuted} />
+                <TextInput
+                  value={projectSearch}
+                  onChangeText={setProjectSearch}
+                  placeholder={t('quick_entry.select_project')}
+                  placeholderTextColor={stitchTheme.colors.textMuted}
+                  style={styles.searchInput}
+                />
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
+                {(projects || []).filter((p) => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase())).map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.projectOption, project?.id === p.id && styles.projectOptionActive]}
+                    onPress={() => {
+                      setProject(p);
+                      setCrop(p.crop || '');
+                      setShowProjectPicker(false);
+                      setProjectSearch('');
+                    }}
+                    activeOpacity={0.88}
+                  >
+                    <View>
+                      <Text style={styles.projectOptionTitle}>{p.name}</Text>
+                      <Text style={styles.projectOptionMeta}>{p.crop || t('projects.fields.crop')} • {p.landSize || 0} {p.landUnit || 'acres'}</Text>
+                    </View>
+                    {project?.id === p.id ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
@@ -261,4 +339,22 @@ const styles = StyleSheet.create({
   notesInput: { minHeight: 110, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top' },
   saveButton: { marginTop: stitchTheme.spacing.md },
   footerNote: { marginTop: stitchTheme.spacing.sm, textAlign: 'center', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: '#6f786b' },
+
+  projectSelector: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: 14, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  infoIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  infoLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
+  infoValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '700', color: stitchTheme.colors.text, marginTop: 1 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '80%', paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: stitchTheme.colors.line, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12 },
+  modalTitle: { fontSize: stitchTheme.typography.section.fontSize, fontWeight: '800', color: stitchTheme.colors.text },
+  searchShell: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 14, minHeight: 44, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  searchInput: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text },
+  modalList: { paddingHorizontal: 24, gap: 4 },
+  projectOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: stitchTheme.radius.md },
+  projectOptionActive: { backgroundColor: stitchTheme.colors.surfaceTint },
+  projectOptionTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  projectOptionMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
 });
