@@ -15,7 +15,7 @@ const getProjectData = async (id, userId) => {
       expenses: { where: { isDeleted: false }, include: { payeeRecord: true } },
       workEntries: { where: { isDeleted: false }, include: { employee: true } },
       harvests: { where: { isDeleted: false } },
-      sales: { where: { isDeleted: false } },
+      sales: { where: { isDeleted: false }, include: { salePayments: { where: { isDeleted: false } } } },
       inventoryItems: { where: { isDeleted: false } },
     },
   });
@@ -63,10 +63,13 @@ const generateProjectReport = async (req, res) => {
     const totalRevenue = project.sales.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
     const totalCost = totalExpenses + totalLabor + totalInventory;
     const netProfit = totalRevenue - totalCost;
+    const collectedRevenue = project.sales.reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
+    const pendingRevenue = project.sales.reduce((sum, item) => sum + (item.balanceDue || 0), 0);
 
     doc.fontSize(16).text('Financial Summary', { underline: true });
     doc.fontSize(12);
     doc.text(`Total Revenue: ${totalRevenue.toLocaleString()}`);
+    doc.text(`Collected Revenue: ${collectedRevenue.toLocaleString()}${pendingRevenue > 0 ? ` (${pendingRevenue.toLocaleString()} pending)` : ''}`);
     doc.text(`Total Spending: ${totalCost.toLocaleString()}`);
     doc.text(`Net Profit/Loss: ${netProfit.toLocaleString()}`, { 
       color: netProfit >= 0 ? 'green' : 'red' 
@@ -119,8 +122,17 @@ const generateProjectReport = async (req, res) => {
       project.sales.forEach(sale => {
         doc.text(`- ${sale.customer || 'Cash'}: ${sale.weightSold || 0} kg × ${sale.unitPrice} = ${sale.totalAmount}`);
         doc.text(`  Date: ${sale.date.toLocaleDateString()}`);
+        if (sale.paymentStatus && sale.paymentStatus !== 'paid') {
+          doc.text(`  Status: ${sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)} — ${sale.balanceDue ? sale.balanceDue.toLocaleString() : 0} due`);
+        }
+        if (sale.salePayments && sale.salePayments.length > 0) {
+          sale.salePayments.forEach(p => {
+            doc.text(`    Payment: ${p.amount.toLocaleString()} on ${p.date.toLocaleDateString()}${p.note ? ` — ${p.note}` : ''}`);
+          });
+        }
       });
       doc.text(`Total Revenue: ${totalRevenue.toLocaleString()}`);
+      doc.text(`Collected: ${collectedRevenue.toLocaleString()}${pendingRevenue > 0 ? `, Pending: ${pendingRevenue.toLocaleString()}` : ''}`);
       doc.moveDown();
     }
 
@@ -169,8 +181,12 @@ const generateProjectExcelReport = async (req, res) => {
     const totalInventory = project.inventoryItems.reduce((sum, i) => sum + (i.totalCost || 0), 0);
     const totalRevenue = project.sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
     const totalCost = totalExpenses + totalLabor + totalInventory;
+    const collectedRevenue = project.sales.reduce((sum, s) => sum + ((s.totalAmount || 0) - (s.balanceDue || 0)), 0);
+    const pendingRevenue = project.sales.reduce((sum, s) => sum + (s.balanceDue || 0), 0);
 
     summarySheet.addRow({ prop: 'Total Revenue', val: totalRevenue });
+    summarySheet.addRow({ prop: 'Collected Revenue', val: collectedRevenue });
+    if (pendingRevenue > 0) summarySheet.addRow({ prop: 'Pending Revenue', val: pendingRevenue });
     summarySheet.addRow({ prop: 'Total Cost', val: totalCost });
     summarySheet.addRow({ prop: 'Net Profit/Loss', val: totalRevenue - totalCost });
 
@@ -240,6 +256,8 @@ const generateProjectExcelReport = async (req, res) => {
         { header: 'Weight (kg)', key: 'weight', width: 15 },
         { header: 'Unit Price', key: 'price', width: 15 },
         { header: 'Total Amount', key: 'total', width: 15 },
+        { header: 'Payment Status', key: 'status', width: 15 },
+        { header: 'Balance Due', key: 'balance', width: 15 },
         { header: 'Notes', key: 'notes', width: 40 },
       ];
       project.sales.forEach(s => {
@@ -249,7 +267,29 @@ const generateProjectExcelReport = async (req, res) => {
           weight: s.weightSold,
           price: s.unitPrice,
           total: s.totalAmount,
+          status: s.paymentStatus ? s.paymentStatus.charAt(0).toUpperCase() + s.paymentStatus.slice(1) : 'Paid',
+          balance: s.balanceDue || 0,
           notes: s.notes
+        });
+      });
+    }
+
+    // Sale Payments Sheet
+    const allPayments = project.sales.flatMap(s => (s.salePayments || []).map(p => ({ ...p, customer: s.customer || 'Cash' })));
+    if (allPayments.length > 0) {
+      const paymentsSheet = workbook.addWorksheet('Sale Payments');
+      paymentsSheet.columns = [
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Customer', key: 'customer', width: 25 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Note', key: 'note', width: 40 },
+      ];
+      allPayments.forEach(p => {
+        paymentsSheet.addRow({
+          date: p.date.toLocaleDateString(),
+          customer: p.customer,
+          amount: p.amount,
+          note: p.note || ''
         });
       });
     }
