@@ -41,7 +41,7 @@ export default function AddSaleScreen({ route, navigation }) {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
-  const [salePayments, setSalePayments] = useState([{ amount: '', date: new Date() }]);
+  const [salePayments, setSalePayments] = useState([]);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
   const [photo, setPhoto] = useState(null);
@@ -209,15 +209,6 @@ export default function AddSaleScreen({ route, navigation }) {
               draft.note = p.note || '';
             });
           }
-          for (const p of activePayments) {
-            await database.get('sale_payments').create((draft) => {
-              initializeLocalRecord(draft);
-              draft.saleId = record.id;
-              draft.amount = parseFloat(p.amount);
-              draft.date = p.date.getTime();
-              draft.note = p.note || '';
-            });
-            }
           }
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -237,11 +228,11 @@ export default function AddSaleScreen({ route, navigation }) {
           });
           for (const p of activePayments) {
             await database.get('sale_payments').create((draft) => {
+              initializeLocalRecord(draft);
               draft.saleId = record.id;
               draft.amount = parseFloat(p.amount);
               draft.date = p.date.getTime();
               draft.note = p.note || '';
-              draft.isDeleted = false;
             });
           }
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -341,10 +332,13 @@ export default function AddSaleScreen({ route, navigation }) {
                     onPress={() => setSelectedPaymentIndex(selectedPaymentIndex === i ? null : i)}
                     activeOpacity={0.75}
                   >
-                    <TouchableOpacity onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.8} style={{ flex: 1 }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.paymentRowLabel}>{formatAppDate(p.date)}</Text>
+                      <TouchableOpacity onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                        <Ionicons name="calendar-outline" size={14} color={stitchTheme.colors.textMuted} />
+                      </TouchableOpacity>
                       {p.note ? <Text style={styles.paymentRowNote} numberOfLines={1}>{p.note}</Text> : null}
-                    </TouchableOpacity>
+                    </View>
                     <TextInput
                       style={styles.paymentRowInput}
                       value={p.amount}
