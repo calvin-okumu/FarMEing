@@ -201,13 +201,22 @@ export default function AddSaleScreen({ route, navigation }) {
                 });
               }
             } else {
-              await database.get('sale_payments').create((draft) => {
-                draft.saleId = record.id;
-                draft.amount = parseFloat(p.amount);
-                draft.date = p.date.getTime();
-                draft.note = p.note || '';
-                draft.isDeleted = false;
-              });
+            await database.get('sale_payments').create((draft) => {
+              initializeLocalRecord(draft);
+              draft.saleId = record.id;
+              draft.amount = parseFloat(p.amount);
+              draft.date = p.date.getTime();
+              draft.note = p.note || '';
+            });
+          }
+          for (const p of activePayments) {
+            await database.get('sale_payments').create((draft) => {
+              initializeLocalRecord(draft);
+              draft.saleId = record.id;
+              draft.amount = parseFloat(p.amount);
+              draft.date = p.date.getTime();
+              draft.note = p.note || '';
+            });
             }
           }
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });

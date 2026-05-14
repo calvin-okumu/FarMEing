@@ -174,5 +174,18 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 19,
+      steps: [
+        addColumns({
+          table: 'sale_payments',
+          columns: [
+            { name: 'sync_status', type: 'string', isOptional: true },
+            { name: 'last_synced_at', type: 'number', isOptional: true },
+            { name: 'last_error', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });
