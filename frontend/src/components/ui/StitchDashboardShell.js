@@ -3,7 +3,6 @@ import { Animated, ActivityIndicator, Keyboard, Platform, ScrollView, StatusBar,
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
-import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
 import StitchHeroHeader from './StitchHeroHeader';
 import StatusBanner from './StatusBanner';
 import useSyncStore from '../../store/useSyncStore';
@@ -51,7 +50,7 @@ export default function StitchDashboardShell({
     switch (syncStatus) {
       case 'syncing': return { name: 'sync-outline', color: stitchTheme.colors.primary, spin: true };
       case 'error': return { name: 'cloud-offline-outline', color: stitchTheme.colors.accentRed, spin: false };
-      default: return { name: 'cloud-done-outline', color: 'rgba(255,255,255,0.4)', spin: false };
+      default: return { name: 'cloud-done-outline', color: 'rgba(255,255,255,0.55)', spin: false };
     }
   }, [syncStatus]);
 
@@ -91,9 +90,9 @@ export default function StitchDashboardShell({
       <Animated.View style={[styles.heroWrapper, { height: heroHeight }]}> 
         <View style={styles.syncIndicator}>
           {syncIcon.spin ? (
-            <ActivityIndicator size='small' color={syncIcon.color} />
+            <ActivityIndicator size='small' color={syncIcon.color} style={{ transform: [{ scale: 1.2 }] }} />
           ) : (
-            <Ionicons name={syncIcon.name} size={16} color={syncIcon.color} />
+            <Ionicons name={syncIcon.name} size={22} color={syncIcon.color} />
           )}
         </View>
         <Animated.View style={hero?.wrapperStyle}>
@@ -154,7 +153,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: stitchTheme.spacing.md,
     paddingTop: stitchTheme.spacing.md,
-    paddingBottom: STITCH_TAB_BAR_HEIGHT,
+    paddingBottom: 8,
     gap: stitchTheme.spacing.sm,
   },
   sectionHead: {
