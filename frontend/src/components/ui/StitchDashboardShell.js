@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { Animated, ActivityIndicator, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
@@ -44,15 +45,24 @@ export default function StitchDashboardShell({
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
 }) {
   const syncStatus = useSyncStore((s) => s.status);
+  const [isOffline, setIsOffline] = useState(false);
   const heroHeight = useRef(new Animated.Value(EXPANDED_HERO_HEIGHT)).current;
 
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!(state.isConnected && state.isInternetReachable));
+    });
+    return () => unsubscribe();
+  }, []);
+
   const syncIcon = useMemo(() => {
+    if (isOffline) return { name: 'cloud-offline-outline', color: stitchTheme.colors.accentRed, spin: false };
     switch (syncStatus) {
       case 'syncing': return { name: 'sync-outline', color: stitchTheme.colors.primary, spin: true };
       case 'error': return { name: 'cloud-offline-outline', color: stitchTheme.colors.accentRed, spin: false };
       default: return { name: 'cloud-done-outline', color: 'rgba(255,255,255,0.55)', spin: false };
     }
-  }, [syncStatus]);
+  }, [syncStatus, isOffline]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
