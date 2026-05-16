@@ -204,8 +204,8 @@ Base path: `/reports` — **Protected**
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/project/:id/pdf` | Download a PDF report for a project |
-| `GET` | `/project/:id/excel` | Download an Excel report for a project |
+| `GET` | `/project/:id/pdf` | Download a PDF report for a project (includes financial summary, collected/pending revenue, payment installments, budget, harvest, and sales records) |
+| `GET` | `/project/:id/excel` | Download an Excel report for a project (Summary, Expenses, Labor, Harvest, Sales with payment status columns, Sale Payments sheet, Budget, and Inventory sheets) |
 
 ### Budget Items
 
@@ -320,7 +320,8 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 ### Financials
 *   **BudgetItem:** Planned costs for a project.
 *   **Expense:** Actual costs incurred. Differentiates `CAPEX` vs `OPEX`. Supports recurring expenses.
-*   **Sale:** Revenue generated from selling harvests.
+*   **Sale:** Revenue generated from selling harvests. Tracks `paymentStatus` (`pending`, `partial`, `paid`) and `balanceDue` for installment payments.
+*   **SalePayment:** Individual payment installments against a sale. Each has `saleId`, `amount`, `date`, `note`.
 *   **Payment:** Records payments made to employees.
 
 ### Operations
@@ -333,6 +334,7 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 *   **User** has many **Projects** and **Employees**.
 *   **Project** has many **BudgetItems**, **Expenses**, **WorkEntries**, **Harvests**, **Sales**, and **ProjectAccess** rows.
 *   **Employee** has many **WorkEntries** and **Payments**.
+*   **Sale** has many **SalePayments** — each sale can have multiple payment installments.
 *   **ProjectAccess** links a **User** to a **Project** with a collaborative role.
 
 ---
@@ -340,7 +342,8 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 ## Sync And Access Notes
 
 - Project ownership and collaboration are modeled through `ProjectAccess`, but the backend also falls back to `FarmProject.userId` for owner access when older or partially synced data is encountered.
-- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows so owner data still syncs if membership rows are temporarily missing.
+- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows so owner data still syncs if membership rows are temporarily missing. For `salePayment` records, security scoping is applied via the parent `sale.projectId`.
+- `/sync/push` upserts an owner `ProjectAccess` row whenever a `farmProject` is created or updated from the mobile client.
 - `/sync/push` upserts an owner `ProjectAccess` row whenever a `farmProject` is created or updated from the mobile client.
 - Project-scoped APIs such as members and reports expect the server-side project ID. Mobile clients should prefer `remoteId` when present.
 - After deploying schema or access-model changes, run `npx prisma generate` and restart the process manager so runtime code and Prisma delegates stay aligned.
