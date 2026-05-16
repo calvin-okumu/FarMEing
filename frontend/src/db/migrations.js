@@ -235,6 +235,18 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 23,
+      steps: [
+        addColumns({
+          table: 'project_blocks',
+          columns: [
+            { name: 'crop', type: 'string', isOptional: true },
+            { name: 'expected_yield', type: 'number', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });
 

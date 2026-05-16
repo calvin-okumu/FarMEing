@@ -102,19 +102,21 @@ model FarmProject {
 }
 
 model ProjectBlock {
-  id          String      @id @default(uuid())
-  projectId   String
-  name        String      // e.g. Block A, Section 1
-  landSize    Float?
-  landUnit    String?
-  isDeleted   Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  project     FarmProject @relation(fields: [projectId], references: [id])
-  budgetItems BudgetItem[]
-  expenses    Expense[]
-  workEntries WorkEntry[]
-  harvests    Harvest[]
+  id            String      @id @default(uuid())
+  projectId     String
+  name          String      // e.g. Block A, Section 1
+  landSize      Float?
+  landUnit      String?
+  crop          String?
+  expectedYield Float?
+  isDeleted     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  project       FarmProject @relation(fields: [projectId], references: [id])
+  budgetItems   BudgetItem[]
+  expenses      Expense[]
+  workEntries   WorkEntry[]
+  harvests      Harvest[]
 }
 
 model BudgetItem {

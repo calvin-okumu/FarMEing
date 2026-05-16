@@ -57,6 +57,8 @@ export default function ProjectsScreen({ navigation, route }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [banner, setBanner] = useState(null);
   const [blockSizes, setBlockSizes] = useState([]);
+  const [blockCrops, setBlockCrops] = useState([]);
+  const [blockYields, setBlockYields] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const { control, handleSubmit, reset, setValue, watch } = useForm({
@@ -168,8 +170,10 @@ export default function ProjectsScreen({ navigation, route }) {
               initializeLocalRecord(draft);
               draft.projectId = record.id;
               draft.name = `Block ${letters[i]}`;
+              draft.crop = blockCrops[i] || '';
               draft.landSize = parseFloat(blockSizes[i]) || 0;
               draft.landUnit = data.landUnit || 'acres';
+              draft.expectedYield = parseFloat(blockYields[i]) || 0;
             });
           }
         }
@@ -379,39 +383,6 @@ export default function ProjectsScreen({ navigation, route }) {
             ))}
           </View>
 
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
-            </View>
-            <View style={styles.half}>
-              <StitchInput
-                label={t('projects.fields.start_date')}
-                value={formatAppDate(watch('startDate'))}
-                onPress={openStartDatePicker}
-                icon='calendar-outline'
-                style={styles.formField}
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' style={styles.formField} />
-            </View>
-            <View style={styles.half}>
-              <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} style={styles.formField} />
-            </View>
-          </View>
-
-          <StitchInput
-            label={t('projects.fields.expected_yield')}
-            value={watch('expectedYield')}
-            onChangeText={(val) => setValue('expectedYield', val)}
-            placeholder={t('projects.placeholders.expected_yield')}
-            keyboardType='decimal-pad'
-            style={styles.formField}
-          />
-
           <StitchInput
             label='Number of Blocks'
             value={watch('blockCount')}
@@ -419,32 +390,84 @@ export default function ProjectsScreen({ navigation, route }) {
               setValue('blockCount', val);
               const count = Math.min(Math.max(parseInt(val) || 0, 0), 26);
               setBlockSizes(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
+              setBlockCrops(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
+              setBlockYields(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
             }}
             placeholder='0'
             keyboardType='number-pad'
             style={styles.formField}
           />
 
-          {blockSizes.length > 0 ? (
-            <View style={{ gap: 8 }}>
-              <Text style={styles.formFieldLabel}>Block Sizes (acres)</Text>
-              {blockSizes.map((size, i) => (
+          {parseInt(watch('blockCount')) > 0 ? (
+            <View style={{ gap: 12 }}>
+              {Array.from({ length: Math.min(Math.max(parseInt(watch('blockCount')) || 0, 0), 26) }).map((_, i) => {
+                const letter = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i];
+                return (
+                  <View key={i} style={styles.blockCard}>
+                    <Text style={styles.blockCardTitle}>Block {letter}</Text>
+                    <StitchInput label='Crop' value={blockCrops[i] || ''} onChangeText={(v) => { const u = [...blockCrops]; u[i] = v; setBlockCrops(u); }} placeholder='Crop type' style={styles.formField} />
+                    <View style={styles.row}>
+                      <View style={styles.half}>
+                        <StitchInput label='Land Size' value={blockSizes[i] || ''} onChangeText={(v) => { const u = [...blockSizes]; u[i] = v; setBlockSizes(u); }} placeholder='0' keyboardType='decimal-pad' style={styles.formField} />
+                      </View>
+                      <View style={styles.half}>
+                        <StitchInput label='Unit' value={watch('landUnit')} onChangeText={(v) => setValue('landUnit', v)} placeholder='acres' style={styles.formField} />
+                      </View>
+                    </View>
+                    <StitchInput label='Expected Yield' value={blockYields[i] || ''} onChangeText={(v) => { const u = [...blockYields]; u[i] = v; setBlockYields(u); }} placeholder='0' keyboardType='decimal-pad' style={styles.formField} />
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
+                </View>
+                <View style={styles.half}>
+                  <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' style={styles.formField} />
+                </View>
+              </View>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} style={styles.formField} />
+                </View>
+                <View style={styles.half}>
+                  <StitchInput
+                    label={t('projects.fields.start_date')}
+                    value={formatAppDate(watch('startDate'))}
+                    onPress={openStartDatePicker}
+                    icon='calendar-outline'
+                    style={styles.formField}
+                  />
+                </View>
+              </View>
+              <StitchInput
+                label={t('projects.fields.expected_yield')}
+                value={watch('expectedYield')}
+                onChangeText={(val) => setValue('expectedYield', val)}
+                placeholder={t('projects.placeholders.expected_yield')}
+                keyboardType='decimal-pad'
+                style={styles.formField}
+              />
+            </>
+          )}
+
+          {!parseInt(watch('blockCount')) ? null : (
+            <View style={styles.row}>
+              <View style={styles.half}>
                 <StitchInput
-                  key={i}
-                  label={`Block ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i]} Size`}
-                  value={size}
-                  onChangeText={(val) => {
-                    const updated = [...blockSizes];
-                    updated[i] = val;
-                    setBlockSizes(updated);
-                  }}
-                  placeholder='0'
-                  keyboardType='decimal-pad'
+                  label={t('projects.fields.start_date')}
+                  value={formatAppDate(watch('startDate'))}
+                  onPress={openStartDatePicker}
+                  icon='calendar-outline'
                   style={styles.formField}
                 />
-              ))}
+              </View>
+              <View style={styles.half} />
             </View>
-          ) : null}
+          )}
 
           {showDatePicker ? (
             <Controller
@@ -527,6 +550,8 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: 8 },
   formContent: { gap: 16 },
   formField: { marginBottom: 0 },
+  blockCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border, ...stitchShadows.card },
+  blockCardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
   formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 

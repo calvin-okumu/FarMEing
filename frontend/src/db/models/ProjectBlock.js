@@ -15,6 +15,8 @@ export default class ProjectBlock extends Model {
   @text('name') name;
   @field('land_size') landSize;
   @text('land_unit') landUnit;
+  @text('crop') crop;
+  @field('expected_yield') expectedYield;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;

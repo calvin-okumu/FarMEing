@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 22, // Incremented version
+  version: 23, // Incremented version
   tables: [
     // ── ProjectBlock ──────────────────────────────────────────────────────────
     tableSchema({
@@ -11,6 +11,8 @@ export default appSchema({
         { name: 'name',       type: 'string' },
         { name: 'land_size',  type: 'number', isOptional: true },
         { name: 'land_unit',  type: 'string', isOptional: true },
+        { name: 'crop',       type: 'string', isOptional: true },
+        { name: 'expected_yield', type: 'number', isOptional: true },
         { name: 'is_deleted', type: 'boolean' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
