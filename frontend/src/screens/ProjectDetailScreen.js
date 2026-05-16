@@ -138,6 +138,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [salePayments, setSalePayments] = useState([]);
+  const [blocks, setBlocks] = useState([]);
+  const [selectedBlockId, setSelectedBlockId] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -295,6 +297,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems),
         database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
         database.get('sale_payments').query(Q.where('is_deleted', false)).observe().subscribe(setSalePayments),
+        database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks),
       ];
 
       return () => subs.forEach(s => s.unsubscribe());
@@ -391,29 +394,29 @@ export default function ProjectDetailScreen({ route, navigation }) {
     const base = collectionSearch
       ? budgetItems.filter((item) => [item.name, item.category].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
       : budgetItems;
-    return [...base].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
-  }, [budgetItems, collectionSearch, sortMode]);
+    return [...(selectedBlockId ? base.filter(i => i.blockId === selectedBlockId) : base)].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
+  }, [budgetItems, collectionSearch, sortMode, selectedBlockId]);
 
   const filteredExpenses = useMemo(() => {
     const base = collectionSearch
       ? expenses.filter((item) => [item.category, item.note].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
       : expenses;
-    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.amount || 0) - (a.amount || 0));
-  }, [expenses, collectionSearch, sortMode]);
+    return [...(selectedBlockId ? base.filter(i => i.blockId === selectedBlockId) : base)].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.amount || 0) - (a.amount || 0));
+  }, [expenses, collectionSearch, sortMode, selectedBlockId]);
 
   const filteredWorkEntries = useMemo(() => {
     const base = collectionSearch
       ? workEntries.filter((item) => [item.activity, employeeMap.get(item.employeeId), item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
       : workEntries;
-    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalCost || 0) - (a.totalCost || 0));
-  }, [workEntries, collectionSearch, sortMode, employeeMap]);
+    return [...(selectedBlockId ? base.filter(i => i.blockId === selectedBlockId) : base)].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalCost || 0) - (a.totalCost || 0));
+  }, [workEntries, collectionSearch, sortMode, employeeMap, selectedBlockId]);
 
   const filteredHarvests = useMemo(() => {
     const base = collectionSearch
       ? harvests.filter((item) => [item.crop, item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
       : harvests;
-    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.weight || 0) - (a.weight || 0));
-  }, [harvests, collectionSearch, sortMode]);
+    return [...(selectedBlockId ? base.filter(i => i.blockId === selectedBlockId) : base)].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.weight || 0) - (a.weight || 0));
+  }, [harvests, collectionSearch, sortMode, selectedBlockId]);
 
   const filteredSales = useMemo(() => {
     const base = collectionSearch
@@ -532,6 +535,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
                 </View>
               ) : null}
             </View>
+            {blocks.length > 0 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                <StitchChip label='All Blocks' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
+                {blocks.map(b => <StitchChip key={b.id} label={b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />)}
+              </View>
+            ) : null}
           </View>
         }
       >
