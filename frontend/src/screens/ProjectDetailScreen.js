@@ -538,7 +538,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             {blocks.length > 0 ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
                 <StitchChip label='All Blocks' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
-                {blocks.map(b => <StitchChip key={b.id} label={b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />)}
+                {blocks.map(b => <StitchChip key={b.id} label={b.landSize ? `${b.name} (${b.landSize} ${b.landUnit || 'acres'})` : b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />)}
               </View>
             ) : null}
           </View>
