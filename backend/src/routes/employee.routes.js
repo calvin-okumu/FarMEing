@@ -1,5 +1,7 @@
 const { Router } = require('express');
 const { authenticate } = require('../middleware/auth.middleware');
+const { validateRequest } = require('../middleware/validate.middleware');
+const { createEmployeeSchema, updateEmployeeSchema } = require('../validators/employee.validator');
 const {
   createEmployee,
   listEmployees,
@@ -12,10 +14,10 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post  ('/',              createEmployee);       // POST   /employees
-router.get   ('/',              listEmployees);        // GET    /employees
-router.get   ('/:id/balance',   getEmployeeBalance);   // GET    /employees/:id/balance  (before /:id)
-router.put   ('/:id',           updateEmployee);       // PUT    /employees/:id
-router.delete('/:id',           deleteEmployee);       // DELETE /employees/:id
+router.post('/', validateRequest(createEmployeeSchema), createEmployee);
+router.get('/', listEmployees);
+router.get('/:id/balance', getEmployeeBalance);
+router.put('/:id', validateRequest(updateEmployeeSchema), updateEmployee);
+router.delete('/:id', deleteEmployee);
 
 module.exports = router;

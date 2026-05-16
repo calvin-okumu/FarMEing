@@ -1,5 +1,10 @@
 {
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
   "dependencies": {
+
     "eas-cli": "^18.4.0",
     "expo": "^55.0.15"
   }

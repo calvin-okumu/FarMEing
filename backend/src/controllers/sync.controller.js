@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 
 const tableMap = {
+  seasons: 'season',
   farm_projects: 'farmProject',
   budget_items: 'budgetItem',
   expenses: 'expense',
@@ -17,6 +18,7 @@ const tableMap = {
 
 // Order matters for push to avoid foreign key violations
 const SYNC_ORDER = [
+  'seasons',
   'payees',
   'farm_projects',
   'employees',
@@ -32,7 +34,8 @@ const SYNC_ORDER = [
 ];
 
 // Models that have a direct userId field
-const modelsWithDirectUserId = ['farmProject', 'employee', 'payee'];
+const modelsWithDirectUserId = ['farmProject', 'employee', 'payee', 'season'];
+
 
 // Mapping of Prisma fields (camelCase) to Watermelon fields (snake_case)
 const fieldMapping = {
@@ -164,192 +167,228 @@ exports.pull = async (req, res) => {
     // 1. Get all project IDs this user has access to
     const accessibleProjectIds = await getAccessibleProjectIdsForUser(req.user.id);
 
-    for (const [watermelonTable, prismaModel] of Object.entries(tableMap)) {
-      try {
-        let where = {
-          updatedAt: { gt: lastPulledAtDate },
-        };
+    // 2. Fetch changes for all tables in parallel
+    const tablePromises = Object.entries(tableMap).map(async ([watermelonTable, prismaModel]) => {
+      let where = {
+        updatedAt: { gt: lastPulledAtDate },
+      };
 
-        // Apply security scoping using the pre-fetched IDs
-        if (prismaModel === 'user') {
-          where.id = req.user.id;
-        } else if (prismaModel === 'employee') {
-          where.OR = [
-            { userId: req.user.id },
-            { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
-          ];
-        } else if (prismaModel === 'payee') {
-          where.OR = [
-            { userId: req.user.id },
-            { expenses: { some: { projectId: { in: accessibleProjectIds } } } },
-            { inventoryItems: { some: { projectId: { in: accessibleProjectIds } } } }
-          ];
-        } else if (prismaModel === 'farmProject') {
-          where.id = { in: accessibleProjectIds };
-        } else {
-          // All other models are directly linked to a project
-          if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
-            where.projectId = { in: accessibleProjectIds };
-          } else if (prismaModel === 'salePayment') {
-            where.sale = { projectId: { in: accessibleProjectIds } };
-          } else if (prismaModel === 'payment') {
-            where.employee = { 
-              OR: [
-                { userId: req.user.id },
-                { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
-              ]
-            };
-          } else if (prismaModel === 'workEntry') {
-            where.OR = [
-              { projectId: { in: accessibleProjectIds } },
-              { employee: { userId: req.user.id } }
-            ];
-          }
+      // Apply security scoping
+      if (prismaModel === 'user' || prismaModel === 'season') {
+        where.id = req.user.id;
+        if (prismaModel === 'season') {
+          where = { userId: req.user.id, updatedAt: { gt: lastPulledAtDate } };
         }
-
-        const records = await prisma[prismaModel].findMany({ where });
-
-        const created = [];
-        const updated = [];
-        const deleted = [];
-
-        records.forEach(record => {
-          if (record.isDeleted) {
-            deleted.push(record.id);
-          } else if (record.createdAt > lastPulledAtDate) {
-            created.push(toWatermelon(record));
-          } else {
-            updated.push(toWatermelon(record));
-          }
-        });
-
-        changes[watermelonTable] = { created, updated, deleted };
-      } catch (tableError) {
-        console.error(`[sync] Pull failed for table ${watermelonTable} (${prismaModel}):`, tableError.message);
-        throw tableError;
+      } else if (prismaModel === 'employee') {
+        where.OR = [
+          { userId: req.user.id },
+          { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
+        ];
+      } else if (prismaModel === 'payee') {
+        where.OR = [
+          { userId: req.user.id },
+          { expenses: { some: { projectId: { in: accessibleProjectIds } } } },
+          { inventoryItems: { some: { projectId: { in: accessibleProjectIds } } } }
+        ];
+      } else if (prismaModel === 'farmProject') {
+        where.id = { in: accessibleProjectIds };
+      } else {
+        // All other models are directly linked to a project
+        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+          where.projectId = { in: accessibleProjectIds };
+        } else if (prismaModel === 'salePayment') {
+          where.sale = { projectId: { in: accessibleProjectIds } };
+        } else if (prismaModel === 'payment') {
+          where.employee = { 
+            OR: [
+              { userId: req.user.id },
+              { assignments: { some: { projectId: { in: accessibleProjectIds } } } }
+            ]
+          };
+        } else if (prismaModel === 'workEntry') {
+          where.OR = [
+            { projectId: { in: accessibleProjectIds } },
+            { employee: { userId: req.user.id } }
+          ];
+        }
       }
-    }
+
+      const records = await prisma[prismaModel].findMany({ where });
+
+      const created = [];
+      const updated = [];
+      const deleted = [];
+
+      records.forEach(record => {
+        if (record.isDeleted) {
+          deleted.push(record.id);
+        } else if (record.createdAt > lastPulledAtDate) {
+          created.push(toWatermelon(record));
+        } else {
+          updated.push(toWatermelon(record));
+        }
+      });
+
+      return { watermelonTable, created, updated, deleted };
+    });
+
+    const results = await Promise.all(tablePromises);
+    results.forEach(({ watermelonTable, created, updated, deleted }) => {
+      changes[watermelonTable] = { created, updated, deleted };
+    });
 
     res.json({
       timestamp: currentTimestamp,
       changes,
     });
   } catch (error) {
-    console.error('Pull Error:', error);
+    console.error('[sync] Pull Error:', error);
     res.status(500).json({ error: 'Failed to pull changes' });
   }
 };
+
 
 exports.push = async (req, res) => {
   const { changes } = req.body;
   if (!changes) return res.status(400).json({ error: 'Missing changes' });
 
   console.log(`[sync] Push started for user ${req.user.id}`);
+  const results = {
+    success: true,
+    processed: {},
+    errors: [],
+  };
 
   try {
-    await prisma.$transaction(async (tx) => {
-      for (const watermelonTable of SYNC_ORDER) {
-        const prismaModel = tableMap[watermelonTable];
-        const tableChanges = changes[watermelonTable];
-        if (!tableChanges || (!tableChanges.created.length && !tableChanges.updated.length && !tableChanges.deleted.length)) continue;
+    for (const watermelonTable of SYNC_ORDER) {
+      const prismaModel = tableMap[watermelonTable];
+      const tableChanges = changes[watermelonTable];
+      if (!tableChanges || (!tableChanges.created.length && !tableChanges.updated.length && !tableChanges.deleted.length)) continue;
 
-        console.log(`[sync] Processing ${watermelonTable} (${prismaModel}): +${tableChanges.created.length} ~${tableChanges.updated.length} -${tableChanges.deleted.length}`);
+      console.log(`[sync] Processing ${watermelonTable} (${prismaModel}): +${tableChanges.created.length} ~${tableChanges.updated.length} -${tableChanges.deleted.length}`);
 
-        const { created, updated, deleted } = tableChanges;
+      results.processed[watermelonTable] = { created: 0, updated: 0, deleted: 0, errors: 0 };
+      const { created, updated, deleted } = tableChanges;
 
-        // Handle Created & Updated (Upsert for both to be safe and handle conflicts)
-        const allChanges = [...created, ...updated];
-        for (const record of allChanges) {
-          const data = fromWatermelon(record);
-          
-          // Ensure userId is set for models that have it
-          if (modelsWithDirectUserId.includes(prismaModel)) {
-            data.userId = req.user.id;
-          } else if (prismaModel === 'user') {
-            data.id = req.user.id; // Don't let them change other users' IDs
+      // Handle Created & Updated
+      const allChanges = [...created, ...updated];
+      for (const record of allChanges) {
+        const data = fromWatermelon(record);
+        
+        // Ensure userId is set for models that have it
+        if (modelsWithDirectUserId.includes(prismaModel)) {
+          data.userId = req.user.id;
+        } else if (prismaModel === 'user') {
+          data.id = req.user.id;
+        }
+        
+        try {
+          // Conflict Resolution: Server Delete Wins
+          // If the record exists and isDeleted is true on server, skip the client update
+          const existing = await prisma[prismaModel].findUnique({
+            where: { id: data.id },
+            select: { isDeleted: true }
+          });
+
+          if (existing && existing.isDeleted) {
+            console.warn(`[sync] Skipping update for soft-deleted ${prismaModel} ${data.id}`);
+            continue;
           }
-          
-          // Safety Check: If payeeId is provided, verify it exists. If not, set to null.
+
+          // Safety Check: If payeeId is provided, verify it exists.
           if (data.payeeId) {
-            const payeeExists = await tx.payee.findUnique({ where: { id: data.payeeId } });
+            const payeeExists = await prisma.payee.findUnique({ where: { id: data.payeeId } });
             if (!payeeExists) {
               console.warn(`[sync] Skipping non-existent payeeId ${data.payeeId} for ${prismaModel} ${data.id}`);
               data.payeeId = null;
             }
           }
 
-          try {
-            await tx[prismaModel].upsert({
-              where: { id: data.id },
-              create: data,
-              update: data, // Client Wins
-            });
+          await prisma[prismaModel].upsert({
+            where: { id: data.id },
+            create: data,
+            update: data,
+          });
 
-            if (prismaModel === 'farmProject' && tx.projectAccess) {
-              await tx.projectAccess.upsert({
-                where: {
-                  userId_projectId: {
-                    userId: req.user.id,
-                    projectId: data.id,
-                  },
-                },
-                create: {
+          if (prismaModel === 'farmProject' && prisma.projectAccess) {
+            await prisma.projectAccess.upsert({
+              where: {
+                userId_projectId: {
                   userId: req.user.id,
                   projectId: data.id,
-                  role: 'OWNER',
                 },
-                update: {
-                  role: 'OWNER',
-                },
-              });
-            }
-          } catch (upsertError) {
-            console.error(`[sync] Upsert failed for ${prismaModel} ${data.id}:`, upsertError.message);
-            console.error('[sync] Data payload:', JSON.stringify(data, null, 2));
-            throw upsertError; // Re-throw to fail the transaction
+              },
+              create: {
+                userId: req.user.id,
+                projectId: data.id,
+                role: 'OWNER',
+              },
+              update: {
+                role: 'OWNER',
+              },
+            });
           }
+          
+          if (created.find(c => c.id === record.id)) {
+            results.processed[watermelonTable].created++;
+          } else {
+            results.processed[watermelonTable].updated++;
+          }
+        } catch (recordError) {
+          console.error(`[sync] Record failed for ${prismaModel} ${data.id}:`, recordError.message);
+          results.processed[watermelonTable].errors++;
+          results.errors.push({
+            table: watermelonTable,
+            id: data.id,
+            error: recordError.message,
+          });
+          // Continue to next record instead of failing everything
         }
+      }
 
-        // Handle Deleted
-        if (deleted && deleted.length > 0) {
-          for (const id of deleted) {
-            let where = { id };
-            
-            // Security scoping for deletion
-            if (prismaModel === 'user') {
-              where.id = req.user.id;
-            } else if (prismaModel === 'farmProject') {
-              where.projectAccess = { some: { userId: req.user.id, role: 'OWNER' } };
-            } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
-              where.project = { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } };
-            } else if (prismaModel === 'payment') {
-              where.employee = { userId: req.user.id }; // Simplified: creator can delete
-            } else if (prismaModel === 'employee' || prismaModel === 'payee') {
-              where.userId = req.user.id;
-            }
+      // Handle Deleted
+      if (deleted && deleted.length > 0) {
+        for (const id of deleted) {
+          let where = { id };
+          
+          // Security scoping for deletion
+          if (prismaModel === 'user') {
+            where.id = req.user.id;
+          } else if (prismaModel === 'farmProject') {
+            where.projectAccess = { some: { userId: req.user.id, role: 'OWNER' } };
+          } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+            where.project = { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } };
+          } else if (prismaModel === 'payment') {
+            where.employee = { userId: req.user.id };
+          } else if (prismaModel === 'employee' || prismaModel === 'payee') {
+            where.userId = req.user.id;
+          }
 
-            try {
-              await tx[prismaModel].updateMany({
-                where,
-                data: { isDeleted: true },
-              });
-            } catch (deleteError) {
-              console.error(`[sync] Delete failed for ${prismaModel} ${id}:`, deleteError.message);
-              throw deleteError;
+          try {
+            const updateCount = await prisma[prismaModel].updateMany({
+              where,
+              data: { isDeleted: true },
+            });
+            if (updateCount.count > 0) {
+              results.processed[watermelonTable].deleted++;
             }
+          } catch (deleteError) {
+            console.error(`[sync] Delete failed for ${prismaModel} ${id}:`, deleteError.message);
+            results.errors.push({
+              table: watermelonTable,
+              id,
+              error: deleteError.message,
+            });
           }
         }
       }
-    }, {
-      timeout: 15000 // Increase timeout
-    });
+    }
 
-    console.log('[sync] Push completed successfully');
-    res.status(200).json({ status: 'ok' });
+    console.log('[sync] Push completed');
+    res.status(200).json({ status: 'ok', results });
   } catch (error) {
     console.error('[sync] Global Push Error:', error.message);
-    if (error.code) console.error('[sync] Error Code:', error.code);
-    if (error.meta) console.error('[sync] Error Meta:', JSON.stringify(error.meta));
-    res.status(500).json({ error: 'Failed to push changes' });
+    res.status(500).json({ error: 'Failed to push changes', details: error.message });
   }
 };
+

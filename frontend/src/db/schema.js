@@ -1,9 +1,23 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 19, // Incremented version since schema changed
+  version: 20, // Incremented version
   tables: [
+    // ── Season ───────────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'seasons',
+      columns: [
+        { name: 'user_id',    type: 'string' },
+        { name: 'name',       type: 'string' },
+        { name: 'start_date', type: 'number' },
+        { name: 'end_date',   type: 'number', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
     // ── EmployeeProjectAssignment ───────────────────────────────────────────
+
     tableSchema({
       name: 'employee_project_assignments',
       columns: [

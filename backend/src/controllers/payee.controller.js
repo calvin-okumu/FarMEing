@@ -1,22 +1,6 @@
 const prisma = require('../lib/prisma');
-const { createPayeeSchema, updatePayeeSchema } = require('../validators/payee.validator');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-const validate = (schema, body, res) => {
-  const result = schema.safeParse(body);
-  if (!result.success) {
-    res.status(400).json({
-      error: 'Validation failed',
-      details: result.error.issues.map((e) => ({
-        field: e.path.join('.'),
-        message: e.message,
-      })),
-    });
-    return null;
-  }
-  return result.data;
-};
 
 /**
  * Find a payee that the user is authorized to see.
@@ -24,30 +8,36 @@ const validate = (schema, body, res) => {
  * OR the payee is linked to an expense/inventory item of a project the user has access to.
  */
 const findAccessiblePayee = async (payeeId, userId, res) => {
-  const payee = await prisma.payee.findUnique({ 
-    where: { id: payeeId },
-    include: {
-      expenses: {
-        where: { project: { projectAccess: { some: { userId } } } }
-      },
-      inventoryItems: {
-        where: { project: { projectAccess: { some: { userId } } } }
+  try {
+    const payee = await prisma.payee.findUnique({ 
+      where: { id: payeeId },
+      include: {
+        expenses: {
+          where: { project: { projectAccess: { some: { userId } } } }
+        },
+        inventoryItems: {
+          where: { project: { projectAccess: { some: { userId } } } }
+        }
       }
+    });
+
+    if (!payee || payee.isDeleted) {
+      res.status(404).json({ error: 'Payee not found' });
+      return null;
     }
-  });
 
-  if (!payee || payee.isDeleted) {
-    res.status(404).json({ error: 'Payee not found' });
+    // Check if user is the creator OR has access via linked project
+    if (payee.userId !== userId && payee.expenses.length === 0 && payee.inventoryItems.length === 0) {
+      res.status(403).json({ error: 'Permission denied' });
+      return null;
+    }
+
+    return payee;
+  } catch (error) {
+    console.error('Find Accessible Payee Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
     return null;
   }
-
-  // Check if user is the creator OR has access via linked project
-  if (payee.userId !== userId && payee.expenses.length === 0 && payee.inventoryItems.length === 0) {
-    res.status(403).json({ error: 'Permission denied' });
-    return null;
-  }
-
-  return payee;
 };
 
 /**
@@ -77,22 +67,26 @@ const hasManagerialPayeeAccess = async (payee, userId) => {
 // ── POST /payees ─────────────────────────────────────────────────────────────
 
 const createPayee = async (req, res) => {
-  const data = validate(createPayeeSchema, req.body, res);
-  if (!data) return;
+  const data = req.validatedData;
 
-  const payee = await prisma.payee.create({
-    data: {
-      userId:   req.user.id,
-      name:     data.name,
-      phone:    data.phone    ?? null,
-      email:    data.email    ?? null,
-      address:  data.address  ?? null,
-      category: data.category ?? null,
-      notes:    data.notes    ?? null,
-    },
-  });
+  try {
+    const payee = await prisma.payee.create({
+      data: {
+        userId:   req.user.id,
+        name:     data.name,
+        phone:    data.phone    ?? null,
+        email:    data.email    ?? null,
+        address:  data.address  ?? null,
+        category: data.category ?? null,
+        notes:    data.notes    ?? null,
+      },
+    });
 
-  return res.status(201).json({ payee });
+    return res.status(201).json({ payee });
+  } catch (error) {
+    console.error('Create Payee Error:', error);
+    return res.status(500).json({ error: 'Failed to create payee' });
+  }
 };
 
 // ── GET /payees ──────────────────────────────────────────────────────────────
@@ -100,19 +94,24 @@ const createPayee = async (req, res) => {
 const listPayees = async (req, res) => {
   const includeDeleted = req.query.includeDeleted === 'true';
   
-  const payees = await prisma.payee.findMany({
-    where: {
-      ...(includeDeleted ? {} : { isDeleted: false }),
-      OR: [
-        { userId: req.user.id },
-        { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
-        { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
-      ]
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const payees = await prisma.payee.findMany({
+      where: {
+        ...(includeDeleted ? {} : { isDeleted: false }),
+        OR: [
+          { userId: req.user.id },
+          { expenses: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } },
+          { inventoryItems: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return res.json({ payees });
+    return res.json({ payees });
+  } catch (error) {
+    console.error('List Payees Error:', error);
+    return res.status(500).json({ error: 'Failed to list payees' });
+  }
 };
 
 // ── GET /payees/:id ──────────────────────────────────────────────────────────
@@ -127,40 +126,49 @@ const getPayee = async (req, res) => {
 // ── PUT /payees/:id ──────────────────────────────────────────────────────────
 
 const updatePayee = async (req, res) => {
-  const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
-  if (!payee) return;
+  const data = req.validatedData;
 
-  if (!(await hasManagerialPayeeAccess(payee, req.user.id))) {
-    return res.status(403).json({ error: 'Permission denied: Requires creator OR OWNER/MANAGER role on linked project' });
+  try {
+    const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
+    if (!payee) return;
+
+    if (!(await hasManagerialPayeeAccess(payee, req.user.id))) {
+      return res.status(403).json({ error: 'Permission denied: Requires creator OR OWNER/MANAGER role on linked project' });
+    }
+
+    const updated = await prisma.payee.update({
+      where: { id: req.params.id },
+      data,
+    });
+
+    return res.json({ payee: updated });
+  } catch (error) {
+    console.error('Update Payee Error:', error);
+    return res.status(500).json({ error: 'Failed to update payee' });
   }
-
-  const data = validate(updatePayeeSchema, req.body, res);
-  if (!data) return;
-
-  const updated = await prisma.payee.update({
-    where: { id: req.params.id },
-    data,
-  });
-
-  return res.json({ payee: updated });
 };
 
 // ── DELETE /payees/:id (soft delete) ─────────────────────────────────────────
 
 const deletePayee = async (req, res) => {
-  const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
-  if (!payee) return;
+  try {
+    const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
+    if (!payee) return;
 
-  if (!(await hasManagerialPayeeAccess(payee, req.user.id))) {
-    return res.status(403).json({ error: 'Permission denied: Requires creator OR OWNER/MANAGER role on linked project' });
+    if (!(await hasManagerialPayeeAccess(payee, req.user.id))) {
+      return res.status(403).json({ error: 'Permission denied: Requires creator OR OWNER/MANAGER role on linked project' });
+    }
+
+    await prisma.payee.update({
+      where: { id: req.params.id },
+      data:  { isDeleted: true },
+    });
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Delete Payee Error:', error);
+    return res.status(500).json({ error: 'Failed to delete payee' });
   }
-
-  await prisma.payee.update({
-    where: { id: req.params.id },
-    data:  { isDeleted: true },
-  });
-
-  return res.json({ message: 'Payee deleted' });
 };
 
 // ── GET /payees/:id/summary ──────────────────────────────────────────────────
@@ -169,33 +177,38 @@ const getPayeeSummary = async (req, res) => {
   const payee = await findAccessiblePayee(req.params.id, req.user.id, res);
   if (!payee) return;
 
-  const [expenseAgg, inventoryAgg] = await Promise.all([
-    prisma.expense.aggregate({
-      where: { payeeId: req.params.id, isDeleted: false },
-      _sum:  { amount: true },
-    }),
-    prisma.inventoryItem.aggregate({
-      where: { payeeId: req.params.id, isDeleted: false },
-      _sum:  { totalCost: true },
-    }),
-  ]);
+  try {
+    const [expenseAgg, inventoryAgg] = await Promise.all([
+      prisma.expense.aggregate({
+        where: { payeeId: req.params.id, isDeleted: false },
+        _sum:  { amount: true },
+      }),
+      prisma.inventoryItem.aggregate({
+        where: { payeeId: req.params.id, isDeleted: false },
+        _sum:  { totalCost: true },
+      }),
+    ]);
 
-  const totalSpentExpenses = parseFloat((expenseAgg._sum.amount ?? 0).toFixed(2));
-  const totalSpentInventory = parseFloat((inventoryAgg._sum.totalCost ?? 0).toFixed(2));
-  const totalSpent = parseFloat((totalSpentExpenses + totalSpentInventory).toFixed(2));
+    const totalSpentExpenses = parseFloat((expenseAgg._sum.amount ?? 0).toFixed(2));
+    const totalSpentInventory = parseFloat((inventoryAgg._sum.totalCost ?? 0).toFixed(2));
+    const totalSpent = parseFloat((totalSpentExpenses + totalSpentInventory).toFixed(2));
 
-  return res.json({
-    payee: {
-      id:       payee.id,
-      name:     payee.name,
-      category: payee.category,
-    },
-    summary: {
-      totalSpentExpenses,
-      totalSpentInventory,
-      totalSpent,
-    },
-  });
+    return res.json({
+      payee: {
+        id:       payee.id,
+        name:     payee.name,
+        category: payee.category,
+      },
+      summary: {
+        totalSpentExpenses,
+        totalSpentInventory,
+        totalSpent,
+      },
+    });
+  } catch (error) {
+    console.error('Get Payee Summary Error:', error);
+    return res.status(500).json({ error: 'Failed to get payee summary' });
+  }
 };
 
 module.exports = {

@@ -187,5 +187,23 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 20,
+      steps: [
+        createTable({
+          name: 'seasons',
+          columns: [
+            { name: 'user_id',    type: 'string' },
+            { name: 'name',       type: 'string' },
+            { name: 'start_date', type: 'number' },
+            { name: 'end_date',   type: 'number', isOptional: true },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
   ],
 });
+

@@ -2,6 +2,27 @@ const prisma = require('./prisma');
 
 const OWNER_ROLE = 'OWNER';
 
+// Shared select shape (no sensitive fields, no deleted children)
+const PROJECT_SELECT = {
+  id: true,
+  name: true,
+  crop: true,
+  landSize: true,
+  landUnit: true,
+  startDate: true,
+  endDate: true,
+  expectedYield: true,
+  status: true,
+  notes: true,
+  contractUrl: true,
+  isDeleted: true,
+  createdAt: true,
+  updatedAt: true,
+  projectAccess: true,
+  userId: true,
+  season: { select: { id: true, name: true } },
+};
+
 const ensureOwnerAccess = async (projectId, userId) => {
   if (!prisma.projectAccess) {
     return null;
@@ -36,7 +57,7 @@ const checkProjectAccess = async (projectId, userId, allowedRoles = []) => {
   const access = prisma.projectAccess
     ? await prisma.projectAccess.findFirst({
         where: { projectId, userId },
-        include: { project: true }
+        include: { project: { select: PROJECT_SELECT } }
       })
     : null;
 
@@ -48,7 +69,10 @@ const checkProjectAccess = async (projectId, userId, allowedRoles = []) => {
     return { hasAccess: true, role: access.role, project: access.project };
   }
 
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
+  const project = await prisma.farmProject.findUnique({ 
+    where: { id: projectId },
+    select: PROJECT_SELECT
+  });
 
   if (!project || project.isDeleted || project.userId !== userId) {
     return { hasAccess: false, role: null, project: null };
@@ -86,4 +110,6 @@ const verifyProjectAccess = async (projectId, userId, res, allowedRoles = []) =>
 module.exports = {
   checkProjectAccess,
   verifyProjectAccess,
+  PROJECT_SELECT,
 };
+
