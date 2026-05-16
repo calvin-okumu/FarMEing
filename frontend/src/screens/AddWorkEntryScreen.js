@@ -55,6 +55,7 @@ const DEFAULT_FORM = {
   frequency: 'weekly',
   notes: '',
   photo: null,
+  blockId: '',
 };
 
 export default function AddWorkEntryScreen({ route, navigation }) {
@@ -106,9 +107,18 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         frequency: item.frequency?.toLowerCase() || 'weekly',
         notes: item.notes || '',
         photo: item.imageUrl || null,
+        blockId: item.blockId || '',
       });
     }).catch(() => {});
   }, [itemId, reset]);
+
+  const [blocks, setBlocks] = useState([]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const sub = database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks);
+    return () => sub.unsubscribe();
+  }, [projectId]);
 
   const total = (parseFloat(formData.daysWorked) || 0) * (parseFloat(formData.ratePerDay) || 0);
 
@@ -168,6 +178,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             draft.isRecurring = data.isRecurring;
             draft.frequency = data.isRecurring ? data.frequency.toUpperCase() : null;
             draft.notes = data.notes.trim();
+            draft.blockId = data.blockId || null;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -187,6 +198,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             record.isRecurring = data.isRecurring;
             record.frequency = data.isRecurring ? data.frequency.toUpperCase() : null;
             record.notes = data.notes.trim();
+            record.blockId = data.blockId || null;
             record.isPaid = false;
             record.isDeleted = false;
           });
@@ -257,6 +269,13 @@ export default function AddWorkEntryScreen({ route, navigation }) {
             placeholder={t('labor.specify_placeholder', { defaultValue: 'e.g. Pruning' })}
           />
         )}
+
+        {blocks.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            <StitchChip label='Overall' active={!formData.blockId} onPress={() => setValue('blockId', '')} />
+            {blocks.map(b => <StitchChip key={b.id} label={b.name} active={formData.blockId === b.id} onPress={() => setValue('blockId', b.id)} />)}
+          </View>
+        ) : null}
 
         <StitchSectionTitle>{t('labor.employee')}</StitchSectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.employeeRow}>

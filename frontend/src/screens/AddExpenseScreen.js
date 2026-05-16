@@ -60,6 +60,14 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [blockId, setBlockId] = useState('');
+
+  useEffect(() => {
+    if (!projectId) return;
+    const sub = database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks);
+    return () => sub.unsubscribe();
+  }, [projectId]);
   const [payees, setPayees] = useState([]);
 
   useEffect(() => {
@@ -89,6 +97,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       setPayee(item.payee || '');
       setPayeeId(item.payeeId || null);
       setPhoto(item.receiptUrl || null);
+      setBlockId(item.blockId || '');
     }).catch(() => {});
   }, [itemId]);
 
@@ -147,6 +156,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.receiptUrl = photo || '';
             draft.payee = payee.trim();
             draft.payeeId = payeeId;
+            draft.blockId = blockId || null;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -164,6 +174,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             record.receiptUrl = photo || '';
             record.payee = payee.trim();
             record.payeeId = payeeId;
+            record.blockId = blockId || null;
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -244,6 +255,13 @@ export default function AddExpenseScreen({ route, navigation }) {
             placeholder={t('expenses.specify_placeholder', { defaultValue: 'e.g. Custom tools' })}
           />
         )}
+
+        {blocks.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
+            {blocks.map(b => <StitchChip key={b.id} label={b.name} active={blockId === b.id} onPress={() => setBlockId(b.id)} />)}
+          </View>
+        ) : null}
 
         <StitchInput
           label={t('common.date')}

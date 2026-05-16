@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
@@ -40,6 +41,14 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const [unitPrice, setUnitPrice] = useState('');
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [blockId, setBlockId] = useState('');
+
+  useEffect(() => {
+    if (!projectId) return;
+    const sub = database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks);
+    return () => sub.unsubscribe();
+  }, [projectId]);
 
   useEffect(() => {
     if (!itemId) return;
@@ -55,6 +64,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       setQuantity(String(item.quantity ?? ''));
       setUnit(item.unit || 'kg');
       setUnitPrice(String(item.unitPrice ?? ''));
+      setBlockId(item.blockId || '');
     }).catch(() => {});
   }, [itemId]);
 
@@ -87,6 +97,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             draft.quantity = parseFloat(quantity);
             draft.unit = unit.trim();
             draft.unitPrice = parseFloat(unitPrice);
+            draft.blockId = blockId || null;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -99,6 +110,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             record.quantity = parseFloat(quantity);
             record.unit = unit.trim();
             record.unitPrice = parseFloat(unitPrice);
+            record.blockId = blockId || null;
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -151,6 +163,13 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             placeholder={t('budget.specify_placeholder', { defaultValue: 'e.g. Custom category' })}
           />
         )}
+
+        {blocks.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
+            {blocks.map(b => <StitchChip key={b.id} label={b.name} active={blockId === b.id} onPress={() => setBlockId(b.id)} />)}
+          </View>
+        ) : null}
 
         <StitchInput
           label={t('budget.fields.name')}
