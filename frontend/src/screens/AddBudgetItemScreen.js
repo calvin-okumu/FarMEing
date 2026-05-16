@@ -15,7 +15,7 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { updateLocalModel } from '../utils/resourceMutations';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import {
   StitchChip,
   StitchInput,
@@ -214,16 +214,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
   totalCard: {
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
-    padding: stitchTheme.spacing.md,
+    ...stitchStyles.collectionCard,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...stitchShadows.soft,
+    paddingVertical: 16,
   },
-  totalLabel: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800' },
-  totalValue: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '900' },
+  totalLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  totalValue: { ...stitchTheme.typography.metricValue, color: stitchTheme.colors.primaryContainer },
   button: { marginTop: stitchTheme.spacing.sm },
   loader: { marginTop: stitchTheme.spacing.sm },
 });
+

@@ -7,7 +7,7 @@ import { database } from '../db';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import useSettingsStore from '../store/useSettingsStore';
@@ -16,6 +16,7 @@ const colors = stitchTheme.colors;
 const spacing = stitchTheme.spacing;
 const radius = stitchTheme.radius;
 const type = stitchTheme.typography;
+
 
 const RESOURCE_GROUPS = [
     { key: 'financial', label: 'Financial', cards: [
@@ -412,73 +413,58 @@ const styles = StyleSheet.create({
     metricBlock: {
         flex: 1,
         borderRadius: radius.md,
-        paddingVertical: spacing.sm + 2,
-        paddingHorizontal: spacing.sm + 2,
+        padding: 14,
         backgroundColor: colors.surfaceInset,
     },
     metricBlockReversed: { backgroundColor: `${colors.primary}10` },
     metricBlockTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
     metricBlockOrb: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-    metricBlockLabel: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, fontWeight: type.caption.fontWeight, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.7 },
-    metricBlockValue: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text, letterSpacing: -0.3 },
+    metricBlockLabel: { ...type.eyebrow, color: colors.textMuted },
+    metricBlockValue: { ...type.metricValue, color: colors.text, marginTop: 2 },
     metricBlockNote: { marginTop: 1, fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, color: colors.textMuted, fontWeight: type.caption.fontWeight },
 
   miniStat: {
     flex: 1,
     borderRadius: radius.md,
-    padding: spacing.sm + 2,
+    padding: 14,
     backgroundColor: colors.surfaceInset,
   },
   miniStatTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.xs, flexWrap: 'wrap' },
   miniStatOrb: { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  miniStatLabel: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, fontWeight: type.caption.fontWeight, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 },
-  miniStatValue: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text },
+  miniStatLabel: { ...type.eyebrow, color: colors.textMuted, flex: 1 },
+  miniStatValue: { ...type.metricValue, fontSize: 16, color: colors.text },
 
     sectionSpacing: { marginTop: spacing.md },
     resourcePinned: {
+        ...stitchStyles.collectionCard,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginBottom: spacing.sm,
-        backgroundColor: colors.surfaceHighlight,
-        borderRadius: radius.lg,
-        paddingVertical: spacing.sm + 2,
-        paddingHorizontal: spacing.sm + 2,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.55)',
-        ...stitchShadows.card,
+        paddingVertical: 14,
     },
     resourcePinnedOrb: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-    resourcePinnedTitle: { flex: 1, fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text },
+    resourcePinnedTitle: { flex: 1, ...type.cardTitle, color: colors.text },
     viewAllRow: {
+        ...stitchStyles.collectionCard,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginBottom: spacing.sm,
-        paddingVertical: spacing.sm,
-        borderRadius: radius.lg,
-        backgroundColor: colors.surfaceHighlight,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.55)',
-        ...stitchShadows.card,
+        paddingVertical: 14,
     },
-    viewAllText: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.accentBrown },
-    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    viewAllText: { ...type.cardTitle, fontSize: 15, color: colors.accentBrown },
+    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
     resourceTile: {
-        backgroundColor: colors.surfaceHighlight,
-        width: '48.5%',
-        borderRadius: radius.lg,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.sm + 2,
+        ...stitchStyles.collectionCard,
+        width: '48.2%',
         alignItems: 'center',
         gap: spacing.sm,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
-        ...stitchShadows.card,
+        paddingVertical: spacing.md,
+        paddingLeft: 14,
     },
     resourceTileOrb: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    resourceTileTitle: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, fontWeight: type.caption.fontWeight, color: colors.text, textAlign: 'center' },
+    resourceTileTitle: { ...type.cardMeta, color: colors.text, textAlign: 'center' },
+
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
     modalSheet: { backgroundColor: colors.backgroundAccent, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '78%' },

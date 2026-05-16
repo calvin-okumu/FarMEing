@@ -16,10 +16,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchBadge, StitchChip, StitchDatePicker, StitchInput, StitchSearchBar, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+
 
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -433,45 +434,45 @@ const styles = StyleSheet.create({
   snapshotCard: { marginBottom: stitchTheme.spacing.xs },
   snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
   snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  snapshotEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  snapshotEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
   snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
   snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
   snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  snapshotMetricValue: { fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.4 },
-  snapshotMetricLabel: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 },
-  card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
-  cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  snapshotMetricValue: { ...stitchTheme.typography.metricValue, fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text },
+  snapshotMetricLabel: { marginTop: 3, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  card: { ...stitchStyles.collectionCard, paddingHorizontal: 0, paddingLeft: 0 },
+  cardAccent: { ...stitchStyles.cardAccent },
   cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },
   cardAccentAmber: { backgroundColor: stitchTheme.colors.accentBrown },
-  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 18, paddingRight: 14 },
   cardIconWrap: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   cardAvatarForest: { backgroundColor: 'rgba(26,61,43,0.12)' },
   cardAvatarWarm: { backgroundColor: 'rgba(201,125,46,0.14)' },
   cardTitleWrap: { flex: 1, minWidth: 0 },
-  statusBadge: { marginLeft: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
-  statusBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, letterSpacing: 0.8 },
-  cardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, letterSpacing: -0.3 },
-  cardCrop: { marginTop: 2, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.line, marginVertical: 12, marginHorizontal: 4 },
-  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, paddingLeft: 8, marginBottom: 12 },
+  statusBadge: { borderRadius: stitchTheme.radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
+  statusBadgeText: { ...stitchTheme.typography.caption, letterSpacing: 0.8 },
+  cardTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  cardCrop: { marginTop: 2, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
+  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.line, marginVertical: 12, marginHorizontal: 18 },
+  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, paddingLeft: 18, paddingRight: 14, marginBottom: 12 },
   cardInsightPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
-  cardInsightText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
+  cardInsightText: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textSoft },
   cardSyncPill: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.successSurface },
   cardSyncPillWarning: { backgroundColor: stitchTheme.colors.warningSurface },
   cardSyncDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: stitchTheme.colors.primaryDim },
   cardSyncDotWarning: { backgroundColor: stitchTheme.colors.accentBrown },
-  cardSyncText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
+  cardSyncText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.primaryContainer, letterSpacing: 0.4 },
   cardSyncTextWarning: { color: stitchTheme.colors.accentBrown },
-  cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingLeft: 8, gap: stitchTheme.spacing.sm },
+  cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingLeft: 18, paddingRight: 14, gap: stitchTheme.spacing.sm },
   metaStack: { flex: 1 },
-  metaLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  metaValue: { marginTop: 3, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  metaLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  metaValue: { marginTop: 3, ...stitchTheme.typography.cardDescription, fontWeight: '800', color: stitchTheme.colors.text },
   cardActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   cardActionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
   cardActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
-  cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
-  cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
+  cardActionText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.primaryContainer },
+  cardDeleteText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentRed },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
   statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: 8 },
@@ -479,4 +480,5 @@ const styles = StyleSheet.create({
   formField: { marginBottom: 0 },
   formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
+
 });

@@ -20,7 +20,7 @@ import { syncAll } from '../services/syncService';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
@@ -379,28 +379,29 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  amountCard: { padding: stitchTheme.spacing.lg, borderRadius: stitchTheme.radius.card },
+  amountCard: { ...stitchStyles.collectionCard, paddingVertical: stitchTheme.spacing.lg },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
-  amountCurrency: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  amountCurrency: { ...stitchTheme.typography.metricValue, color: stitchTheme.colors.primary },
   amountInput: { flex: 1, fontSize: 42, lineHeight: 46, fontWeight: '300', color: stitchTheme.colors.text, paddingVertical: 0 },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
-  categoryTile: { width: '47.5%', minHeight: 68, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
-  categoryTileActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, ...stitchShadows.soft },
-  categoryTileText: { flex: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
-  uploadCard: { marginTop: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.md, ...stitchShadows.soft },
+  categoryTile: { ...stitchStyles.collectionCard, width: '48%', minHeight: 68, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: 0 },
+  categoryTileActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderColor: stitchTheme.colors.primaryDim },
+  categoryTileText: { flex: 1, ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.text },
+  uploadCard: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.xs, gap: stitchTheme.spacing.md },
   uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   uploadIconWrap: { width: 44, height: 44, borderRadius: 16, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
-  uploadTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  uploadSubtitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
+  uploadTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
+  uploadSubtitle: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted, marginTop: 2 },
   uploadActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   uploadButton: { flex: 1, minHeight: 40, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
-  uploadButtonText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  uploadButtonText: { color: stitchTheme.colors.primary, fontWeight: '800', ...stitchTheme.typography.cardMeta },
   photoWrap: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card, overflow: 'hidden', position: 'relative' },
   photo: { width: '100%', height: 160, resizeMode: 'cover' },
   removePhoto: { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   inlineRow: { marginTop: stitchTheme.spacing.xs },
   pillToggle: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
-  smallPillText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, textAlign: 'center' },
+  smallPillText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown, textAlign: 'center' },
+
   switchTrack: { width: 54, height: 30, borderRadius: 18, backgroundColor: stitchTheme.colors.surfaceMuted, padding: 2 },
   switchTrackActive: { backgroundColor: stitchTheme.colors.primarySoft },
   switchKnob: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff' },

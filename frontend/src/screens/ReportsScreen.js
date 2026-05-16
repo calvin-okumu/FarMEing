@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchChip, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
@@ -400,7 +400,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.14)',
     borderColor: 'rgba(255,255,255,0.24)',
     borderWidth: 1,
-    ...stitchShadows.soft,
   },
   heroPillSecondary: {
     backgroundColor: 'rgba(183,228,199,0.22)',
@@ -411,8 +410,9 @@ const styles = StyleSheet.create({
     marginTop: stitchTheme.spacing.lg,
   },
   chartCard: {
+    ...stitchStyles.collectionCard,
     marginBottom: stitchTheme.spacing.xs,
-    marginHorizontal: 0,
+    paddingHorizontal: 0,
   },
   chartCardContent: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
@@ -420,107 +420,76 @@ const styles = StyleSheet.create({
     gap: stitchTheme.spacing.sm,
   },
   chartTitle: {
-    fontSize: 12,
-    fontWeight: '900',
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
     marginBottom: 10,
+    textAlign: 'center',
   },
   perfScroll: {
     gap: 12,
     paddingVertical: 4,
   },
   perfCard: {
+    ...stitchStyles.collectionCard,
     width: 240,
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
-    padding: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    ...stitchShadows.card,
+    paddingHorizontal: 0,
+    paddingLeft: 0,
+    marginBottom: 0,
   },
   perfAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
+    ...stitchStyles.cardAccent,
   },
   perfHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    paddingLeft: 18,
+    paddingRight: 14,
   },
   perfName: {
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+    ...stitchTheme.typography.cardTitle,
     color: stitchTheme.colors.text,
   },
   perfCrop: {
-    fontSize: stitchTheme.typography.caption.fontSize,
-    fontWeight: stitchTheme.typography.caption.fontWeight,
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.textMuted,
     marginTop: 2,
-    textTransform: 'uppercase',
   },
   perfStatus: {
     alignItems: 'flex-end',
   },
   perfProfit: {
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+    ...stitchTheme.typography.cardTitle,
   },
   perfLabel: {
-    fontSize: stitchTheme.typography.caption.fontSize,
-    fontWeight: stitchTheme.typography.caption.fontWeight,
-    color: stitchTheme.colors.text,
-  },
-  perfCrop: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.textMuted,
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  perfStatus: {
-    alignItems: 'flex-end',
-  },
-  perfProfit: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  perfLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: stitchTheme.colors.textMuted,
-    textTransform: 'uppercase',
     marginTop: 1,
   },
   perfDivider: {
     height: 1,
     backgroundColor: stitchTheme.colors.line,
     marginVertical: 12,
+    marginHorizontal: 18,
     opacity: 0.6,
   },
   perfFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingLeft: 18,
+    paddingRight: 14,
   },
   perfStat: {
     flex: 1,
   },
   perfStatLabel: {
-    fontSize: stitchTheme.typography.caption.fontSize,
-    fontWeight: stitchTheme.typography.caption.fontWeight,
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.textMuted,
-    textTransform: 'uppercase',
     marginBottom: 2,
   },
   perfStatValue: {
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+    ...stitchTheme.typography.cardMeta,
+    fontWeight: '800',
     color: stitchTheme.colors.text,
   },
   breakdownRow: {
@@ -528,6 +497,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 6,
+    width: '100%',
+    paddingHorizontal: 22,
   },
   breakdownMeta: {
     flexDirection: 'row',
@@ -540,12 +511,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   breakdownLabel: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...stitchTheme.typography.cardMeta,
     color: stitchTheme.colors.textSoft,
   },
   breakdownValue: {
-    fontSize: 13,
+    ...stitchTheme.typography.cardMeta,
     fontWeight: '800',
     color: stitchTheme.colors.text,
   },
@@ -553,16 +523,15 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: stitchTheme.colors.line,
     marginVertical: 10,
+    width: '90%',
   },
   totalLabel: {
-    fontSize: 14,
-    fontWeight: '900',
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.primary,
-    textTransform: 'uppercase',
   },
   totalValue: {
+    ...stitchTheme.typography.cardTitle,
     fontSize: 16,
-    fontWeight: '900',
     color: stitchTheme.colors.primary,
   },
   laborStatsRow: {
@@ -580,15 +549,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(17,42,30,0.06)',
   },
   workerStatName: {
-    fontSize: 11,
-    fontWeight: '800',
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.textMuted,
-    textTransform: 'uppercase',
   },
   workerStatValue: {
     marginTop: 4,
+    ...stitchTheme.typography.cardTitle,
     fontSize: 15,
-    fontWeight: '900',
     color: stitchTheme.colors.primary,
   },
   activityGrid: {
@@ -609,14 +576,12 @@ const styles = StyleSheet.create({
     ...stitchShadows.soft,
   },
   activityStatLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...stitchTheme.typography.cardMeta,
     color: stitchTheme.colors.text,
     textTransform: 'capitalize',
   },
   activityStatValue: {
-    fontSize: 12,
-    fontWeight: '900',
+    ...stitchTheme.typography.eyebrow,
     color: stitchTheme.colors.accentBrown,
   },
   emptyText: {
@@ -634,3 +599,4 @@ const styles = StyleSheet.create({
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 11, fontWeight: '600', color: stitchTheme.colors.textMuted },
 });
+

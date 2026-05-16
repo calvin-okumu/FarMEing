@@ -21,7 +21,7 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import StatusBanner from '../components/ui/StatusBanner';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
@@ -493,40 +493,37 @@ const styles = StyleSheet.create({
   snapshotCard: { marginBottom: stitchTheme.spacing.xs },
   snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
   snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  snapshotEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  snapshotEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
   snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
   snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
   snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  snapshotMetricValue: { fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.4 },
-  snapshotMetricLabel: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 },
-  formSummaryCard: { marginBottom: stitchTheme.spacing.xs },
+  snapshotMetricValue: { ...stitchTheme.typography.metricValue, fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text },
+  snapshotMetricLabel: { marginTop: 3, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  formSummaryCard: { ...stitchStyles.collectionCard, marginBottom: stitchTheme.spacing.xs },
   formSummaryContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, gap: stitchTheme.spacing.md },
   summaryTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  summaryEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  summaryTitle: { marginTop: 4, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  summaryEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  summaryTitle: { marginTop: 4, ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
   summaryModeBadge: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.successSurface },
   summaryModeBadgeWarm: { backgroundColor: stitchTheme.colors.warningSurface },
-  summaryModeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  summaryModeText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.primaryContainer, letterSpacing: 0.6 },
   summaryModeTextWarm: { color: stitchTheme.colors.accentBrown },
   summaryMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
   summaryPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
-  summaryPillText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
+  summaryPillText: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textSoft },
   summaryGraph: { height: 68, marginTop: 2 },
   summaryFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: stitchTheme.spacing.sm },
-  summaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.7 },
-  summaryValue: { marginTop: 4, fontSize: 24, lineHeight: 28, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.5 },
+  summaryLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  summaryValue: { marginTop: 4, ...stitchTheme.typography.metricValue, fontSize: 24, lineHeight: 28, color: stitchTheme.colors.text },
   summaryRightBlock: { alignItems: 'flex-end' },
-  summaryValueSmall: { marginTop: 4, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  summaryValueSmall: { marginTop: 4, ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
   formCard: {
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
+    ...stitchStyles.collectionCard,
     padding: stitchTheme.spacing.md,
     gap: stitchTheme.spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.55)',
-    ...stitchShadows.card,
   },
+
   inputShell: {
     minHeight: 50,
     borderRadius: stitchTheme.radius.md,
