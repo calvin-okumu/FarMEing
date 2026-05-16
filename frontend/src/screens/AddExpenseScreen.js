@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
@@ -14,16 +13,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
@@ -41,11 +40,14 @@ const CATEGORIES = [
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
+
+
 export default function AddExpenseScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [category, setCategory] = useState('other');
+  const [otherCategory, setOtherCategory] = useState('');
   const [expenseType, setExpenseType] = useState('OPEX');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
@@ -54,16 +56,30 @@ export default function AddExpenseScreen({ route, navigation }) {
   const [frequency, setFrequency] = useState('monthly');
   const [note, setNote] = useState('');
   const [payee, setPayee] = useState('');
+  const [payeeId, setPayeeId] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [payees, setPayees] = useState([]);
+
+  useEffect(() => {
+    const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
+    return () => sub.unsubscribe();
+  }, []);
 
   const draftId = useMemo(() => `#TRX-${String(date.getTime()).slice(-4)}`, [date]);
 
   useEffect(() => {
     if (!itemId) return;
     database.get('expenses').find(itemId).then((item) => {
-      setCategory(item.category || 'other');
+      const known = CATEGORIES.map(c => c.key);
+      if (known.includes(item.category || 'other')) {
+        setCategory(item.category || 'other');
+        setOtherCategory('');
+      } else {
+        setCategory('other');
+        setOtherCategory(item.category || '');
+      }
       setExpenseType(item.expenseType || 'OPEX');
       setAmount(String(item.amount ?? ''));
       setDate(item.date ? new Date(item.date) : new Date());
@@ -71,6 +87,7 @@ export default function AddExpenseScreen({ route, navigation }) {
       setFrequency(item.frequency?.toLowerCase() || 'monthly');
       setNote(item.note || '');
       setPayee(item.payee || '');
+      setPayeeId(item.payeeId || null);
       setPhoto(item.receiptUrl || null);
     }).catch(() => {});
   }, [itemId]);
@@ -96,11 +113,6 @@ export default function AddExpenseScreen({ route, navigation }) {
     if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
-  const onDateChange = (_event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) setDate(selectedDate);
-  };
-
   const toggleLanguage = async () => {
     const nextLang = language === 'sw' ? 'en' : 'sw';
     await setLanguage(nextLang);
@@ -123,8 +135,9 @@ export default function AddExpenseScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('expenses').find(itemId);
+          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await updateLocalModel(record, (draft) => {
-            draft.category = category;
+            draft.category = effectiveCategory;
             draft.expenseType = expenseType;
             draft.amount = parseFloat(amount);
             draft.date = date.getTime();
@@ -133,13 +146,15 @@ export default function AddExpenseScreen({ route, navigation }) {
             draft.note = note.trim();
             draft.receiptUrl = photo || '';
             draft.payee = payee.trim();
+            draft.payeeId = payeeId;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
+          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await database.get('expenses').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
-            record.category = category;
+            record.category = effectiveCategory;
             record.expenseType = expenseType;
             record.amount = parseFloat(amount);
             record.date = date.getTime();
@@ -148,6 +163,7 @@ export default function AddExpenseScreen({ route, navigation }) {
             record.note = note.trim();
             record.receiptUrl = photo || '';
             record.payee = payee.trim();
+            record.payeeId = payeeId;
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -172,26 +188,23 @@ export default function AddExpenseScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('expenses.entry_eyebrow'),
           title: itemId ? t('expenses.edit_title') : t('expenses.entry_title'),
           subtitle: note || t('settings.brand_short'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('expenses.fields.amount')} value={amount ? `${currency} ${amount}` : `${currency} 0.00`} icon='cash-outline' />
-              <StitchHeroPill label={t('expenses.category_heading')} value={t(`expenses.categories.${category}`)} icon='receipt-outline' />
-            </View>
-          ),
-        }}
+          pills: [
+            { label: t('expenses.fields.amount'), value: amount ? `${currency} ${amount}` : `${currency} 0.00`, icon: 'cash-outline' },
+            { label: t('expenses.category_heading'), value: t(`expenses.categories.${category}`), icon: 'receipt-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
 
         <StitchSurface style={styles.amountCard}>
-          <StitchSectionLabel>{t('expenses.fields.amount')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('expenses.fields.amount')}</StitchSectionTitle>
           <View style={styles.amountRow}>
             <Text style={styles.amountCurrency}>{currency}</Text>
             <TextInput
@@ -205,7 +218,7 @@ export default function AddExpenseScreen({ route, navigation }) {
           </View>
         </StitchSurface>
 
-        <StitchSectionLabel>{t('expenses.category_heading')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('expenses.category_heading')}</StitchSectionTitle>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((item) => {
             const active = category === item.key;
@@ -223,44 +236,60 @@ export default function AddExpenseScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
-        <TouchableOpacity style={styles.field} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
-          <Text style={styles.fieldText}>{formatAppDate(date)}</Text>
-          <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.text} />
-        </TouchableOpacity>
+        {category === 'other' && (
+          <StitchInput
+            label={t('expenses.specify_category', { defaultValue: 'Specify category' })}
+            value={otherCategory}
+            onChangeText={setOtherCategory}
+            placeholder={t('expenses.specify_placeholder', { defaultValue: 'e.g. Custom tools' })}
+          />
+        )}
+
+        <StitchInput
+          label={t('common.date')}
+          value={formatAppDate(date)}
+          onPress={() => setShowDatePicker(true)}
+          icon='calendar-outline'
+        />
 
         {showDatePicker ? (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
+          <StitchDatePicker
+            visible={showDatePicker}
+            date={date}
+            onDateChange={(d) => { setDate(d); setShowDatePicker(false); }}
+            onClose={() => setShowDatePicker(false)}
           />
         ) : null}
 
-        <StitchSectionLabel>{t('expenses.reference_id')}</StitchSectionLabel>
-        <View style={styles.field}>
-          <Text style={styles.fieldMuted}>{draftId}</Text>
-        </View>
-
-        <StitchSectionLabel>{t('expenses.fields.payee', { defaultValue: 'Payee / Vendor' })}</StitchSectionLabel>
-        <TextInput
-          style={styles.inputField}
-          value={payee}
-          onChangeText={setPayee}
-          placeholder={t('expenses.placeholders.payee', { defaultValue: 'e.g. Mark, AgroVet' })}
-          placeholderTextColor="#7a8296"
+        <StitchInput
+          label={t('expenses.reference_id')}
+          value={draftId}
+          editable={false}
         />
 
-        <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
-        <TextInput
-          style={styles.noteField}
+        <StitchPicker
+          label={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+          options={[{ label: t('common.none', { defaultValue: 'None' }), value: null }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
+          selectedValue={payeeId}
+          onSelect={(val) => {
+            if (!val) {
+              setPayee('');
+              setPayeeId(null);
+            } else {
+              setPayee((payees || []).find((p) => p.id === val)?.name || '');
+              setPayeeId(val);
+            }
+          }}
+          searchable
+          placeholder={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+        />
+
+        <StitchInput
+          label={t('common.notes')}
           value={note}
           onChangeText={setNote}
           placeholder={t('expenses.placeholders.note')}
           multiline
-          numberOfLines={5}
-          placeholderTextColor="#7a8296"
         />
 
         <View style={styles.uploadCard}>
@@ -293,7 +322,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         ) : null}
 
         <View style={styles.inlineRow}>
-          <StitchSectionLabel>{t('expenses.fields.type')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('expenses.fields.type')}</StitchSectionTitle>
           <View style={styles.pillToggle}>
             {['OPEX', 'CAPEX'].map((type) => {
               const active = expenseType === type;
@@ -312,7 +341,7 @@ export default function AddExpenseScreen({ route, navigation }) {
         </View>
 
         <View style={styles.inlineRow}>
-          <StitchSectionLabel>{t('common.recurring')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('common.recurring')}</StitchSectionTitle>
           <TouchableOpacity
             style={[styles.switchTrack, isRecurring && styles.switchTrackActive]}
             onPress={() => setIsRecurring((value) => !value)}
@@ -350,7 +379,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   amountCard: { padding: stitchTheme.spacing.lg, borderRadius: stitchTheme.radius.card },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   amountCurrency: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
@@ -359,11 +387,6 @@ const styles = StyleSheet.create({
   categoryTile: { width: '47.5%', minHeight: 68, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   categoryTileActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, ...stitchShadows.soft },
   categoryTileText: { flex: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
-  field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
-  fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
-  fieldMuted: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '600', color: stitchTheme.colors.textMuted },
-  inputField: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  noteField: { minHeight: 132, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
   uploadCard: { marginTop: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.md, ...stitchShadows.soft },
   uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
   uploadIconWrap: { width: 44, height: 44, borderRadius: 16, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },

@@ -63,14 +63,32 @@ Supports **English (en)** and **Kiswahili (sw)**.
 
 ## WatermelonDB Models
 
-### New Models:
+### Models:
+- **FarmProject:** `id`, `userId`, `name`, `crop`, `landSize`, `landUnit`, `startDate`, `endDate`, `expectedYield`, `status`, `contractUrl`, `notes`.
+- **BudgetItem:** `id`, `projectId`, `name`, `category`, `quantity`, `unit`, `unitPrice`, `total`, `notes`.
+- **Expense:** `id`, `projectId`, `category`, `amount`, `date`, `note`, `expenseType`, `isRecurring`, `frequency`, `payee`, `payeeId`, `receiptUrl`.
+- **WorkEntry:** `id`, `projectId`, `employeeId`, `activity`, `date`, `daysWorked`, `ratePerDay`, `totalCost`, `hoursWorked`, `status`, `notes`, `isRecurring`, `frequency`.
 - **Harvest:** `id`, `projectId`, `crop`, `date`, `weight`, `unit`, `quality`, `notes`.
-- **Sale:** `id`, `projectId`, `date`, `customer`, `weightSold`, `unitPrice`, `totalAmount`, `notes`.
+- **Sale:** `id`, `projectId`, `date`, `customer`, `weightSold`, `unitPrice`, `totalAmount`, `paymentStatus`, `balanceDue`, `receiptUrl`, `notes`.
+- **SalePayment:** `id`, `saleId`, `amount`, `date`, `note` — individual payment installments against a sale.
+- **InventoryItem:** `id`, `projectId`, `name`, `category`, `quantity`, `unit`, `unitCost`, `totalCost`, `usedQty`, `notes`.
+- **Payee:** `id`, `name`, `phone`, `email`, `address`, `category`, `notes`.
+- **Payment:** `id`, `employeeId`, `amount`, `date`, `note`.
+- **Employee:** `id`, `name`, `phone`, `role`, `isDeleted`.
+- **EmployeeProjectAssignment:** `id`, `projectId`, `employeeId`.
 
-### Updated Models:
-- **FarmProject:** Added `expectedYield`, `status`.
-- **Expense:** Added `expenseType`, `isRecurring`, `frequency`.
-- **WorkEntry:** Added `hoursWorked`, `status`, `isRecurring`, `frequency`.
+### Associations:
+- **Sale** → `salePayments` (has_many): each sale can have multiple payment installments.
+- **SalePayment** → `sales` (belongs_to): each payment links to its parent sale.
+
+### Payment tracking:
+- `paymentStatus`: `'pending' | 'partial' | 'paid'` (computed from `totalAmount - sum(salePayments.amount)`)
+- `balanceDue`: remaining amount = `totalAmount - totalCollected`
+- `collectedRevenue` / `pendingRevenue`: computed in `computeProjectSummary()` from `balanceDue`
+
+### Sync identity helpers:
+- **FarmProject**, **Employee**, and **Payee** expose `remoteId` from the underlying Watermelon `remote_id` column.
+- Project-scoped API calls should prefer `remoteId` over the local Watermelon `id` when a record has already synced.
 
 ---
 
@@ -80,6 +98,7 @@ The `syncService.js` handles bi-directional synchronization:
 - **Push:** Local changes (with `pending_` IDs) are sent to the server.
 - **Pull:** Latest data is fetched from the server and upserted locally.
 - **ID Resolution:** After a successful push, local `pending_` records are replaced with server-confirmed UUIDs.
+- **Project access recovery:** Sync-created projects now receive owner access rows on the backend during push, which keeps team-management and export endpoints usable after local-first project creation.
 
 ---
 
@@ -87,9 +106,25 @@ The `syncService.js` handles bi-directional synchronization:
 
 ### Projects
 - `ProjectsScreen`: List with "New Project" modal.
-- `ProjectDetailScreen`: Multi-tab view (Budget, Expenses, Labor, Harvest, Sales, Timeline).
-- `AddHarvestScreen`: Form to record crop yields.
-- `AddSaleScreen`: Form to record revenue.
+- `ProjectDetailScreen`: Multi-tab view (Budget, Expenses, Labor, Harvest, Sales, Inventory, Team, Timeline) with sticky tabs, export actions, and member management.
+  - **Sales tab**: Cards show customer, weight, total amount, and balance due. Tapping navigates to edit sale with full payment management.
+  - **Timeline**: Cards use same design as other tabs with colored left accent.
+  - **Hero pills**: Metric pills with currency symbol on label row, value below. Revenue pill shows balance due as note.
+- `AddHarvestScreen`: Form to record crop yields. Includes project picker with crop auto-fill from project.
+- `AddSaleScreen`: Form to record revenue with multi-installment payment tracking.
+  - **Vendor picker**: Select from payees list with free-text fallback.
+  - **Receipt upload**: Camera/Album image upload.
+  - **Payment installments**: Add multiple partial payments via modal (amount + date + note).
+  - **Status**: Auto-computed (`pending` / `partial` / `paid`) from collected vs total.
+
+### Sales & Payment flow:
+- Create a sale with weight, price, and optional initial payment.
+- Add/edit/delete partial payments within the sale edit form.
+- Tap payment row to select, then trash icon to delete.
+- `balanceDue` updates automatically. Revenue pills show collected + pending.
+
+### Reports
+- `ReportsScreen`: Portfolio overview with bar chart (profitability), pie chart (cost allocation), revenue collection chart (total vs collected per project), and harvest by crop pie chart. Includes `ProjectPerformanceCard` for per-project breakdown.
 
 ### Auth
 - `RegisterScreen`: Includes role selection (Admin/Worker).

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
+import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
@@ -24,11 +24,13 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
+import { useObservable } from '../hooks/useWatermelon';
 
 const ACTIVITIES = [
   { key: 'planting', icon: 'leaf-outline' },
@@ -41,57 +43,74 @@ const ACTIVITIES = [
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
+const DEFAULT_FORM = {
+  employeeId: '',
+  activity: 'planting',
+  otherActivity: '',
+  daysWorked: '1',
+  ratePerDay: '',
+  hoursWorked: '8',
+  date: new Date(),
+  isRecurring: false,
+  frequency: 'weekly',
+  notes: '',
+  photo: null,
+};
+
 export default function AddWorkEntryScreen({ route, navigation }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { projectId, itemId } = route.params || {};
-  const { currency, language, setLanguage } = useSettingsStore();
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { currency } = useSettingsStore();
   const [saving, setSaving] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [activity, setActivity] = useState('planting');
-  const [daysWorked, setDaysWorked] = useState('1');
-  const [ratePerDay, setRatePerDay] = useState('');
-  const [hoursWorked, setHoursWorked] = useState('8');
-  const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [frequency, setFrequency] = useState('weekly');
-  const [notes, setNotes] = useState('');
-  const [photo, setPhoto] = useState(null);
   const [banner, setBanner] = useState(null);
 
-  useEffect(() => {
-    const loadEmployees = async () => {
-      try {
-        const rows = await database.get('employees').query(Q.where('is_deleted', false)).fetch();
-        setEmployees(rows);
-      } catch (err) {
-        console.warn('[AddWorkEntry] load employees error:', err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadEmployees();
-  }, []);
+  const { control, handleSubmit, reset, setValue, watch } = useForm({
+    defaultValues: DEFAULT_FORM
+  });
+
+  const formData = watch();
+
+  // Data Subscriptions
+  const employeesQuery = useMemo(() => database.get('employees').query(Q.where('is_deleted', false)), []);
+  const rawEmployees = useObservable(employeesQuery, null);
+
+  const employees = useMemo(() => {
+    if (!rawEmployees) return [];
+    // Prioritize employees assigned to this project
+    return [...rawEmployees].sort((a, b) => {
+      const aMatch = a.projectId === projectId;
+      const bMatch = b.projectId === projectId;
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [rawEmployees, projectId]);
+
+  const isLoading = rawEmployees === null;
 
   useEffect(() => {
-    if (!itemId || !employees.length) return;
+    if (!itemId) return;
     database.get('work_entries').find(itemId).then((item) => {
-      setSelectedEmployee(employees.find((employee) => employee.id === item.employeeId || employee.remoteId === item.employeeId) || null);
-      setActivity((item.activity || 'Planting').toLowerCase());
-      setDaysWorked(String(item.daysWorked ?? '1'));
-      setRatePerDay(String(item.ratePerDay ?? ''));
-      setHoursWorked(String(item.hoursWorked ?? '8'));
-      setDate(item.date ? new Date(item.date) : new Date());
-      setIsRecurring(!!item.isRecurring);
-      setFrequency(item.frequency?.toLowerCase() || 'weekly');
-      setNotes(item.notes || '');
-      setPhoto(item.imageUrl || null);
+      const stored = (item.activity || 'planting').toLowerCase();
+      const known = ACTIVITIES.map(a => a.key);
+      reset({
+        employeeId: item.employeeId,
+        activity: known.includes(stored) ? stored : 'other',
+        otherActivity: known.includes(stored) ? '' : stored,
+        daysWorked: String(item.daysWorked ?? '1'),
+        ratePerDay: String(item.ratePerDay ?? ''),
+        hoursWorked: String(item.hoursWorked ?? '8'),
+        date: item.date ? new Date(item.date) : new Date(),
+        isRecurring: !!item.isRecurring,
+        frequency: item.frequency?.toLowerCase() || 'weekly',
+        notes: item.notes || '',
+        photo: item.imageUrl || null,
+      });
     }).catch(() => {});
-  }, [itemId, employees]);
+  }, [itemId, reset]);
 
-  const total = (parseFloat(daysWorked) || 0) * (parseFloat(ratePerDay) || 0);
+  const total = (parseFloat(formData.daysWorked) || 0) * (parseFloat(formData.ratePerDay) || 0);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -101,42 +120,31 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       allowsEditing: true,
       quality: 0.7,
     });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
+    if (!result.canceled) setValue('photo', result.assets[0].uri);
   };
 
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return;
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
-  };
-
-  const onDateChange = (_event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) setDate(selectedDate);
-  };
-
-  const toggleLanguage = async () => {
-    const nextLang = language === 'sw' ? 'en' : 'sw';
-    await setLanguage(nextLang);
-    await i18n.changeLanguage(nextLang);
+    if (!result.canceled) setValue('photo', result.assets[0].uri);
   };
 
   const adjustHours = (delta) => {
-    const next = Math.max(0, (parseInt(hoursWorked || '0', 10) || 0) + delta);
-    setHoursWorked(String(next));
+    const current = parseInt(formData.hoursWorked || '0', 10) || 0;
+    setValue('hoursWorked', String(Math.max(0, current + delta)));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (data) => {
     if (!itemId && !projectId) {
       Alert.alert(t('common.error'), t('projects.errors.not_found'));
       return;
     }
-    if (!selectedEmployee) {
+    if (!data.employeeId) {
       Alert.alert(t('common.error'), t('labor.errors.employee_required'));
       return;
     }
-    if (!ratePerDay) {
+    if (!data.ratePerDay) {
       Alert.alert(t('common.error'), t('labor.errors.rate_required'));
       return;
     }
@@ -147,43 +155,44 @@ export default function AddWorkEntryScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('work_entries').find(itemId);
+          const effectiveActivity = data.activity === 'other' && data.otherActivity?.trim() ? data.otherActivity.trim() : data.activity;
           await updateLocalModel(record, (draft) => {
-            draft.employeeId = selectedEmployee.id;
-            draft.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
-            draft.date = date.getTime();
-            draft.daysWorked = parseFloat(daysWorked);
-            draft.ratePerDay = parseFloat(ratePerDay);
+            draft.employeeId = data.employeeId;
+            draft.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
+            draft.date = data.date.getTime();
+            draft.daysWorked = parseFloat(data.daysWorked);
+            draft.ratePerDay = parseFloat(data.ratePerDay);
             draft.totalCost = total;
-            draft.hoursWorked = parseFloat(hoursWorked) || 0;
-            draft.imageUrl = photo || '';
-            draft.isRecurring = isRecurring;
-            draft.frequency = isRecurring ? frequency.toUpperCase() : null;
-            draft.notes = notes.trim();
+            draft.hoursWorked = parseFloat(data.hoursWorked) || 0;
+            draft.imageUrl = data.photo || '';
+            draft.isRecurring = data.isRecurring;
+            draft.frequency = data.isRecurring ? data.frequency.toUpperCase() : null;
+            draft.notes = data.notes.trim();
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
+          const effectiveActivity = data.activity === 'other' && data.otherActivity?.trim() ? data.otherActivity.trim() : data.activity;
           await database.get('work_entries').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
-            record.employeeId = selectedEmployee.id;
-            record.activity = activity.charAt(0).toUpperCase() + activity.slice(1);
-            record.date = date.getTime();
-            record.daysWorked = parseFloat(daysWorked);
-            record.ratePerDay = parseFloat(ratePerDay);
+            record.employeeId = data.employeeId;
+            record.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
+            record.date = data.date.getTime();
+            record.daysWorked = parseFloat(data.daysWorked);
+            record.ratePerDay = parseFloat(data.ratePerDay);
             record.totalCost = total;
-            record.hoursWorked = parseFloat(hoursWorked) || 0;
-            record.imageUrl = photo || '';
+            record.hoursWorked = parseFloat(data.hoursWorked) || 0;
+            record.imageUrl = data.photo || '';
             record.status = 'PENDING';
-            record.isRecurring = isRecurring;
-            record.frequency = isRecurring ? frequency.toUpperCase() : null;
-            record.notes = notes.trim();
+            record.isRecurring = data.isRecurring;
+            record.frequency = data.isRecurring ? data.frequency.toUpperCase() : null;
+            record.notes = data.notes.trim();
             record.isPaid = false;
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
-
 
       syncAll().catch(() => {});
       navigation.goBack();
@@ -195,47 +204,41 @@ export default function AddWorkEntryScreen({ route, navigation }) {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
-      </View>
-    );
+  const selectedEmployeeName = useMemo(() => {
+    if (!formData.employeeId || !employees.length) return '';
+    return employees.find(e => e.id === formData.employeeId)?.name || '';
+  }, [formData.employeeId, employees]);
+
+  if (isLoading) {
+    return <StitchScreenSkeleton />;
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
-    >
+    <KeyboardAvoidingView behavior={'padding'} style={styles.flex} keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('labor.entry_subtitle'),
           title: itemId ? t('labor.edit_title') : t('labor.entry_title'),
-          subtitle: selectedEmployee?.name || t('labor.select_employee'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.spent')} value={formatCurrency(total, currency)} icon='cash-outline' />
-              <StitchHeroPill label={t('labor.days')} value={daysWorked || '0'} icon='calendar-outline' />
-            </View>
-          ),
-        }}
+          subtitle: selectedEmployeeName || t('labor.select_employee'),
+          pills: [
+            { label: t('dashboard.spent'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+            { label: t('labor.days'), value: formData.daysWorked || '0', icon: 'calendar-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSectionLabel>{t('labor.select_task')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('labor.select_task')}</StitchSectionTitle>
         <View style={styles.taskGrid}>
           {ACTIVITIES.map((item) => {
-            const active = activity === item.key;
+            const active = formData.activity === item.key;
             return (
               <TouchableOpacity
                 key={item.key}
                 style={[styles.taskCard, active && styles.taskCardActive]}
-                onPress={() => setActivity(item.key)}
+                onPress={() => setValue('activity', item.key)}
                 activeOpacity={0.9}
               >
                 <Ionicons name={item.icon} size={26} color={stitchTheme.colors.primary} />
@@ -246,34 +249,58 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           })}
         </View>
 
-        <StitchSectionLabel>{t('labor.employee')}</StitchSectionLabel>
+        {formData.activity === 'other' && (
+          <StitchInput
+            label={t('labor.specify_activity', { defaultValue: 'Specify activity' })}
+            value={watch('otherActivity')}
+            onChangeText={(val) => setValue('otherActivity', val)}
+            placeholder={t('labor.specify_placeholder', { defaultValue: 'e.g. Pruning' })}
+          />
+        )}
+
+        <StitchSectionTitle>{t('labor.employee')}</StitchSectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.employeeRow}>
           {employees.length === 0 ? (
             <TouchableOpacity style={styles.employeeEmpty} onPress={() => navigation.navigate('Employees')} activeOpacity={0.88}>
               <Text style={styles.employeeEmptyText}>{t('labor.add_employee_first')}</Text>
             </TouchableOpacity>
           ) : employees.map((employee) => {
-            const active = selectedEmployee?.id === employee.id;
+            const active = formData.employeeId === employee.id;
+            const isTeamMember = employee.projectId === projectId;
             return (
               <TouchableOpacity
                 key={employee.id}
-                style={[styles.employeeChip, active && styles.employeeChipActive]}
-                onPress={() => setSelectedEmployee(employee)}
+                style={[
+                  styles.employeeChip, 
+                  active && styles.employeeChipActive,
+                  isTeamMember && !active && styles.employeeChipTeam
+                ]}
+                onPress={() => setValue('employeeId', employee.id)}
                 activeOpacity={0.88}
               >
-                <Text style={[styles.employeeChipText, active && styles.employeeChipTextActive]}>{employee.name}</Text>
+                <View style={styles.employeeChipContent}>
+                  {isTeamMember && (
+                    <Ionicons 
+                      name="star" 
+                      size={10} 
+                      color={active ? stitchTheme.colors.primary : stitchTheme.colors.primaryDim} 
+                      style={{ marginRight: 4 }} 
+                    />
+                  )}
+                  <Text style={[styles.employeeChipText, active && styles.employeeChipTextActive]}>{employee.name}</Text>
+                </View>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        <StitchSectionLabel>{t('labor.hours_counter')}</StitchSectionLabel>
+        <StitchSectionTitle>{t('labor.hours_counter')}</StitchSectionTitle>
         <View style={styles.counterCard}>
           <TouchableOpacity style={styles.counterButton} onPress={() => adjustHours(-1)} activeOpacity={0.88}>
             <Ionicons name="remove" size={24} color={stitchTheme.colors.text} />
           </TouchableOpacity>
           <View style={styles.counterCenter}>
-            <Text style={styles.counterValue}>{hoursWorked}</Text>
+            <Text style={styles.counterValue}>{formData.hoursWorked}</Text>
             <Text style={styles.counterLabel}>{t('labor.hours_label')}</Text>
           </View>
           <TouchableOpacity style={[styles.counterButton, styles.counterButtonPositive]} onPress={() => adjustHours(1)} activeOpacity={0.88}>
@@ -283,61 +310,50 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <View style={styles.fieldRow}>
           <View style={styles.fieldHalf}>
-            <StitchSectionLabel style={styles.fieldLabel}>{t('labor.days_worked')}</StitchSectionLabel>
-            <TextInput
-              style={styles.fieldInput}
-              value={daysWorked}
-              onChangeText={setDaysWorked}
-              keyboardType="decimal-pad"
-              placeholder="1"
-              placeholderTextColor="#8f968d"
-            />
+            <StitchInput label={t('labor.days_worked')} value={watch('daysWorked')} onChangeText={(val) => setValue('daysWorked', val)} keyboardType='decimal-pad' placeholder='1' />
           </View>
           <View style={styles.fieldHalf}>
-            <StitchSectionLabel style={styles.fieldLabel}>{t('labor.rate_day')}</StitchSectionLabel>
-            <TextInput
-              style={styles.fieldInput}
-              value={ratePerDay}
-              onChangeText={setRatePerDay}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor="#8f968d"
-            />
+            <StitchInput label={t('labor.rate_day')} value={watch('ratePerDay')} onChangeText={(val) => setValue('ratePerDay', val)} keyboardType='decimal-pad' placeholder='0.00' />
           </View>
         </View>
 
-        <StitchSectionLabel>{t('common.date')}</StitchSectionLabel>
-        <TouchableOpacity style={styles.dateField} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
-          <Text style={styles.dateFieldText}>{formatAppDate(date)}</Text>
-          <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
-        </TouchableOpacity>
+        <StitchInput
+          label={t('common.date')}
+          value={formatAppDate(formData.date)}
+          onPress={() => setShowDatePicker(true)}
+          icon='calendar-outline'
+        />
 
-        {showDatePicker ? (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-          />
-        ) : null}
+        <Controller
+          control={control}
+          name="date"
+          render={({ field: { onChange, value } }) => (
+            <StitchDatePicker
+              visible={showDatePicker}
+              date={value}
+              onDateChange={(d) => { onChange(d); setShowDatePicker(false); }}
+              onClose={() => setShowDatePicker(false)}
+            />
+          )}
+        />
 
         <View style={styles.sectionInline}>
-          <StitchSectionLabel style={styles.sectionInlineLabel}>{t('common.recurring')}</StitchSectionLabel>
-          <TouchableOpacity style={[styles.switchTrack, isRecurring && styles.switchTrackActive]} onPress={() => setIsRecurring((value) => !value)} activeOpacity={0.9}>
-            <View style={[styles.switchKnob, isRecurring && styles.switchKnobActive]} />
+          <StitchSectionTitle style={styles.sectionInlineLabel}>{t('common.recurring')}</StitchSectionTitle>
+          <TouchableOpacity style={[styles.switchTrack, formData.isRecurring && styles.switchTrackActive]} onPress={() => setValue('isRecurring', !formData.isRecurring)} activeOpacity={0.9}>
+            <View style={[styles.switchKnob, formData.isRecurring && styles.switchKnobActive]} />
           </TouchableOpacity>
         </View>
 
-        {isRecurring ? (
+        {formData.isRecurring ? (
           <View style={styles.frequencyRow}>
             {FREQUENCIES.map((item) => {
-              const active = frequency === item;
+              const active = formData.frequency === item;
               return (
                 <StitchChip
                   key={item}
                   style={styles.frequencyChip}
                   active={active}
-                  onPress={() => setFrequency(item)}
+                  onPress={() => setValue('frequency', item)}
                   label={t(`common.frequencies.${item}`)}
                   textStyle={styles.frequencyText}
                 />
@@ -346,27 +362,24 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        <StitchSectionLabel>{t('labor.evidence_heading')}</StitchSectionLabel>
-        <TouchableOpacity style={styles.photoPanel} onPress={photo ? () => setPhoto(null) : takePhoto} activeOpacity={0.92}>
-          {photo ? <Image source={{ uri: photo }} style={styles.photoBackground} /> : null}
+        <StitchSectionTitle>{t('labor.evidence_heading')}</StitchSectionTitle>
+        <TouchableOpacity style={styles.photoPanel} onPress={formData.photo ? () => setValue('photo', null) : takePhoto} activeOpacity={0.92}>
+          {formData.photo ? <Image source={{ uri: formData.photo }} style={styles.photoBackground} /> : null}
           <View style={styles.photoOverlay}>
-            <TouchableOpacity style={styles.cameraBubble} onPress={photo ? pickImage : takePhoto} activeOpacity={0.88}>
+            <TouchableOpacity style={styles.cameraBubble} onPress={formData.photo ? pickImage : takePhoto} activeOpacity={0.88}>
               <Ionicons name="camera" size={32} color={stitchTheme.colors.primarySoft} />
             </TouchableOpacity>
-            <Text style={styles.photoTitle}>{photo ? t('labor.change_photo') : t('labor.take_photo')}</Text>
+            <Text style={styles.photoTitle}>{formData.photo ? t('labor.change_photo') : t('labor.take_photo')}</Text>
             <Text style={styles.photoSubtitle}>{t('labor.take_photo_sw')}</Text>
           </View>
         </TouchableOpacity>
 
-        <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
-        <TextInput
-          style={styles.notesField}
-          value={notes}
-          onChangeText={setNotes}
+        <StitchInput
+          label={t('common.notes')}
+          value={watch('notes')}
+          onChangeText={(val) => setValue('notes', val)}
           placeholder={t('labor.placeholders.notes')}
           multiline
-          numberOfLines={5}
-          placeholderTextColor="#a0a59d"
         />
 
         <View style={styles.totalCard}>
@@ -374,7 +387,7 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
         </View>
 
-        <StitchPrimaryButton label={itemId ? t('common.save') : t('labor.submit')} onPress={handleSave} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
+        <StitchPrimaryButton label={itemId ? t('common.save') : t('labor.submit')} onPress={handleSubmit(handleSave)} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
       </StitchDashboardShell>
     </KeyboardAvoidingView>
   );
@@ -385,7 +398,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
   banner: { marginTop: stitchTheme.spacing.xs },
   taskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
   taskCard: { width: '47.5%', minHeight: 128, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.md, ...stitchShadows.card },
@@ -395,6 +407,8 @@ const styles = StyleSheet.create({
   employeeRow: { gap: stitchTheme.spacing.xs, paddingBottom: 4 },
   employeeChip: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 10, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted },
   employeeChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
+  employeeChipTeam: { backgroundColor: stitchTheme.colors.mintLight, borderWidth: 1, borderColor: stitchTheme.colors.primarySoft },
+  employeeChipContent: { flexDirection: 'row', alignItems: 'center' },
   employeeChipText: { color: stitchTheme.colors.text, fontWeight: '700', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
   employeeChipTextActive: { color: stitchTheme.colors.primary },
   employeeEmpty: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 10, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset },
@@ -407,10 +421,6 @@ const styles = StyleSheet.create({
   counterLabel: { marginTop: 4, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: stitchTheme.colors.accentBrown },
   fieldRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   fieldHalf: { flex: 1 },
-  fieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, marginBottom: stitchTheme.spacing.xs },
-  fieldInput: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  dateField: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
-  dateFieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   sectionInline: { marginTop: stitchTheme.spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionInlineLabel: { marginBottom: 0 },
   switchTrack: { width: 54, height: 30, borderRadius: 18, backgroundColor: stitchTheme.colors.surfaceMuted, padding: 2 },
@@ -426,7 +436,6 @@ const styles = StyleSheet.create({
   cameraBubble: { width: 92, height: 92, borderRadius: 46, backgroundColor: stitchTheme.colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center', ...stitchShadows.float },
   photoTitle: { marginTop: stitchTheme.spacing.md, fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   photoSubtitle: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, textAlign: 'center' },
-  notesField: { marginTop: stitchTheme.spacing.xs, minHeight: 116, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
   totalCard: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...stitchShadows.soft },
   totalLabel: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown },
   totalValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },

@@ -7,6 +7,9 @@ const {
   updateProject,
   deleteProject,
   getProjectSummary,
+  addProjectMember,
+  getProjectMembers,
+  removeProjectMember,
 } = require('../controllers/project.controller');
 
 const router = Router();
@@ -18,6 +21,9 @@ router.post  ('/',           createProject);
 router.get   ('/',           listProjects);
 router.get   ('/:id/summary', getProjectSummary);  // before /:id to avoid shadowing
 router.get   ('/:id',        getProject);
+router.get   ('/:id/members', getProjectMembers);
+router.post  ('/:id/members', addProjectMember);
+router.delete('/:id/members/:userId', removeProjectMember);
 router.put   ('/:id',        updateProject);
 router.delete('/:id',        deleteProject);
 

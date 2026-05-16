@@ -1,10 +1,12 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
+import { Animated, ActivityIndicator, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
-import { STITCH_TAB_BAR_HEIGHT } from '../navigation/StitchTabBar';
 import StitchHeroHeader from './StitchHeroHeader';
 import StatusBanner from './StatusBanner';
+import useSyncStore from '../../store/useSyncStore';
 
 const EXPANDED_HERO_HEIGHT = 184;
 
@@ -38,10 +40,29 @@ export default function StitchDashboardShell({
   refreshControl,
   banner,
   onDismissBanner,
+  stickyHeader,
   statusBarStyle = 'light-content',
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
 }) {
+  const syncStatus = useSyncStore((s) => s.status);
+  const [isOffline, setIsOffline] = useState(false);
   const heroHeight = useRef(new Animated.Value(EXPANDED_HERO_HEIGHT)).current;
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!(state.isConnected && state.isInternetReachable));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const syncIcon = useMemo(() => {
+    if (isOffline) return { name: 'cloud-offline-outline', color: stitchTheme.colors.accentRed, spin: false };
+    switch (syncStatus) {
+      case 'syncing': return { name: 'sync-outline', color: stitchTheme.colors.primary, spin: true };
+      case 'error': return { name: 'cloud-offline-outline', color: stitchTheme.colors.accentRed, spin: false };
+      default: return { name: 'cloud-done-outline', color: 'rgba(255,255,255,0.55)', spin: false };
+    }
+  }, [syncStatus, isOffline]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -77,6 +98,13 @@ export default function StitchDashboardShell({
       />
 
       <Animated.View style={[styles.heroWrapper, { height: heroHeight }]}> 
+        <View style={styles.syncIndicator}>
+          {syncIcon.spin ? (
+            <ActivityIndicator size='small' color={syncIcon.color} style={{ transform: [{ scale: 1.2 }] }} />
+          ) : (
+            <Ionicons name={syncIcon.name} size={22} color={syncIcon.color} />
+          )}
+        </View>
         <Animated.View style={hero?.wrapperStyle}>
           {hero?.eyebrow || hero?.title ? (
             <StitchHeroHeader
@@ -95,6 +123,8 @@ export default function StitchDashboardShell({
           ) : null}
         </Animated.View>
       </Animated.View>
+
+      {stickyHeader ? <View style={styles.stickyWrap}>{stickyHeader}</View> : null}
 
       <ScrollView style={[styles.body, bodyStyle]} contentContainerStyle={mergedBodyContentStyle} showsVerticalScrollIndicator={false} refreshControl={refreshControl} keyboardShouldPersistTaps='handled'>
         {children}
@@ -116,6 +146,13 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     backgroundColor: stitchTheme.colors.forestDeep,
   },
+  stickyWrap: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingVertical: 6,
+    marginTop: -12,
+  },
+  syncIndicator: { position: 'absolute', bottom: 10, right: 16, zIndex: 10 },
   body: {
     flex: 1,
     backgroundColor: stitchTheme.colors.background,
@@ -126,7 +163,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: stitchTheme.spacing.md,
     paddingTop: stitchTheme.spacing.md,
-    paddingBottom: STITCH_TAB_BAR_HEIGHT + 32,
+    paddingBottom: 8,
     gap: stitchTheme.spacing.sm,
   },
   sectionHead: {

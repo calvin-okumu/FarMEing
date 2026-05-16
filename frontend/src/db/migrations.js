@@ -59,5 +59,133 @@ export default schemaMigrations({
       toVersion: 9,
       steps: [],
     },
+    {
+      toVersion: 10,
+      steps: [
+        addColumns({ table: 'employees', columns: [{ name: 'project_id', type: 'string', isOptional: true }] }),
+      ],
+    },
+    {
+      toVersion: 11,
+      steps: [],
+    },
+    {
+      toVersion: 12,
+      steps: [
+        addColumns({
+          table: 'budget_items',
+          columns: [
+            { name: 'total', type: 'number' },
+            { name: 'notes', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 13,
+      steps: [
+        createTable({
+          name: 'payees',
+          columns: [
+            { name: 'user_id',    type: 'string' },
+            { name: 'name',       type: 'string' },
+            { name: 'phone',      type: 'string', isOptional: true },
+            { name: 'email',      type: 'string', isOptional: true },
+            { name: 'address',    type: 'string', isOptional: true },
+            { name: 'category',   type: 'string', isOptional: true },
+            { name: 'notes',      type: 'string', isOptional: true },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        addColumns({ table: 'expenses', columns: [{ name: 'payee_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'inventory_items', columns: [{ name: 'payee_id', type: 'string', isOptional: true }] }),
+      ],
+    },
+    {
+      toVersion: 14,
+      steps: [
+        createTable({
+          name: 'employee_project_assignments',
+          columns: [
+            { name: 'employee_id', type: 'string' },
+            { name: 'project_id',  type: 'string' },
+            { name: 'is_deleted',  type: 'boolean' },
+            { name: 'created_at',  type: 'number' },
+            { name: 'updated_at',  type: 'number' },
+          ],
+        }),
+        // project_id remains in SQLite for existing users but will be ignored by the model
+      ],
+    },
+    {
+      toVersion: 15,
+      steps: [
+        addColumns({
+          table: 'employee_project_assignments',
+          columns: [
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 16,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [
+            { name: 'payment_status', type: 'string', isOptional: true },
+            { name: 'balance_due', type: 'number', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 17,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [
+            { name: 'receipt_url', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 18,
+      steps: [
+        createTable({
+          name: 'sale_payments',
+          columns: [
+            { name: 'sale_id',     type: 'string' },
+            { name: 'amount',      type: 'number' },
+            { name: 'date',        type: 'number' },
+            { name: 'note',        type: 'string', isOptional: true },
+            { name: 'is_deleted',  type: 'boolean' },
+            { name: 'created_at',  type: 'number' },
+            { name: 'updated_at',  type: 'number' },
+            { name: 'sync_status', type: 'string' },
+            { name: 'last_synced_at', type: 'number', isOptional: true },
+            { name: 'last_error', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 19,
+      steps: [
+        addColumns({
+          table: 'sale_payments',
+          columns: [
+            { name: 'sync_status', type: 'string', isOptional: true },
+            { name: 'last_synced_at', type: 'number', isOptional: true },
+            { name: 'last_error', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });

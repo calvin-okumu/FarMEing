@@ -1,6 +1,5 @@
 import { Q } from '@nozbe/watermelondb';
-import { markRecordDeleted, markRecordUpdated, markRecordSynced, SYNC_STATUS } from './localRecord';
-import { syncAll } from '../services/syncService';
+import { markRecordDeleted, markRecordUpdated } from './localRecord';
 
 const PROJECT_BOUND_TABLES = [
   'budget_items',
@@ -11,28 +10,17 @@ const PROJECT_BOUND_TABLES = [
   'inventory_items',
 ];
 
-export async function updateLocalModel(record, applyChanges, remoteId) {
+export async function updateLocalModel(record, applyChanges) {
   await record.update((draft) => {
     applyChanges(draft);
-    if (remoteId) {
-      markRecordSynced(draft, remoteId);
-    } else if (draft.remoteId) {
-      markRecordUpdated(draft);
-    } else {
-      markRecordUpdated(draft);
-      draft.syncStatus = SYNC_STATUS.PENDING_CREATE;
-    }
+    markRecordUpdated(draft);
   });
-  // Trigger sync in background
-  syncAll();
 }
 
 export async function deleteLocalModel(record) {
   await record.update((draft) => {
     markRecordDeleted(draft);
   });
-  // Trigger sync in background
-  syncAll();
 }
 
 export async function deleteProjectCascade(database, projectId) {

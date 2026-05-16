@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { createInventorySchema, updateInventorySchema } = require('../validators/inventory.validator');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,40 +19,14 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
-/** Verify the project exists, belongs to the user, and is not deleted. */
-const findOwnedProject = async (projectId, userId, res) => {
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Project not found' });
-    return null;
-  }
-  return project;
-};
-
-/** Verify the inventory item exists, is not deleted, and its project belongs to the user. */
-const findOwnedItem = async (itemId, userId, res) => {
-  const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
-  if (!item || item.isDeleted) {
-    res.status(404).json({ error: 'Inventory item not found' });
-    return null;
-  }
-  // Ownership via project
-  const project = await prisma.farmProject.findUnique({ where: { id: item.projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Inventory item not found' });
-    return null;
-  }
-  return item;
-};
-
 // ── POST /inventory ───────────────────────────────────────────────────────────
 
 const createInventoryItem = async (req, res) => {
   const data = validate(createInventorySchema, req.body, res);
   if (!data) return;
 
-  const project = await findOwnedProject(data.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(data.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   // Server-side totalCost — never trust client input
   const totalCost = parseFloat((data.quantity * data.unitCost).toFixed(2));
@@ -74,6 +49,7 @@ const createInventoryItem = async (req, res) => {
       usedQty,
       notes:     data.notes ?? null,
       payee:     data.payee ?? null,
+      payeeId:   data.payeeId ?? null,
     },
   });
 
@@ -83,13 +59,14 @@ const createInventoryItem = async (req, res) => {
 // ── GET /inventory/:projectId ─────────────────────────────────────────────────
 
 const listInventoryItems = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
   const includeDeleted = req.query.includeDeleted === 'true';
 
   const items = await prisma.inventoryItem.findMany({
     where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'asc' },
+    include: { payeeRecord: true },
   });
 
   const grandTotalCost = parseFloat(
@@ -102,8 +79,11 @@ const listInventoryItems = async (req, res) => {
 // ── PUT /inventory/:id ────────────────────────────────────────────────────────
 
 const updateInventoryItem = async (req, res) => {
-  const item = await findOwnedItem(req.params.id, req.user.id, res);
-  if (!item) return;
+  const item = await prisma.inventoryItem.findUnique({ where: { id: req.params.id } });
+  if (!item || item.isDeleted) return res.status(404).json({ error: 'Inventory item not found' });
+
+  const access = await verifyProjectAccess(item.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const data = validate(updateInventorySchema, req.body, res);
   if (!data) return;
@@ -130,8 +110,11 @@ const updateInventoryItem = async (req, res) => {
 // ── DELETE /inventory/:id (soft delete) ───────────────────────────────────────
 
 const deleteInventoryItem = async (req, res) => {
-  const item = await findOwnedItem(req.params.id, req.user.id, res);
-  if (!item) return;
+  const item = await prisma.inventoryItem.findUnique({ where: { id: req.params.id } });
+  if (!item || item.isDeleted) return res.status(404).json({ error: 'Inventory item not found' });
+
+  const access = await verifyProjectAccess(item.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   await prisma.inventoryItem.update({
     where: { id: req.params.id },

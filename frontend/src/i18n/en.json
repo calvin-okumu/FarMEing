@@ -28,7 +28,70 @@
       "spraying": "Spraying",
       "irrigation": "Irrigation",
       "other": "Other"
-    }
+    },
+    "today": "Today",
+    "earlier": "Earlier"
+  },
+  "months": {
+    "january": "January",
+    "february": "February",
+    "march": "March",
+    "april": "April",
+    "may": "May",
+    "june": "June",
+    "july": "July",
+    "august": "August",
+    "september": "September",
+    "october": "October",
+    "november": "November",
+    "december": "December"
+  },
+  "days": {
+    "sunday": "Sun",
+    "monday": "Mon",
+    "tuesday": "Tue",
+    "wednesday": "Wed",
+    "thursday": "Thu",
+    "friday": "Fri",
+    "saturday": "Sat"
+  },
+  "resource": {
+    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?",
+    "search_in_tab": "Search this section",
+    "sort_latest": "Latest",
+    "sort_amount": "Amount",
+    "syncing": "Syncing...",
+    "loading_title": "Refreshing",
+    "loading_body": "Loading the latest resource data from the server.",
+    "loading_error": "Could not load the latest resource data.",
+    "show_less": "Show less",
+    "view_all": "View all {{count}} resources"
+  },
+  "team": {
+    "invite_title": "Invite Member",
+    "invite_phone": "User Phone Number",
+    "send_invitation": "Send Invitation",
+    "invited_success": "Team member invited successfully.",
+    "access_revoked": "Member access revoked.",
+    "revoke_access": "Revoke Access",
+    "no_members": "No other members have access yet.",
+    "role": "Assigned Role"
+  },
+  "export": {
+    "title": "Export Report",
+    "short_label": "Export",
+    "short_value": "Report",
+    "pdf": "Portable Document (PDF)",
+    "excel": "Excel Spreadsheet (XLSX)",
+    "not_available": "Project is not available for export yet",
+    "failed": "Could not generate or download the {{format}} report."
+  },
+  "status": {
+    "synced": "Synced",
+    "local_only": "Local only",
+    "sort_latest": "Latest",
+    "top_value": "Top value",
+    "pending_labor": "Pending labor"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -176,6 +239,7 @@
       "harvest": "Harvest",
       "sales": "Sales",
       "inventory": "Inventory",
+      "team": "Team",
       "timeline": "Timeline"
     },
     "fields": {
@@ -192,6 +256,12 @@
       "crop": "e.g. Wheat, Corn",
       "unit": "acres",
       "expected_yield": "e.g. 5000"
+    },
+    "status": {
+      "planning": "Planning",
+      "active": "Active",
+      "harvested": "Harvested",
+      "closed": "Closed"
     },
     "new_project": "New Project",
     "edit_title": "Edit Project",
@@ -298,6 +368,12 @@
     "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
     "empty_title": "No employees yet",
     "directory_title": "People & Payments",
+    "project_team": "Project Team",
+    "team_subtitle": "Assigned workers for this project",
+    "none": "None",
+    "no_project": "No Project",
+    "project_count_one": "1 Project",
+    "project_count_other": "{{count}} Projects",
     "empty_subtitle": "Pull down to sync or add a new employee.",
     "directory_subtitle": "API-backed directory with balances and actions.",
     "search_placeholder": "Search workers, roles, or phone",
@@ -326,6 +402,26 @@
       "delete_local": "Failed to delete employee",
       "not_found": "Employee not found"
     }
+  },
+  "payees": {
+    "title": "Payees & Vendors",
+    "manage_subtitle": "Manage your suppliers and contractors",
+    "directory": "Vendor Directory",
+    "new_payee": "New Payee",
+    "edit_payee": "Edit Payee",
+    "save": "Save Payee",
+    "total": "Total Payees",
+    "search_placeholder": "Search payees...",
+    "empty_title": "No Payees Yet",
+    "empty_subtitle": "Add vendors or contractors to track your spending better.",
+    "fields": {
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email",
+      "category": "Category",
+      "notes": "Notes"
+    },
+    "no_category": "General"
   },
   "labor": {
     "screen_title": "Worker Activity",
@@ -450,6 +546,13 @@
     "record": "Record Sale",
     "cash_sale": "Cash Sale",
     "total_revenue": "Total Revenue:",
+    "payments_section": "Payments",
+    "collected": "Collected",
+    "balance_due": "Balance due",
+    "add_payment": "Add Payment",
+    "add": "Add",
+    "amount_placeholder": "Amount",
+    "note_placeholder": "Note (optional)",
     "empty": "No sales records",
     "errors": {
       "weight_required": "Valid weight is required",
@@ -482,6 +585,7 @@
   "payments": {
     "title": "Payment",
     "record": "Record Payment",
+    "edit_title": "Edit Payment",
     "confirm": "Confirm Payment",
     "delete_title": "Delete Payment",
     "confirm_delete": "Are you sure you want to delete this payment of {{name}}?",
@@ -638,16 +742,6 @@
   "tab": {
     "workers": "Workers",
     "profile": "Profile"
-  },
-  "resource": {
-    "confirm_delete_generic": "Are you sure you want to delete \"{{name}}\"?",
-    "search_in_tab": "Search this section",
-    "sort_latest": "Latest",
-    "sort_amount": "Amount",
-    "syncing": "Syncing...",
-    "loading_title": "Refreshing",
-    "loading_body": "Loading the latest resource data from the server.",
-    "loading_error": "Could not load the latest resource data."
   },
   "feedback": {
     "created": "Created",

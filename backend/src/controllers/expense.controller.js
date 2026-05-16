@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { createExpenseSchema, updateExpenseSchema } = require('../validators/expense.validator');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,42 +19,15 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
-/** Verify the project exists, belongs to the user, and is not soft-deleted. */
-const findOwnedProject = async (projectId, userId, res) => {
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Project not found' });
-    return null;
-  }
-  return project;
-};
-
-/** Verify the expense exists, is not soft-deleted, and belongs to the user's project. */
-const findOwnedExpense = async (expenseId, userId, res) => {
-  const expense = await prisma.expense.findUnique({
-    where:   { id: expenseId },
-    include: { project: { select: { userId: true, isDeleted: true } } },
-  });
-  if (
-    !expense ||
-    expense.isDeleted ||
-    expense.project.isDeleted ||
-    expense.project.userId !== userId
-  ) {
-    res.status(404).json({ error: 'Expense not found' });
-    return null;
-  }
-  return expense;
-};
-
 // ── POST /expenses ────────────────────────────────────────────────────────────
 
 const createExpense = async (req, res) => {
   const data = validate(createExpenseSchema, req.body, res);
   if (!data) return;
 
-  const project = await findOwnedProject(data.projectId, req.user.id, res);
-  if (!project) return;
+  // Require OWNER or MANAGER to create expenses
+  const access = await verifyProjectAccess(data.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const expense = await prisma.expense.create({
     data: {
@@ -67,6 +41,7 @@ const createExpense = async (req, res) => {
       note:       data.note       ?? null,
       receiptUrl: data.receiptUrl ?? null,
       payee:      data.payee      ?? null,
+      payeeId:    data.payeeId    ?? null,
     },
   });
 
@@ -76,13 +51,16 @@ const createExpense = async (req, res) => {
 // ── GET /expenses/:projectId ──────────────────────────────────────────────────
 
 const listExpenses = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  // Any role can list expenses
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
+
   const includeDeleted = req.query.includeDeleted === 'true';
 
   const expenses = await prisma.expense.findMany({
     where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { date: 'desc' },
+    include: { payeeRecord: true },
   });
 
   const totalAmount = parseFloat(
@@ -95,8 +73,14 @@ const listExpenses = async (req, res) => {
 // ── PUT /expenses/:id ─────────────────────────────────────────────────────────
 
 const updateExpense = async (req, res) => {
-  const expense = await findOwnedExpense(req.params.id, req.user.id, res);
-  if (!expense) return;
+  const expense = await prisma.expense.findUnique({ where: { id: req.params.id } });
+  if (!expense || expense.isDeleted) {
+    return res.status(404).json({ error: 'Expense not found' });
+  }
+
+  // Require OWNER or MANAGER to update expenses
+  const access = await verifyProjectAccess(expense.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const data = validate(updateExpenseSchema, req.body, res);
   if (!data) return;
@@ -115,8 +99,14 @@ const updateExpense = async (req, res) => {
 // ── DELETE /expenses/:id (soft delete) ────────────────────────────────────────
 
 const deleteExpense = async (req, res) => {
-  const expense = await findOwnedExpense(req.params.id, req.user.id, res);
-  if (!expense) return;
+  const expense = await prisma.expense.findUnique({ where: { id: req.params.id } });
+  if (!expense || expense.isDeleted) {
+    return res.status(404).json({ error: 'Expense not found' });
+  }
+
+  // Require OWNER or MANAGER to delete expenses
+  const access = await verifyProjectAccess(expense.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   await prisma.expense.update({
     where: { id: req.params.id },

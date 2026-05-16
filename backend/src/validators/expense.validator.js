@@ -16,6 +16,7 @@ const createExpenseSchema = z.object({
   note:       z.string().optional().nullable(),
   receiptUrl: z.string().url('Invalid receipt URL').optional().nullable(),
   payee:      z.string().optional().nullable(),
+  payeeId:    z.string().uuid('Invalid payee ID').optional().nullable(),
 });
 
 const updateExpenseSchema = z
@@ -29,6 +30,7 @@ const updateExpenseSchema = z
     note:       z.string().optional().nullable(),
     receiptUrl: z.string().url('Invalid receipt URL').optional().nullable(),
     payee:      z.string().optional().nullable(),
+    payeeId:    z.string().uuid('Invalid payee ID').optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field is required for update',

@@ -1,5 +1,45 @@
 {
-  "android": {
-    "package": "com.calvinokumu.node_proj"
+  "expo": {
+    "entryPoint": "./frontend/App.js",
+    "name": "FarmTruck",
+    "slug": "farmtruck",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./frontend/assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./frontend/assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.farmtrack.app"
+    },
+    "android": {
+      "softwareKeyboardLayoutMode": "pan",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./frontend/assets/android-icon-foreground.png",
+        "backgroundImage": "./frontend/assets/android-icon-background.png",
+        "monochromeImage": "./frontend/assets/android-icon-monochrome.png"
+      },
+      "package": "com.farmtrack.app"
+    },
+    "web": {
+      "favicon": "./frontend/assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "86af1b31-414c-4250-a84c-fada504a33e9"
+      }
+    },
+    "plugins": [
+      "expo-font",
+      "expo-sqlite",
+      "expo-localization",
+      "expo-secure-store",
+      "expo-sharing"
+    ]
   }
 }

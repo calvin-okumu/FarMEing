@@ -28,7 +28,58 @@
       "spraying": "Upuliziaji",
       "irrigation": "Umwagiliaji",
       "other": "Nyingine"
-    }
+    },
+    "today": "Leo",
+    "earlier": "Awali"
+  },
+  "months": {
+    "january": "Januari",
+    "february": "Februari",
+    "march": "Machi",
+    "april": "Aprili",
+    "may": "Mei",
+    "june": "Juni",
+    "july": "Julai",
+    "august": "Agosti",
+    "september": "Septemba",
+    "october": "Oktoba",
+    "november": "Novemba",
+    "december": "Desemba"
+  },
+  "days": {
+    "sunday": "Jumapili",
+    "monday": "Jumatatu",
+    "tuesday": "Jumanne",
+    "wednesday": "Jumatano",
+    "thursday": "Alhamisi",
+    "friday": "Ijumaa",
+    "saturday": "Jumamosi"
+  },
+  "team": {
+    "invite_title": "Alika Mwanachama",
+    "invite_phone": "Nambari ya Simu ya Mtumiaji",
+    "send_invitation": "Tuma Mwaliko",
+    "invited_success": "Mwanachama amealikwa kwa mafanikio.",
+    "access_revoked": "Ufikiaji umeondolewa.",
+    "revoke_access": "Ondoa Ufikiaji",
+    "no_members": "Hakuna wanachama wengine wenye ufikiaji bado.",
+    "role": "Jukumu Liliopewa"
+  },
+  "export": {
+    "title": "Hamisha Ripoti",
+    "short_label": "Hamisha",
+    "short_value": "Ripoti",
+    "pdf": "Hati ya PDF",
+    "excel": "Lahajedwali ya Excel (XLSX)",
+    "not_available": "Mradi haupatikani kwa ajili ya kusafirishwa bado",
+    "failed": "Imeshindwa kutengeneza au kupakua ripoti ya {{format}}."
+  },
+  "status": {
+    "synced": "Imeunganishwa",
+    "local_only": "Ndani ya kifaa pekee",
+    "sort_latest": "Mpya",
+    "top_value": "Thamani ya juu",
+    "pending_labor": "Kazi inayosubiri"
   },
   "dashboard": {
     "title": "Dashibodi",
@@ -176,6 +227,7 @@
       "harvest": "Mavuno",
       "sales": "Mauzo",
       "inventory": "Inventory",
+      "team": "Timu",
       "timeline": "Ratiba"
     },
     "fields": {
@@ -192,6 +244,12 @@
       "crop": "mf. Ngano, Mahindi",
       "unit": "ekari",
       "expected_yield": "mf. 5000"
+    },
+    "status": {
+      "planning": "Inapangwa",
+      "active": "Inafanya Kazi",
+      "harvested": "Imevunwa",
+      "closed": "Imefungwa"
     },
     "new_project": "Mradi Mpya",
     "edit_title": "Hariri Mradi",
@@ -298,6 +356,12 @@
     "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
     "empty_title": "Hakuna wafanyakazi bado",
     "directory_title": "Watu na Malipo",
+    "project_team": "Timu ya Mradi",
+    "team_subtitle": "Wafanyakazi waliochaguliwa kwa mradi huu",
+    "none": "Hakuna",
+    "no_project": "Hakuna Mradi",
+    "project_count_one": "Mradi 1",
+    "project_count_other": "Miradi {{count}}",
     "empty_subtitle": "Vuta chini kusawazisha au ongeza mfanyakazi mpya.",
     "directory_subtitle": "Orodha ya API yenye mizania na vitendo.",
     "search_placeholder": "Tafuta wafanyakazi, majukumu au simu",
@@ -326,6 +390,26 @@
       "delete_local": "Imeshindikana kufuta mfanyakazi",
       "not_found": "Mfanyakazi hajapatikana"
     }
+  },
+  "payees": {
+    "title": "Wakulima na Wauzaji",
+    "manage_subtitle": "Simamia wasambazaji na wakandarasi wako",
+    "directory": "Orodha ya Wauzaji",
+    "new_payee": "Mlipwaji Mpya",
+    "edit_payee": "Hariri Mlipwaji",
+    "save": "Hifadhi Mlipwaji",
+    "total": "Jumla ya Walipwaji",
+    "search_placeholder": "Tafuta walipwaji...",
+    "empty_title": "Hakuna Walipwaji Bado",
+    "empty_subtitle": "Ongeza wauzaji au wakandarasi ili kufuatilia matumizi yako vizuri.",
+    "fields": {
+      "name": "Jina",
+      "phone": "Simu",
+      "email": "Barua Pepe",
+      "category": "Kategoria",
+      "notes": "Maelezo"
+    },
+    "no_category": "Jumla"
   },
   "labor": {
     "screen_title": "Worker Activity",
@@ -450,6 +534,13 @@
     "record": "Rekodi Mauzo",
     "cash_sale": "Mauzo ya Papo kwa Papo",
     "total_revenue": "Mapato Jumla:",
+    "payments_section": "Malipo",
+    "collected": "Imekusanywa",
+    "balance_due": "Salio",
+    "add_payment": "Ongeza Malipo",
+    "add": "Ongeza",
+    "amount_placeholder": "Kiasi",
+    "note_placeholder": "Maelezo (si lazima)",
     "empty": "Hakuna rekodi za mauzo",
     "errors": {
       "weight_required": "Uzito sahihi unahitajika",
@@ -482,6 +573,7 @@
   "payments": {
     "title": "Malipo",
     "record": "Rekodi Malipo",
+    "edit_title": "Hariri Malipo",
     "confirm": "Thibitisha Malipo",
     "delete_title": "Futa Malipo",
     "confirm_delete": "Una uhakika unataka kufuta malipo haya ya {{name}}?",
@@ -647,7 +739,9 @@
     "syncing": "Inasawazisha...",
     "loading_title": "Inasasisha",
     "loading_body": "Inapakua data mpya ya rasilimali kutoka kwenye seva.",
-    "loading_error": "Imeshindikana kupakia data mpya ya rasilimali."
+    "loading_error": "Imeshindikana kupakia data mpya ya rasilimali.",
+    "show_less": "Onyesha machache",
+    "view_all": "Angalia rasilimali zote {{count}}"
   },
   "feedback": {
     "created": "Imeundwa",

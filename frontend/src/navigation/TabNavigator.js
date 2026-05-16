@@ -16,6 +16,9 @@ import QuickEntryScreen from '../screens/QuickEntryScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SyncErrorsScreen from '../screens/SyncErrorsScreen';
+import PayeesScreen from '../screens/PayeesScreen';
+import PayeeDetailScreen from '../screens/PayeeDetailScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import StitchTabBar from '../components/navigation/StitchTabBar';
 import { stitchTheme } from '../theme/stitchTheme';
 
@@ -51,7 +54,7 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="AddBudgetItem"
         component={AddBudgetItemScreen}
-        options={{ title: t('budget.add') }}
+        options={{ headerShown: false }}
       />
       <ProjectStack.Screen
         name="AddExpense"
@@ -95,7 +98,7 @@ function EmployeeStackNavigator() {
       <EmployeeStack.Screen
         name="EmployeeDetail"
         component={EmployeeDetailScreen}
-        options={{ title: t('payments.pay_worker') }}
+        options={{ headerShown: false }}
       />
     </EmployeeStack.Navigator>
   );
@@ -115,6 +118,21 @@ function SettingsStackNavigator() {
         name="SyncErrors"
         component={SyncErrorsScreen}
         options={{ title: t('settings.sync_errors.title'), headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="Payees"
+        component={PayeesScreen}
+        options={{ headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="PayeeDetail"
+        component={PayeeDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{ headerShown: false }}
       />
     </SettingsStack.Navigator>
   );

@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { verifyProjectAccess } = require('../lib/project-access');
 const { createWorkEntrySchema, updateWorkEntrySchema } = require('../validators/workEntry.validator');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -18,33 +19,41 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
-/** Verify project exists, belongs to user, and is not deleted. */
-const findOwnedProject = async (projectId, userId, res) => {
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Project not found' });
-    return null;
-  }
-  return project;
-};
+/** 
+ * Find an employee that the user is authorized to see.
+ * Authorization: Either the user created the employee, 
+ * OR the employee is assigned to a project the user has access to.
+ */
+const findAccessibleEmployee = async (employeeId, userId, res) => {
+  const employee = await prisma.employee.findUnique({ 
+    where: { id: employeeId },
+    include: {
+      assignments: {
+        where: { project: { projectAccess: { some: { userId } } } }
+      }
+    }
+  });
 
-/** Verify employee exists, belongs to user, and is not deleted. */
-const findOwnedEmployee = async (employeeId, userId, res) => {
-  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
-  if (!employee || employee.isDeleted || employee.userId !== userId) {
+  if (!employee || employee.isDeleted) {
     res.status(404).json({ error: 'Employee not found' });
     return null;
   }
+
+  // Check if user is the creator OR has access via an assignment
+  if (employee.userId !== userId && employee.assignments.length === 0) {
+    res.status(403).json({ error: 'Permission denied' });
+    return null;
+  }
+
   return employee;
 };
 
-/** Verify work entry exists and project belongs to user. */
-const findOwnedEntry = async (id, userId, res) => {
+/** Verify work entry exists and project is accessible. */
+const findWorkEntry = async (id, res) => {
   const entry = await prisma.workEntry.findUnique({ 
     where: { id },
-    include: { project: true }
   });
-  if (!entry || entry.isDeleted || entry.project.userId !== userId) {
+  if (!entry || entry.isDeleted) {
     res.status(404).json({ error: 'Work entry not found' });
     return null;
   }
@@ -57,10 +66,10 @@ const createWorkEntry = async (req, res) => {
   const data = validate(createWorkEntrySchema, req.body, res);
   if (!data) return;
 
-  const project = await findOwnedProject(data.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(data.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
-  const employee = await findOwnedEmployee(data.employeeId, req.user.id, res);
+  const employee = await findAccessibleEmployee(data.employeeId, req.user.id, res);
   if (!employee) return;
 
   const workEntry = await prisma.workEntry.create({
@@ -89,8 +98,8 @@ const createWorkEntry = async (req, res) => {
 // ── GET /work-entries/:projectId ─────────────────────────────────────────────
 
 const listWorkEntries = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
   const includeDeleted = req.query.includeDeleted === 'true';
 
   const workEntries = await prisma.workEntry.findMany({
@@ -105,8 +114,11 @@ const listWorkEntries = async (req, res) => {
 // ── PUT /work-entries/:id ────────────────────────────────────────────────────
 
 const updateWorkEntry = async (req, res) => {
-  const entry = await findOwnedEntry(req.params.id, req.user.id, res);
+  const entry = await findWorkEntry(req.params.id, res);
   if (!entry) return;
+
+  const access = await verifyProjectAccess(entry.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const data = validate(updateWorkEntrySchema, req.body, res);
   if (!data) return;
@@ -125,8 +137,11 @@ const updateWorkEntry = async (req, res) => {
 // ── DELETE /work-entries/:id (soft delete) ───────────────────────────────────
 
 const deleteWorkEntry = async (req, res) => {
-  const entry = await findOwnedEntry(req.params.id, req.user.id, res);
+  const entry = await findWorkEntry(req.params.id, res);
   if (!entry) return;
+
+  const access = await verifyProjectAccess(entry.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   await prisma.workEntry.update({
     where: { id: req.params.id },
@@ -137,8 +152,11 @@ const deleteWorkEntry = async (req, res) => {
 };
 
 const approveWorkEntry = async (req, res) => {
-  const entry = await findOwnedEntry(req.params.id, req.user.id, res);
+  const entry = await findWorkEntry(req.params.id, res);
   if (!entry) return;
+
+  const access = await verifyProjectAccess(entry.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const { status } = req.body;
   if (!['APPROVED', 'REJECTED', 'PENDING'].includes(status)) {
@@ -156,8 +174,8 @@ const approveWorkEntry = async (req, res) => {
 // ── GET /work-entries/:projectId/by-employee ──────────────────────────────────
 
 const getWorkEntriesByEmployee = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
 
   const groups = await prisma.workEntry.groupBy({
     by: ['employeeId'],
@@ -189,8 +207,8 @@ const getWorkEntriesByEmployee = async (req, res) => {
 // ── GET /work-entries/:projectId/by-activity ──────────────────────────────────
 
 const getWorkEntriesByActivity = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
 
   const groups = await prisma.workEntry.groupBy({
     by: ['activity'],

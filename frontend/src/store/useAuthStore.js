@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { resetLocalDatabase } from '../db';
-import { queryClient } from '../lib/queryClient';
 import { getCurrentUser, loginUser, registerUser } from '../services/authService';
 import useSettingsStore from './useSettingsStore';
 import useBackendStore from './useBackendStore';
@@ -88,8 +87,6 @@ const useAuthStore = create((set, get) => ({
       SecureStore.deleteItemAsync(TOKEN_KEY),
       SecureStore.deleteItemAsync(USER_KEY),
     ]);
-
-    queryClient.clear();
 
     try {
       await resetLocalDatabase();

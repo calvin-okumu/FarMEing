@@ -5,6 +5,7 @@
  * but only when the user is logged in (token present).
  */
 import { useCallback, useEffect, useRef } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import { useAppForeground } from './useAppForeground';
 import { syncAll }          from '../services/syncService';
 import useAuthStore          from '../store/useAuthStore';
@@ -30,7 +31,20 @@ export function useSync() {
     }
   }, [token, sync]);
 
-  // Sync when transitioning from offline to online
+  // Sync when NetInfo detects connectivity restoration
+  useEffect(() => {
+    if (!token) return;
+
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected && state.isInternetReachable) {
+        sync();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [token, sync]);
+
+  // Sync when transitioning from offline to online (Store-based)
   useEffect(() => {
     if (token && prevStatusRef.current === 'offline' && backendStatus === 'online') {
       sync();
