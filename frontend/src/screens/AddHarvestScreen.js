@@ -47,11 +47,20 @@ export default function AddHarvestScreen({ route, navigation }) {
   const [project, setProject] = useState(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
+  const [blocks, setBlocks] = useState([]);
+  const [blockId, setBlockId] = useState('');
 
   useEffect(() => {
     const sub = database.get('farm_projects').query(Q.where('is_deleted', false)).observe().subscribe(setProjects);
     return () => sub.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!projectId && !project?.id) { setBlocks([]); return; }
+    const pid = project?.id || projectId;
+    const sub = database.get('project_blocks').query(Q.where('project_id', pid), Q.where('is_deleted', false)).observe().subscribe(setBlocks);
+    return () => sub.unsubscribe();
+  }, [project?.id, projectId]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -76,6 +85,7 @@ export default function AddHarvestScreen({ route, navigation }) {
       setQuality(item.quality || 'grade_a');
       setDate(item.date ? new Date(item.date) : new Date());
       setNotes(item.notes || '');
+      setBlockId(item.blockId || '');
       if (item.projectId) {
         database.get('farm_projects').find(item.projectId).then((p) => setProject(p)).catch(() => {});
       }
@@ -118,6 +128,7 @@ export default function AddHarvestScreen({ route, navigation }) {
             draft.weight = parseFloat(weight);
             draft.unit = unit;
             draft.quality = quality;
+            draft.blockId = blockId || null;
             draft.date = date.getTime();
             draft.notes = notes.trim();
           });
@@ -130,6 +141,7 @@ export default function AddHarvestScreen({ route, navigation }) {
             record.weight = parseFloat(weight);
             record.unit = unit;
             record.quality = quality;
+            record.blockId = blockId || null;
             record.date = date.getTime();
             record.notes = notes.trim();
             record.isDeleted = false;
@@ -180,6 +192,15 @@ export default function AddHarvestScreen({ route, navigation }) {
           </View>
           <Ionicons name="chevron-forward" size={18} color={stitchTheme.colors.textMuted} />
         </TouchableOpacity>
+
+        {(project || projectId) && blocks.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
+            {blocks.map(b => (
+              <StitchChip key={b.id} label={b.name} active={blockId === b.id} onPress={() => setBlockId(b.id)} />
+            ))}
+          </View>
+        ) : null}
 
         <StitchInput
           label={t('harvest.crop_heading')}

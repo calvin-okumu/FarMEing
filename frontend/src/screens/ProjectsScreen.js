@@ -41,9 +41,12 @@ const DEFAULT_FORM = {
   startDate: new Date(),
   expectedYield: '',
   status: 'ACTIVE',
+  numberOfBlocks: '',
+  blockCount: '',
 };
 
 export default function ProjectsScreen({ navigation, route }) {
+
   const { t } = useTranslation();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -144,7 +147,7 @@ export default function ProjectsScreen({ navigation, route }) {
             draft.status = data.status || 'ACTIVE';
           });
         } else {
-          await database.get('farm_projects').create((record) => {
+          const record = await database.get('farm_projects').create((record) => {
             initializeLocalRecord(record);
             record.userId = '';
             record.name = data.name.trim();
@@ -157,6 +160,15 @@ export default function ProjectsScreen({ navigation, route }) {
             record.notes = '';
             record.isDeleted = false;
           });
+          const blockCount = Math.min(Math.max(parseInt(data.blockCount) || 0, 0), 26);
+          const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+          for (let i = 0; i < blockCount; i++) {
+            await database.get('project_blocks').create((draft) => {
+              initializeLocalRecord(draft);
+              draft.projectId = record.id;
+              draft.name = `Block ${letters[i]}`;
+            });
+          }
         }
       });
 
@@ -394,6 +406,15 @@ export default function ProjectsScreen({ navigation, route }) {
             onChangeText={(val) => setValue('expectedYield', val)}
             placeholder={t('projects.placeholders.expected_yield')}
             keyboardType='decimal-pad'
+            style={styles.formField}
+          />
+
+          <StitchInput
+            label='Number of Blocks'
+            value={watch('blockCount')}
+            onChangeText={(val) => setValue('blockCount', val)}
+            placeholder='0'
+            keyboardType='number-pad'
             style={styles.formField}
           />
 
