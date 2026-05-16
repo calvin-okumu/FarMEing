@@ -204,6 +204,38 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 21,
+      steps: [
+        createTable({
+          name: 'project_blocks',
+          columns: [
+            { name: 'project_id', type: 'string' },
+            { name: 'name',       type: 'string' },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        addColumns({ table: 'budget_items', columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'expenses',     columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'work_entries', columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'harvests',     columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+      ],
+    },
+    {
+      toVersion: 22,
+      steps: [
+        addColumns({
+          table: 'project_blocks',
+          columns: [
+            { name: 'land_size', type: 'number', isOptional: true },
+            { name: 'land_unit', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });
+
 

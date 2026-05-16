@@ -56,6 +56,7 @@ export default function ProjectsScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [banner, setBanner] = useState(null);
+  const [blockSizes, setBlockSizes] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const { control, handleSubmit, reset, setValue, watch } = useForm({
@@ -167,6 +168,8 @@ export default function ProjectsScreen({ navigation, route }) {
               initializeLocalRecord(draft);
               draft.projectId = record.id;
               draft.name = `Block ${letters[i]}`;
+              draft.landSize = parseFloat(blockSizes[i]) || 0;
+              draft.landUnit = data.landUnit || 'acres';
             });
           }
         }
@@ -412,11 +415,36 @@ export default function ProjectsScreen({ navigation, route }) {
           <StitchInput
             label='Number of Blocks'
             value={watch('blockCount')}
-            onChangeText={(val) => setValue('blockCount', val)}
+            onChangeText={(val) => {
+              setValue('blockCount', val);
+              const count = Math.min(Math.max(parseInt(val) || 0, 0), 26);
+              setBlockSizes(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
+            }}
             placeholder='0'
             keyboardType='number-pad'
             style={styles.formField}
           />
+
+          {blockSizes.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Text style={styles.formFieldLabel}>Block Sizes (acres)</Text>
+              {blockSizes.map((size, i) => (
+                <StitchInput
+                  key={i}
+                  label={`Block ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i]} Size`}
+                  value={size}
+                  onChangeText={(val) => {
+                    const updated = [...blockSizes];
+                    updated[i] = val;
+                    setBlockSizes(updated);
+                  }}
+                  placeholder='0'
+                  keyboardType='decimal-pad'
+                  style={styles.formField}
+                />
+              ))}
+            </View>
+          ) : null}
 
           {showDatePicker ? (
             <Controller
