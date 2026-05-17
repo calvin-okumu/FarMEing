@@ -311,6 +311,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const collectedRevenue = summary.collectedRevenue || 0;
   const pendingRevenue = summary.pendingRevenue || 0;
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+  const selectedBlock = selectedBlockId ? blocks.find(b => b.id === selectedBlockId) : null;
 
   const employeeMap = new Map();
   employees.forEach((employee) => {
@@ -487,9 +488,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
     <View style={styles.screen}>
       <StitchDashboardShell
         hero={{
-          eyebrow: project.crop || t('projects.fields.crop'),
-          title: project.name,
-          subtitle: `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
+          eyebrow: selectedBlock ? selectedBlock.crop || project.crop : project.crop || t('projects.fields.crop'),
+          title: selectedBlock ? `${project.name} — ${selectedBlock.name}` : project.name,
+          subtitle: selectedBlock
+            ? `${selectedBlock.crop || project.crop || ''}${selectedBlock.landSize ? ` • ${selectedBlock.landSize} ${selectedBlock.landUnit || 'acres'}` : ''}${selectedBlock.expectedYield ? ` • ${selectedBlock.expectedYield} yield` : ''}`
+            : `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
           children: (
@@ -512,6 +515,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
         onDismissBanner={() => setBanner(null)}
         stickyHeader={
           <View>
+            {blocks.length > 0 ? (
+              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
+                <StitchChip label='All' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
+                {blocks.map(b => <StitchChip key={b.id} label={b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />)}
+              </View>
+            ) : null}
             <View style={styles.stickyTopRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
                 {TAB_ORDER.map((tab) => (
@@ -535,15 +544,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
                 </View>
               ) : null}
             </View>
-            {blocks.length > 0 ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
-                <StitchChip label='All Blocks' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
-                {blocks.map(b => {
-                  const label = b.landSize ? `${b.name} (${b.crop || '?'}, ${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
-                  return <StitchChip key={b.id} label={label} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />;
-                })}
-              </View>
-            ) : null}
           </View>
         }
       >
