@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,8 +73,6 @@ export default function AddExpenseScreen({ route, navigation }) {
     const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
     return () => sub.unsubscribe();
   }, []);
-
-  const draftId = useMemo(() => `#TRX-${String(date.getTime()).slice(-4)}`, [date]);
 
   useEffect(() => {
     if (!itemId) return;
@@ -193,26 +190,21 @@ export default function AddExpenseScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    <StitchDashboardShell
+      hero={StitchFormHero({
+        eyebrow: t('expenses.entry_eyebrow'),
+        title: itemId ? t('expenses.edit_title') : t('expenses.entry_title'),
+        subtitle: note || t('settings.brand_short'),
+        pills: [
+          { label: t('expenses.fields.amount'), value: amount ? `${currency} ${amount}` : `${currency} 0.00`, icon: 'cash-outline' },
+          { label: t('expenses.category_heading'), value: t(`expenses.categories.${category}`), icon: 'receipt-outline' },
+        ],
+        onBack: () => navigation.goBack(),
+      })}
+      bodyContentStyle={styles.content}
+      banner={banner}
+      onDismissBanner={() => setBanner(null)}
     >
-      <StitchDashboardShell
-        hero={StitchFormHero({
-          eyebrow: t('expenses.entry_eyebrow'),
-          title: itemId ? t('expenses.edit_title') : t('expenses.entry_title'),
-          subtitle: note || t('settings.brand_short'),
-          pills: [
-            { label: t('expenses.fields.amount'), value: amount ? `${currency} ${amount}` : `${currency} 0.00`, icon: 'cash-outline' },
-            { label: t('expenses.category_heading'), value: t(`expenses.categories.${category}`), icon: 'receipt-outline' },
-          ],
-          onBack: () => navigation.goBack(),
-        })}
-        bodyContentStyle={styles.content}
-        banner={banner}
-        onDismissBanner={() => setBanner(null)}
-      >
 
         <StitchSurface style={styles.amountCard}>
           <StitchSectionTitle>{t('expenses.fields.amount')}</StitchSectionTitle>
@@ -281,12 +273,6 @@ export default function AddExpenseScreen({ route, navigation }) {
             onClose={() => setShowDatePicker(false)}
           />
         ) : null}
-
-        <StitchInput
-          label={t('expenses.reference_id')}
-          value={draftId}
-          editable={false}
-        />
 
         <StitchPicker
           label={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
@@ -392,7 +378,6 @@ export default function AddExpenseScreen({ route, navigation }) {
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('expenses.save')} onPress={handleSave} disabled={saving} loading={saving} icon="save-outline" style={styles.saveButton} />
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
   );
 }
 
@@ -410,7 +395,7 @@ const styles = StyleSheet.create({
   categoryTileText: { flex: 1, ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.text },
   uploadCard: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.xs, gap: stitchTheme.spacing.md },
   uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm },
-  uploadIconWrap: { width: 44, height: 44, borderRadius: 16, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  uploadIconWrap: { width: 44, height: 44, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
   uploadTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
   uploadSubtitle: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted, marginTop: 2 },
   uploadActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
@@ -425,7 +410,7 @@ const styles = StyleSheet.create({
 
   switchTrack: { width: 54, height: 30, borderRadius: 18, backgroundColor: stitchTheme.colors.surfaceMuted, padding: 2 },
   switchTrackActive: { backgroundColor: stitchTheme.colors.primarySoft },
-  switchKnob: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff' },
+  switchKnob: { width: 26, height: 26, borderRadius: 13, backgroundColor: stitchTheme.colors.white },
   switchKnobActive: { alignSelf: 'flex-end' },
   frequencyRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
   frequencyChip: { flex: 1 },

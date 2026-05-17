@@ -2,6 +2,7 @@ const { z } = require('zod');
 
 const createWorkEntrySchema = z.object({
   projectId:   z.string().uuid(),
+  blockId:     z.string().uuid().optional().nullable(),
   employeeId:  z.string().uuid(),
   activity:    z.string().min(1, 'Activity is required'),
   date:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
@@ -18,6 +19,7 @@ const createWorkEntrySchema = z.object({
 });
 
 const updateWorkEntrySchema = z.object({
+  blockId:     z.string().uuid().optional().nullable(),
   activity:    z.string().min(1).optional(),
   date:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   daysWorked:  z.number().positive().optional(),

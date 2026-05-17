@@ -16,6 +16,7 @@ const createBudgetItem = async (req, res) => {
     const item = await prisma.budgetItem.create({
       data: {
         projectId: data.projectId,
+        blockId:   data.blockId ?? null,
         category:  data.category,
         name:      data.name,
         quantity:  data.quantity,

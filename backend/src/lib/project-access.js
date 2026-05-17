@@ -21,7 +21,9 @@ const PROJECT_SELECT = {
   projectAccess: true,
   userId: true,
   season: { select: { id: true, name: true } },
+  blocks: { where: { isDeleted: false }, select: { id: true, name: true } },
 };
+
 
 const ensureOwnerAccess = async (projectId, userId) => {
   if (!prisma.projectAccess) {

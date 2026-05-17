@@ -13,6 +13,7 @@ const createHarvest = async (req, res) => {
     const harvest = await prisma.harvest.create({
       data: {
         projectId: data.projectId,
+        blockId:   data.blockId ?? null,
         crop:      data.crop,
         date:      new Date(data.date),
         weight:    data.weight,

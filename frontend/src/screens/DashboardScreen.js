@@ -11,6 +11,7 @@ import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import useSettingsStore from '../store/useSettingsStore';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 
 const colors = stitchTheme.colors;
 const spacing = stitchTheme.spacing;
@@ -236,23 +237,8 @@ export default function DashboardScreen({ navigation }) {
                         </View>
                     ),
                 }}
+                bodyContentStyle={styles.list}
             >
-                {/* Scope Bar */}
-                <StitchSurface style={styles.scopeBar} contentStyle={styles.scopeBarContent} tone='raised' compact>
-                    <Text style={styles.scopeBarLabel}>{t('dashboard.scope')}</Text>
-                    <Text style={styles.scopeBarValue} numberOfLines={1}>{selectedLabel}</Text>
-                    <Text style={styles.scopeBarMeta}>{selectorMeta}</Text>
-                    <View style={styles.scopeBarChips}>
-                        <StitchChip label={t('dashboard.all_projects')} active={selectedProjectId === 'all'} onPress={() => setSelectedProjectId('all')} />
-                        {activeProjects.slice(0, 2).map((project) => (
-                            <StitchChip key={project.id} label={project.name} active={selectedProjectId === project.id} onPress={() => setSelectedProjectId(project.id)} />
-                        ))}
-                        {activeProjects.length > 2 ? (
-                            <StitchChip label={`+${activeProjects.length - 2}`} onPress={() => setProjectPickerVisible(true)} />
-                        ) : null}
-                    </View>
-                </StitchSurface>
-
                 {/* Financial Pulse */}
                 <StitchSurface style={styles.pulseCard} contentStyle={styles.pulseContent} tone='raised' compact>
                     <View style={styles.pulseTopRow}>
@@ -382,16 +368,10 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + spacing.xl },
     heroPills: { flexDirection: 'row', gap: spacing.xs, marginTop: 2 },
     heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.24)', borderWidth: 1, ...stitchShadows.soft },
     heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
-
-    scopeBar: { marginBottom: spacing.sm },
-    scopeBarContent: { backgroundColor: colors.surfaceHighlight, gap: spacing.xs },
-    scopeBarLabel: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, color: colors.textMuted, fontWeight: type.caption.fontWeight, textTransform: 'uppercase', letterSpacing: 0.8 },
-    scopeBarValue: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text },
-    scopeBarMeta: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, color: colors.textMuted },
-    scopeBarChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
 
     pulseCard: { marginBottom: spacing.sm },
     pulseContent: { backgroundColor: colors.surfaceHighlight, gap: spacing.md },
@@ -434,13 +414,14 @@ const styles = StyleSheet.create({
   miniStatLabel: { ...type.eyebrow, color: colors.textMuted, flex: 1 },
   miniStatValue: { ...type.metricValue, fontSize: 16, color: colors.text },
 
-    sectionSpacing: { marginTop: spacing.md },
+    sectionSpacing: { marginTop: spacing.lg, marginBottom: spacing.xs },
     resourcePinned: {
         ...stitchStyles.collectionCard,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
         paddingVertical: 14,
+        marginBottom: spacing.xs,
     },
     resourcePinnedOrb: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
     resourcePinnedTitle: { flex: 1, ...type.cardTitle, color: colors.text },
@@ -451,16 +432,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         paddingVertical: 14,
+        marginTop: spacing.xxs,
+        backgroundColor: colors.surfaceInset,
+        borderWidth: 0,
+        ...stitchShadows.soft,
     },
     viewAllText: { ...type.cardTitle, fontSize: 15, color: colors.accentBrown },
-    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
     resourceTile: {
         ...stitchStyles.collectionCard,
-        width: '48.2%',
+        width: '47.5%',
         alignItems: 'center',
         gap: spacing.sm,
         paddingVertical: spacing.md,
         paddingLeft: 14,
+        marginBottom: spacing.xs,
     },
     resourceTileOrb: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     resourceTileTitle: { ...type.cardMeta, color: colors.text, textAlign: 'center' },

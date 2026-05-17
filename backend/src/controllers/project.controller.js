@@ -23,11 +23,12 @@ const findAccessible = async (id, userId, res, includeDeleted = false) => {
 
 const createProject = async (req, res) => {
   const data = req.validatedData;
+  const { numberOfBlocks, ...projectData } = data;
 
   try {
     // If seasonId provided, verify it belongs to this user
-    if (data.seasonId) {
-      const season = await prisma.season.findUnique({ where: { id: data.seasonId } });
+    if (projectData.seasonId) {
+      const season = await prisma.season.findUnique({ where: { id: projectData.seasonId } });
       if (!season || season.userId !== req.user.id) {
         return res.status(404).json({ error: 'Season not found' });
       }
@@ -36,14 +37,15 @@ const createProject = async (req, res) => {
     const project = await prisma.$transaction(async (tx) => {
       const newProject = await tx.farmProject.create({
         data: {
-          ...data,
-          startDate: new Date(data.startDate),
-          endDate: data.endDate ? new Date(data.endDate) : null,
-          userId: req.user.id,
+          ...projectData,
+          startDate: new Date(projectData.startDate),
+          endDate:   projectData.endDate ? new Date(projectData.endDate) : null,
+          userId:    req.user.id,
         },
         select: PROJECT_SELECT,
       });
 
+      // 1. Create owner access
       await tx.projectAccess.create({
         data: {
           userId: req.user.id,
@@ -51,6 +53,21 @@ const createProject = async (req, res) => {
           role: 'OWNER',
         },
       });
+
+      // 2. Auto-generate blocks if requested
+      if (numberOfBlocks && numberOfBlocks > 0) {
+        const blocksToCreate = [];
+        for (let i = 0; i < numberOfBlocks; i++) {
+          const char = String.fromCharCode(65 + i); // 65 = 'A'
+          blocksToCreate.push({
+            projectId: newProject.id,
+            name: `Block ${char}`,
+          });
+        }
+        await tx.projectBlock.createMany({
+          data: blocksToCreate,
+        });
+      }
 
       return newProject;
     });
@@ -61,6 +78,7 @@ const createProject = async (req, res) => {
     return res.status(500).json({ error: 'Failed to create project' });
   }
 };
+
 
 // ── GET /projects ─────────────────────────────────────────────────────────────
 

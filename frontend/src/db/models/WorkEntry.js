@@ -1,10 +1,15 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, text } from '@nozbe/watermelondb/decorators';
+import { field, text, immutableRelation } from '@nozbe/watermelondb/decorators';
 
 export default class WorkEntry extends Model {
   static table = 'work_entries';
 
+  static associations = {
+    project_blocks: { type: 'belongs_to', key: 'block_id' },
+  };
+
   @text('project_id')   projectId;
+  @text('block_id')     blockId;
   @text('employee_id')  employeeId;
   @text('activity')     activity;
   @field('date')        date;
@@ -23,4 +28,7 @@ export default class WorkEntry extends Model {
   @field('is_deleted')  isDeleted;
   @field('created_at') createdAt;
   @field('updated_at') updatedAt;
+
+  @immutableRelation('project_blocks', 'block_id') block;
 }
+

@@ -3,6 +3,7 @@ const prisma = require('../lib/prisma');
 const tableMap = {
   seasons: 'season',
   farm_projects: 'farmProject',
+  project_blocks: 'projectBlock',
   budget_items: 'budgetItem',
   expenses: 'expense',
   employees: 'employee',
@@ -21,6 +22,7 @@ const SYNC_ORDER = [
   'seasons',
   'payees',
   'farm_projects',
+  'project_blocks',
   'employees',
   'employee_project_assignments',
   'budget_items',
@@ -41,9 +43,11 @@ const modelsWithDirectUserId = ['farmProject', 'employee', 'payee', 'season'];
 const fieldMapping = {
   userId: 'user_id',
   seasonId: 'season_id',
+  blockId: 'block_id',
   landSize: 'land_size',
   landUnit: 'land_unit',
   startDate: 'start_date',
+
   endDate: 'end_date',
   expectedYield: 'expected_yield',
   contractUrl: 'contract_url',
@@ -144,7 +148,7 @@ const fromWatermelon = (record) => {
   });
 
   // Foreign keys or IDs should be null if they are empty strings
-  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId'];
+  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId', 'blockId'];
   idFields.forEach(field => {
     if (result[field] === '') {
       result[field] = null;
@@ -194,11 +198,12 @@ exports.pull = async (req, res) => {
         where.id = { in: accessibleProjectIds };
       } else {
         // All other models are directly linked to a project
-        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock'].includes(prismaModel)) {
           where.projectId = { in: accessibleProjectIds };
         } else if (prismaModel === 'salePayment') {
           where.sale = { projectId: { in: accessibleProjectIds } };
         } else if (prismaModel === 'payment') {
+
           where.employee = { 
             OR: [
               { userId: req.user.id },
@@ -356,9 +361,10 @@ exports.push = async (req, res) => {
             where.id = req.user.id;
           } else if (prismaModel === 'farmProject') {
             where.projectAccess = { some: { userId: req.user.id, role: 'OWNER' } };
-          } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject'].includes(prismaModel)) {
+          } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock'].includes(prismaModel)) {
             where.project = { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } };
           } else if (prismaModel === 'payment') {
+
             where.employee = { userId: req.user.id };
           } else if (prismaModel === 'employee' || prismaModel === 'payee') {
             where.userId = req.user.id;

@@ -7,6 +7,7 @@ const dateField = z
 
 const createHarvestSchema = z.object({
   projectId: z.string().uuid('Invalid project ID'),
+  blockId:   z.string().uuid('Invalid block ID').optional().nullable(),
   crop:      z.string().min(1, 'Crop name is required'),
   date:      dateField,
   weight:    z.number().positive('Weight must be positive'),
@@ -17,6 +18,7 @@ const createHarvestSchema = z.object({
 
 const updateHarvestSchema = z
   .object({
+    blockId: z.string().uuid('Invalid block ID').optional().nullable(),
     crop:    z.string().min(1).optional(),
     date:    dateField.optional(),
     weight:  z.number().positive().optional(),

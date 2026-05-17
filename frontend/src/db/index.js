@@ -4,7 +4,9 @@ import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import schema      from './schema';
 import migrations from './migrations';
 import Season      from './models/Season';
+import ProjectBlock from './models/ProjectBlock';
 import FarmProject from './models/FarmProject';
+
 
 import BudgetItem  from './models/BudgetItem';
 import Expense     from './models/Expense';
@@ -31,7 +33,7 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [Season, FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem, Payee, EmployeeProjectAssignment, SalePayment],
+  modelClasses: [Season, ProjectBlock, FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem, Payee, EmployeeProjectAssignment, SalePayment],
 });
 
 export async function resetLocalDatabase() {
@@ -42,7 +44,9 @@ export async function resetLocalDatabase() {
 
 // Convenience collection getters
 export const seasonsCollection = database.get('seasons');
+export const blocksCollection    = database.get('project_blocks');
 export const projectsCollection  = database.get('farm_projects');
+
 
 export const budgetItemsCollection = database.get('budget_items');
 export const expensesCollection  = database.get('expenses');

@@ -4,11 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import ProjectsScreen from '../screens/ProjectsScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
-import AddBudgetItemScreen from '../screens/AddBudgetItemScreen';
-import AddExpenseScreen from '../screens/AddExpenseScreen';
-import AddWorkEntryScreen from '../screens/AddWorkEntryScreen';
-import AddHarvestScreen from '../screens/AddHarvestScreen';
-import AddSaleScreen from '../screens/AddSaleScreen';
 import InventoryScreen from '../screens/InventoryScreen';
 import EmployeesScreen from '../screens/EmployeesScreen';
 import EmployeeDetailScreen from '../screens/EmployeeDetailScreen';
@@ -49,31 +44,6 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="ProjectDetail"
         component={ProjectDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddBudgetItem"
-        component={AddBudgetItemScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddExpense"
-        component={AddExpenseScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddWorkEntry"
-        component={AddWorkEntryScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddHarvest"
-        component={AddHarvestScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddSale"
-        component={AddSaleScreen}
         options={{ headerShown: false }}
       />
       <ProjectStack.Screen
@@ -146,6 +116,7 @@ export default function TabNavigator() {
       tabBar={(props) => <StitchTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
         sceneStyle: { backgroundColor: stitchTheme.colors.background },
       }}
       initialRouteName="Dashboard"

@@ -51,6 +51,8 @@ export const stitchTheme = {
     mintLight: '#d8f3e4',
     sand: '#e4d9c5',
     warmWhite: '#fdfaf4',
+    white: '#ffffff',
+    pureWhite: '#ffffff',
   },
   radius: {
     xs: 10,

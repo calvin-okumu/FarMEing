@@ -1,12 +1,11 @@
 const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
 const prisma = require('../lib/prisma');
-const { checkProjectAccess } = require('../lib/project-access');
+const { verifyProjectAccess } = require('../lib/project-access');
 
-const getProjectData = async (id, userId) => {
-  const { hasAccess, project } = await checkProjectAccess(id, userId);
-  
-  if (!hasAccess) return null;
+const getProjectData = async (id, userId, res) => {
+  const access = await verifyProjectAccess(id, userId, res);
+  if (!access) return null;
 
   return await prisma.farmProject.findUnique({
     where: { id },
@@ -25,11 +24,8 @@ const generateProjectReport = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const project = await getProjectData(id, req.user.id);
-
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
+    const project = await getProjectData(id, req.user.id, res);
+    if (!project) return;
 
     const doc = new PDFDocument({ margin: 50 });
 
@@ -153,11 +149,8 @@ const generateProjectExcelReport = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const project = await getProjectData(id, req.user.id);
-
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
+    const project = await getProjectData(id, req.user.id, res);
+    if (!project) return;
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Shamba Mkononi';

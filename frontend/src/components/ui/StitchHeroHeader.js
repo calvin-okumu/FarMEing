@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     lineHeight: stitchTheme.typography.hero.lineHeight,
     fontWeight: stitchTheme.typography.hero.fontWeight,
     fontFamily: stitchTheme.fonts.display,
-    color: '#ffffff',
+    color: stitchTheme.colors.white,
     letterSpacing: -1,
   },
   titleCompact: {
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: stitchTheme.radius.sm,
     backgroundColor: 'rgba(253,250,244,0.18)',
     borderColor: 'rgba(255,255,255,0.34)',
     shadowColor: '#08160f',
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: '900',
     fontFamily: stitchTheme.fonts.heading,
-    color: '#ffffff',
+    color: stitchTheme.colors.white,
     letterSpacing: -0.3,
   },
   pillNote: {

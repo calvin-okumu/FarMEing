@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FarmTruck",
-    "slug": "frontend",
+    "name": "FarmTrack",
+    "slug": "farmtrack",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,17 +28,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "86af1b31-414c-4250-a84c-fada504a33e9"
-      }
-    },
     "plugins": [
       "expo-font",
       "expo-sqlite",
       "expo-localization",
       "expo-secure-store",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cd9b27e4-e40e-4a94-96ab-bd30b18a5202"
+      }
+    },
+    "owner": "calvinokumu"
   }
 }

@@ -2,6 +2,7 @@ const { z } = require('zod');
 
 const createBudgetItemSchema = z.object({
   projectId: z.string().uuid('Invalid project ID'),
+  blockId:   z.string().uuid('Invalid block ID').optional().nullable(),
   category:  z.string().min(1, 'Category is required'),
   name:      z.string().min(1, 'Name is required'),
   quantity:  z.number().positive('Quantity must be a positive number'),
@@ -12,6 +13,7 @@ const createBudgetItemSchema = z.object({
 });
 
 const updateBudgetItemSchema = z.object({
+  blockId:   z.string().uuid('Invalid block ID').optional().nullable(),
   category:  z.string().min(1).optional(),
   name:      z.string().min(1).optional(),
   quantity:  z.number().positive().optional(),

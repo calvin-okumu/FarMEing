@@ -5,6 +5,7 @@ export default class FarmProject extends Model {
   static table = 'farm_projects';
   static associations = {
     employee_project_assignments: { type: 'has_many', foreignKey: 'project_id' },
+    project_blocks: { type: 'has_many', foreignKey: 'project_id' },
   };
 
   get remoteId() {
@@ -28,4 +29,6 @@ export default class FarmProject extends Model {
   @field('updated_at') updatedAt;
 
   @children('employee_project_assignments') assignments;
+  @children('project_blocks') blocks;
 }
+

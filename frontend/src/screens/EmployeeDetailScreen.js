@@ -7,11 +7,10 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  KeyboardAvoidingView,
   Platform,
   RefreshControl,
   ScrollView,
-  Linking,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
@@ -33,28 +32,6 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import useSettingsStore from '../store/useSettingsStore';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
 import { initializeLocalRecord } from '../utils/localRecord';
-
-function BalanceBars({ earned, paid, balance }) {
-  const values = [earned || 1, paid || 1, Math.abs(balance) || 1];
-  const maxValue = Math.max(...values, 1);
-
-  return (
-    <View style={styles.balanceBars}>
-      {values.map((value, index) => (
-        <View
-          key={`${value}-${index}`}
-          style={[
-            styles.balanceBar,
-            {
-              height: `${Math.max(28, (value / maxValue) * 100)}%`,
-              backgroundColor: index === 0 ? stitchTheme.colors.primaryContainer : index === 1 ? stitchTheme.colors.primarySoft : '#e4ddd7',
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
 
 function StatCard({ label, title, value, tone = 'soft' }) {
   return (
@@ -296,19 +273,6 @@ export default function EmployeeDetailScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <StitchSurface style={styles.summarySurface}>
-          <View style={styles.summaryTop}>
-            <View style={styles.avatarLarge}>
-              <Text style={styles.avatarTextLarge}>{(employee.name || '?').charAt(0).toUpperCase()}</Text>
-            </View>
-            <View style={styles.summaryMeta}>
-              <Text style={styles.summaryName}>{employee.name}</Text>
-              <Text style={styles.summaryRole}>{employee.role || 'Unset Role'}</Text>
-            </View>
-          </View>
-          <BalanceBars earned={balance.totalEarned} paid={balance.totalPaid} balance={balance.outstanding} />
-        </StitchSurface>
-
         <View style={styles.statGrid}>
           <StatCard label="Earnings" title={t('employees.earned')} value={formatCurrency(balance.totalEarned, currency)} tone="accent" />
           <StatCard label="Payments" title={t('employees.paid')} value={formatCurrency(balance.totalPaid, currency)} />
@@ -330,8 +294,8 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             <Text style={styles.actionBtnText}>{t('common.edit')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionBtn, styles.payBtn]} onPress={() => { setEditingPayment(null); setPaymentVisible(true); }} activeOpacity={0.88}>
-            <Ionicons name="cash-outline" size={18} color="#fff" />
-            <Text style={[styles.actionBtnText, { color: '#fff' }]}>{t('employees.pay_worker')}</Text>
+            <Ionicons name="cash-outline" size={18} color={stitchTheme.colors.white} />
+            <Text style={[styles.actionBtnText, { color: stitchTheme.colors.white }]}>{t('employees.pay_worker')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -500,63 +464,63 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: stitchTheme.spacing.screen },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: stitchTheme.spacing.md },
   errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted },
-  contentWrap: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  contentWrap: { paddingBottom: STITCH_TAB_BAR_HEIGHT + stitchTheme.spacing.lg },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.xxs },
   heroPillAccent: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
-  summarySurface: { ...stitchStyles.collectionCard, marginBottom: stitchTheme.spacing.md, marginHorizontal: stitchTheme.spacing.screen, paddingHorizontal: stitchTheme.spacing.md },
-  summaryTop: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.md },
-  avatarLarge: { width: 52, height: 52, borderRadius: 16, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center' },
-  avatarTextLarge: { color: '#fff', ...stitchTheme.typography.cardTitle, fontSize: 20 },
+  summarySurface: { ...stitchStyles.collectionCard, marginBottom: 0, padding: stitchTheme.spacing.md },
+  summaryTop: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md },
+  avatarLarge: { width: 56, height: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarTextLarge: { color: '#fff', ...stitchTheme.typography.cardTitle, fontSize: 22 },
   summaryMeta: { flex: 1 },
   summaryName: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.primary, letterSpacing: -0.3 },
-  summaryRole: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown, marginTop: 2 },
-  balanceBars: { height: 42, flexDirection: 'row', alignItems: 'flex-end', gap: stitchTheme.spacing.xxs, marginTop: stitchTheme.spacing.sm },
+  summaryRole: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown, marginTop: stitchTheme.spacing.xxs / 2 },
+  balanceBars: { height: 48, flexDirection: 'row', alignItems: 'flex-end', gap: stitchTheme.spacing.xxs, marginTop: stitchTheme.spacing.md },
 
-  balanceBar: { width: 14, borderTopLeftRadius: 8, borderTopRightRadius: 8, minHeight: 14 },
-  statGrid: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.screen },
-  statCard: { ...stitchStyles.metricCard },
+  balanceBar: { width: 14, borderTopLeftRadius: stitchTheme.radius.xs, borderTopRightRadius: stitchTheme.radius.xs, minHeight: 14 },
+  statGrid: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
+  statCard: { ...stitchStyles.metricCard, padding: stitchTheme.spacing.md },
   statCardSoft: { backgroundColor: stitchTheme.colors.surfaceHighlight },
   statCardAccent: { backgroundColor: stitchTheme.colors.surfaceTint },
   statEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
-  statTitle: { marginTop: 3, ...stitchTheme.typography.caption, color: stitchTheme.colors.text },
-  statValue: { ...stitchTheme.typography.metricValue, marginTop: 2, color: stitchTheme.colors.text },
-  actionRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, paddingHorizontal: stitchTheme.spacing.screen, marginBottom: stitchTheme.spacing.lg },
-  actionBtn: { flex: 1, height: 44, borderRadius: 12, backgroundColor: stitchTheme.colors.surfaceHighlight, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, ...stitchShadows.soft },
+  statTitle: { marginTop: 4, ...stitchTheme.typography.caption, color: stitchTheme.colors.text },
+  statValue: { ...stitchTheme.typography.metricValue, marginTop: 4, color: stitchTheme.colors.text },
+  actionRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  actionBtn: { flex: 1, height: 48, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceHighlight, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, ...stitchShadows.soft },
   payBtn: { flex: 1.5, backgroundColor: stitchTheme.colors.primaryContainer },
-  actionIconBox: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  actionIconBox: { width: 32, height: 32, borderRadius: stitchTheme.radius.sm, alignItems: 'center', justifyContent: 'center' },
   actionBtnText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.text },
-  section: { marginBottom: stitchTheme.spacing.lg },
-  projectScroll: { gap: 10, paddingHorizontal: stitchTheme.spacing.screen, paddingVertical: 4 },
-  projectCard: { ...stitchStyles.collectionCard, width: 160, paddingLeft: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 0 },
-  projectIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  section: { marginVertical: stitchTheme.spacing.xs },
+  projectScroll: { gap: stitchTheme.spacing.xs, paddingVertical: 4 },
+  projectCard: { ...stitchStyles.collectionCard, width: 170, padding: stitchTheme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: 0 },
+  projectIcon: { width: 36, height: 36, borderRadius: stitchTheme.radius.sm, backgroundColor: stitchTheme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   projectName: { ...stitchTheme.typography.cardMeta, fontWeight: '800', color: stitchTheme.colors.text },
   projectCrop: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
-  tabs: { flexDirection: 'row', marginBottom: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: 6, marginHorizontal: stitchTheme.spacing.screen },
+  tabs: { flexDirection: 'row', backgroundColor: stitchTheme.colors.surfaceInset, borderRadius: stitchTheme.radius.card, padding: 6 },
   tabButton: { flex: 1 },
-  listItem: { ...stitchStyles.collectionCard, marginHorizontal: stitchTheme.spacing.screen, marginBottom: stitchTheme.spacing.xs, paddingHorizontal: 0, paddingLeft: 0 },
-  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingLeft: 18, paddingRight: 14 },
+  listItem: { ...stitchStyles.collectionCard, marginBottom: 0, padding: stitchTheme.spacing.md },
+  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.xxs },
   listItemTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text, letterSpacing: -0.3 },
   listItemAmount: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
-  listItemMeta: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted, paddingLeft: 18, paddingRight: 14 },
-  listItemDescription: { ...stitchTheme.typography.cardDescription, marginTop: 6, color: stitchTheme.colors.textMuted, paddingLeft: 18, paddingRight: 14 },
-  listItemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingLeft: 18, paddingRight: 14 },
+  listItemMeta: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted },
+  listItemDescription: { ...stitchTheme.typography.cardDescription, marginTop: stitchTheme.spacing.xs, color: stitchTheme.colors.textMuted },
+  listItemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.xs },
 
 
   emptyText: { color: stitchTheme.colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: stitchTheme.spacing.xl },
-  deleteTrigger: { marginTop: stitchTheme.spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  deleteTrigger: { marginVertical: stitchTheme.spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingBottom: 20 },
   deleteTriggerText: { color: stitchTheme.colors.accentRed, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, paddingVertical: 36, paddingHorizontal: 22, maxHeight: '92%', paddingBottom: Platform.OS === 'ios' ? 44 : 28 },
+  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, paddingVertical: stitchTheme.spacing.xl, paddingHorizontal: stitchTheme.spacing.lg, maxHeight: '92%', paddingBottom: Platform.OS === 'ios' ? 44 : stitchTheme.spacing.xl },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  projectSelectionRow: { gap: 8, paddingVertical: 4, marginBottom: stitchTheme.spacing.md },
-  formContent: { gap: 16 },
+  projectSelectionRow: { gap: stitchTheme.spacing.xs, paddingVertical: 4, marginBottom: stitchTheme.spacing.md },
+  formContent: { gap: stitchTheme.spacing.md },
   formField: { marginBottom: 0 },
   formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
-  projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
+  projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
   projectChipTextActive: { color: stitchTheme.colors.primary },

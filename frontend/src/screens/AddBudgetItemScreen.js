@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -128,26 +127,21 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior='padding'
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    <StitchDashboardShell
+      hero={StitchFormHero({
+        eyebrow: t('budget.fields.category'),
+        title: itemId ? t('budget.edit_title') : t('budget.add'),
+        subtitle: t(`budget.categories.${category}`),
+        pills: [
+          { label: t('budget.estimated_total'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+          { label: t('budget.fields.quantity'), value: quantity || '0', icon: 'layers-outline' },
+        ],
+        onBack: () => navigation.goBack(),
+      })}
+      bodyContentStyle={styles.content}
+      banner={banner}
+      onDismissBanner={() => setBanner(null)}
     >
-      <StitchDashboardShell
-        hero={StitchFormHero({
-          eyebrow: t('budget.fields.category'),
-          title: itemId ? t('budget.edit_title') : t('budget.add'),
-          subtitle: t(`budget.categories.${category}`),
-          pills: [
-            { label: t('budget.estimated_total'), value: formatCurrency(total, currency), icon: 'cash-outline' },
-            { label: t('budget.fields.quantity'), value: quantity || '0', icon: 'layers-outline' },
-          ],
-          onBack: () => navigation.goBack(),
-        })}
-        bodyContentStyle={styles.content}
-        banner={banner}
-        onDismissBanner={() => setBanner(null)}
-      >
         <StitchSectionTitle>{t('budget.fields.category')}</StitchSectionTitle>
         <View style={styles.chipsRow}>
           {CATEGORIES.map((cat) => (
@@ -225,7 +219,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         />
         {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
   );
 }
 

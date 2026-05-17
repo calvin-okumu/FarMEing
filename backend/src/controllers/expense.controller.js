@@ -14,6 +14,7 @@ const createExpense = async (req, res) => {
     const expense = await prisma.expense.create({
       data: {
         projectId:  data.projectId,
+        blockId:    data.blockId    ?? null,
         category:   data.category,
         expenseType: data.expenseType ?? 'OPEX',
         amount:     data.amount,

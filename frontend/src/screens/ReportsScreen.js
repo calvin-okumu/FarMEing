@@ -13,10 +13,17 @@ import { computeProjectSummary, computePortfolioSummary } from '../utils/localAn
 import useSettingsStore from '../store/useSettingsStore';
 import { syncAll } from '../services/syncService';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
-import { PieChart, BarChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 
 const screenWidth = Dimensions.get('window').width;
+
+function ProgressBar({ progress, color, height = 6 }) {
+  return (
+    <View style={[styles.progressTrack, { height }]}>
+      <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%`, backgroundColor: color }]} />
+    </View>
+  );
+}
 
 function ProjectPerformanceCard({ project, summary, currency, navigation }) {
   const isProfitable = summary.netProfit >= 0;
@@ -182,68 +189,35 @@ export default function ReportsScreen({ navigation }) {
 
       <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
         <Text style={styles.chartTitle}>{t('dashboard.project_profitability', { defaultValue: 'Project Profitability (Top 5)' })}</Text>
-        <BarChart
-          data={{
-            labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
-            datasets: [{
-              data: projectSummaries.slice(0, 5).map(s => Math.max(0, s.summary.netProfit))
-            }]
-          }}
-          width={screenWidth - 48}
-          height={200}
-          yAxisLabel={currency === 'TZS' ? 'TSh ' : '$'}
-          chartConfig={{
-            backgroundColor: stitchTheme.colors.surfaceHighlight,
-            backgroundGradientFrom: stitchTheme.colors.surfaceHighlight,
-            backgroundGradientTo: stitchTheme.colors.surfaceHighlight,
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForLabels: { fontSize: 10, fontWeight: '700' }
-          }}
-          style={{ marginVertical: 8, borderRadius: 16 }}
-          fromZero
-          showValuesOnTopOfBars
-        />
+        {projectSummaries.slice(0, 5).map(({ project, summary }) => {
+          const maxProfit = Math.max(...projectSummaries.map(s => s.summary.netProfit), 1);
+          const ratio = (summary.netProfit / maxProfit) * 100;
+          return (
+            <View key={project.id} style={styles.miniBarRow}>
+              <View style={styles.miniBarInfo}>
+                <Text style={styles.miniBarLabel}>{project.name}</Text>
+                <Text style={styles.miniBarValue}>{formatCurrency(summary.netProfit, currency)}</Text>
+              </View>
+              <ProgressBar progress={ratio} color={stitchTheme.colors.primaryDim} />
+            </View>
+          );
+        })}
       </StitchSurface>
 
       <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
         <Text style={styles.chartTitle}>Revenue Collection (Top 5)</Text>
-        <BarChart
-          data={{
-            labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
-            datasets: [
-              {
-                data: projectSummaries.slice(0, 5).map(s => s.summary.totalRevenue)
-              },
-              {
-                data: projectSummaries.slice(0, 5).map(s => s.summary.collectedRevenue || 0)
-              }
-            ]
-          }}
-          width={screenWidth - 48}
-          height={200}
-          yAxisLabel={currency === 'TZS' ? 'TSh ' : '$'}
-          chartConfig={{
-            backgroundColor: stitchTheme.colors.surfaceHighlight,
-            backgroundGradientFrom: stitchTheme.colors.surfaceHighlight,
-            backgroundGradientTo: stitchTheme.colors.surfaceHighlight,
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForLabels: { fontSize: 10, fontWeight: '700' },
-            barPercentage: 0.4
-          }}
-          style={{ marginVertical: 8, borderRadius: 16 }}
-          fromZero
-          showValuesOnTopOfBars
-        />
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: 'rgba(17,154,84,0.5)' }]} /><Text style={styles.legendText}>Total Revenue</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: stitchTheme.colors.primaryContainer }]} /><Text style={styles.legendText}>Collected</Text></View>
-        </View>
+        {projectSummaries.slice(0, 5).map(({ project, summary }) => {
+          const collectedRatio = summary.totalRevenue > 0 ? (summary.collectedRevenue / summary.totalRevenue) * 100 : 0;
+          return (
+            <View key={project.id} style={styles.miniBarRow}>
+              <View style={styles.miniBarInfo}>
+                <Text style={styles.miniBarLabel}>{project.name}</Text>
+                <Text style={styles.miniBarValue}>{formatCurrency(summary.collectedRevenue, currency)} / {formatCurrency(summary.totalRevenue, currency)}</Text>
+              </View>
+              <ProgressBar progress={collectedRatio} color={stitchTheme.colors.primaryContainer} />
+            </View>
+          );
+        })}
       </StitchSurface>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.perfScroll}>
@@ -262,44 +236,12 @@ export default function ReportsScreen({ navigation }) {
       <StitchDashboardSectionHeader title={t('dashboard.cost_allocation', { defaultValue: 'Cost Allocation' })} subtitle={t('dashboard.spending_breakdown', { defaultValue: 'Portfolio spending breakdown' })} style={styles.sectionSpacing} />
       
       <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
-        <PieChart
-          data={[
-            {
-              name: t('dashboard.labor_costs'),
-              population: portfolio.totalLaborCost,
-              color: stitchTheme.colors.primaryDim,
-              legendFontColor: stitchTheme.colors.text,
-              legendFontSize: 11,
-            },
-            {
-              name: t('dashboard.expenses_short'),
-              population: portfolio.totalExpenses,
-              color: stitchTheme.colors.accentBrown,
-              legendFontColor: stitchTheme.colors.text,
-              legendFontSize: 11,
-            },
-            {
-              name: 'Stock',
-              population: portfolio.totalInventoryCost,
-              color: stitchTheme.colors.primarySoft,
-              legendFontColor: stitchTheme.colors.text,
-              legendFontSize: 11,
-            },
-          ]}
-          width={screenWidth - 32}
-          height={180}
-          chartConfig={{
-            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-          }}
-          accessor={"population"}
-          backgroundColor={"transparent"}
-          paddingLeft={"15"}
-          center={[10, 0]}
-          absolute
-        />
-      </StitchSurface>
-
-      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <View style={styles.stackedBar}>
+          <View style={[styles.stackedBarPart, { flex: portfolio.totalLaborCost || 1, backgroundColor: stitchTheme.colors.primaryDim }]} />
+          <View style={[styles.stackedBarPart, { flex: portfolio.totalExpenses || 1, backgroundColor: stitchTheme.colors.accentBrown }]} />
+          <View style={[styles.stackedBarPart, { flex: portfolio.totalInventoryCost || 1, backgroundColor: stitchTheme.colors.primarySoft }]} />
+        </View>
+        
         <View style={styles.breakdownRow}>
           <View style={styles.breakdownMeta}>
             <View style={[styles.dot, { backgroundColor: stitchTheme.colors.primaryDim }]} />
@@ -333,30 +275,23 @@ export default function ReportsScreen({ navigation }) {
       {data.harvests.filter(h => !h.isDeleted).length > 0 ? (
         <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
           <Text style={styles.chartTitle}>Harvest by Crop</Text>
-          <PieChart
-            data={(() => {
+          {(() => {
               const cropMap = {};
               data.harvests.filter(h => !h.isDeleted).forEach(h => {
                 cropMap[h.crop] = (cropMap[h.crop] || 0) + (h.weight || 0);
               });
+              const maxHarvest = Math.max(...Object.values(cropMap), 1);
               const colors = [stitchTheme.colors.primaryDim, stitchTheme.colors.accentBrown, stitchTheme.colors.primarySoft, stitchTheme.colors.accentRed, stitchTheme.colors.primary];
-              return Object.entries(cropMap).slice(0, 5).map(([crop, weight], i) => ({
-                name: crop,
-                population: weight,
-                color: colors[i % colors.length],
-                legendFontColor: stitchTheme.colors.text,
-                legendFontSize: 11,
-              }));
-            })()}
-            width={screenWidth - 32}
-            height={180}
-            chartConfig={{ color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})` }}
-            accessor={"population"}
-            backgroundColor={"transparent"}
-            paddingLeft={"15"}
-            center={[10, 0]}
-            absolute
-          />
+              return Object.entries(cropMap).slice(0, 5).map(([crop, weight], i) => (
+                <View key={crop} style={styles.miniBarRow}>
+                  <View style={styles.miniBarInfo}>
+                    <Text style={styles.miniBarLabel}>{crop}</Text>
+                    <Text style={styles.miniBarValue}>{weight.toLocaleString()} kg</Text>
+                  </View>
+                  <ProgressBar progress={(weight / maxHarvest) * 100} color={colors[i % colors.length]} />
+                </View>
+              ));
+          })()}
         </StitchSurface>
       ) : null}
 
@@ -425,8 +360,51 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
+  progressTrack: {
+    width: '100%',
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 10,
+  },
+  miniBarRow: {
+    width: '100%',
+    paddingHorizontal: 22,
+    marginBottom: 16,
+    gap: 6,
+  },
+  miniBarInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  miniBarLabel: {
+    ...stitchTheme.typography.cardMeta,
+    color: stitchTheme.colors.text,
+    fontWeight: '800',
+  },
+  miniBarValue: {
+    ...stitchTheme.typography.caption,
+    color: stitchTheme.colors.textMuted,
+    fontWeight: '700',
+  },
+  stackedBar: {
+    flexDirection: 'row',
+    height: 12,
+    width: screenWidth - 76,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    marginBottom: 16,
+  },
+  stackedBarPart: {
+    height: '100%',
+  },
   perfScroll: {
-    gap: 12,
+    gap: stitchTheme.spacing.sm,
     paddingVertical: 4,
   },
   perfCard: {
@@ -469,7 +447,7 @@ const styles = StyleSheet.create({
   perfDivider: {
     height: 1,
     backgroundColor: stitchTheme.colors.line,
-    marginVertical: 12,
+    marginVertical: stitchTheme.spacing.sm,
     marginHorizontal: 18,
     opacity: 0.6,
   },
@@ -503,7 +481,7 @@ const styles = StyleSheet.create({
   breakdownMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: stitchTheme.spacing.xs,
   },
   dot: {
     width: 8,
@@ -537,14 +515,14 @@ const styles = StyleSheet.create({
   laborStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: stitchTheme.spacing.xs,
   },
   workerStatCard: {
     flex: 1,
     minWidth: '48%',
     backgroundColor: stitchTheme.colors.surfaceInset,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: stitchTheme.radius.sm,
     borderWidth: 1,
     borderColor: 'rgba(17,42,30,0.06)',
   },
@@ -561,18 +539,18 @@ const styles = StyleSheet.create({
   activityGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: stitchTheme.spacing.xxs,
   },
   activityStat: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: stitchTheme.radius.sm,
     borderWidth: 1,
     borderColor: 'rgba(17,42,30,0.04)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: stitchTheme.spacing.xs,
     ...stitchShadows.soft,
   },
   activityStatLabel: {
@@ -594,7 +572,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
   },
-  legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 4 },
+  legendRow: { flexDirection: 'row', justifyContent: 'center', gap: stitchTheme.spacing.md, marginTop: 4 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 11, fontWeight: '600', color: stitchTheme.colors.textMuted },

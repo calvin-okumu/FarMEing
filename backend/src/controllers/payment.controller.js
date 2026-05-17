@@ -1,19 +1,19 @@
 const prisma = require('../lib/prisma');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Find an employee that the user is authorized to see.
- * Authorization: Either the user created the employee, 
- * OR the employee is assigned to a project the user has access to.
+ * Find an employee and verify the user has access to at least one project they are assigned to.
  */
-const findAccessibleEmployee = async (employeeId, userId, res) => {
+const findAccessibleEmployee = async (employeeId, userId, res, requiredRoles = []) => {
   try {
     const employee = await prisma.employee.findUnique({ 
       where: { id: employeeId },
       include: {
         assignments: {
-          where: { project: { projectAccess: { some: { userId } } } }
+          where: { isDeleted: false },
+          select: { projectId: true }
         }
       }
     });
@@ -23,8 +23,25 @@ const findAccessibleEmployee = async (employeeId, userId, res) => {
       return null;
     }
 
-    // Check if user is the creator OR has access via an assignment
-    if (employee.userId !== userId && employee.assignments.length === 0) {
+    // User always has access to employees they created
+    if (employee.userId === userId) return employee;
+
+    // Otherwise, check if user has access to any of the employee's assigned projects
+    if (employee.assignments.length === 0) {
+      res.status(403).json({ error: 'Permission denied: Employee is not assigned to any projects you access' });
+      return null;
+    }
+
+    const projectIds = employee.assignments.map(a => a.projectId);
+    const access = await prisma.projectAccess.findFirst({
+      where: {
+        userId,
+        projectId: { in: projectIds },
+        ...(requiredRoles.length > 0 ? { role: { in: requiredRoles } } : {})
+      }
+    });
+
+    if (!access) {
       res.status(403).json({ error: 'Permission denied' });
       return null;
     }
@@ -37,37 +54,15 @@ const findAccessibleEmployee = async (employeeId, userId, res) => {
   }
 };
 
-/**
- * Check if the user has OWNER or MANAGER access to the employee.
- * This means they either created the employee, OR they have an 
- * OWNER/MANAGER role on at least one project the employee is assigned to.
- */
-const hasManagerialAccess = async (employee, userId) => {
-  if (employee.userId === userId) return true;
-
-  const access = await prisma.projectAccess.findFirst({
-    where: {
-      userId,
-      role: { in: ['OWNER', 'MANAGER'] },
-      project: { employees: { some: { employeeId: employee.id } } }
-    }
-  });
-
-  return !!access;
-};
-
 // ── POST /payments ────────────────────────────────────────────────────────────
 
 const createPayment = async (req, res) => {
   const data = req.validatedData;
 
   try {
-    const employee = await findAccessibleEmployee(data.employeeId, req.user.id, res);
+    // Require OWNER or MANAGER access to create payments
+    const employee = await findAccessibleEmployee(data.employeeId, req.user.id, res, ['OWNER', 'MANAGER']);
     if (!employee) return;
-
-    if (!(await hasManagerialAccess(employee, req.user.id))) {
-      return res.status(403).json({ error: 'Permission denied: Requires OWNER or MANAGER role' });
-    }
 
     const payment = await prisma.payment.create({
       data: {
@@ -151,12 +146,9 @@ const deletePayment = async (req, res) => {
       return res.status(404).json({ error: 'Payment not found' });
     }
 
-    const employee = await findAccessibleEmployee(payment.employeeId, req.user.id, res);
+    // Require OWNER or MANAGER access to delete payments
+    const employee = await findAccessibleEmployee(payment.employeeId, req.user.id, res, ['OWNER', 'MANAGER']);
     if (!employee) return;
-
-    if (!(await hasManagerialAccess(employee, req.user.id))) {
-      return res.status(403).json({ error: 'Permission denied: Requires OWNER or MANAGER role' });
-    }
 
     await prisma.payment.update({
       where: { id: req.params.id },

@@ -71,6 +71,7 @@ const createWorkEntry = async (req, res) => {
     const workEntry = await prisma.workEntry.create({
       data: {
         projectId:   data.projectId,
+        blockId:     data.blockId   ?? null,
         employeeId:  data.employeeId,
         activity:    data.activity,
         date:        new Date(data.date),

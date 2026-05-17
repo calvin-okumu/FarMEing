@@ -256,31 +256,6 @@ export default function EmployeesScreen({ navigation }) {
           <StitchChip label={t('employees.filters.synced')} active={activeFilter === 'synced'} onPress={() => setActiveFilter('synced')} />
           <StitchChip label={t('employees.filters.local')} active={activeFilter === 'local'} onPress={() => setActiveFilter('local')} />
         </View>
-        <StitchSurface style={styles.snapshotCard} contentStyle={styles.snapshotContent} tone='raised' compact>
-          <View style={styles.snapshotHeader}>
-            <View>
-              <Text style={styles.snapshotEyebrow}>Team Snapshot</Text>
-              <Text style={styles.snapshotTitle}>See who is assigned, synced, and ready for payroll follow-up.</Text>
-            </View>
-            <View style={styles.snapshotOrb}>
-              <Ionicons name='people-circle-outline' size={18} color={stitchTheme.colors.primaryContainer} />
-            </View>
-          </View>
-          <View style={styles.snapshotMetricsRow}>
-            <View style={styles.snapshotMetric}>
-              <Text style={styles.snapshotMetricValue}>{String(filteredEmployees.length)}</Text>
-              <Text style={styles.snapshotMetricLabel}>Visible</Text>
-            </View>
-            <View style={styles.snapshotMetric}>
-              <Text style={styles.snapshotMetricValue}>{String(syncedEmployees)}</Text>
-              <Text style={styles.snapshotMetricLabel}>Synced</Text>
-            </View>
-            <View style={styles.snapshotMetric}>
-              <Text style={styles.snapshotMetricValue}>{String(localOnlyEmployees)}</Text>
-              <Text style={styles.snapshotMetricLabel}>Local only</Text>
-            </View>
-          </View>
-        </StitchSurface>
         <StitchDashboardSectionHeader title={t('employees.directory_title', { defaultValue: 'People & Payments' })} subtitle='Browse and open worker records' actionLabel={String(filteredEmployees.length)} />
         {filteredEmployees.length ? filteredEmployees.map((item) => (
           <WorkerCard
@@ -353,9 +328,9 @@ export default function EmployeesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background },
-  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + stitchTheme.spacing.xl },
   hero: { paddingBottom: 0 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.xxs },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
@@ -371,30 +346,20 @@ const styles = StyleSheet.create({
     gap: stitchTheme.spacing.xs,
     marginBottom: stitchTheme.spacing.md,
   },
-  snapshotCard: { marginBottom: stitchTheme.spacing.xs },
-  snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
-  snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  snapshotEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
-  snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
-  snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
-  snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
-  snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  snapshotMetricValue: { ...stitchTheme.typography.metricValue, fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text },
-  snapshotMetricLabel: { marginTop: 3, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
   card: { ...stitchStyles.collectionCard, paddingHorizontal: 0, paddingLeft: 0 },
   cardAccent: { ...stitchStyles.cardAccent, backgroundColor: stitchTheme.colors.primaryDim },
-  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 18, paddingRight: 14 },
-  avatar: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs, paddingLeft: 18, paddingRight: 14 },
+  avatar: { width: 44, height: 44, borderRadius: stitchTheme.radius.sm, alignItems: 'center', justifyContent: 'center' },
   cardAvatarForest: { backgroundColor: 'rgba(26,61,43,0.12)' },
   avatarText: { color: stitchTheme.colors.primaryContainer, ...stitchTheme.typography.cardTitle, letterSpacing: -0.5 },
   cardTitleWrap: { flex: 1, minWidth: 0 },
   cardTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text, letterSpacing: -0.3 },
-  cardCrop: { marginTop: 2, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
+  cardCrop: { marginTop: stitchTheme.spacing.xxs / 2, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
   statusBadge: { marginLeft: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
   statusBadgeText: { ...stitchTheme.typography.caption, letterSpacing: 0.8 },
-  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.line, marginVertical: 12, marginHorizontal: 18 },
-  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, paddingLeft: 18, paddingRight: 14, marginBottom: 12 },
-  cardInsightPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
+  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.line, marginVertical: stitchTheme.spacing.sm, marginHorizontal: 18 },
+  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, paddingLeft: 18, paddingRight: 14, marginBottom: stitchTheme.spacing.sm },
+  cardInsightPill: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xxs, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
   cardInsightText: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textSoft },
   cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingLeft: 18, paddingRight: 14, gap: stitchTheme.spacing.sm },
   metaStack: { flex: 1 },
@@ -402,18 +367,17 @@ const styles = StyleSheet.create({
   metaValue: { marginTop: 3, ...stitchTheme.typography.cardDescription, fontWeight: '800', color: stitchTheme.colors.text },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, paddingVertical: 36, paddingHorizontal: 22, maxHeight: '92%', paddingBottom: Platform.OS === 'ios' ? 44 : 28 },
+  modalContent: { backgroundColor: stitchTheme.colors.background, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, paddingVertical: stitchTheme.spacing.xl, paddingHorizontal: stitchTheme.spacing.lg, maxHeight: '92%', paddingBottom: Platform.OS === 'ios' ? 44 : stitchTheme.spacing.xl },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  projectSelectionRow: { gap: 8, paddingVertical: 4 },
-  formContent: { gap: 16 },
+  projectSelectionRow: { gap: stitchTheme.spacing.xs, paddingVertical: 4 },
+  formContent: { gap: stitchTheme.spacing.md },
   formField: { marginBottom: 0 },
   formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
-  projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
+  projectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
   projectChipTextActive: { color: stitchTheme.colors.primary },
   saveButton: { marginTop: stitchTheme.spacing.xl },
-
-
 });
+

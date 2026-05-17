@@ -31,7 +31,6 @@ import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
-import { BarChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
@@ -153,6 +152,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
   const [allProjects, setAllProjects] = useState([]);
   const [banner, setBanner] = useState(null);
+  const [blockPickerVisible, setBlockPickerVisible] = useState(false);
   const apiProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
 
   const fetchTeam = async () => {
@@ -304,7 +304,17 @@ export default function ProjectDetailScreen({ route, navigation }) {
     }, [projectId])
   );
 
-  const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales, inventoryItems }), [budgetItems, expenses, workEntries, harvests, sales, inventoryItems]);
+  const summary = useMemo(() => {
+    const data = selectedBlockId ? {
+      budgetItems: budgetItems.filter(i => i.blockId === selectedBlockId),
+      expenses: expenses.filter(i => i.blockId === selectedBlockId),
+      workEntries: workEntries.filter(i => i.blockId === selectedBlockId),
+      harvests: harvests.filter(i => i.blockId === selectedBlockId),
+      sales,
+      inventoryItems,
+    } : { budgetItems, expenses, workEntries, harvests, sales, inventoryItems };
+    return computeProjectSummary(data);
+  }, [budgetItems, expenses, workEntries, harvests, sales, inventoryItems, selectedBlockId]);
   const totalBudget = summary.totalBudget;
   const totalSpent = summary.totalCost;
   const totalRevenue = summary.totalRevenue;
@@ -488,8 +498,8 @@ export default function ProjectDetailScreen({ route, navigation }) {
     <View style={styles.screen}>
       <StitchDashboardShell
         hero={{
-          eyebrow: selectedBlock ? selectedBlock.crop || project.crop : project.crop || t('projects.fields.crop'),
-          title: selectedBlock ? `${project.name} — ${selectedBlock.name}` : project.name,
+          eyebrow: project.crop || t('projects.fields.crop'),
+          title: selectedBlock ? `${project.name} - ${selectedBlock.name}` : project.name,
           subtitle: selectedBlock
             ? `${selectedBlock.crop || project.crop || ''}${selectedBlock.landSize ? ` • ${selectedBlock.landSize} ${selectedBlock.landUnit || 'acres'}` : ''}${selectedBlock.expectedYield ? ` • ${selectedBlock.expectedYield} yield` : ''}`
             : `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
@@ -514,36 +524,43 @@ export default function ProjectDetailScreen({ route, navigation }) {
         banner={banner}
         onDismissBanner={() => setBanner(null)}
         stickyHeader={
-          <View>
-            {blocks.length > 0 ? (
-              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-                <StitchChip label='All' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
-                {blocks.map(b => <StitchChip key={b.id} label={b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />)}
-              </View>
-            ) : null}
-            <View style={styles.stickyTopRow}>
+          <View style={{ gap: 8 }}>
+            <View style={styles.tabHeaderRow}>
+              {blocks.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.blockPickerTrigger, !!selectedBlockId && styles.blockPickerTriggerActive]}
+                  onPress={() => setBlockPickerVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="layers-outline" size={14} color={selectedBlockId ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown} />
+                  <Text style={[styles.blockPickerText, !!selectedBlockId && styles.blockPickerTextActive]} numberOfLines={1}>
+                    {selectedBlockId ? (blocks.find(b => b.id === selectedBlockId)?.name || 'Block') : 'All'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={10} color={selectedBlockId ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown} />
+                </TouchableOpacity>
+              )}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
                 {TAB_ORDER.map((tab) => (
                   <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
                 ))}
               </ScrollView>
-              {showCollectionControls ? (
-                <View style={styles.stickyControlsRow}>
-                  <View style={styles.stickySearchWrap}>
-                    <Ionicons name='search-outline' size={14} color={stitchTheme.colors.textMuted} />
-                    <TextInput
-                      style={styles.stickySearchInput}
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                      placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`}
-                      placeholderTextColor={stitchTheme.colors.textMuted}
-                    />
-                  </View>
-                  <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
-                  <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
-                </View>
-              ) : null}
             </View>
+            {showCollectionControls ? (
+              <View style={styles.stickyControlsRow}>
+                <View style={styles.stickySearchWrap}>
+                  <Ionicons name='search-outline' size={14} color={stitchTheme.colors.textMuted} />
+                  <TextInput
+                    style={styles.stickySearchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`}
+                    placeholderTextColor={stitchTheme.colors.textMuted}
+                  />
+                </View>
+                <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
+                <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
+              </View>
+            ) : null}
           </View>
         }
       >
@@ -559,7 +576,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={styles.chartTopRow}>
               <View>
                 <Text style={styles.chartEyebrow}>Budget vs Actual</Text>
-                <Text style={styles.chartTitle}>{formatCurrency(totalBudget - totalSpent, currency)} remaining</Text>
+                <Text style={styles.chartTitle}>{formatCurrency(totalSpent, currency)} / {formatCurrency(totalBudget, currency)}</Text>
               </View>
               <View style={[styles.chartProgressRing, budgetProgress > 100 && styles.chartProgressRingDanger]}>
                 <Text style={[styles.chartProgressText, budgetProgress > 100 && styles.chartProgressTextDanger]}>{Math.min(budgetProgress, 999).toFixed(0)}%</Text>
@@ -568,29 +585,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
             <View style={styles.chartBarTrack}>
               <View style={[styles.chartBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, budgetProgress > 100 && styles.chartBarFillDanger]} />
             </View>
-            <BarChart
-              data={{
-                labels: [t('dashboard.budget'), t('dashboard.total_spent')],
-                datasets: [{ data: [totalBudget, totalSpent] }]
-              }}
-              width={screenWidth - 80}
-              height={130}
-              yAxisLabel={currency === 'TZS' ? 'T' : '$'}
-              chartConfig={{
-                backgroundColor: 'transparent',
-                backgroundGradientFrom: stitchTheme.colors.surfaceInset,
-                backgroundGradientTo: stitchTheme.colors.surfaceInset,
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
-                labelColor: () => stitchTheme.colors.textMuted,
-                style: { borderRadius: 12 },
-                propsForLabels: { fontSize: 10, fontWeight: '700' },
-                barPercentage: 0.5,
-              }}
-              style={{ borderRadius: 12, marginTop: 12 }}
-              fromZero
-              showValuesOnTopOfBars
-            />
+            <View style={styles.chartLabelsRow}>
+               <Text style={styles.chartLabel}>{budgetProgress.toFixed(1)}% of budget used</Text>
+               <Text style={[styles.chartLabel, budgetProgress > 100 ? { color: stitchTheme.colors.accentRed } : { color: stitchTheme.colors.primaryContainer }]}>
+                 {totalSpent > totalBudget ? 'Over budget' : `${formatCurrency(totalBudget - totalSpent, currency)} left`}
+               </Text>
+            </View>
           </StitchSurface>
         ) : null}
 
@@ -726,6 +726,36 @@ export default function ProjectDetailScreen({ route, navigation }) {
         setDeleteTarget(null);
         syncAll();
       }} />
+
+      <Modal visible={blockPickerVisible} animationType="fade" transparent>
+        <TouchableOpacity style={styles.modalOverlay} onPress={() => setBlockPickerVisible(false)}>
+          <View style={[styles.formatMenu, { paddingBottom: 16 }]}>
+            <Text style={styles.formatTitle}>Select Block</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              <TouchableOpacity
+                style={[styles.formatOption, !selectedBlockId && { backgroundColor: stitchTheme.colors.surfaceTint }]}
+                onPress={() => { setSelectedBlockId(''); setBlockPickerVisible(false); }}
+              >
+                <Ionicons name="apps-outline" size={18} color={stitchTheme.colors.primary} />
+                <Text style={[styles.formatText, !selectedBlockId && { color: stitchTheme.colors.primaryContainer }]}>All Blocks</Text>
+              </TouchableOpacity>
+              {blocks.map(b => (
+                <TouchableOpacity
+                  key={b.id}
+                  style={[styles.formatOption, selectedBlockId === b.id && { backgroundColor: stitchTheme.colors.surfaceTint }]}
+                  onPress={() => { setSelectedBlockId(b.id); setBlockPickerVisible(false); }}
+                >
+                  <Ionicons name="layers-outline" size={18} color={stitchTheme.colors.primary} />
+                  <View>
+                    <Text style={[styles.formatText, selectedBlockId === b.id && { color: stitchTheme.colors.primaryContainer }]}>{b.name}</Text>
+                    {b.crop ? <Text style={{ fontSize: 10, color: stitchTheme.colors.textMuted }}>{b.crop}</Text> : null}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -785,6 +815,8 @@ const styles = StyleSheet.create({
   chartBarTrack: { height: 6, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceInset, overflow: 'hidden' },
   chartBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryDim },
   chartBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
+  chartLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  chartLabel: { fontSize: 10, color: stitchTheme.colors.textMuted, fontWeight: '700' },
   sectionSubtitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: stitchTheme.spacing.xs },
   salePaymentsWrap: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line, gap: 6 },
   salePaymentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -794,6 +826,32 @@ const styles = StyleSheet.create({
   salePaymentNote: { flex: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '500' },
 
   /* Tabs & Controls */
+  tabHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  blockPickerTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.6)',
+    ...stitchShadows.soft,
+  },
+  blockPickerTriggerActive: {
+    backgroundColor: stitchTheme.colors.chipActive,
+    borderColor: 'transparent',
+  },
+  blockPickerText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: stitchTheme.colors.accentBrown,
+    maxWidth: 80,
+  },
+  blockPickerTextActive: {
+    color: stitchTheme.colors.primary,
+  },
   tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: 6 },
   controlsCard: { marginBottom: stitchTheme.spacing.sm },
   controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
@@ -867,30 +925,30 @@ const styles = StyleSheet.create({
 
   /* Overlays */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  formatMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 24, padding: 20, width: '94%', alignSelf: 'center', marginBottom: 32, ...stitchShadows.float },
-  formatTitle: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: 16, textAlign: 'center' },
-  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: stitchTheme.colors.surfaceInset, marginBottom: 8 },
+  formatMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, width: '94%', alignSelf: 'center', marginBottom: 32, ...stitchShadows.float },
+  formatTitle: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: stitchTheme.spacing.md, textAlign: 'center' },
+  formatOption: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, padding: 14, borderRadius: stitchTheme.radius.sm, backgroundColor: stitchTheme.colors.surfaceInset, marginBottom: stitchTheme.spacing.xs },
   formatText: { fontSize: 14, fontWeight: '700', color: stitchTheme.colors.text },
   keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.xl, paddingBottom: 48 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.xl },
   modalTitle: { fontSize: 22, fontWeight: '900', color: stitchTheme.colors.primary },
-  input: { borderRadius: 14, padding: 16, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, fontSize: 16, marginBottom: 20 },
-  roleRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  roleChip: { flex: 1, height: 50, borderRadius: 14, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  input: { borderRadius: stitchTheme.radius.sm, padding: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, fontSize: 16, marginBottom: stitchTheme.spacing.lg },
+  roleRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.xl },
+  roleChip: { flex: 1, height: 50, borderRadius: stitchTheme.radius.sm, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
   roleChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
   roleChipText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.textMuted },
   roleChipTextActive: { color: stitchTheme.colors.primary },
   formField: { marginBottom: 0 },
-  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
-  projectSelectionRow: { gap: 8, paddingVertical: 4 },
-  projectChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: 'transparent' },
+  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: stitchTheme.spacing.xs },
+  projectSelectionRow: { gap: stitchTheme.spacing.xs, paddingVertical: 4 },
+  projectChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: 'transparent' },
   projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
   projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
   projectChipTextActive: { color: stitchTheme.colors.primary },
   emptyText: { textAlign: 'center', marginTop: 40, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
   addRowCard: { marginBottom: stitchTheme.spacing.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
   addRowContent: { backgroundColor: stitchTheme.colors.surfaceHighlight },
-  addRowButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  addRowButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingVertical: 14 },
   addRowText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800' },
 });

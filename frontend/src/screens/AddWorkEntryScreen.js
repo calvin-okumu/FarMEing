@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
@@ -226,22 +225,21 @@ export default function AddWorkEntryScreen({ route, navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView behavior={'padding'} style={styles.flex} keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
-      <StitchDashboardShell
-        hero={StitchFormHero({
-          eyebrow: t('labor.entry_subtitle'),
-          title: itemId ? t('labor.edit_title') : t('labor.entry_title'),
-          subtitle: selectedEmployeeName || t('labor.select_employee'),
-          pills: [
-            { label: t('dashboard.spent'), value: formatCurrency(total, currency), icon: 'cash-outline' },
-            { label: t('labor.days'), value: formData.daysWorked || '0', icon: 'calendar-outline' },
-          ],
-          onBack: () => navigation.goBack(),
-        })}
-        bodyContentStyle={styles.content}
-        banner={banner}
-        onDismissBanner={() => setBanner(null)}
-      >
+    <StitchDashboardShell
+      hero={StitchFormHero({
+        eyebrow: t('labor.entry_subtitle'),
+        title: itemId ? t('labor.edit_title') : t('labor.entry_title'),
+        subtitle: selectedEmployeeName || t('labor.select_employee'),
+        pills: [
+          { label: t('dashboard.spent'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+          { label: t('labor.days'), value: formData.daysWorked || '0', icon: 'calendar-outline' },
+        ],
+        onBack: () => navigation.goBack(),
+      })}
+      bodyContentStyle={styles.content}
+      banner={banner}
+      onDismissBanner={() => setBanner(null)}
+    >
         <StitchSectionTitle>{t('labor.select_task')}</StitchSectionTitle>
         <View style={styles.taskGrid}>
           {ACTIVITIES.map((item) => {
@@ -411,7 +409,6 @@ export default function AddWorkEntryScreen({ route, navigation }) {
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('labor.submit')} onPress={handleSubmit(handleSave)} disabled={saving} loading={saving} icon="arrow-forward-circle" style={styles.submitButton} />
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
   );
 }
 

@@ -1,4 +1,6 @@
 {
+  "name": "farmtrack-workspace",
+  "version": "1.0.0",
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write ."

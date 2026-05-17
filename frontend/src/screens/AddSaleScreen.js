@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
   Platform,
   Modal,
 } from 'react-native';
@@ -265,26 +264,21 @@ export default function AddSaleScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    <StitchDashboardShell
+      hero={StitchFormHero({
+        eyebrow: t('sales.entry_eyebrow'),
+        title: itemId ? t('sales.edit_title') : t('sales.entry_title'),
+        subtitle: crop || t('sales.placeholders.crop'),
+        pills: [
+          { label: t('sales.total_revenue'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+          { label: t('harvest.quantity_heading'), value: `${weight || 0} kg`, icon: 'leaf-outline' },
+        ],
+        onBack: () => navigation.goBack(),
+      })}
+      bodyContentStyle={styles.content}
+      banner={banner}
+      onDismissBanner={() => setBanner(null)}
     >
-      <StitchDashboardShell
-        hero={StitchFormHero({
-          eyebrow: t('sales.entry_eyebrow'),
-          title: itemId ? t('sales.edit_title') : t('sales.entry_title'),
-          subtitle: project?.name || t('sales.screen_title'),
-          pills: [
-            { label: t('sales.total_revenue'), value: formatCurrency(total, currency), icon: 'cash-outline' },
-            { label: t('sales.quantity_heading'), value: weightSold || '0', icon: 'cube-outline' },
-          ],
-          onBack: () => navigation.goBack(),
-        })}
-        bodyContentStyle={styles.content}
-        banner={banner}
-        onDismissBanner={() => setBanner(null)}
-      >
         <StitchSurface style={styles.panel}>
           <StitchSectionTitle>{t('sales.quantity_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
@@ -310,11 +304,6 @@ export default function AddSaleScreen({ route, navigation }) {
               keyboardType="decimal-pad"
               placeholderTextColor={stitchTheme.colors.textMuted}
             />
-          </View>
-
-          <View style={styles.totalHero}>
-            <Text style={styles.totalHeroLabel}>{t('sales.total_revenue')}</Text>
-            <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
           </View>
 
           <StitchInput
@@ -535,7 +524,6 @@ export default function AddSaleScreen({ route, navigation }) {
         <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
   );
 }
 
@@ -570,9 +558,6 @@ const styles = StyleSheet.create({
   mediumInput: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   unitBadge: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted },
   currencyText: { ...stitchTheme.typography.metricValue, color: stitchTheme.colors.textMuted },
-  totalHero: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.primaryContainer, paddingVertical: stitchTheme.spacing.lg, alignItems: 'center' },
-  totalHeroLabel: { ...stitchTheme.typography.eyebrow, color: '#a6d38f', textAlign: 'center' },
-  totalHeroValue: { marginTop: stitchTheme.spacing.xs, ...stitchTheme.typography.metricValue, fontSize: 28, color: stitchTheme.colors.primarySoft, textAlign: 'center' },
   infoCard: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, flexDirection: 'row', gap: stitchTheme.spacing.sm, alignItems: 'center', paddingVertical: stitchTheme.spacing.md, borderWidth: 0 },
   infoIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   infoBody: { flex: 1 },

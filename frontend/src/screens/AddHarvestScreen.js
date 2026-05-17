@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Modal,
 } from 'react-native';
@@ -162,26 +161,21 @@ export default function AddHarvestScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    <StitchDashboardShell
+      hero={StitchFormHero({
+        eyebrow: t('harvest.entry_subtitle'),
+        title: itemId ? t('harvest.edit_title') : t('harvest.entry_title'),
+        subtitle: crop || t('harvest.placeholders.crop'),
+        pills: [
+          { label: t('harvest.live_total'), value: liveTotal, icon: 'leaf-outline' },
+          { label: t('harvest.fields.unit'), value: t(`harvest.units.${unit}`), icon: 'scale-outline' },
+        ],
+        onBack: () => navigation.goBack(),
+      })}
+      bodyContentStyle={styles.content}
+      banner={banner}
+      onDismissBanner={() => setBanner(null)}
     >
-      <StitchDashboardShell
-        hero={StitchFormHero({
-          eyebrow: t('harvest.entry_subtitle'),
-          title: itemId ? t('harvest.edit_title') : t('harvest.entry_title'),
-          subtitle: crop || t('harvest.placeholders.crop'),
-          pills: [
-            { label: t('harvest.live_total'), value: liveTotal, icon: 'leaf-outline' },
-            { label: t('harvest.fields.unit'), value: t(`harvest.units.${unit}`), icon: 'scale-outline' },
-          ],
-          onBack: () => navigation.goBack(),
-        })}
-        bodyContentStyle={styles.content}
-        banner={banner}
-        onDismissBanner={() => setBanner(null)}
-      >
         <TouchableOpacity style={styles.projectSelector} onPress={() => setShowProjectPicker(true)} activeOpacity={0.88}>
           <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
             <Ionicons name="folder-outline" size={20} color={stitchTheme.colors.primary} />
@@ -217,11 +211,6 @@ export default function AddHarvestScreen({ route, navigation }) {
           placeholder='0.00'
           keyboardType='decimal-pad'
         />
-
-        <StitchSurface style={styles.liveCard}>
-          <Text style={styles.liveLabel}>{t('harvest.live_total')}</Text>
-          <Text style={styles.liveValue}>{liveTotal}</Text>
-        </StitchSurface>
 
         <StitchSectionTitle>{t('harvest.quality_heading')}</StitchSectionTitle>
         <View style={styles.qualityRow}>
@@ -329,7 +318,6 @@ export default function AddHarvestScreen({ route, navigation }) {
           </View>
         </Modal>
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
   );
 }
 
@@ -340,9 +328,6 @@ const styles = StyleSheet.create({
   field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
   fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   quantityField: { minHeight: 72, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, fontWeight: '300', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  liveCard: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.xs, minHeight: 82, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.primaryContainer },
-  liveLabel: { ...stitchTheme.typography.eyebrow, color: '#a9d89e' },
-  liveValue: { ...stitchTheme.typography.metricValue, color: '#9ce58b' },
   qualityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
   qualityCard: { ...stitchStyles.collectionCard, width: '31%', minHeight: 78, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, marginBottom: 0 },
   qualityCardWide: { width: '100%', minHeight: 60 },
@@ -356,20 +341,20 @@ const styles = StyleSheet.create({
   unitChipText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
   notesCard: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.md },
   notesHeader: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
-  notesIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
+  notesIconWrap: { width: 36, height: 36, borderRadius: stitchTheme.radius.sm, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
   notesTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.primary },
   notesInput: { minHeight: 110, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top' },
   saveButton: { marginTop: stitchTheme.spacing.md },
-  footerNote: { marginTop: stitchTheme.spacing.sm, textAlign: 'center', ...stitchTheme.typography.eyebrow, letterSpacing: 1.4, color: '#6f786b' },
+  footerNote: { marginTop: stitchTheme.spacing.sm, textAlign: 'center', ...stitchTheme.typography.eyebrow, letterSpacing: 1.4, color: stitchTheme.colors.textMuted },
 
   projectSelector: { ...stitchStyles.collectionCard, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
-  infoIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  infoIcon: { width: 36, height: 36, borderRadius: stitchTheme.radius.xs, alignItems: 'center', justifyContent: 'center' },
   infoLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
   infoValue: { ...stitchTheme.typography.cardTitle, fontSize: 15, color: stitchTheme.colors.text, marginTop: 1 },
 
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '80%', paddingBottom: 40 },
+  modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, maxHeight: '80%', paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: stitchTheme.colors.line, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12 },
   modalTitle: { fontSize: stitchTheme.typography.section.fontSize, fontWeight: '800', color: stitchTheme.colors.text },

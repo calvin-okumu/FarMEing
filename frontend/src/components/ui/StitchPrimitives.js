@@ -158,7 +158,7 @@ export function StitchSurface({ children, style, contentStyle, tone = 'default',
 
 export function StitchStatCard({ title, value, subtitle, icon, tone = 'default', style }) {
   const palette = tone === 'accent'
-    ? { iconBg: 'rgba(255,255,255,0.14)', iconColor: '#fff', titleColor: '#d8f0d4', valueColor: '#fff', subtitleColor: '#cae8c4' }
+    ? { iconBg: 'rgba(255,255,255,0.14)', iconColor: stitchTheme.colors.white, titleColor: '#d8f0d4', valueColor: stitchTheme.colors.white, subtitleColor: '#cae8c4' }
     : tone === 'warning'
       ? { iconBg: '#f7d8ca', iconColor: stitchTheme.colors.accentBrown, titleColor: stitchTheme.colors.textMuted, valueColor: stitchTheme.colors.text, subtitleColor: stitchTheme.colors.accentBrown }
       : { iconBg: stitchTheme.colors.surfaceMuted, iconColor: stitchTheme.colors.primary, titleColor: stitchTheme.colors.textMuted, valueColor: stitchTheme.colors.text, subtitleColor: stitchTheme.colors.accentBrown };

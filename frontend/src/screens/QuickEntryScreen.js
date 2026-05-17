@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -31,7 +30,6 @@ import {
   StitchChip,
   StitchDatePicker,
   StitchInput,
-  StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionTitle,
   StitchSurface,
@@ -53,6 +51,8 @@ export default function QuickEntryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [selectedBlockId, setSelectedBlockId] = useState('');
   const [projectDropdownVisible, setProjectDropdownVisible] = useState(false);
   const [employeeName, setEmployeeName] = useState('');
   const [employeeDropdownVisible, setEmployeeDropdownVisible] = useState(false);
@@ -74,8 +74,6 @@ export default function QuickEntryScreen({ navigation }) {
   const employeeLabel = entryMode === 'crew' ? t('quick_entry.fields.crew_name') : t('quick_entry.fields.employee');
   const employeePlaceholder = entryMode === 'crew' ? t('quick_entry.placeholders.crew_name') : t('quick_entry.placeholders.employee');
   const helperText = entryMode === 'crew' ? t('quick_entry.crew_hint') : t('quick_entry.single_worker_hint');
-  const graphValues = useMemo(() => [parseFloat(workers) || 1, parseFloat(days) || 1, parseFloat(rate) || 1, total || 1], [workers, days, rate, total]);
-  const syncedProjectCount = useMemo(() => projects.filter((project) => isSynced(project)).length, [projects]);
   const crewModeActive = entryMode === 'crew';
 
   useEffect(() => {
@@ -124,6 +122,20 @@ export default function QuickEntryScreen({ navigation }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedProject) {
+      setBlocks([]);
+      setSelectedBlockId('');
+      return;
+    }
+    const sub = database.get('project_blocks')
+      .query(Q.where('project_id', selectedProject.id), Q.where('is_deleted', false))
+      .observe()
+      .subscribe(setBlocks);
+    setSelectedBlockId('');
+    return () => sub.unsubscribe();
+  }, [selectedProject]);
+
   const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) setDate(selectedDate);
@@ -164,6 +176,7 @@ export default function QuickEntryScreen({ navigation }) {
       await database.get('work_entries').create((record) => {
         initializeLocalRecord(record);
         record.projectId = selectedProject.id;
+        record.blockId = selectedBlockId || null;
         record.employeeId = employee.id;
         const effectiveActivity = activity === 'other' && otherActivity.trim() ? otherActivity.trim() : activity;
         record.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
@@ -211,6 +224,7 @@ export default function QuickEntryScreen({ navigation }) {
       await saveLocally();
       setEmployeeName('');
       setSelectedEmployee(null);
+      setSelectedBlockId('');
       setEntryMode('individual');
       setActivity('planting');
       setOtherActivity('');
@@ -247,59 +261,28 @@ export default function QuickEntryScreen({ navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
-    >
-      <View style={styles.container}>
-        <StitchDashboardShell
-          hero={{
-            eyebrow: t('quick_entry.fields.activity'),
-            title: 'Quick Entry',
-            subtitle: selectedProject?.name || 'Log labor and save it directly to a project.',
-            actionIcon: 'arrow-back',
-            onActionPress: () => navigation.goBack(),
-            style: styles.hero,
-            children: (
-              <View style={styles.heroPills}>
-                <StitchHeroPill label={t('quick_entry.total')} value={total} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
-                <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' style={styles.heroPillSecondary} />
-                <StitchHeroPill label={t('quick_entry.fields.activity')} value={t(`common.activities.${activity}`)} icon='flash-outline' style={styles.heroPillTertiary} />
-              </View>
-            ),
-          }}
-          bodyContentStyle={styles.content}
-          banner={banner}
-          onDismissBanner={() => setBanner(null)}
-        >
-          <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
-
-          <StitchSurface style={styles.snapshotCard} contentStyle={styles.snapshotContent} tone='raised' compact>
-            <View style={styles.snapshotHeader}>
-              <View>
-                <Text style={styles.snapshotEyebrow}>Field Snapshot</Text>
-                <Text style={styles.snapshotTitle}>Build a labor record in seconds with project, worker mode, and payout preview in one place.</Text>
-              </View>
-              <View style={styles.snapshotOrb}>
-                <Ionicons name='flash-outline' size={18} color={stitchTheme.colors.primaryContainer} />
-              </View>
+    <View style={styles.container}>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('quick_entry.fields.activity'),
+          title: 'Quick Entry',
+          subtitle: selectedProject?.name || 'Log labor and save it directly to a project.',
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          style: styles.hero,
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('quick_entry.total')} value={total} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={t('quick_entry.fields.activity')} value={t(`common.activities.${activity}`)} icon='flash-outline' style={styles.heroPillTertiary} />
             </View>
-            <View style={styles.snapshotMetricsRow}>
-              <View style={styles.snapshotMetric}>
-                <Text style={styles.snapshotMetricValue}>{String(projects.length)}</Text>
-                <Text style={styles.snapshotMetricLabel}>Projects</Text>
-              </View>
-              <View style={styles.snapshotMetric}>
-                <Text style={styles.snapshotMetricValue}>{String(syncedProjectCount)}</Text>
-                <Text style={styles.snapshotMetricLabel}>Synced</Text>
-              </View>
-              <View style={styles.snapshotMetric}>
-                <Text style={styles.snapshotMetricValue}>{crewModeActive ? workers : '1'}</Text>
-                <Text style={styles.snapshotMetricLabel}>{crewModeActive ? 'Crew size' : 'Single entry'}</Text>
-              </View>
-            </View>
-          </StitchSurface>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
+      >
+        <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <StitchSurface style={styles.formSummaryCard} contentStyle={styles.formSummaryContent} tone='raised' compact>
             <View style={styles.summaryTopRow}>
@@ -321,7 +304,6 @@ export default function QuickEntryScreen({ navigation }) {
                 <Text style={styles.summaryPillText}>{t(`common.activities.${activity}`)}</Text>
               </View>
             </View>
-            <StitchMiniBars values={graphValues} activeIndex={3} softIndex={crewModeActive ? 0 : 1} style={styles.summaryGraph} />
             <View style={styles.summaryFooter}>
               <View>
                 <Text style={styles.summaryLabel}>Estimated payout</Text>
@@ -385,6 +367,18 @@ export default function QuickEntryScreen({ navigation }) {
                 )}
               </View>
             ) : null}
+
+            {selectedProject && blocks.length > 0 && (
+              <View style={{ marginTop: stitchTheme.spacing.xs }}>
+                <StitchSectionTitle>{t('projects.fields.block', { defaultValue: 'Select Block' })}</StitchSectionTitle>
+                <View style={styles.chipsRow}>
+                  <StitchChip label='Overall' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
+                  {blocks.map(b => (
+                    <StitchChip key={b.id} label={b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />
+                  ))}
+                </View>
+              </View>
+            )}
 
             <StitchSectionTitle>{employeeLabel} *</StitchSectionTitle>
             <TextInput
@@ -474,8 +468,7 @@ export default function QuickEntryScreen({ navigation }) {
             {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
           </View>
         </StitchDashboardShell>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -485,7 +478,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
   hero: { paddingBottom: 0 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.xxs },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
