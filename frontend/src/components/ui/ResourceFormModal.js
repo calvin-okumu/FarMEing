@@ -1,4 +1,4 @@
-import { Modal, View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchTheme } from '../../theme/stitchTheme';
 
@@ -14,7 +14,9 @@ export default function ResourceFormModal({ visible, title, onClose, children })
                 <Ionicons name="close" size={24} color={stitchTheme.colors.text} />
               </TouchableOpacity>
             </View>
-            {children}
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps='handled' contentContainerStyle={styles.scrollContent}>
+              {children}
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -36,4 +38,5 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   title: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },
+  scrollContent: { paddingBottom: 20 },
 });
