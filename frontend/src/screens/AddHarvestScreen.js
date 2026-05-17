@@ -196,9 +196,10 @@ export default function AddHarvestScreen({ route, navigation }) {
         {(project || projectId) && blocks.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
             <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
-            {blocks.map(b => (
-              <StitchChip key={b.id} label={b.name} active={blockId === b.id} onPress={() => setBlockId(b.id)} />
-            ))}
+            {blocks.map(b => {
+              const bl = b.landSize ? `${b.name} - ${b.crop || '?'} (${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
+              return <StitchChip key={b.id} label={bl} active={blockId === b.id} onPress={() => setBlockId(b.id)} />;
+            })}
           </View>
         ) : null}
 

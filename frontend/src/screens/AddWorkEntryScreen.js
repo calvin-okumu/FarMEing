@@ -273,7 +273,10 @@ export default function AddWorkEntryScreen({ route, navigation }) {
         {blocks.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
             <StitchChip label='Overall' active={!formData.blockId} onPress={() => setValue('blockId', '')} />
-            {blocks.map(b => <StitchChip key={b.id} label={b.name} active={formData.blockId === b.id} onPress={() => setValue('blockId', b.id)} />)}
+            {blocks.map(b => {
+              const bl = b.landSize ? `${b.name} - ${b.crop || '?'} (${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
+              return <StitchChip key={b.id} label={bl} active={formData.blockId === b.id} onPress={() => setValue('blockId', b.id)} />;
+            })}
           </View>
         ) : null}
 

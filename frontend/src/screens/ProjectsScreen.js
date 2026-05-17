@@ -108,7 +108,7 @@ export default function ProjectsScreen({ navigation, route }) {
     }
   }, [route?.params?.openCreate]);
 
-  const openEdit = (project) => {
+  const openEdit = async (project) => {
     setEditingProject(project);
     reset({
       name: project.name || '',
@@ -118,7 +118,25 @@ export default function ProjectsScreen({ navigation, route }) {
       startDate: project.startDate ? new Date(project.startDate) : new Date(),
       expectedYield: String(project.expectedYield ?? ''),
       status: project.status || 'ACTIVE',
+      blockCount: '',
     });
+    try {
+      const existingBlocks = await database.get('project_blocks').query(Q.where('project_id', project.id), Q.where('is_deleted', false)).fetch();
+      if (existingBlocks.length > 0) {
+        setValue('blockCount', String(existingBlocks.length));
+        setBlockSizes(existingBlocks.map(b => String(b.landSize || '')));
+        setBlockCrops(existingBlocks.map(b => b.crop || ''));
+        setBlockYields(existingBlocks.map(b => String(b.expectedYield || '')));
+      } else {
+        setBlockSizes([]);
+        setBlockCrops([]);
+        setBlockYields([]);
+      }
+    } catch {
+      setBlockSizes([]);
+      setBlockCrops([]);
+      setBlockYields([]);
+    }
     setShowDatePicker(false);
     setModalVisible(true);
   };
@@ -126,6 +144,9 @@ export default function ProjectsScreen({ navigation, route }) {
   const closeModal = () => {
     setShowDatePicker(false);
     setModalVisible(false);
+    setBlockSizes([]);
+    setBlockCrops([]);
+    setBlockYields([]);
   };
 
   const openStartDatePicker = () => {
@@ -149,6 +170,37 @@ export default function ProjectsScreen({ navigation, route }) {
             draft.expectedYield = parseFloat(data.expectedYield) || 0;
             draft.status = data.status || 'ACTIVE';
           });
+          const existingBlocks = await database.get('project_blocks').query(Q.where('project_id', editingProject.id), Q.where('is_deleted', false)).fetch();
+          const newCount = Math.min(Math.max(parseInt(data.blockCount) || 0, 0), 26);
+          const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+          const newNames = letters.slice(0, newCount).map(l => `Block ${l}`);
+          for (const b of existingBlocks) {
+            if (!newNames.includes(b.name)) {
+              await b.update((d) => { d.isDeleted = true; });
+            }
+          }
+          for (let i = 0; i < newCount; i++) {
+            const blockName = `Block ${letters[i]}`;
+            const existing = existingBlocks.find(b => b.name === blockName);
+            if (existing) {
+              await existing.update((d) => {
+                d.crop = blockCrops[i] || '';
+                d.landSize = parseFloat(blockSizes[i]) || 0;
+                d.landUnit = data.landUnit || 'acres';
+                d.expectedYield = parseFloat(blockYields[i]) || 0;
+              });
+            } else {
+              await database.get('project_blocks').create((d) => {
+                initializeLocalRecord(d);
+                d.projectId = record.id;
+                d.name = `Block ${letters[i]}`;
+                d.crop = blockCrops[i] || '';
+                d.landSize = parseFloat(blockSizes[i]) || 0;
+                d.landUnit = data.landUnit || 'acres';
+                d.expectedYield = parseFloat(blockYields[i]) || 0;
+              });
+            }
+          }
         } else {
           const record = await database.get('farm_projects').create((record) => {
             initializeLocalRecord(record);
