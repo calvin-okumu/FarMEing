@@ -389,7 +389,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
       </StitchDashboardShell>
 
       <Modal visible={editVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
+        <View style={styles.modalOverlay}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('employees.edit_title')}</Text><TouchableOpacity onPress={() => setEditVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
 
           <View style={styles.formContent}>
@@ -429,11 +429,11 @@ export default function EmployeeDetailScreen({ route, navigation }) {
 
             <StitchPrimaryButton label={t('common.save')} onPress={handleEditSubmit(handleUpdate)} icon="save-outline" style={styles.saveButton} />
           </View>
-        </View></KeyboardAvoidingView></View>
+        </View></View>
       </Modal>
 
       <Modal visible={paymentVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}><View style={styles.modalContent}>
+        <View style={styles.modalOverlay}><View style={styles.modalContent}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{editingPayment ? t('payments.edit_title') : t('payments.record')}</Text><TouchableOpacity onPress={() => { setPaymentVisible(false); setEditingPayment(null); }}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
 
           <View style={styles.formContent}>
@@ -453,7 +453,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
             />
 
             <StitchPrimaryButton label={t('payments.confirm')} onPress={handlePaymentSubmit(handleRecordPayment)} icon="checkmark-circle" style={styles.saveButton} />
-          </View></View></KeyboardAvoidingView></View>
+          </View></View></View>
       </Modal>
 
       <ConfirmDialog visible={deleteVisible} title={t('employees.delete_title')} message={t('employees.confirm_delete', { name: employee.name })} confirmLabel={t('common.delete')} cancelLabel={t('common.cancel')} onCancel={() => setDeleteVisible(false)} onConfirm={handleDelete} />

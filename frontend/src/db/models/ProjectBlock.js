@@ -12,10 +12,11 @@ export default class ProjectBlock extends Model {
   };
 
   @text('project_id') projectId;
-  @text('name') name;
+  @text('name')       name;
   @field('land_size') landSize;
-  @text('land_unit') landUnit;
-  @text('crop') crop;
+  @text('land_unit')  landUnit;
+  @text('crop')       crop;
+  @text('crop_variety') cropVariety;
   @field('expected_yield') expectedYield;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;

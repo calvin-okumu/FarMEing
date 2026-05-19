@@ -68,14 +68,26 @@
     "view_all": "View all {{count}} resources"
   },
   "team": {
-    "invite_title": "Invite Member",
-    "invite_phone": "User Phone Number",
-    "send_invitation": "Send Invitation",
-    "invited_success": "Team member invited successfully.",
-    "access_revoked": "Member access revoked.",
+    "invite_title": "Invite to Project",
+    "invite_member": "Invite Member",
+    "generate_code": "Generate Invite Code",
+    "invite_created": "Invitation Created",
+    "invite_created_msg": "Share the code with your team member.",
+    "select_role": "Select Access Level",
+    "invite_code_hint": "Enter the 8-character invitation code provided by the project owner.",
+    "join_project": "Join Project",
+    "join_now": "Join Project Now",
+    "join": "Join",
+    "project": "Project",
+    "members": "Active Team",
+    "active_invitations": "Pending Invites",
+    "role": "Role",
+    "expires": "Expires",
     "revoke_access": "Revoke Access",
+    "remove_title": "Remove Member",
+    "remove_confirm": "Are you sure you want to remove this person's access to the project?",
     "no_members": "No other members have access yet.",
-    "role": "Assigned Role"
+    "access_revoked": "Access revoked successfully."
   },
   "export": {
     "title": "Export Report",
@@ -245,6 +257,7 @@
     "fields": {
       "name": "Project Name",
       "crop": "Crop",
+      "crop_variety": "Crop Variety",
       "land_size": "Land Size",
       "unit": "Unit",
       "expected_yield": "Expected Yield (kg)",
@@ -254,6 +267,7 @@
     "placeholders": {
       "name": "e.g. North Field Wheat",
       "crop": "e.g. Wheat, Corn",
+      "crop_variety": "e.g. Pioneer 30G19",
       "unit": "acres",
       "expected_yield": "e.g. 5000"
     },
@@ -535,7 +549,7 @@
     "complete": "Complete Sale / Maliza Mauzo",
     "footer_note": "By completing, this transaction will be recorded in your digital ledger.",
     "fields": {
-      "customer": "Customer (Optional)",
+      "customer": "Customer Name",
       "weight_sold": "Weight Sold (kg)",
       "unit_price": "Unit Price"
     },
@@ -557,6 +571,8 @@
     "errors": {
       "weight_required": "Valid weight is required",
       "unit_price_required": "Valid unit price is required",
+      "customer_required": "Customer name is required",
+      "crop_required": "Crop name is required",
       "save_local": "Failed to save sale locally"
     }
   },

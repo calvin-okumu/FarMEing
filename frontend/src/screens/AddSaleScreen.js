@@ -34,6 +34,12 @@ export default function AddSaleScreen({ route, navigation }) {
   const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [project, setProject] = useState(null);
+  const [savedItemCrop, setSavedItemCrop] = useState('');
+  
+  const activeCrop = useMemo(() => {
+    return project?.crop || savedItemCrop;
+  }, [project, savedItemCrop]);
+
   const [customer, setCustomer] = useState('');
   const [weightSold, setWeightSold] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
@@ -67,6 +73,7 @@ export default function AddSaleScreen({ route, navigation }) {
   useEffect(() => {
     if (!itemId) return;
     database.get('sales').find(itemId).then(async (item) => {
+      setSavedItemCrop(item.crop || '');
       setCustomer(item.customer || '');
       setWeightSold(String(item.weightSold ?? ''));
       setUnitPrice(String(item.unitPrice ?? ''));
@@ -161,6 +168,14 @@ export default function AddSaleScreen({ route, navigation }) {
       Alert.alert(t('common.error'), t('projects.errors.not_found'));
       return;
     }
+    if (!activeCrop || !activeCrop.trim()) {
+      Alert.alert(t('common.error'), t('sales.errors.crop_required'));
+      return;
+    }
+    if (!customer || !customer.trim()) {
+      Alert.alert(t('common.error'), t('sales.errors.customer_required'));
+      return;
+    }
     if (!weightSold || parseFloat(weightSold) <= 0) {
       Alert.alert(t('common.error'), t('sales.errors.weight_required'));
       return;
@@ -178,10 +193,11 @@ export default function AddSaleScreen({ route, navigation }) {
         if (itemId) {
           const record = await database.get('sales').find(itemId);
           await updateLocalModel(record, (draft) => {
+            draft.crop = activeCrop.trim();
             draft.customer = customer.trim();
             draft.weightSold = parseFloat(weightSold);
             draft.unitPrice = parseFloat(unitPrice);
-            draft.totalAmount = total;
+            draft.totalAmount = parseFloat(total);
             draft.date = date.getTime();
             draft.notes = notes.trim();
             draft.paymentStatus = paymentStatus;
@@ -228,6 +244,7 @@ export default function AddSaleScreen({ route, navigation }) {
           const record = await database.get('sales').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
+            record.crop = activeCrop.trim();
             record.customer = customer.trim();
             record.weightSold = parseFloat(weightSold);
             record.unitPrice = parseFloat(unitPrice);
@@ -268,10 +285,10 @@ export default function AddSaleScreen({ route, navigation }) {
       hero={StitchFormHero({
         eyebrow: t('sales.entry_eyebrow'),
         title: itemId ? t('sales.edit_title') : t('sales.entry_title'),
-        subtitle: crop || t('sales.placeholders.crop'),
+        subtitle: (crop || '') || t('sales.placeholders.crop'),
         pills: [
           { label: t('sales.total_revenue'), value: formatCurrency(total, currency), icon: 'cash-outline' },
-          { label: t('harvest.quantity_heading'), value: `${weight || 0} kg`, icon: 'leaf-outline' },
+          { label: t('harvest.quantity_heading'), value: `${weightSold || 0} kg`, icon: 'leaf-outline' },
         ],
         onBack: () => navigation.goBack(),
       })}

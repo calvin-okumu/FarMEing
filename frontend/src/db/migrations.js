@@ -247,6 +247,35 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 24,
+      steps: [
+        createTable({
+          name: 'project_access',
+          columns: [
+            { name: 'user_id',    type: 'string' },
+            { name: 'project_id', type: 'string' },
+            { name: 'role',       type: 'string' },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        createTable({
+          name: 'project_invitations',
+          columns: [
+            { name: 'project_id',  type: 'string' },
+            { name: 'role',        type: 'string' },
+            { name: 'invite_code', type: 'string' },
+            { name: 'expires_at',  type: 'number' },
+            { name: 'is_used',     type: 'boolean' },
+            { name: 'is_deleted',  type: 'boolean' },
+            { name: 'created_at',  type: 'number' },
+            { name: 'updated_at',  type: 'number' },
+          ],
+        }),
+      ],
+    },
   ],
 });
 

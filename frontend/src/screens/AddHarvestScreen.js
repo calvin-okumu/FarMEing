@@ -33,7 +33,6 @@ export default function AddHarvestScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
   const { projectId, itemId } = route.params || {};
   const { language, setLanguage } = useSettingsStore();
-  const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState('kg');
   const [quality, setQuality] = useState('grade_a');
@@ -48,6 +47,16 @@ export default function AddHarvestScreen({ route, navigation }) {
   const [projectSearch, setProjectSearch] = useState('');
   const [blocks, setBlocks] = useState([]);
   const [blockId, setBlockId] = useState('');
+
+  // Derive crop from block, project, or fallback to saved item crop
+  const [savedItemCrop, setSavedItemCrop] = useState('');
+
+  const activeCrop = useMemo(() => {
+    const selectedBlock = blocks.find(b => b.id === blockId);
+    if (selectedBlock?.crop) return selectedBlock.crop;
+    if (project?.crop) return project.crop;
+    return savedItemCrop;
+  }, [blocks, blockId, project, savedItemCrop]);
 
   useEffect(() => {
     const sub = database.get('farm_projects').query(Q.where('is_deleted', false)).observe().subscribe(setProjects);
@@ -65,7 +74,6 @@ export default function AddHarvestScreen({ route, navigation }) {
     if (!projectId) return;
     database.get('farm_projects').find(projectId).then((p) => {
       setProject(p);
-      setCrop(p.crop || '');
     }).catch(() => {});
   }, [projectId]);
 
@@ -78,7 +86,7 @@ export default function AddHarvestScreen({ route, navigation }) {
   useEffect(() => {
     if (!itemId) return;
     database.get('harvests').find(itemId).then((item) => {
-      setCrop(item.crop || '');
+      setSavedItemCrop(item.crop || '');
       setWeight(String(item.weight ?? ''));
       setUnit(item.unit || 'kg');
       setQuality(item.quality || 'grade_a');
@@ -107,7 +115,7 @@ export default function AddHarvestScreen({ route, navigation }) {
       Alert.alert(t('common.error'), t('projects.errors.not_found'));
       return;
     }
-    if (!crop.trim()) {
+    if (!activeCrop.trim()) {
       Alert.alert(t('common.error'), t('harvest.errors.crop_required'));
       return;
     }
@@ -123,7 +131,7 @@ export default function AddHarvestScreen({ route, navigation }) {
         if (itemId) {
           const record = await database.get('harvests').find(itemId);
           await updateLocalModel(record, (draft) => {
-            draft.crop = crop.trim();
+            draft.crop = activeCrop.trim();
             draft.weight = parseFloat(weight);
             draft.unit = unit;
             draft.quality = quality;
@@ -132,11 +140,11 @@ export default function AddHarvestScreen({ route, navigation }) {
             draft.notes = notes.trim();
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
-        } else {
+          } else {
           await database.get('harvests').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
-            record.crop = crop.trim();
+            record.crop = activeCrop.trim();
             record.weight = parseFloat(weight);
             record.unit = unit;
             record.quality = quality;
@@ -146,26 +154,25 @@ export default function AddHarvestScreen({ route, navigation }) {
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
-        }
-      });
+          }
+          });
 
-
-      syncAll().catch(() => {});
-      navigation.goBack();
-    } catch (err) {
-      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('harvest.errors.save_local') });
-      Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
-    } finally {
-      setSaving(false);
-    }
-  };
+          syncAll().catch(() => {});
+          navigation.goBack();
+          } catch (err) {
+          setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('harvest.errors.save_local') });
+          Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
+          } finally {
+          setSaving(false);
+          }
+          };
 
   return (
     <StitchDashboardShell
       hero={StitchFormHero({
         eyebrow: t('harvest.entry_subtitle'),
         title: itemId ? t('harvest.edit_title') : t('harvest.entry_title'),
-        subtitle: crop || t('harvest.placeholders.crop'),
+        subtitle: activeCrop || t('harvest.placeholders.crop'),
         pills: [
           { label: t('harvest.live_total'), value: liveTotal, icon: 'leaf-outline' },
           { label: t('harvest.fields.unit'), value: t(`harvest.units.${unit}`), icon: 'scale-outline' },
@@ -199,8 +206,8 @@ export default function AddHarvestScreen({ route, navigation }) {
 
         <StitchInput
           label={t('harvest.crop_heading')}
-          value={crop}
-          onChangeText={setCrop}
+          value={activeCrop}
+          editable={false}
           placeholder={t('harvest.placeholders.crop')}
         />
 
@@ -300,7 +307,6 @@ export default function AddHarvestScreen({ route, navigation }) {
                     style={[styles.projectOption, project?.id === p.id && styles.projectOptionActive]}
                     onPress={() => {
                       setProject(p);
-                      setCrop(p.crop || '');
                       setShowProjectPicker(false);
                       setProjectSearch('');
                     }}

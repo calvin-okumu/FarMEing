@@ -36,6 +36,7 @@ const isSynced = (r) => r._raw._status === 'synced';
 const DEFAULT_FORM = {
   name: '',
   crop: '',
+  cropVariety: '',
   landSize: '',
   landUnit: 'acres',
   startDate: new Date(),
@@ -58,6 +59,7 @@ export default function ProjectsScreen({ navigation, route }) {
   const [banner, setBanner] = useState(null);
   const [blockSizes, setBlockSizes] = useState([]);
   const [blockCrops, setBlockCrops] = useState([]);
+  const [blockVarieties, setBlockVarieties] = useState([]);
   const [blockYields, setBlockYields] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -85,7 +87,7 @@ export default function ProjectsScreen({ navigation, route }) {
     const normalized = query.trim().toLowerCase();
     const searched = !normalized
       ? projects
-      : projects.filter((project) => [project.name, project.crop, project.status].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
+      : projects.filter((project) => [project.name, project.crop, project.cropVariety, project.status].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
 
     if (activeFilter === 'local') return searched.filter((project) => !isSynced(project));
     if (activeFilter === 'active') return searched.filter((project) => (project.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
@@ -98,6 +100,10 @@ export default function ProjectsScreen({ navigation, route }) {
     setEditingProject(null);
     reset(DEFAULT_FORM);
     setShowDatePicker(false);
+    setBlockSizes([]);
+    setBlockCrops([]);
+    setBlockVarieties([]);
+    setBlockYields([]);
     setModalVisible(true);
   };
 
@@ -113,6 +119,7 @@ export default function ProjectsScreen({ navigation, route }) {
     reset({
       name: project.name || '',
       crop: project.crop || '',
+      cropVariety: project.cropVariety || '',
       landSize: String(project.landSize ?? ''),
       landUnit: project.landUnit || 'acres',
       startDate: project.startDate ? new Date(project.startDate) : new Date(),
@@ -126,15 +133,18 @@ export default function ProjectsScreen({ navigation, route }) {
         setValue('blockCount', String(existingBlocks.length));
         setBlockSizes(existingBlocks.map(b => String(b.landSize || '')));
         setBlockCrops(existingBlocks.map(b => b.crop || ''));
+        setBlockVarieties(existingBlocks.map(b => b.cropVariety || ''));
         setBlockYields(existingBlocks.map(b => String(b.expectedYield || '')));
       } else {
         setBlockSizes([]);
         setBlockCrops([]);
+        setBlockVarieties([]);
         setBlockYields([]);
       }
     } catch {
       setBlockSizes([]);
       setBlockCrops([]);
+      setBlockVarieties([]);
       setBlockYields([]);
     }
     setShowDatePicker(false);
@@ -146,6 +156,7 @@ export default function ProjectsScreen({ navigation, route }) {
     setModalVisible(false);
     setBlockSizes([]);
     setBlockCrops([]);
+    setBlockVarieties([]);
     setBlockYields([]);
   };
 
@@ -164,6 +175,7 @@ export default function ProjectsScreen({ navigation, route }) {
           await updateLocalModel(record, (draft) => {
             draft.name = data.name.trim();
             draft.crop = data.crop.trim();
+            draft.cropVariety = data.cropVariety?.trim() || '';
             draft.landSize = parseFloat(data.landSize) || 0;
             draft.landUnit = data.landUnit || 'acres';
             draft.startDate = data.startDate.getTime();
@@ -185,6 +197,7 @@ export default function ProjectsScreen({ navigation, route }) {
             if (existing) {
               await existing.update((d) => {
                 d.crop = blockCrops[i] || '';
+                d.cropVariety = blockVarieties[i] || '';
                 d.landSize = parseFloat(blockSizes[i]) || 0;
                 d.landUnit = data.landUnit || 'acres';
                 d.expectedYield = parseFloat(blockYields[i]) || 0;
@@ -195,6 +208,7 @@ export default function ProjectsScreen({ navigation, route }) {
                 d.projectId = record.id;
                 d.name = `Block ${letters[i]}`;
                 d.crop = blockCrops[i] || '';
+                d.cropVariety = blockVarieties[i] || '';
                 d.landSize = parseFloat(blockSizes[i]) || 0;
                 d.landUnit = data.landUnit || 'acres';
                 d.expectedYield = parseFloat(blockYields[i]) || 0;
@@ -207,6 +221,7 @@ export default function ProjectsScreen({ navigation, route }) {
             record.userId = '';
             record.name = data.name.trim();
             record.crop = data.crop.trim();
+            record.cropVariety = data.cropVariety?.trim() || '';
             record.landSize = parseFloat(data.landSize) || 0;
             record.landUnit = data.landUnit || 'acres';
             record.startDate = data.startDate.getTime();
@@ -223,6 +238,7 @@ export default function ProjectsScreen({ navigation, route }) {
               draft.projectId = record.id;
               draft.name = `Block ${letters[i]}`;
               draft.crop = blockCrops[i] || '';
+              draft.cropVariety = blockVarieties[i] || '';
               draft.landSize = parseFloat(blockSizes[i]) || 0;
               draft.landUnit = data.landUnit || 'acres';
               draft.expectedYield = parseFloat(blockYields[i]) || 0;
@@ -431,7 +447,8 @@ export default function ProjectsScreen({ navigation, route }) {
                 return (
                   <View key={i} style={styles.blockCard}>
                     <Text style={styles.blockCardTitle}>Block {letter}</Text>
-                    <StitchInput label='Crop' value={blockCrops[i] || ''} onChangeText={(v) => { const u = [...blockCrops]; u[i] = v; setBlockCrops(u); }} placeholder='Crop type' style={styles.formField} />
+                    <StitchInput label={t('projects.fields.crop')} value={blockCrops[i] || ''} onChangeText={(v) => { const u = [...blockCrops]; u[i] = v; setBlockCrops(u); }} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
+                    <StitchInput label={t('projects.fields.crop_variety')} value={blockVarieties[i] || ''} onChangeText={(v) => { const u = [...blockVarieties]; u[i] = v; setBlockVarieties(u); }} placeholder={t('projects.placeholders.crop_variety')} style={styles.formField} />
                     <View style={styles.row}>
                       <View style={styles.half}>
                         <StitchInput label='Land Size' value={blockSizes[i] || ''} onChangeText={(v) => { const u = [...blockSizes]; u[i] = v; setBlockSizes(u); }} placeholder='0' keyboardType='decimal-pad' style={styles.formField} />
@@ -450,6 +467,7 @@ export default function ProjectsScreen({ navigation, route }) {
               <View style={styles.row}>
                 <View style={styles.half}>
                   <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
+                  <StitchInput label={t('projects.fields.crop_variety')} value={watch('cropVariety')} onChangeText={(val) => setValue('cropVariety', val)} placeholder={t('projects.placeholders.crop_variety')} style={styles.formField} />
                 </View>
                 <View style={styles.half}>
                   <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' style={styles.formField} />

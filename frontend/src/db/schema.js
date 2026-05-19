@@ -1,8 +1,36 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 23, // Incremented version
+  version: 25, // Incremented version
   tables: [
+    // ── ProjectAccess ────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'project_access',
+      columns: [
+        { name: 'user_id',    type: 'string' },
+        { name: 'project_id', type: 'string' },
+        { name: 'role',       type: 'string' },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+
+    // ── ProjectInvitation ────────────────────────────────────────────────────
+    tableSchema({
+      name: 'project_invitations',
+      columns: [
+        { name: 'project_id',  type: 'string' },
+        { name: 'role',        type: 'string' },
+        { name: 'invite_code', type: 'string' },
+        { name: 'expires_at',  type: 'number' },
+        { name: 'is_used',     type: 'boolean' },
+        { name: 'is_deleted',  type: 'boolean' },
+        { name: 'created_at',  type: 'number' },
+        { name: 'updated_at',  type: 'number' },
+      ],
+    }),
+
     // ── ProjectBlock ──────────────────────────────────────────────────────────
     tableSchema({
       name: 'project_blocks',
@@ -12,6 +40,7 @@ export default appSchema({
         { name: 'land_size',  type: 'number', isOptional: true },
         { name: 'land_unit',  type: 'string', isOptional: true },
         { name: 'crop',       type: 'string', isOptional: true },
+        { name: 'crop_variety', type: 'string', isOptional: true },
         { name: 'expected_yield', type: 'number', isOptional: true },
         { name: 'is_deleted', type: 'boolean' },
         { name: 'created_at', type: 'number' },
@@ -70,6 +99,7 @@ export default appSchema({
         { name: 'season_id',      type: 'string', isOptional: true },
         { name: 'name',           type: 'string' },
         { name: 'crop',           type: 'string' },
+        { name: 'crop_variety',   type: 'string', isOptional: true },
         { name: 'land_size',      type: 'number' },
         { name: 'land_unit',      type: 'string' },
         { name: 'start_date',     type: 'number' },          // Unix ms timestamp

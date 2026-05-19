@@ -233,6 +233,7 @@
     "fields": {
       "name": "Jina la Mradi",
       "crop": "Zao",
+      "crop_variety": "Aina ya Zao",
       "land_size": "Ukubwa wa Ardhi",
       "unit": "Kipimo",
       "expected_yield": "Mazao Yanayotarajiwa (kg)",
@@ -242,6 +243,7 @@
     "placeholders": {
       "name": "mf. Shamba la Kaskazini",
       "crop": "mf. Ngano, Mahindi",
+      "crop_variety": "mf. Pioneer 30G19",
       "unit": "ekari",
       "expected_yield": "mf. 5000"
     },
@@ -523,7 +525,7 @@
     "complete": "Complete Sale / Maliza Mauzo",
     "footer_note": "By completing, this transaction will be recorded in your digital ledger.",
     "fields": {
-      "customer": "Mteja (Si lazima)",
+      "customer": "Jina la Mteja",
       "weight_sold": "Uzito Uliouzwa (kg)",
       "unit_price": "Bei kwa Kipimo"
     },
@@ -545,6 +547,8 @@
     "errors": {
       "weight_required": "Uzito sahihi unahitajika",
       "unit_price_required": "Bei sahihi kwa kipimo inahitajika",
+      "customer_required": "Jina la mteja linahitajika",
+      "crop_required": "Jina la zao linahitajika",
       "save_local": "Imeshindikana kuhifadhi mauzo"
     }
   },

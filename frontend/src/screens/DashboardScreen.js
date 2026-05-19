@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
+import { syncAll } from '../services/syncService';
+import api from '../lib/api';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
@@ -103,8 +105,28 @@ export default function DashboardScreen({ navigation }) {
     const [inventoryItems, setInventoryItems] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('all');
     const [projectPickerVisible, setProjectPickerVisible] = useState(false);
+    const [joinModalVisible, setJoinModalVisible] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+    const [joining, setJoining] = useState(false);
     const [projectSearch, setProjectSearch] = useState('');
     const [showAllResources, setShowAllResources] = useState(false);
+
+    const handleJoinProject = async () => {
+        if (!inviteCode.trim()) return;
+        setJoining(true);
+        try {
+            const { data } = await api.post('/invitations/join', { inviteCode: inviteCode.trim().toUpperCase() });
+            setJoinModalVisible(false);
+            setInviteCode('');
+            // Trigger sync to fetch the new project
+            syncAll().catch(() => {});
+            Alert.alert(t('common.success'), data.message || 'Joined project successfully!');
+        } catch (err) {
+            Alert.alert(t('common.error'), err.response?.data?.error || 'Invalid or expired code');
+        } finally {
+            setJoining(false);
+        }
+    };
 
     useEffect(() => {
         Animated.timing(headerAnim, {
@@ -232,8 +254,11 @@ export default function DashboardScreen({ navigation }) {
                     },
                     children: (
                         <View style={styles.heroPills}>
-                            <StitchHeroPill label={t('dashboard.scope')} value={selectedLabel} icon='albums-outline' style={styles.heroPillPrimary} />
+                            <StitchHeroPill label={t('dashboard.scope')} value={selectedLabel} icon='layers-outline' style={styles.heroPillPrimary} />
                             <StitchHeroPill label={t('dashboard.total_spent')} value={summary.totalCost} currency={currency} icon='wallet-outline' style={styles.heroPillSecondary} />
+                            <TouchableOpacity onPress={() => setJoinModalVisible(true)} activeOpacity={0.8}>
+                                <StitchHeroPill label={t('team.join', { defaultValue: 'Join' })} value={t('team.project', { defaultValue: 'Project' })} icon='add-circle-outline' style={styles.heroPillSecondary} />
+                            </TouchableOpacity>
                         </View>
                     ),
                 }}
@@ -299,6 +324,49 @@ export default function DashboardScreen({ navigation }) {
                         ))}
                     </View>
                 ) : null}
+
+                <Modal visible={joinModalVisible} animationType="slide" transparent>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalSheet}>
+                            <View style={styles.modalHandle} />
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>{t('team.join_project', { defaultValue: 'Join Project' })}</Text>
+                                <TouchableOpacity onPress={() => setJoinModalVisible(false)}>
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={{ padding: spacing.md }}>
+                                <Text style={styles.projectOptionMeta}>{t('team.invite_code_hint', { defaultValue: 'Enter the 8-character invitation code provided by the project owner.' })}</Text>
+                                <View style={styles.searchShell}>
+                                    <Ionicons name="key-outline" size={18} color={colors.textMuted} />
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        value={inviteCode}
+                                        onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                                        placeholder="E.g. A1B2C3D4"
+                                        placeholderTextColor={colors.textMuted}
+                                        autoCapitalize="characters"
+                                        maxLength={8}
+                                    />
+                                </View>
+                                <TouchableOpacity 
+                                    style={[styles.viewAllRow, { marginTop: spacing.md, backgroundColor: colors.primaryContainer }]} 
+                                    onPress={handleJoinProject}
+                                    disabled={joining || !inviteCode}
+                                >
+                                    {joining ? (
+                                        <ActivityIndicator color={colors.white} />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="enter-outline" size={20} color={colors.primarySoft} />
+                                            <Text style={[styles.viewAllText, { color: colors.white }]}>{t('team.join_now', { defaultValue: 'Join Project' })}</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </StitchDashboardShell>
 
             <Modal visible={projectPickerVisible} animationType='slide' transparent onRequestClose={() => setProjectPickerVisible(false)}>
@@ -451,15 +519,13 @@ const styles = StyleSheet.create({
     resourceTileOrb: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     resourceTileTitle: { ...type.cardMeta, color: colors.text, textAlign: 'center' },
 
-
     modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
-    modalSheet: { backgroundColor: colors.backgroundAccent, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '78%' },
-    modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: spacing.sm },
-    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-    modalTitle: { fontSize: type.title.fontSize, lineHeight: type.title.lineHeight, fontWeight: '800', color: colors.text },
-    modalSubtitle: { marginTop: 2, fontSize: type.caption.fontSize, lineHeight: 15, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: '700' },
-    searchShell: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radius.card, backgroundColor: colors.surfaceHighlight, borderWidth: 1, borderColor: colors.line, paddingHorizontal: spacing.md, minHeight: 52, marginBottom: spacing.sm },
-    searchInput: { flex: 1, fontSize: type.body.fontSize, lineHeight: type.body.lineHeight, color: colors.text },
+    modalSheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '85%' },
+    modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: spacing.sm, marginTop: 12 },
+    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm, paddingVertical: spacing.sm },
+    modalTitle: { ...type.cardTitle, color: colors.text },
+    searchShell: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surfaceInset, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 14, marginTop: spacing.md },
+    searchInput: { flex: 1, ...type.body, color: colors.text, padding: 0 },
     modalList: { gap: spacing.xs, paddingBottom: spacing.sm },
     projectOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceHighlight, borderRadius: radius.card, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, borderWidth: 1, borderColor: 'rgba(17,42,30,0.06)' },
     projectOptionActive: { backgroundColor: colors.mintLight, borderColor: 'rgba(17,42,30,0.1)' },

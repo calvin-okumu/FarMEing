@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -10,32 +11,27 @@ import {
   Alert,
   Platform,
   Modal,
-  KeyboardAvoidingView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
-import { Q } from '@nozbe/watermelondb';
-import { useFocusEffect } from '@react-navigation/native';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
-import { database } from '../db';
-import { syncAll } from '../services/syncService';
-import api, { BASE_URL } from '../lib/api';
-import useSettingsStore from '../store/useSettingsStore';
-import { formatCurrency } from '../utils/currency';
-import { formatAppDate } from '../utils/date';
-import { computeProjectSummary } from '../utils/localAnalytics';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSearchBar, StitchSurface } from '../components/ui/StitchPrimitives';
+import { stitchTheme, stitchShadows } from '../theme/stitchTheme';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
+import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSearchBar, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
-import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
-import { Dimensions } from 'react-native';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { formatCurrency } from '../utils/currency';
+import { formatAppDate } from '../utils/date';
+import { computeProjectSummary } from '../utils/localAnalytics';
 
 import { deleteLocalModel } from '../utils/resourceMutations';
+import { syncAll } from '../services/syncService';
+import useSettingsStore from '../store/useSettingsStore';
 import useAuthStore from '../store/useAuthStore';
+import { database } from '../db';
+import { Q } from '@nozbe/watermelondb';
 
 const screenWidth = Dimensions.get('window').width;
 const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'team', 'timeline'];
@@ -147,74 +143,68 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [exporting, setExporting] = useState(false);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [team, setTeam] = useState([]);
+  const [activeInvitations, setActiveInvitations] = useState([]);
   const [teamLoading, setTeamLoading] = useState(false);
   const [inviteVisible, setInviteVisible] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
-  const [allProjects, setAllProjects] = useState([]);
+  const [inviteRole, setInviteRole] = useState('VIEWER');
+  const user = useAuthStore(s => s.user);
   const [banner, setBanner] = useState(null);
   const [blockPickerVisible, setBlockPickerVisible] = useState(false);
   const apiProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
 
-  const fetchTeam = async () => {
-    if (!apiProjectId) return;
+  useEffect(() => {
+    if (!project) return;
+
+    const teamSub = database.get('project_access')
+      .query(Q.where('project_id', project.id), Q.where('is_deleted', false))
+      .observeWithColumns(['role'])
+      .subscribe(setTeam);
+
+    const invSub = database.get('project_invitations')
+      .query(Q.where('project_id', project.id), Q.where('is_deleted', false), Q.where('is_used', false))
+      .observe()
+      .subscribe(setActiveInvitations);
+
+    return () => {
+      teamSub.unsubscribe();
+      invSub.unsubscribe();
+    };
+  }, [project]);
+
+  const handleInvite = async () => {
     setTeamLoading(true);
     try {
-      const res = await api.get(`/projects/${apiProjectId}/members`);
-      setTeam(res.data.members);
+      await api.post('/invitations', { projectId: project.id, role: inviteRole });
+      syncAll().catch(() => {});
+      setInviteVisible(false);
+      setBanner({ tone: 'success', title: t('team.invite_created'), message: t('team.invite_created_msg') });
     } catch (err) {
-      if (err.statusCode === 404) {
-        setTeam([]);
-      } else {
-        console.warn('[Team] Fetch error:', err.message);
-      }
+      Alert.alert(t('common.error'), err.response?.data?.error || 'Failed to create invitation');
     } finally {
       setTeamLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (activeTab === 'team') {
-      fetchTeam();
-    }
-  }, [activeTab, apiProjectId]);
-
-  const handleInvite = async () => {
-    const targetProjects = inviteForm.projectIds.length > 0 ? inviteForm.projectIds : [apiProjectId];
-    if (!inviteForm.phone || targetProjects.length === 0) return;
-    let successCount = 0;
-    let failCount = 0;
-    for (const pid of targetProjects) {
-      try {
-        await api.post(`/projects/${pid}/members`, {
-          phone: inviteForm.phone,
-          role: inviteForm.role,
-          note: inviteForm.note,
-        });
-        successCount++;
-      } catch (err) {
-        failCount++;
+  const handleRemoveMember = async (accessId) => {
+    Alert.alert(t('team.remove_title'), t('team.remove_confirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+             // In an offline-first app, we mark as deleted locally and sync
+             const record = await database.get('project_access').find(accessId);
+             await database.write(async () => {
+               await record.update(r => { r.isDeleted = true; });
+             });
+             syncAll();
+          } catch (err) {
+             Alert.alert(t('common.error'), 'Failed to remove member');
+          }
+        }
       }
-    }
-    setInviteVisible(false);
-    setInviteForm({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
-    fetchTeam();
-    if (successCount > 0) {
-      setBanner({ tone: 'success', title: t('common.success'), message: t('team.invited_success') });
-    }
-    if (failCount > 0) {
-      Alert.alert(t('common.error'), `${failCount} invitation(s) failed.`);
-    }
-  };
-
-  const handleRemoveMember = async (targetUserId) => {
-    if (!apiProjectId) return;
-    try {
-      await api.delete(`/projects/${apiProjectId}/members/${targetUserId}`);
-      fetchTeam();
-      setBanner({ tone: 'success', title: t('common.success'), message: t('team.access_revoked') });
-    } catch (err) {
-      Alert.alert('Error', 'Could not remove team member.');
-    }
+    ]);
   };
 
   const handleExport = async (format = 'pdf') => {
@@ -276,11 +266,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
     loadProject();
     syncAll().catch(() => {});
   }, [projectId]);
-
-  useEffect(() => {
-    const sub = database.get('farm_projects').query().observe().subscribe(setAllProjects);
-    return () => sub.unsubscribe();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -498,10 +483,10 @@ export default function ProjectDetailScreen({ route, navigation }) {
     <View style={styles.screen}>
       <StitchDashboardShell
         hero={{
-          eyebrow: project.crop || t('projects.fields.crop'),
+          eyebrow: `${project.crop}${project.cropVariety ? ` (${project.cropVariety})` : ''}`,
           title: selectedBlock ? `${project.name} - ${selectedBlock.name}` : project.name,
           subtitle: selectedBlock
-            ? `${selectedBlock.crop || project.crop || ''}${selectedBlock.landSize ? ` • ${selectedBlock.landSize} ${selectedBlock.landUnit || 'acres'}` : ''}${selectedBlock.expectedYield ? ` • ${selectedBlock.expectedYield} yield` : ''}`
+            ? `${selectedBlock.crop || project.crop || ''}${selectedBlock.cropVariety ? ` (${selectedBlock.cropVariety})` : ''}${selectedBlock.landSize ? ` • ${selectedBlock.landSize} ${selectedBlock.landUnit || 'acres'}` : ''}${selectedBlock.expectedYield ? ` • ${selectedBlock.expectedYield} yield` : ''}`
             : `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
@@ -626,18 +611,57 @@ export default function ProjectDetailScreen({ route, navigation }) {
 
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
-            {teamLoading ? <ActivityIndicator color={stitchTheme.colors.primary} style={{ marginVertical: 20 }} /> : null}
-            {filteredTeam.map(member => (
+            {/* Members Section */}
+            <StitchSectionTitle>{t('team.members', { defaultValue: 'Active Team' })}</StitchSectionTitle>
+            {team.map(member => (
               <TeamMemberCard
                 key={member.id}
                 member={member}
-                isOwner={project.accessRole === 'OWNER'}
+                isOwner={project?.userId === user?.id}
                 onRemove={handleRemoveMember}
                 t={t}
               />
             ))}
             {!teamLoading && team.length === 0 && <Text style={styles.emptyText}>{t('team.no_members')}</Text>}
-            <StitchPrimaryButton label="Invite Member" onPress={() => setInviteVisible(true)} icon="person-add-outline" style={{ marginTop: 20, marginHorizontal: 16 }} />
+
+            {/* Invitations Section */}
+            {activeInvitations.length > 0 && (
+              <>
+                <StitchSectionTitle style={{ marginTop: 24 }}>{t('team.active_invitations', { defaultValue: 'Pending Invites' })}</StitchSectionTitle>
+                {activeInvitations.map(inv => (
+                  <View key={inv.id} style={styles.collectionCard}>
+                    <View style={styles.collectionTopRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.collectionTitle}>{inv.inviteCode}</Text>
+                        <Text style={styles.collectionMeta}>{t('team.role')}: {inv.role} • {t('team.expires')}: {formatAppDate(inv.expiresAt)}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          const msg = `Join my farm project on FarmTrack! Use code: ${inv.inviteCode}`;
+                          if (Platform.OS === 'ios' || Platform.OS === 'android') {
+                             Sharing.shareAsync('', { dialogTitle: 'Share Invite Code', message: msg });
+                          } else {
+                             Alert.alert('Invite Code', msg);
+                          }
+                        }}
+                        style={styles.inviteShareBtn}
+                      >
+                        <Ionicons name="share-outline" size={18} color={stitchTheme.colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+            
+            {project?.userId === user?.id && (
+              <StitchPrimaryButton 
+                label={t('team.invite_member', { defaultValue: 'Invite Member' })} 
+                onPress={() => setInviteVisible(true)} 
+                icon="person-add-outline" 
+                style={{ marginTop: 20, marginHorizontal: 16 }} 
+              />
+            )}
           </View>
         )}
 
@@ -678,42 +702,25 @@ export default function ProjectDetailScreen({ route, navigation }) {
       </Modal>
 
       <Modal visible={inviteVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior='padding' style={styles.keyboardView}><View style={styles.modalContent}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('team.invite_title')}</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+        <View style={styles.modalOverlay}><View style={styles.modalContent}>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('team.invite_title', { defaultValue: 'Invite to Project' })}</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
 
-          <StitchInput label={t('team.invite_phone')} value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' style={styles.formField} />
-
-          <StitchInput label={t('common.notes')} value={inviteForm.note} onChangeText={(note) => setInviteForm(f => ({ ...f, note }))} placeholder='e.g. Farm contractor, input supplier' style={styles.formField} />
-
-          <Text style={styles.formFieldLabel}>{t('projects.fields.name')}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
-            {allProjects.map((proj) => (
-              <TouchableOpacity
-                key={proj.id}
-                style={[styles.projectChip, inviteForm.projectIds.includes(proj.id) && styles.projectChipActive]}
-                onPress={() => setInviteForm(f => ({
-                  ...f,
-                  projectIds: f.projectIds.includes(proj.id)
-                    ? f.projectIds.filter(id => id !== proj.id)
-                    : [...f.projectIds, proj.id],
-                }))}
-              >
-                <Text style={[styles.projectChipText, inviteForm.projectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.formFieldLabel}>{t('team.role')}</Text>
-          <View style={styles.roleRow}>
-            {['MANAGER', 'VIEWER'].map(role => (
-              <TouchableOpacity key={role} style={[styles.roleChip, inviteForm.role === role && styles.roleChipActive]} onPress={() => setInviteForm(f => ({ ...f, role }))}>
-                <Text style={[styles.roleChipText, inviteForm.role === role && styles.roleChipTextActive]}>{role}</Text>
-              </TouchableOpacity>
-            ))}
+          <Text style={styles.formFieldLabel}>{t('team.select_role', { defaultValue: 'Select Role' })}</Text>
+          <View style={styles.chipsRow}>
+            <StitchChip label="MANAGER" active={inviteRole === 'MANAGER'} onPress={() => setInviteRole('MANAGER')} />
+            <StitchChip label="VIEWER" active={inviteRole === 'VIEWER'} onPress={() => setInviteRole('VIEWER')} />
           </View>
+          <Text style={styles.collectionDescription}>{inviteRole === 'MANAGER' ? 'Managers can edit all project data but cannot delete the project.' : 'Viewers have read-only access to all project data.'}</Text>
 
-          <StitchPrimaryButton label={t('team.send_invitation')} onPress={handleInvite} icon="send-outline" />
-        </View></KeyboardAvoidingView></View>
+          <StitchPrimaryButton 
+             label={t('team.generate_code', { defaultValue: 'Generate Invite Code' })} 
+             onPress={handleInvite} 
+             disabled={teamLoading} 
+             loading={teamLoading} 
+             icon="key-outline" 
+             style={{ marginTop: 24 }} 
+          />
+        </View></View>
       </Modal>
 
       <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('resource.confirm_delete_generic')} onCancel={() => setDeleteTarget(null)} onConfirm={async () => {
@@ -922,6 +929,7 @@ const styles = StyleSheet.create({
   teamAvatarText: { color: stitchTheme.colors.primary, fontSize: 15, fontWeight: '800' },
   removeMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   removeMemberText: { color: stitchTheme.colors.accentRed, fontSize: 12, fontWeight: '800' },
+  inviteShareBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
 
   /* Overlays */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
