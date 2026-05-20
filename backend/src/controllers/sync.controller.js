@@ -15,6 +15,9 @@ const tableMap = {
   inventory_items: 'inventoryItem',
   payees: 'payee',
   employee_project_assignments: 'employeeProject',
+  project_access: 'projectAccess',
+  project_invitations: 'projectInvitation',
+  sale_harvests: 'saleHarvest',
 };
 
 // Order matters for push to avoid foreign key violations
@@ -22,6 +25,8 @@ const SYNC_ORDER = [
   'seasons',
   'payees',
   'farm_projects',
+  'project_access',
+  'project_invitations',
   'project_blocks',
   'employees',
   'employee_project_assignments',
@@ -32,6 +37,7 @@ const SYNC_ORDER = [
   'payments',
   'harvests',
   'sales',
+  'sale_harvests',
   'sale_payments',
 ];
 
@@ -44,6 +50,10 @@ const fieldMapping = {
   userId: 'user_id',
   seasonId: 'season_id',
   blockId: 'block_id',
+  harvestId: 'harvest_id',
+  rejectedWeight: 'rejected_weight',
+  rejectedReason: 'rejected_reason',
+  cropVariety: 'crop_variety',
   landSize: 'land_size',
   landUnit: 'land_unit',
   startDate: 'start_date',
@@ -80,6 +90,9 @@ const fieldMapping = {
   syncStatus: 'sync_status',
   lastSyncedAt: 'last_synced_at',
   lastError: 'last_error',
+  inviteCode: 'invite_code',
+  expiresAt: 'expires_at',
+  isUsed: 'is_used',
 };
 
 const reverseMapping = Object.fromEntries(
@@ -136,7 +149,7 @@ const fromWatermelon = (record) => {
   }
 
   // Date fields in the schema that might come as timestamps
-  const dateFields = ['date', 'startDate', 'endDate', 'createdAt', 'updatedAt'];
+  const dateFields = ['date', 'startDate', 'endDate', 'expiresAt', 'createdAt', 'updatedAt'];
   dateFields.forEach(field => {
     if (result[field] !== undefined && result[field] !== null) {
       if (typeof result[field] === 'number') {
@@ -148,7 +161,7 @@ const fromWatermelon = (record) => {
   });
 
   // Foreign keys or IDs should be null if they are empty strings
-  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId', 'blockId'];
+  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId', 'blockId', 'harvestId'];
   idFields.forEach(field => {
     if (result[field] === '') {
       result[field] = null;
@@ -198,8 +211,10 @@ exports.pull = async (req, res) => {
         where.id = { in: accessibleProjectIds };
       } else {
         // All other models are directly linked to a project
-        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock'].includes(prismaModel)) {
+        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock', 'projectAccess', 'projectInvitation'].includes(prismaModel)) {
           where.projectId = { in: accessibleProjectIds };
+        } else if (prismaModel === 'saleHarvest') {
+          where.sale = { projectId: { in: accessibleProjectIds } };
         } else if (prismaModel === 'salePayment') {
           where.sale = { projectId: { in: accessibleProjectIds } };
         } else if (prismaModel === 'payment') {
@@ -361,8 +376,12 @@ exports.push = async (req, res) => {
             where.id = req.user.id;
           } else if (prismaModel === 'farmProject') {
             where.projectAccess = { some: { userId: req.user.id, role: 'OWNER' } };
+          } else if (['projectAccess', 'projectInvitation'].includes(prismaModel)) {
+            where.project = { projectAccess: { some: { userId: req.user.id, role: 'OWNER' } } };
           } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock'].includes(prismaModel)) {
             where.project = { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } };
+          } else if (prismaModel === 'saleHarvest') {
+            where.sale = { project: { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } } };
           } else if (prismaModel === 'payment') {
 
             where.employee = { userId: req.user.id };

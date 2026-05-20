@@ -15,6 +15,7 @@ const workEntryRoutes = require('./src/routes/workEntry.routes');
 const harvestRoutes   = require('./src/routes/harvest.routes');
 const saleRoutes      = require('./src/routes/sale.routes');
 const seasonRoutes    = require('./src/routes/season.routes');
+const invitationRoutes = require('./src/routes/projectInvitation.routes');
 const syncRoutes      = require('./src/routes/sync.routes');
 
 const reportRoutes    = require('./src/routes/report.routes');
@@ -54,6 +55,7 @@ apiRouter.use('/work-entries', workEntryRoutes);
 apiRouter.use('/harvests', harvestRoutes);
 apiRouter.use('/sales', saleRoutes);
 apiRouter.use('/seasons', seasonRoutes);
+apiRouter.use('/invitations', invitationRoutes);
 apiRouter.use('/sync', syncRoutes);
 
 apiRouter.use('/reports', reportRoutes);

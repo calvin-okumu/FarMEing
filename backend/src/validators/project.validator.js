@@ -3,6 +3,7 @@ const { z } = require('zod');
 const createProjectSchema = z.object({
   name:      z.string().min(1, 'Name is required'),
   crop:      z.string().min(1, 'Crop is required'),
+  cropVariety: z.string().optional().nullable(),
   landSize:  z.number().positive('Land size must be a positive number'),
   landUnit:  z.string().optional(),          // defaults to "acres" in DB
   startDate: z.string().datetime({ offset: true }).or(z.string().date()),

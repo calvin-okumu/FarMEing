@@ -348,9 +348,23 @@ const getProjectSummary = async (req, res) => {
     const totalExpenses = expenseAgg._sum.amount ?? 0;
     const totalLabor = laborAgg._sum.totalCost ?? 0;
     const totalInventory = inventoryAgg._sum.totalCost ?? 0;
-    const totalHarvest = harvestAgg._sum.weight ?? 0;
+    const totalHarvest = harvests.reduce((sum, h) => sum + (h.weight - (h.rejectedWeight || 0)), 0);
+    const totalRejected = harvests.reduce((sum, h) => sum + (h.rejectedWeight || 0), 0);
     const totalRevenue = saleAgg._sum.totalAmount ?? 0;
     const totalCost = totalExpenses + totalLabor + totalInventory;
+
+    // Per-block harvest breakdown
+    const blocksBreakdown = result.project.blocks.map(block => {
+      const blockHarvests = harvests.filter(h => h.blockId === block.id);
+      const approved = blockHarvests.reduce((sum, h) => sum + (h.weight - (h.rejectedWeight || 0)), 0);
+      const rejected = blockHarvests.reduce((sum, h) => sum + (h.rejectedWeight || 0), 0);
+      return {
+        id: block.id,
+        name: block.name,
+        approved,
+        rejected,
+      };
+    });
 
     const timeline = [
       ...expenses.map((e) => ({
@@ -370,8 +384,8 @@ const getProjectSummary = async (req, res) => {
       ...harvests.map((h) => ({
         type: 'HARVEST',
         date: h.date,
-        label: `Harvest: ${h.weight}kg ${h.crop}`,
-        amount: h.weight,
+        label: `Harvest: ${h.weight - (h.rejectedWeight || 0)}kg ${h.crop}`,
+        amount: h.weight - (h.rejectedWeight || 0),
         icon: 'leaf-outline',
       })),
       ...sales.map((s) => ({
@@ -395,8 +409,10 @@ const getProjectSummary = async (req, res) => {
         totalInventoryCost: totalInventory,
         totalCost,
         totalHarvest,
+        totalRejected,
         totalRevenue,
         netProfit: totalRevenue - totalCost,
+        blocksBreakdown,
       },
       timeline,
     });

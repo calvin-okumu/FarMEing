@@ -30,7 +30,8 @@
       "other": "Other"
     },
     "today": "Today",
-    "earlier": "Earlier"
+    "earlier": "Earlier",
+    "select_block": "Select Block"
   },
   "months": {
     "january": "January",
@@ -252,8 +253,9 @@
       "sales": "Sales",
       "inventory": "Inventory",
       "team": "Team",
-      "timeline": "Timeline"
-    },
+      "timeline": "Timeline",
+      "block": "Project Block"
+      },
     "fields": {
       "name": "Project Name",
       "crop": "Crop",
@@ -501,11 +503,15 @@
     "fields": {
       "crop": "Crop Name",
       "weight": "Weight",
+      "rejected_weight": "Rejected Quantity",
+      "rejected_reason": "Reason for Rejection",
       "unit": "Unit",
       "quality": "Quality"
     },
     "placeholders": {
       "crop": "e.g. Tomatoes",
+      "rejected_weight": "0.00",
+      "rejected_reason": "e.g. Pest damage",
       "notes": "Optional notes..."
     },
     "record": "Record Harvest",
@@ -544,6 +550,7 @@
     "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
     "price_heading": "Price per kg / Bei kwa kg",
     "buyer_heading": "Buyer Name / Jina la Mnunuzi",
+    "linked_harvests": "Linked Harvests",
     "date_label": "Date of Sale",
     "crop_category": "Crop Category",
     "complete": "Complete Sale / Maliza Mauzo",

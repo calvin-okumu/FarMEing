@@ -13,7 +13,7 @@ const getProjectData = async (id, userId, res) => {
       budgetItems: { where: { isDeleted: false } },
       expenses: { where: { isDeleted: false }, include: { payeeRecord: true } },
       workEntries: { where: { isDeleted: false }, include: { employee: true } },
-      harvests: { where: { isDeleted: false } },
+      harvests: { where: { isDeleted: false }, include: { block: true } },
       sales: { where: { isDeleted: false }, include: { salePayments: { where: { isDeleted: false } } } },
       inventoryItems: { where: { isDeleted: false } },
     },
@@ -79,9 +79,11 @@ const generateProjectReport = async (req, res) => {
     doc.moveDown();
 
     // ── Production ───────────────────────────────────────────────────────────
-    const totalHarvest = project.harvests.reduce((sum, item) => sum + (item.weight || 0), 0);
+    const netHarvest = project.harvests.reduce((sum, item) => sum + (item.weight - (item.rejectedWeight || 0)), 0);
+    const totalRejected = project.harvests.reduce((sum, item) => sum + (item.rejectedWeight || 0), 0);
     doc.fontSize(16).text('Production', { underline: true });
-    doc.fontSize(12).text(`Total Harvest: ${totalHarvest.toLocaleString()} kg`);
+    doc.fontSize(12).text(`Total Approved Harvest: ${netHarvest.toLocaleString()} kg`);
+    doc.text(`Total Rejected: ${totalRejected.toLocaleString()} kg`);
     doc.moveDown();
 
     // ── Budget Breakdown ────────────────────────────────────────────────
@@ -100,13 +102,19 @@ const generateProjectReport = async (req, res) => {
       doc.fontSize(16).text('Harvest Records', { underline: true });
       doc.fontSize(12);
       const harvestByCrop = {};
+      const rejectedByCrop = {};
       project.harvests.forEach(h => {
-        harvestByCrop[h.crop] = (harvestByCrop[h.crop] || 0) + (h.weight || 0);
+        const netWeight = h.weight - (h.rejectedWeight || 0);
+        const rejWeight = h.rejectedWeight || 0;
+        harvestByCrop[h.crop] = (harvestByCrop[h.crop] || 0) + netWeight;
+        rejectedByCrop[h.crop] = (rejectedByCrop[h.crop] || 0) + rejWeight;
       });
       Object.entries(harvestByCrop).forEach(([crop, weight]) => {
-        doc.text(`- ${crop}: ${weight.toLocaleString()} kg`);
+        const rejected = rejectedByCrop[crop] || 0;
+        doc.text(`- ${crop}: ${weight.toLocaleString()} kg approved (${rejected.toLocaleString()} kg rejected)`);
       });
-      doc.text(`Total Harvest: ${totalHarvest.toLocaleString()} kg`);
+      doc.text(`Total Approved Harvest: ${netHarvest.toLocaleString()} kg`);
+      doc.text(`Total Rejected Harvest: ${totalRejected.toLocaleString()} kg`);
       doc.text(`Expected Yield: ${project.expectedYield || 'N/A'} kg`);
       doc.moveDown();
     }
@@ -226,15 +234,21 @@ const generateProjectExcelReport = async (req, res) => {
       const harvestSheet = workbook.addWorksheet('Harvest');
       harvestSheet.columns = [
         { header: 'Date', key: 'date', width: 15 },
+        { header: 'Block', key: 'block', width: 20 },
         { header: 'Crop', key: 'crop', width: 20 },
-        { header: 'Weight (kg)', key: 'weight', width: 15 },
+        { header: 'Approved Weight (kg)', key: 'weight', width: 20 },
+        { header: 'Rejected Weight (kg)', key: 'rejected', width: 20 },
         { header: 'Notes', key: 'notes', width: 40 },
       ];
       project.harvests.forEach(h => {
+        const netWeight = h.weight - (h.rejectedWeight || 0);
+        const rejWeight = h.rejectedWeight || 0;
         harvestSheet.addRow({
           date: h.date.toLocaleDateString(),
+          block: h.block?.name || 'Overall',
           crop: h.crop,
-          weight: h.weight,
+          weight: netWeight,
+          rejected: rejWeight,
           notes: h.notes
         });
       });

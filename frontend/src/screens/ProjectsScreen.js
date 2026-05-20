@@ -43,7 +43,7 @@ const DEFAULT_FORM = {
   expectedYield: '',
   status: 'ACTIVE',
   numberOfBlocks: '',
-  blockCount: '',
+  blockCount: '1',
 };
 
 export default function ProjectsScreen({ navigation, route }) {

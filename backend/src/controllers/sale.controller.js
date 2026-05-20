@@ -13,6 +13,7 @@ const createSale = async (req, res) => {
     const sale = await prisma.sale.create({
       data: {
         projectId:   data.projectId,
+        blockId:     data.blockId ?? null,
         date:        new Date(data.date),
         customer:    data.customer ?? null,
         weightSold:  data.weightSold,
@@ -90,10 +91,16 @@ const deleteSale = async (req, res) => {
     const access = await verifyProjectAccess(sale.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
     if (!access) return;
 
-    await prisma.sale.update({
-      where: { id: req.params.id },
-      data:  { isDeleted: true },
-    });
+    await prisma.$transaction([
+      prisma.sale.update({
+        where: { id: req.params.id },
+        data:  { isDeleted: true },
+      }),
+      prisma.saleHarvest.updateMany({
+        where: { saleId: req.params.id },
+        data:  { isDeleted: true },
+      }),
+    ]);
 
     return res.status(204).send();
   } catch (error) {

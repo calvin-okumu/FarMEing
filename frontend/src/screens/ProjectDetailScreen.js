@@ -366,7 +366,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
       body: harvest.notes || 'Yield recorded',
       timeLabel: formatAppDate(harvest.date),
       dotColor: stitchTheme.colors.primaryDim,
-      amount: harvest.weight,
+      amount: harvest.approvedWeight,
     }));
 
     const saleItems = sales.slice(0, 2).map((sale) => ({
@@ -603,7 +603,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, formatAppDate(item.createdAt), formatCurrency(item.total, currency), 'negative', 'budget', item, item.notes))}
         {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item, item.note))}
         {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
-        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item, item.notes))}
+        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.approvedWeight} kg`, 'default', 'harvest', item, item.notes))}
         {activeTab === 'sales' && filteredSales.map(item => {
           const due = item.balanceDue > 0 ? `${formatCurrency(item.balanceDue, currency)} due` : '';
           return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, due);
@@ -723,7 +723,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         </View></View>
       </Modal>
 
-      <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('resource.confirm_delete_generic')} onCancel={() => setDeleteTarget(null)} onConfirm={async () => {
+      <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('resource.confirm_delete_generic', { name: deleteTarget?.item?.crop || deleteTarget?.item?.name || 'Item' })} onCancel={() => setDeleteTarget(null)} onConfirm={async () => {
         const { type, item } = deleteTarget;
         await database.write(async () => {
           const tableMap = { budget: 'budget_items', expenses: 'expenses', labor: 'work_entries', harvest: 'harvests', sales: 'sales' };

@@ -30,7 +30,8 @@
       "other": "Nyingine"
     },
     "today": "Leo",
-    "earlier": "Awali"
+    "earlier": "Awali",
+    "select_block": "Chagua Kitalu"
   },
   "months": {
     "january": "Januari",
@@ -228,8 +229,9 @@
       "sales": "Mauzo",
       "inventory": "Inventory",
       "team": "Timu",
-      "timeline": "Ratiba"
-    },
+      "timeline": "Ratiba",
+      "block": "Kitalu cha Mradi"
+      },
     "fields": {
       "name": "Jina la Mradi",
       "crop": "Zao",
@@ -477,11 +479,15 @@
     "fields": {
       "crop": "Jina la Zao",
       "weight": "Uzito",
+      "rejected_weight": "Kiasi Kilichokataliwa",
+      "rejected_reason": "Sababu ya Kukataliwa",
       "unit": "Kipimo",
       "quality": "Ubora"
     },
     "placeholders": {
       "crop": "mf. Nyanya",
+      "rejected_weight": "0.00",
+      "rejected_reason": "mf. Uharibifu wa wadudu",
       "notes": "Maelezo ya hiari..."
     },
     "record": "Rekodi Mavuno",
@@ -520,6 +526,7 @@
     "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
     "price_heading": "Price per kg / Bei kwa kg",
     "buyer_heading": "Buyer Name / Jina la Mnunuzi",
+    "linked_harvests": "Mavuno Yaliyounganishwa",
     "date_label": "Date of Sale",
     "crop_category": "Crop Category",
     "complete": "Complete Sale / Maliza Mauzo",

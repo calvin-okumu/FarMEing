@@ -276,6 +276,50 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 25,
+      steps: [
+        addColumns({
+          table: 'farm_projects',
+          columns: [{ name: 'crop_variety', type: 'string', isOptional: true }],
+        }),
+        addColumns({
+          table: 'project_blocks',
+          columns: [{ name: 'crop_variety', type: 'string', isOptional: true }],
+        }),
+      ],
+    },
+    {
+      toVersion: 26,
+      steps: [
+        addColumns({
+          table: 'harvests',
+          columns: [
+            { name: 'rejected_weight', type: 'number', isOptional: true },
+            { name: 'rejected_reason', type: 'string', isOptional: true },
+          ],
+        }),
+        createTable({
+          name: 'sale_harvests',
+          columns: [
+            { name: 'sale_id',    type: 'string' },
+            { name: 'harvest_id', type: 'string' },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 27,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [{ name: 'block_id', type: 'string', isOptional: true }],
+        }),
+      ],
+    },
   ],
 });
 

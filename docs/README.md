@@ -18,6 +18,7 @@ This directory contains reference documentation for the FarmTrack full-stack far
 FarmTrack is a mobile-first farm management application that lets farmers track projects, harvests, sales, and labor.
 
 ### Key Features
+- **Collaboration:** Invite team members to projects with specific roles (Manager, Viewer) via invite codes.
 - **Offline-First:** Full data access and creation without a network connection.
 - **Bi-directional Sync:** Automatic synchronization between local database and server.
 - **Multilingual Support:** English and Kiswahili (i18n).

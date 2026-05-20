@@ -12,14 +12,16 @@ const createHarvest = async (req, res) => {
 
     const harvest = await prisma.harvest.create({
       data: {
-        projectId: data.projectId,
-        blockId:   data.blockId ?? null,
-        crop:      data.crop,
-        date:      new Date(data.date),
-        weight:    data.weight,
-        unit:      data.unit,
-        quality:   data.quality ?? null,
-        notes:     data.notes   ?? null,
+        projectId:      data.projectId,
+        blockId:        data.blockId,
+        crop:           data.crop,
+        date:           new Date(data.date),
+        weight:         data.weight,
+        rejectedWeight: data.rejectedWeight ?? null,
+        rejectedReason: data.rejectedReason ?? null,
+        unit:           data.unit,
+        quality:        data.quality ?? null,
+        notes:          data.notes   ?? null,
       },
     });
 
@@ -44,8 +46,9 @@ const listHarvests = async (req, res) => {
     });
 
     const totalWeight = parseFloat(
-      harvests.reduce((sum, h) => sum + h.weight, 0).toFixed(2)
-    );
+      harvests.reduce((sum, h) => sum + (h.weight - (h.rejectedWeight || 0)), 0).toFixed(2)
+    )
+;
 
     return res.json({ harvests, totalWeight });
   } catch (error) {

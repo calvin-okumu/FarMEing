@@ -104,6 +104,7 @@ export default function DashboardScreen({ navigation }) {
     const [budgetItems, setBudgetItems] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('all');
+    const [pendingResource, setPendingResource] = useState(null);
     const [projectPickerVisible, setProjectPickerVisible] = useState(false);
     const [joinModalVisible, setJoinModalVisible] = useState(false);
     const [inviteCode, setInviteCode] = useState('');
@@ -213,15 +214,21 @@ export default function DashboardScreen({ navigation }) {
     const moreCards = allResourceCards.slice(3);
 
     const handleResourceOpen = (resourceId) => {
-        if (!selectedProject) {
+        const project = projects.find(p => p.id === selectedProjectId);
+        if (!project) {
+            setPendingResource(resourceId);
             setProjectPickerVisible(true);
             return;
         }
 
+        navigateToResource(resourceId, project);
+    };
+
+    const navigateToResource = (resourceId, project) => {
         if (resourceId === 'inventory') {
             navigation.navigate('Projects', {
                 screen: 'Inventory',
-                params: { projectId: selectedProject.id, projectName: selectedProject.name },
+                params: { projectId: project.id, projectName: project.name },
             });
             return;
         }
@@ -231,10 +238,26 @@ export default function DashboardScreen({ navigation }) {
             return;
         }
 
-        navigation.navigate('Projects', {
-            screen: 'ProjectDetail',
-            params: { projectId: selectedProject.id, initialTab: resourceId },
-        });
+        // Direct entry screens for operational resources
+        const entryScreens = {
+            harvest: 'AddHarvest',
+            sales: 'AddSale',
+            labor: 'AddWorkEntry',
+            budget: 'AddBudgetItem',
+            expenses: 'AddExpense',
+        };
+
+        if (entryScreens[resourceId]) {
+            navigation.navigate(entryScreens[resourceId], {
+                projectId: project.id,
+                fromDashboard: true,
+            });
+        } else {
+            navigation.navigate('Projects', {
+                screen: 'ProjectDetail',
+                params: { projectId: project.id, initialTab: resourceId },
+            });
+        }
     };
 
     const budgetUsagePct = summary.totalBudget > 0 ? ((summary.totalCost / summary.totalBudget) * 100).toFixed(1) : '0.0';
@@ -400,6 +423,7 @@ export default function DashboardScreen({ navigation }) {
                                 onPress={() => {
                                     setSelectedProjectId('all');
                                     setProjectPickerVisible(false);
+                                    setPendingResource(null);
                                 }}
                                 activeOpacity={0.88}
                             >
@@ -417,6 +441,10 @@ export default function DashboardScreen({ navigation }) {
                                     onPress={() => {
                                         setSelectedProjectId(project.id);
                                         setProjectPickerVisible(false);
+                                        if (pendingResource) {
+                                            navigateToResource(pendingResource, project);
+                                            setPendingResource(null);
+                                        }
                                     }}
                                     activeOpacity={0.88}
                                 >

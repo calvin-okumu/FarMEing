@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 25, // Incremented version
+  version: 27, // Incremented version
   tables: [
     // ── ProjectAccess ────────────────────────────────────────────────────────
     tableSchema({
@@ -232,17 +232,19 @@ export default appSchema({
     tableSchema({
       name: 'harvests',
       columns: [
-        { name: 'project_id',  type: 'string' },
-        { name: 'block_id',    type: 'string', isOptional: true },
-        { name: 'crop',        type: 'string' },
-        { name: 'date',        type: 'number' },
-        { name: 'weight',      type: 'number' },
-        { name: 'unit',        type: 'string' },
-        { name: 'quality',     type: 'string', isOptional: true },
-        { name: 'notes',       type: 'string', isOptional: true },
-        { name: 'is_deleted',  type: 'boolean' },
-        { name: 'created_at',  type: 'number' },
-        { name: 'updated_at',  type: 'number' },
+        { name: 'project_id', type: 'string' },
+        { name: 'block_id',   type: 'string', isOptional: true },
+        { name: 'crop',       type: 'string' },
+        { name: 'date',       type: 'number' },
+        { name: 'weight',     type: 'number' },
+        { name: 'rejected_weight', type: 'number', isOptional: true },
+        { name: 'rejected_reason', type: 'string', isOptional: true },
+        { name: 'unit',       type: 'string' },
+        { name: 'quality',    type: 'string', isOptional: true },
+        { name: 'notes',      type: 'string', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
 
@@ -252,6 +254,7 @@ export default appSchema({
       name: 'sales',
       columns: [
         { name: 'project_id',  type: 'string' },
+        { name: 'block_id',    type: 'string', isOptional: true },
         { name: 'date',        type: 'number' },
         { name: 'customer',    type: 'string', isOptional: true },
         { name: 'weight_sold', type: 'number' },
@@ -264,6 +267,18 @@ export default appSchema({
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
+      ],
+    }),
+
+    // ── SaleHarvest (Many-to-Many Join Table) ───────────────────────────────────
+    tableSchema({
+      name: 'sale_harvests',
+      columns: [
+        { name: 'sale_id',    type: 'string' },
+        { name: 'harvest_id', type: 'string' },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
 

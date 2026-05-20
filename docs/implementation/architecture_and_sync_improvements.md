@@ -26,6 +26,14 @@ The previously unused `Season` model has been fully integrated:
 ## 5. Development Standards
 *   Initialized **ESLint** and **Prettier** configurations in the project root to enforce code quality and formatting standards. Added `lint` and `format` scripts to `package.json`.
 
+## 6. Collaboration & Yield Tracking (May 2026)
+Significant features were added to support multi-user collaboration and detailed yield tracking:
+
+*   **Project Invitation System:** A new `ProjectInvitation` model and API allow project owners to generate unique, time-bound (7-day) invite codes. Users can join projects by entering these codes, which automatically creates a `ProjectAccess` record with the specified role (`MANAGER` or `VIEWER`).
+*   **Many-to-Many Sales/Harvest Tracking:** The relationship between Sales and Harvests was evolved from implicit to explicit via the `SaleHarvest` join table. This allows a single Sale to be linked to multiple Harvest records and vice versa, providing precise tracking of which produce was sold in which transaction.
+*   **Rejected Produce Tracking:** The `Harvest` model was extended with `rejectedWeight` and `rejectedReason`. This allows farmers to record not just the total yield, but also the portion of the harvest that was lost or rejected (e.g., due to pests or damage), providing better insights into actual farm productivity.
+*   **Crop Variety Tracking:** Support for `cropVariety` was added to `FarmProject` and `ProjectBlock` to allow more granular tracking of different strains or varieties within the same crop category.
+
 ---
 
 ## Deployment: Onboarding Changes to the Staging Server

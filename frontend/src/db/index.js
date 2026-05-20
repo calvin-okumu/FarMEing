@@ -19,6 +19,7 @@ import InventoryItem from './models/InventoryItem';
 import Payee        from './models/Payee';
 import EmployeeProjectAssignment from './models/EmployeeProjectAssignment';
 import SalePayment  from './models/SalePayment';
+import SaleHarvest  from './models/SaleHarvest';
 import ProjectAccess from './models/ProjectAccess';
 import ProjectInvitation from './models/ProjectInvitation';
 
@@ -50,6 +51,7 @@ export const database = new Database({
     Payee,
     EmployeeProjectAssignment,
     SalePayment,
+    SaleHarvest,
     ProjectAccess,
     ProjectInvitation,
   ],
@@ -74,6 +76,7 @@ export const employeesCollection = database.get('employees');
 export const paymentsCollection = database.get('payments');
 export const harvestsCollection = database.get('harvests');
 export const salesCollection = database.get('sales');
+export const saleHarvestsCollection = database.get('sale_harvests');
 export const inventoryCollection = database.get('inventory_items');
 export const payeesCollection = database.get('payees');
 export const assignmentsCollection = database.get('employee_project_assignments');
