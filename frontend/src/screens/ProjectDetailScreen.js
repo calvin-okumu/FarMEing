@@ -14,6 +14,9 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { BASE_URL } from '../lib/api';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
 import { stitchTheme, stitchShadows } from '../theme/stitchTheme';
@@ -100,7 +103,7 @@ function TeamMemberCard({ member, isOwner, onRemove, t }) {
       <View style={styles.collectionTopRow}>
         <View style={styles.teamInfo}>
           <View style={styles.teamAvatar}>
-            <Text style={styles.teamAvatarText}>{member.name.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.teamAvatarText}>{member.name?.charAt(0)?.toUpperCase() || '?'}</Text>
           </View>
           <View>
             <Text style={styles.collectionTitle}>{member.name}</Text>

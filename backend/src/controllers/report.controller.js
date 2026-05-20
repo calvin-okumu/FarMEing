@@ -101,6 +101,25 @@ const generateProjectReport = async (req, res) => {
     if (project.harvests.length > 0) {
       doc.fontSize(16).text('Harvest Records', { underline: true });
       doc.fontSize(12);
+
+      // Breakdown by Block
+      doc.fontSize(14).text('By Block', { underline: true });
+      doc.fontSize(12);
+      const blocks = {};
+      project.harvests.forEach(h => {
+        const blockName = h.block?.name || 'Overall';
+        if (!blocks[blockName]) blocks[blockName] = { approved: 0, rejected: 0 };
+        blocks[blockName].approved += (h.weight - (h.rejectedWeight || 0));
+        blocks[blockName].rejected += (h.rejectedWeight || 0);
+      });
+      Object.entries(blocks).forEach(([name, data]) => {
+        doc.text(`- ${name}: ${data.approved.toLocaleString()} kg approved (${data.rejected.toLocaleString()} kg rejected)`);
+      });
+      doc.moveDown();
+
+      // Breakdown by Crop
+      doc.fontSize(14).text('By Crop', { underline: true });
+      doc.fontSize(12);
       const harvestByCrop = {};
       const rejectedByCrop = {};
       project.harvests.forEach(h => {

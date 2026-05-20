@@ -652,12 +652,7 @@ export default function AddSaleScreen({ route, navigation }) {
               </View>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
                 {(availableHarvests || []).filter(h => {
-                  console.log(`[Debug] Checking Harvest ${h.id} (${h.crop}), Block: ${h.blockId}, Linked: ${linkedHarvestIds.includes(h.id)}`);
-                  const isTaken = allSaleHarvests.some(sh => {
-                    const match = sh.harvestId === h.id && sh.saleId !== itemId && !sh.isDeleted;
-                    if (match) console.log(`[Debug] Harvest ${h.id} is taken by sale ${sh.saleId}`);
-                    return match;
-                  });
+                  const isTaken = allSaleHarvests.some(sh => sh.harvestId === h.id && sh.saleId !== itemId && !sh.isDeleted);
                   return !isTaken || linkedHarvestIds.includes(h.id);
                 }).map(harvest => (
                   <TouchableOpacity
