@@ -177,11 +177,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
             const ownerExists = teamWithNames.find(t => t.id === project.userId);
             if (!ownerExists) {
                 const isMe = project.userId === user?.id;
+                const ownerName = isMe ? (user?.name || 'Me') : (project.userName || 'Project Owner');
+                const ownerPhone = isMe ? (user?.phone || '') : (project.userPhone || '');
                 teamWithNames.unshift({ 
                   id: project.userId, 
                   role: 'OWNER', 
-                  name: isMe ? user?.name : (project.userName || 'Project Owner'), 
-                  phone: isMe ? user?.phone : (project.userPhone || '') 
+                  name: ownerName, 
+                  phone: ownerPhone 
                 });
             }
         }
@@ -201,15 +203,19 @@ export default function ProjectDetailScreen({ route, navigation }) {
 const handleInvite = async () => {
   setTeamLoading(true);
   try {
-    const projectId = project?.id;
-    if (!projectId) return;
-    await api.post('/invitations', { projectId, role: inviteRole });
+    const resolvedProjectId = project?.remoteId || project?._raw?.remote_id;
+    if (!resolvedProjectId) {
+      Alert.alert(t('common.error'), 'Project must be synced to the server before you can invite team members.');
+      return;
+    }
+    await api.post('/invitations', { projectId: resolvedProjectId, role: inviteRole });
     syncAll().catch(() => {});
     setInviteVisible(false);
     setBanner({ tone: 'success', title: t('team.invite_created'), message: t('team.invite_created_msg') });
   } catch (err) {
     console.error('[Invite] Error:', err);
-    Alert.alert(t('common.error'), err.response?.data?.error || 'Failed to create invitation');
+    const msg = err.response?.data?.error || err.message || 'Failed to create invitation';
+    Alert.alert(t('common.error'), msg);
   } finally {
     setTeamLoading(false);
   }

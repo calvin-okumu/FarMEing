@@ -20,6 +20,8 @@ const PROJECT_SELECT = {
   updatedAt: true,
   projectAccess: true,
   userId: true,
+  userName: true,
+  userPhone: true,
   season: { select: { id: true, name: true } },
   blocks: { where: { isDeleted: false }, select: { id: true, name: true } },
 };
