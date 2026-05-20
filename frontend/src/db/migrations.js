@@ -320,6 +320,25 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 28,
+      steps: [
+        addColumns({
+          table: 'project_access',
+          columns: [
+            { name: 'user_name', type: 'string', isOptional: true },
+            { name: 'user_phone', type: 'string', isOptional: true },
+          ],
+        }),
+        addColumns({
+          table: 'farm_projects',
+          columns: [
+            { name: 'user_name', type: 'string', isOptional: true },
+            { name: 'user_phone', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });
 

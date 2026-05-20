@@ -29,10 +29,13 @@ model User {
 }
 
 model ProjectAccess {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   projectId String
-  role      String      // OWNER, MANAGER, VIEWER
+  userName  String?
+  userPhone String?
+  role      String   // OWNER, MANAGER, VIEWER
+
   isDeleted Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -75,6 +78,8 @@ model Season {
 model FarmProject {
   id            String       @id @default(uuid())
   userId        String
+  userName      String?
+  userPhone     String?
   seasonId      String?
   name          String
   crop          String

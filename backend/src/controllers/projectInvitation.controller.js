@@ -69,13 +69,18 @@ const joinProject = async (req, res) => {
       return res.status(200).json({ message: 'You already have access to this project', project: invitation.project });
     }
 
+    // Fetch joiner details
+    const joiner = await prisma.user.findUnique({ where: { id: req.user.id } });
+
     // Create ProjectAccess and mark invitation as used in a transaction
     await prisma.$transaction([
       prisma.projectAccess.create({
         data: {
-          userId: req.user.id,
+          userId:    req.user.id,
           projectId: invitation.projectId,
-          role: invitation.role,
+          role:      invitation.role,
+          userName:  joiner?.name,
+          userPhone: joiner?.phone,
         }
       }),
       prisma.projectInvitation.update({

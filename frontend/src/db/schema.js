@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 27, // Incremented version
+  version: 28, // Incremented version
   tables: [
     // ── ProjectAccess ────────────────────────────────────────────────────────
     tableSchema({
@@ -9,6 +9,8 @@ export default appSchema({
       columns: [
         { name: 'user_id',    type: 'string' },
         { name: 'project_id', type: 'string' },
+        { name: 'user_name',  type: 'string', isOptional: true },
+        { name: 'user_phone', type: 'string', isOptional: true },
         { name: 'role',       type: 'string' },
         { name: 'is_deleted', type: 'boolean' },
         { name: 'created_at', type: 'number' },
@@ -96,6 +98,8 @@ export default appSchema({
       name: 'farm_projects',
       columns: [
         { name: 'user_id',        type: 'string' },
+        { name: 'user_name',      type: 'string', isOptional: true },
+        { name: 'user_phone',     type: 'string', isOptional: true },
         { name: 'season_id',      type: 'string', isOptional: true },
         { name: 'name',           type: 'string' },
         { name: 'crop',           type: 'string' },

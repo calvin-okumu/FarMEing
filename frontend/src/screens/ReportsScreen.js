@@ -82,6 +82,7 @@ export default function ReportsScreen({ navigation }) {
     sales: [],
     inventoryItems: [],
     employees: [],
+    blocks: [],
   });
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export default function ReportsScreen({ navigation }) {
     const saleQuery = database.get('sales').query(Q.where('is_deleted', false));
     const inventoryQuery = database.get('inventory_items').query(Q.where('is_deleted', false));
     const employeeQuery = database.get('employees').query(Q.where('is_deleted', false));
+    const blockQuery = database.get('project_blocks').query(Q.where('is_deleted', false));
 
     const subs = [
       projectQuery.observe().subscribe(rows => setData(prev => ({ ...prev, projects: rows }))),
@@ -101,6 +103,7 @@ export default function ReportsScreen({ navigation }) {
       saleQuery.observe().subscribe(rows => setData(prev => ({ ...prev, sales: rows }))),
       inventoryQuery.observe().subscribe(rows => setData(prev => ({ ...prev, inventoryItems: rows }))),
       employeeQuery.observe().subscribe(rows => setData(prev => ({ ...prev, employees: rows }))),
+      blockQuery.observe().subscribe(rows => setData(prev => ({ ...prev, blocks: rows }))),
     ];
 
     setLoading(false);
@@ -273,26 +276,53 @@ export default function ReportsScreen({ navigation }) {
       </StitchSurface>
 
       {data.harvests.filter(h => !h.isDeleted).length > 0 ? (
-        <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
-          <Text style={styles.chartTitle}>Harvest by Crop</Text>
-          {(() => {
-              const cropMap = {};
-              data.harvests.filter(h => !h.isDeleted).forEach(h => {
-                cropMap[h.crop] = (cropMap[h.crop] || 0) + (h.weight || 0);
-              });
-              const maxHarvest = Math.max(...Object.values(cropMap), 1);
-              const colors = [stitchTheme.colors.primaryDim, stitchTheme.colors.accentBrown, stitchTheme.colors.primarySoft, stitchTheme.colors.accentRed, stitchTheme.colors.primary];
-              return Object.entries(cropMap).slice(0, 5).map(([crop, weight], i) => (
-                <View key={crop} style={styles.miniBarRow}>
-                  <View style={styles.miniBarInfo}>
-                    <Text style={styles.miniBarLabel}>{crop}</Text>
-                    <Text style={styles.miniBarValue}>{weight.toLocaleString()} kg</Text>
+        <>
+          <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+            <Text style={styles.chartTitle}>Harvest by Crop</Text>
+            {(() => {
+                const cropMap = {};
+                data.harvests.filter(h => !h.isDeleted).forEach(h => {
+                  const netWeight = h.weight - (h.rejectedWeight || 0);
+                  cropMap[h.crop] = (cropMap[h.crop] || 0) + netWeight;
+                });
+                const maxHarvest = Math.max(...Object.values(cropMap), 1);
+                const colors = [stitchTheme.colors.primaryDim, stitchTheme.colors.accentBrown, stitchTheme.colors.primarySoft, stitchTheme.colors.accentRed, stitchTheme.colors.primary];
+                return Object.entries(cropMap).slice(0, 5).map(([crop, weight], i) => (
+                  <View key={crop} style={styles.miniBarRow}>
+                    <View style={styles.miniBarInfo}>
+                      <Text style={styles.miniBarLabel}>{crop}</Text>
+                      <Text style={styles.miniBarValue}>{weight.toLocaleString()} kg</Text>
+                    </View>
+                    <ProgressBar progress={(weight / maxHarvest) * 100} color={colors[i % colors.length]} />
                   </View>
-                  <ProgressBar progress={(weight / maxHarvest) * 100} color={colors[i % colors.length]} />
-                </View>
-              ));
-          })()}
-        </StitchSurface>
+                ));
+            })()}
+          </StitchSurface>
+
+          <StitchSurface style={[styles.chartCard, { marginTop: 12 }]} contentStyle={styles.chartCardContent} tone='raised' compact>
+            <Text style={styles.chartTitle}>Harvest by Block</Text>
+            {(() => {
+                const blockMap = {};
+                data.harvests.filter(h => !h.isDeleted).forEach(h => {
+                  const block = data.blocks.find(b => b.id === h.blockId);
+                  const blockName = block?.name || 'Overall';
+                  const netWeight = h.weight - (h.rejectedWeight || 0);
+                  blockMap[blockName] = (blockMap[blockName] || 0) + netWeight;
+                });
+                const maxHarvest = Math.max(...Object.values(blockMap), 1);
+                const colors = [stitchTheme.colors.accentBrown, stitchTheme.colors.primaryDim, stitchTheme.colors.primarySoft, stitchTheme.colors.accentRed, stitchTheme.colors.primary];
+                return Object.entries(blockMap).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([block, weight], i) => (
+                  <View key={block} style={styles.miniBarRow}>
+                    <View style={styles.miniBarInfo}>
+                      <Text style={styles.miniBarLabel}>{block}</Text>
+                      <Text style={styles.miniBarValue}>{weight.toLocaleString()} kg</Text>
+                    </View>
+                    <ProgressBar progress={(weight / maxHarvest) * 100} color={colors[i % colors.length]} />
+                  </View>
+                ));
+            })()}
+          </StitchSurface>
+        </>
       ) : null}
 
       <StitchDashboardSectionHeader title={t('dashboard.labor_contributors', { defaultValue: 'Labor Contributors' })} subtitle={t('dashboard.top_workers_earned', { defaultValue: 'Top workers by total earned' })} style={styles.sectionSpacing} />

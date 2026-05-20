@@ -6,6 +6,8 @@ export default class ProjectAccess extends Model {
 
   @field('user_id') userId;
   @field('project_id') projectId;
+  @field('user_name') userName;
+  @field('user_phone') userPhone;
   @field('role') role;
   @field('is_deleted') isDeleted;
   @readonly @date('created_at') createdAt;

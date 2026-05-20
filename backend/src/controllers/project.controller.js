@@ -34,6 +34,8 @@ const createProject = async (req, res) => {
       }
     }
 
+    const owner = await prisma.user.findUnique({ where: { id: req.user.id } });
+
     const project = await prisma.$transaction(async (tx) => {
       const newProject = await tx.farmProject.create({
         data: {
@@ -41,6 +43,8 @@ const createProject = async (req, res) => {
           startDate: new Date(projectData.startDate),
           endDate:   projectData.endDate ? new Date(projectData.endDate) : null,
           userId:    req.user.id,
+          userName:  owner?.name,
+          userPhone: owner?.phone,
         },
         select: PROJECT_SELECT,
       });
@@ -51,6 +55,8 @@ const createProject = async (req, res) => {
           userId: req.user.id,
           projectId: newProject.id,
           role: 'OWNER',
+          userName: owner?.name,
+          userPhone: owner?.phone,
         },
       });
 

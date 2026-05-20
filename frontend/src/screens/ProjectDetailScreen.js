@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { BASE_URL } from '../lib/api';
+import api, { BASE_URL } from '../lib/api';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
 import { stitchTheme, stitchShadows } from '../theme/stitchTheme';
@@ -161,7 +161,32 @@ export default function ProjectDetailScreen({ route, navigation }) {
     const teamSub = database.get('project_access')
       .query(Q.where('project_id', project.id), Q.where('is_deleted', false))
       .observeWithColumns(['role'])
-      .subscribe(setTeam);
+      .subscribe(async (access) => {
+        const teamWithNames = access.map((a) => {
+          const isMe = a.userId === user?.id;
+          return { 
+            id: a.userId, 
+            role: a.role, 
+            name: isMe ? user?.name : (a.userName || (a.role === 'OWNER' ? 'Project Owner' : 'Team Member')), 
+            phone: isMe ? user?.phone : (a.userPhone || '') 
+          };
+        });
+        
+        // Add project owner if not already in the list
+        if (project.userId) {
+            const ownerExists = teamWithNames.find(t => t.id === project.userId);
+            if (!ownerExists) {
+                const isMe = project.userId === user?.id;
+                teamWithNames.unshift({ 
+                  id: project.userId, 
+                  role: 'OWNER', 
+                  name: isMe ? user?.name : (project.userName || 'Project Owner'), 
+                  phone: isMe ? user?.phone : (project.userPhone || '') 
+                });
+            }
+        }
+        setTeam(teamWithNames);
+      });
 
     const invSub = database.get('project_invitations')
       .query(Q.where('project_id', project.id), Q.where('is_deleted', false), Q.where('is_used', false))
@@ -173,20 +198,23 @@ export default function ProjectDetailScreen({ route, navigation }) {
       invSub.unsubscribe();
     };
   }, [project]);
+const handleInvite = async () => {
+  setTeamLoading(true);
+  try {
+    const projectId = project?.id;
+    if (!projectId) return;
+    await api.post('/invitations', { projectId, role: inviteRole });
+    syncAll().catch(() => {});
+    setInviteVisible(false);
+    setBanner({ tone: 'success', title: t('team.invite_created'), message: t('team.invite_created_msg') });
+  } catch (err) {
+    console.error('[Invite] Error:', err);
+    Alert.alert(t('common.error'), err.response?.data?.error || 'Failed to create invitation');
+  } finally {
+    setTeamLoading(false);
+  }
+};
 
-  const handleInvite = async () => {
-    setTeamLoading(true);
-    try {
-      await api.post('/invitations', { projectId: project.id, role: inviteRole });
-      syncAll().catch(() => {});
-      setInviteVisible(false);
-      setBanner({ tone: 'success', title: t('team.invite_created'), message: t('team.invite_created_msg') });
-    } catch (err) {
-      Alert.alert(t('common.error'), err.response?.data?.error || 'Failed to create invitation');
-    } finally {
-      setTeamLoading(false);
-    }
-  };
 
   const handleRemoveMember = async (accessId) => {
     Alert.alert(t('team.remove_title'), t('team.remove_confirm'), [
@@ -377,7 +405,12 @@ export default function ProjectDetailScreen({ route, navigation }) {
       date: sale.date,
       icon: 'cash-outline',
       title: `Sale to ${sale.customer || 'Cash'}`,
-      body: [sale.paymentStatus !== 'paid' ? `${sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)} — ${formatCurrency(sale.totalAmount - (sale.balanceDue || 0), currency)} paid` : '', sale.notes || 'Revenue recorded'].filter(Boolean).join(' | '),
+      body: [
+        sale.paymentStatus 
+          ? `${sale.paymentStatus.slice(0, 1).toUpperCase() + sale.paymentStatus.slice(1)} — ${formatCurrency(sale.totalAmount - (sale.balanceDue || 0), currency)} paid` 
+          : '', 
+        sale.notes || 'Revenue recorded'
+      ].filter(Boolean).join(' | '),
       timeLabel: formatAppDate(sale.date),
       dotColor: stitchTheme.colors.accentBrown,
       amount: sale.totalAmount,

@@ -15,6 +15,8 @@ export default class FarmProject extends Model {
   }
 
   @text('user_id')    userId;
+  @text('user_name')  userName;
+  @text('user_phone') userPhone;
   @text('season_id')  seasonId;
   @text('name')       name;
   @text('crop')       crop;

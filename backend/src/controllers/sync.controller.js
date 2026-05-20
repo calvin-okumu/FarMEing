@@ -93,6 +93,9 @@ const fieldMapping = {
   inviteCode: 'invite_code',
   expiresAt: 'expires_at',
   isUsed: 'is_used',
+  userName: 'user_name',
+  userPhone: 'user_phone',
+  cropVariety: 'crop_variety',
 };
 
 const reverseMapping = Object.fromEntries(
