@@ -8,6 +8,8 @@
     "error": "Error",
     "success": "Success",
     "back": "Back",
+    "add": "Add",
+    "invite": "Invite",
     "date": "Date",
     "notes": "Notes",
     "recurring": "Is Recurring?",
@@ -30,7 +32,8 @@
       "other": "Other"
     },
     "today": "Today",
-    "earlier": "Earlier"
+    "earlier": "Earlier",
+    "select_block": "Select Block"
   },
   "months": {
     "january": "January",
@@ -68,14 +71,27 @@
     "view_all": "View all {{count}} resources"
   },
   "team": {
-    "invite_title": "Invite Member",
-    "invite_phone": "User Phone Number",
-    "send_invitation": "Send Invitation",
-    "invited_success": "Team member invited successfully.",
-    "access_revoked": "Member access revoked.",
+    "invite_title": "Invite to Project",
+    "invite_member": "Invite Member",
+    "generate_code": "Generate Invite Code",
+    "invite_created": "Invitation Created",
+    "invite_created_msg": "Share the code with your team member.",
+    "select_role": "Select Access Level",
+    "invite_code_hint": "Enter the 8-character invitation code provided by the project owner.",
+    "join_project": "Join Project",
+    "join_now": "Join Project Now",
+    "join": "Join",
+    "project": "Project",
+    "members": "Active Team",
+    "active_invitations": "Pending Invites",
+    "role": "Role",
+    "expires": "Expires",
     "revoke_access": "Revoke Access",
+    "sync_required": "Project must be synced to the server before you can invite team members.",
+    "remove_title": "Remove Member",
+    "remove_confirm": "Are you sure you want to remove this person's access to the project?",
     "no_members": "No other members have access yet.",
-    "role": "Assigned Role"
+    "access_revoked": "Access revoked successfully."
   },
   "export": {
     "title": "Export Report",
@@ -239,12 +255,16 @@
       "harvest": "Harvest",
       "sales": "Sales",
       "inventory": "Inventory",
+      "equipment": "Equipment",
       "team": "Team",
-      "timeline": "Timeline"
+      "timeline": "Timeline",
+      "block": "Project Block"
     },
+
     "fields": {
       "name": "Project Name",
       "crop": "Crop",
+      "crop_variety": "Crop Variety",
       "land_size": "Land Size",
       "unit": "Unit",
       "expected_yield": "Expected Yield (kg)",
@@ -254,6 +274,7 @@
     "placeholders": {
       "name": "e.g. North Field Wheat",
       "crop": "e.g. Wheat, Corn",
+      "crop_variety": "e.g. Pioneer 30G19",
       "unit": "acres",
       "expected_yield": "e.g. 5000"
     },
@@ -487,11 +508,15 @@
     "fields": {
       "crop": "Crop Name",
       "weight": "Weight",
+      "rejected_weight": "Rejected Quantity",
+      "rejected_reason": "Reason for Rejection",
       "unit": "Unit",
       "quality": "Quality"
     },
     "placeholders": {
       "crop": "e.g. Tomatoes",
+      "rejected_weight": "0.00",
+      "rejected_reason": "e.g. Pest damage",
       "notes": "Optional notes..."
     },
     "record": "Record Harvest",
@@ -530,12 +555,13 @@
     "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
     "price_heading": "Price per kg / Bei kwa kg",
     "buyer_heading": "Buyer Name / Jina la Mnunuzi",
+    "linked_harvests": "Linked Harvests",
     "date_label": "Date of Sale",
     "crop_category": "Crop Category",
     "complete": "Complete Sale / Maliza Mauzo",
     "footer_note": "By completing, this transaction will be recorded in your digital ledger.",
     "fields": {
-      "customer": "Customer (Optional)",
+      "customer": "Customer Name",
       "weight_sold": "Weight Sold (kg)",
       "unit_price": "Unit Price"
     },
@@ -557,6 +583,8 @@
     "errors": {
       "weight_required": "Valid weight is required",
       "unit_price_required": "Valid unit price is required",
+      "customer_required": "Customer name is required",
+      "crop_required": "Crop name is required",
       "save_local": "Failed to save sale locally"
     }
   },
@@ -580,6 +608,42 @@
       "unit": "Unit",
       "unit_cost": "Unit Cost",
       "used_qty": "Used Quantity"
+    }
+  },
+  "equipment": {
+    "title": "Equipment",
+    "manage_subtitle": "Track machinery, tools, and maintenance",
+    "search_placeholder": "Search equipment, serials, or type",
+    "empty_title": "No Equipment Yet",
+    "empty_subtitle": "Add tractors, pumps, and tools to track their maintenance and health.",
+    "create_title": "Add Equipment",
+    "edit_title": "Edit Equipment",
+    "delete_title": "Delete Equipment",
+    "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
+    "fields": {
+      "name": "Equipment Name",
+      "type": "Type",
+      "model": "Model",
+      "serial_number": "Serial Number",
+      "purchase_date": "Purchase Date",
+      "purchase_price": "Purchase Price",
+      "status": "Status",
+      "notes": "Maintenance Notes"
+    },
+    "statuses": {
+      "OPERATIONAL": "Operational",
+      "MAINTENANCE": "Maintenance",
+      "BROKEN": "Broken",
+      "DISPOSED": "Disposed"
+    },
+    "types": {
+      "tractor": "Tractor",
+      "pump": "Water Pump",
+      "sprayer": "Sprayer",
+      "vehicle": "Vehicle",
+      "tool": "Hand Tool",
+      "generator": "Generator",
+      "other": "Other"
     }
   },
   "payments": {

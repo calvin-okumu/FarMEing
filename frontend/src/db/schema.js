@@ -1,9 +1,88 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 19, // Incremented version since schema changed
+  version: 29, // Incremented version
   tables: [
+    // ── Equipment ─────────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'equipments',
+      columns: [
+        { name: 'project_id',     type: 'string' },
+        { name: 'name',           type: 'string' },
+        { name: 'type',           type: 'string' },
+        { name: 'model',          type: 'string', isOptional: true },
+        { name: 'serial_number',  type: 'string', isOptional: true },
+        { name: 'purchase_date',  type: 'number', isOptional: true },
+        { name: 'purchase_price', type: 'number', isOptional: true },
+        { name: 'status',         type: 'string' },
+        { name: 'notes',          type: 'string', isOptional: true },
+        { name: 'is_deleted',     type: 'boolean' },
+        { name: 'created_at',     type: 'number' },
+        { name: 'updated_at',     type: 'number' },
+      ],
+    }),
+    // ── ProjectAccess ────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'project_access',
+      columns: [
+        { name: 'user_id',    type: 'string' },
+        { name: 'project_id', type: 'string' },
+        { name: 'user_name',  type: 'string', isOptional: true },
+        { name: 'user_phone', type: 'string', isOptional: true },
+        { name: 'role',       type: 'string' },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+
+    // ── ProjectInvitation ────────────────────────────────────────────────────
+    tableSchema({
+      name: 'project_invitations',
+      columns: [
+        { name: 'project_id',  type: 'string' },
+        { name: 'role',        type: 'string' },
+        { name: 'invite_code', type: 'string' },
+        { name: 'expires_at',  type: 'number' },
+        { name: 'is_used',     type: 'boolean' },
+        { name: 'is_deleted',  type: 'boolean' },
+        { name: 'created_at',  type: 'number' },
+        { name: 'updated_at',  type: 'number' },
+      ],
+    }),
+
+    // ── ProjectBlock ──────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'project_blocks',
+      columns: [
+        { name: 'project_id', type: 'string' },
+        { name: 'name',       type: 'string' },
+        { name: 'land_size',  type: 'number', isOptional: true },
+        { name: 'land_unit',  type: 'string', isOptional: true },
+        { name: 'crop',       type: 'string', isOptional: true },
+        { name: 'crop_variety', type: 'string', isOptional: true },
+        { name: 'expected_yield', type: 'number', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+    // ── Season ───────────────────────────────────────────────────────────────
+
+    tableSchema({
+      name: 'seasons',
+      columns: [
+        { name: 'user_id',    type: 'string' },
+        { name: 'name',       type: 'string' },
+        { name: 'start_date', type: 'number' },
+        { name: 'end_date',   type: 'number', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
     // ── EmployeeProjectAssignment ───────────────────────────────────────────
+
     tableSchema({
       name: 'employee_project_assignments',
       columns: [
@@ -37,9 +116,12 @@ export default appSchema({
       name: 'farm_projects',
       columns: [
         { name: 'user_id',        type: 'string' },
+        { name: 'user_name',      type: 'string', isOptional: true },
+        { name: 'user_phone',     type: 'string', isOptional: true },
         { name: 'season_id',      type: 'string', isOptional: true },
         { name: 'name',           type: 'string' },
         { name: 'crop',           type: 'string' },
+        { name: 'crop_variety',   type: 'string', isOptional: true },
         { name: 'land_size',      type: 'number' },
         { name: 'land_unit',      type: 'string' },
         { name: 'start_date',     type: 'number' },          // Unix ms timestamp
@@ -76,6 +158,7 @@ export default appSchema({
       name: 'budget_items',
       columns: [
         { name: 'project_id',  type: 'string' },
+        { name: 'block_id',    type: 'string', isOptional: true },
         { name: 'category',    type: 'string' },
         { name: 'name',        type: 'string' },
         { name: 'quantity',    type: 'number' },
@@ -94,6 +177,7 @@ export default appSchema({
       name: 'expenses',
       columns: [
         { name: 'project_id',   type: 'string' },          // remote project id
+        { name: 'block_id',     type: 'string', isOptional: true },
         { name: 'category',     type: 'string' },
         { name: 'expense_type', type: 'string' },          // CAPEX, OPEX
         { name: 'amount',       type: 'number' },
@@ -115,6 +199,7 @@ export default appSchema({
       name: 'work_entries',
       columns: [
         { name: 'project_id',   type: 'string' },
+        { name: 'block_id',     type: 'string', isOptional: true },
         { name: 'employee_id',  type: 'string' },
         { name: 'activity',     type: 'string' },
         { name: 'date',         type: 'number' },
@@ -135,6 +220,7 @@ export default appSchema({
         { name: 'updated_at',   type: 'number' },
       ],
     }),
+
 
     // ── Employee ─────────────────────────────────────────────────────────────
     tableSchema({
@@ -168,24 +254,29 @@ export default appSchema({
     tableSchema({
       name: 'harvests',
       columns: [
-        { name: 'project_id',  type: 'string' },
-        { name: 'crop',        type: 'string' },
-        { name: 'date',        type: 'number' },
-        { name: 'weight',      type: 'number' },
-        { name: 'unit',        type: 'string' },
-        { name: 'quality',     type: 'string', isOptional: true },
-        { name: 'notes',       type: 'string', isOptional: true },
-        { name: 'is_deleted',  type: 'boolean' },
-        { name: 'created_at',  type: 'number' },
-        { name: 'updated_at',  type: 'number' },
+        { name: 'project_id', type: 'string' },
+        { name: 'block_id',   type: 'string', isOptional: true },
+        { name: 'crop',       type: 'string' },
+        { name: 'date',       type: 'number' },
+        { name: 'weight',     type: 'number' },
+        { name: 'rejected_weight', type: 'number', isOptional: true },
+        { name: 'rejected_reason', type: 'string', isOptional: true },
+        { name: 'unit',       type: 'string' },
+        { name: 'quality',    type: 'string', isOptional: true },
+        { name: 'notes',      type: 'string', isOptional: true },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
+
 
     // ── Sale ─────────────────────────────────────────────────────────────────
     tableSchema({
       name: 'sales',
       columns: [
         { name: 'project_id',  type: 'string' },
+        { name: 'block_id',    type: 'string', isOptional: true },
         { name: 'date',        type: 'number' },
         { name: 'customer',    type: 'string', isOptional: true },
         { name: 'weight_sold', type: 'number' },
@@ -198,6 +289,18 @@ export default appSchema({
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
         { name: 'updated_at',  type: 'number' },
+      ],
+    }),
+
+    // ── SaleHarvest (Many-to-Many Join Table) ───────────────────────────────────
+    tableSchema({
+      name: 'sale_harvests',
+      columns: [
+        { name: 'sale_id',    type: 'string' },
+        { name: 'harvest_id', type: 'string' },
+        { name: 'is_deleted', type: 'boolean' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
 

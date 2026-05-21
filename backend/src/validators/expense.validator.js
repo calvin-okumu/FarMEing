@@ -7,6 +7,7 @@ const dateField = z
 
 const createExpenseSchema = z.object({
   projectId:  z.string().uuid('Invalid project ID'),
+  blockId:    z.string().uuid('Invalid block ID').optional().nullable(),
   category:   z.string().min(1, 'Category is required'),
   expenseType: z.enum(['CAPEX', 'OPEX']).optional(),
   amount:     z.number().positive('Amount must be a positive number'),
@@ -21,6 +22,7 @@ const createExpenseSchema = z.object({
 
 const updateExpenseSchema = z
   .object({
+    blockId:    z.string().uuid('Invalid block ID').optional().nullable(),
     category:   z.string().min(1).optional(),
     expenseType: z.enum(['CAPEX', 'OPEX']).optional(),
     amount:     z.number().positive().optional(),

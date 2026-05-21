@@ -5,6 +5,9 @@ export default class FarmProject extends Model {
   static table = 'farm_projects';
   static associations = {
     employee_project_assignments: { type: 'has_many', foreignKey: 'project_id' },
+    project_blocks: { type: 'has_many', foreignKey: 'project_id' },
+    project_access: { type: 'has_many', foreignKey: 'project_id' },
+    project_invitations: { type: 'has_many', foreignKey: 'project_id' },
   };
 
   get remoteId() {
@@ -12,9 +15,12 @@ export default class FarmProject extends Model {
   }
 
   @text('user_id')    userId;
+  @text('user_name')  userName;
+  @text('user_phone') userPhone;
   @text('season_id')  seasonId;
   @text('name')       name;
   @text('crop')       crop;
+  @text('crop_variety') cropVariety;
   @field('land_size') landSize;
   @text('land_unit')  landUnit;
   @field('start_date') startDate;
@@ -28,4 +34,8 @@ export default class FarmProject extends Model {
   @field('updated_at') updatedAt;
 
   @children('employee_project_assignments') assignments;
+  @children('project_blocks') blocks;
+  @children('project_access') teamMembers;
+  @children('project_invitations') invitations;
 }
+

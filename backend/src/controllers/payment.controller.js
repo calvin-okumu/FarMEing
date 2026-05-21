@@ -1,94 +1,83 @@
 const prisma = require('../lib/prisma');
-const { createPaymentSchema } = require('../validators/payment.validator');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const validate = (schema, body, res) => {
-  const result = schema.safeParse(body);
-  if (!result.success) {
-    res.status(400).json({
-      error: 'Validation failed',
-      details: result.error.issues.map((e) => ({
-        field: e.path.join('.'),
-        message: e.message,
-      })),
-    });
-    return null;
-  }
-  return result.data;
-};
-
 /**
- * Find an employee that the user is authorized to see.
- * Authorization: Either the user created the employee, 
- * OR the employee is assigned to a project the user has access to.
+ * Find an employee and verify the user has access to at least one project they are assigned to.
  */
-const findAccessibleEmployee = async (employeeId, userId, res) => {
-  const employee = await prisma.employee.findUnique({ 
-    where: { id: employeeId },
-    include: {
-      assignments: {
-        where: { project: { projectAccess: { some: { userId } } } }
+const findAccessibleEmployee = async (employeeId, userId, res, requiredRoles = []) => {
+  try {
+    const employee = await prisma.employee.findUnique({ 
+      where: { id: employeeId },
+      include: {
+        assignments: {
+          where: { isDeleted: false },
+          select: { projectId: true }
+        }
       }
-    }
-  });
+    });
 
-  if (!employee || employee.isDeleted) {
-    res.status(404).json({ error: 'Employee not found' });
+    if (!employee || employee.isDeleted) {
+      res.status(404).json({ error: 'Employee not found' });
+      return null;
+    }
+
+    // User always has access to employees they created
+    if (employee.userId === userId) return employee;
+
+    // Otherwise, check if user has access to any of the employee's assigned projects
+    if (employee.assignments.length === 0) {
+      res.status(403).json({ error: 'Permission denied: Employee is not assigned to any projects you access' });
+      return null;
+    }
+
+    const projectIds = employee.assignments.map(a => a.projectId);
+    const access = await prisma.projectAccess.findFirst({
+      where: {
+        userId,
+        projectId: { in: projectIds },
+        ...(requiredRoles.length > 0 ? { role: { in: requiredRoles } } : {})
+      }
+    });
+
+    if (!access) {
+      res.status(403).json({ error: 'Permission denied' });
+      return null;
+    }
+
+    return employee;
+  } catch (error) {
+    console.error('Find Accessible Employee Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
     return null;
   }
-
-  // Check if user is the creator OR has access via an assignment
-  if (employee.userId !== userId && employee.assignments.length === 0) {
-    res.status(403).json({ error: 'Permission denied' });
-    return null;
-  }
-
-  return employee;
-};
-
-/**
- * Check if the user has OWNER or MANAGER access to the employee.
- * This means they either created the employee, OR they have an 
- * OWNER/MANAGER role on at least one project the employee is assigned to.
- */
-const hasManagerialAccess = async (employee, userId) => {
-  if (employee.userId === userId) return true;
-
-  const access = await prisma.projectAccess.findFirst({
-    where: {
-      userId,
-      role: { in: ['OWNER', 'MANAGER'] },
-      project: { employees: { some: { employeeId: employee.id } } }
-    }
-  });
-
-  return !!access;
 };
 
 // ── POST /payments ────────────────────────────────────────────────────────────
 
 const createPayment = async (req, res) => {
-  const data = validate(createPaymentSchema, req.body, res);
-  if (!data) return;
+  const data = req.validatedData;
 
-  const employee = await findAccessibleEmployee(data.employeeId, req.user.id, res);
-  if (!employee) return;
+  try {
+    // Require OWNER or MANAGER access to create payments
+    const employee = await findAccessibleEmployee(data.employeeId, req.user.id, res, ['OWNER', 'MANAGER']);
+    if (!employee) return;
 
-  if (!(await hasManagerialAccess(employee, req.user.id))) {
-    return res.status(403).json({ error: 'Permission denied: Requires OWNER or MANAGER role' });
+    const payment = await prisma.payment.create({
+      data: {
+        employeeId: data.employeeId,
+        amount:     data.amount,
+        date:       new Date(data.date),
+        note:       data.note ?? null,
+      },
+    });
+
+    return res.status(201).json({ payment });
+  } catch (error) {
+    console.error('Create Payment Error:', error);
+    return res.status(500).json({ error: 'Failed to create payment' });
   }
-
-  const payment = await prisma.payment.create({
-    data: {
-      employeeId: data.employeeId,
-      amount:     data.amount,
-      date:       new Date(data.date),
-      note:       data.note ?? null,
-    },
-  });
-
-  return res.status(201).json({ payment });
 };
 
 // ── GET /payments ──────────────────────────────────────────────────────────────
@@ -96,68 +85,81 @@ const createPayment = async (req, res) => {
 const listAllPayments = async (req, res) => {
   const includeDeleted = req.query.includeDeleted === 'true';
   
-  // Find payments for employees created by user OR assigned to projects user has access to
-  const payments = await prisma.payment.findMany({
-    where: {
-      ...(includeDeleted ? {} : { isDeleted: false }),
-      employee: {
-        isDeleted: false,
-        OR: [
-          { userId: req.user.id },
-          { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
-        ]
+  try {
+    // Find payments for employees created by user OR assigned to projects user has access to
+    const payments = await prisma.payment.findMany({
+      where: {
+        ...(includeDeleted ? {} : { isDeleted: false }),
+        employee: {
+          isDeleted: false,
+          OR: [
+            { userId: req.user.id },
+            { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+          ]
+        },
       },
-    },
-    orderBy: { date: 'desc' },
-  });
+      orderBy: { date: 'desc' },
+    });
 
-  return res.json({ payments });
+    return res.json({ payments });
+  } catch (error) {
+    console.error('List All Payments Error:', error);
+    return res.status(500).json({ error: 'Failed to list payments' });
+  }
 };
 
 // ── GET /payments/:employeeId ─────────────────────────────────────────────────
 
 const listPayments = async (req, res) => {
   const includeDeleted = req.query.includeDeleted === 'true';
-  const employee = await findAccessibleEmployee(req.params.employeeId, req.user.id, res);
-  if (!employee) return;
+  
+  try {
+    const employee = await findAccessibleEmployee(req.params.employeeId, req.user.id, res);
+    if (!employee) return;
 
-  const payments = await prisma.payment.findMany({
-    where:   { employeeId: req.params.employeeId, ...(includeDeleted ? {} : { isDeleted: false }) },
-    orderBy: { date: 'desc' },
-  });
+    const payments = await prisma.payment.findMany({
+      where:   { employeeId: req.params.employeeId, ...(includeDeleted ? {} : { isDeleted: false }) },
+      orderBy: { date: 'desc' },
+    });
 
-  const totalPaid = parseFloat(
-    payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)
-  );
+    const totalPaid = parseFloat(
+      payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)
+    );
 
-  return res.json({ payments, totalPaid });
+    return res.json({ payments, totalPaid });
+  } catch (error) {
+    console.error('List Payments Error:', error);
+    return res.status(500).json({ error: 'Failed to list payments' });
+  }
 };
 
 // ── DELETE /payments/:id (soft delete) ────────────────────────────────────────
 
 const deletePayment = async (req, res) => {
-  const payment = await prisma.payment.findUnique({
-    where: { id: req.params.id },
-    include: { employee: true },
-  });
+  try {
+    const payment = await prisma.payment.findUnique({
+      where: { id: req.params.id },
+      include: { employee: true },
+    });
 
-  if (!payment || payment.isDeleted || payment.employee.isDeleted) {
-    return res.status(404).json({ error: 'Payment not found' });
+    if (!payment || payment.isDeleted || payment.employee.isDeleted) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // Require OWNER or MANAGER access to delete payments
+    const employee = await findAccessibleEmployee(payment.employeeId, req.user.id, res, ['OWNER', 'MANAGER']);
+    if (!employee) return;
+
+    await prisma.payment.update({
+      where: { id: req.params.id },
+      data: { isDeleted: true },
+    });
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Delete Payment Error:', error);
+    return res.status(500).json({ error: 'Failed to delete payment' });
   }
-
-  const employee = await findAccessibleEmployee(payment.employeeId, req.user.id, res);
-  if (!employee) return;
-
-  if (!(await hasManagerialAccess(employee, req.user.id))) {
-    return res.status(403).json({ error: 'Permission denied: Requires OWNER or MANAGER role' });
-  }
-
-  await prisma.payment.update({
-    where: { id: req.params.id },
-    data: { isDeleted: true },
-  });
-
-  return res.json({ message: 'Payment deleted' });
 };
 
 module.exports = { createPayment, listAllPayments, listPayments, deletePayment };

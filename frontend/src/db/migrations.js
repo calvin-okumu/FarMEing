@@ -187,5 +187,181 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 20,
+      steps: [
+        createTable({
+          name: 'seasons',
+          columns: [
+            { name: 'user_id',    type: 'string' },
+            { name: 'name',       type: 'string' },
+            { name: 'start_date', type: 'number' },
+            { name: 'end_date',   type: 'number', isOptional: true },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 21,
+      steps: [
+        createTable({
+          name: 'project_blocks',
+          columns: [
+            { name: 'project_id', type: 'string' },
+            { name: 'name',       type: 'string' },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        addColumns({ table: 'budget_items', columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'expenses',     columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'work_entries', columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+        addColumns({ table: 'harvests',     columns: [{ name: 'block_id', type: 'string', isOptional: true }] }),
+      ],
+    },
+    {
+      toVersion: 22,
+      steps: [
+        addColumns({
+          table: 'project_blocks',
+          columns: [
+            { name: 'land_size', type: 'number', isOptional: true },
+            { name: 'land_unit', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 23,
+      steps: [
+        addColumns({
+          table: 'project_blocks',
+          columns: [
+            { name: 'crop', type: 'string', isOptional: true },
+            { name: 'expected_yield', type: 'number', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 24,
+      steps: [
+        createTable({
+          name: 'project_access',
+          columns: [
+            { name: 'user_id',    type: 'string' },
+            { name: 'project_id', type: 'string' },
+            { name: 'role',       type: 'string' },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+        createTable({
+          name: 'project_invitations',
+          columns: [
+            { name: 'project_id',  type: 'string' },
+            { name: 'role',        type: 'string' },
+            { name: 'invite_code', type: 'string' },
+            { name: 'expires_at',  type: 'number' },
+            { name: 'is_used',     type: 'boolean' },
+            { name: 'is_deleted',  type: 'boolean' },
+            { name: 'created_at',  type: 'number' },
+            { name: 'updated_at',  type: 'number' },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 25,
+      steps: [
+        addColumns({
+          table: 'farm_projects',
+          columns: [{ name: 'crop_variety', type: 'string', isOptional: true }],
+        }),
+        addColumns({
+          table: 'project_blocks',
+          columns: [{ name: 'crop_variety', type: 'string', isOptional: true }],
+        }),
+      ],
+    },
+    {
+      toVersion: 26,
+      steps: [
+        addColumns({
+          table: 'harvests',
+          columns: [
+            { name: 'rejected_weight', type: 'number', isOptional: true },
+            { name: 'rejected_reason', type: 'string', isOptional: true },
+          ],
+        }),
+        createTable({
+          name: 'sale_harvests',
+          columns: [
+            { name: 'sale_id',    type: 'string' },
+            { name: 'harvest_id', type: 'string' },
+            { name: 'is_deleted', type: 'boolean' },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 27,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [{ name: 'block_id', type: 'string', isOptional: true }],
+        }),
+      ],
+    },
+    {
+      toVersion: 28,
+      steps: [
+        addColumns({
+          table: 'project_access',
+          columns: [
+            { name: 'user_name', type: 'string', isOptional: true },
+            { name: 'user_phone', type: 'string', isOptional: true },
+          ],
+        }),
+        addColumns({
+          table: 'farm_projects',
+          columns: [
+            { name: 'user_name', type: 'string', isOptional: true },
+            { name: 'user_phone', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
+    {
+      toVersion: 29,
+      steps: [
+        createTable({
+          name: 'equipments',
+          columns: [
+            { name: 'project_id',     type: 'string' },
+            { name: 'name',           type: 'string' },
+            { name: 'type',           type: 'string' },
+            { name: 'model',          type: 'string', isOptional: true },
+            { name: 'serial_number',  type: 'string', isOptional: true },
+            { name: 'purchase_date',  type: 'number', isOptional: true },
+            { name: 'purchase_price', type: 'number', isOptional: true },
+            { name: 'status',         type: 'string' },
+            { name: 'notes',          type: 'string', isOptional: true },
+            { name: 'is_deleted',     type: 'boolean' },
+            { name: 'created_at',     type: 'number' },
+            { name: 'updated_at',     type: 'number' },
+          ],
+        }),
+      ],
+    },
   ],
 });
+
+

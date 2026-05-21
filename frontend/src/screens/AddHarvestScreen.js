@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Modal,
 } from 'react-native';
@@ -20,7 +19,7 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
@@ -32,10 +31,18 @@ const QUALITIES = ['grade_a', 'grade_b', 'grade_c', 'mixed'];
 
 export default function AddHarvestScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId, itemId } = route.params || {};
+  const { projectId, itemId, fromDashboard } = route.params || {};
   const { language, setLanguage } = useSettingsStore();
-  const [crop, setCrop] = useState('');
   const [weight, setWeight] = useState('');
+  const [rejectedWeight, setRejectedWeight] = useState('');
+  const [rejectedReason, setRejectedReason] = useState('');
+
+  const approvedWeight = useMemo(() => {
+    const gross = parseFloat(weight) || 0;
+    const rejected = parseFloat(rejectedWeight) || 0;
+    return Math.max(0, gross - rejected);
+  }, [weight, rejectedWeight]);
+
   const [unit, setUnit] = useState('kg');
   const [quality, setQuality] = useState('grade_a');
   const [date, setDate] = useState(new Date());
@@ -43,21 +50,32 @@ export default function AddHarvestScreen({ route, navigation }) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
-  const [projects, setProjects] = useState([]);
   const [project, setProject] = useState(null);
-  const [showProjectPicker, setShowProjectPicker] = useState(false);
-  const [projectSearch, setProjectSearch] = useState('');
+  const [blocks, setBlocks] = useState([]);
+  const [blockId, setBlockId] = useState('');
+  const [showBlockPicker, setShowBlockPicker] = useState(false);
+  const [blockSearch, setBlockSearch] = useState('');
+
+  // Derive crop from block, project, or fallback to saved item crop
+  const [savedItemCrop, setSavedItemCrop] = useState('');
+
+  const activeCrop = useMemo(() => {
+    const selectedBlock = blocks.find(b => b.id === blockId);
+    if (selectedBlock?.crop) return selectedBlock.crop;
+    if (project?.crop) return project.crop;
+    return savedItemCrop;
+  }, [blocks, blockId, project, savedItemCrop]);
 
   useEffect(() => {
-    const sub = database.get('farm_projects').query(Q.where('is_deleted', false)).observe().subscribe(setProjects);
+    if (!projectId) return;
+    const sub = database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks);
     return () => sub.unsubscribe();
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     if (!projectId) return;
     database.get('farm_projects').find(projectId).then((p) => {
       setProject(p);
-      setCrop(p.crop || '');
     }).catch(() => {});
   }, [projectId]);
 
@@ -70,12 +88,15 @@ export default function AddHarvestScreen({ route, navigation }) {
   useEffect(() => {
     if (!itemId) return;
     database.get('harvests').find(itemId).then((item) => {
-      setCrop(item.crop || '');
+      setSavedItemCrop(item.crop || '');
       setWeight(String(item.weight ?? ''));
+      setRejectedWeight(String(item.rejectedWeight ?? ''));
+      setRejectedReason(item.rejectedReason || '');
       setUnit(item.unit || 'kg');
       setQuality(item.quality || 'grade_a');
       setDate(item.date ? new Date(item.date) : new Date());
       setNotes(item.notes || '');
+      setBlockId(item.blockId || '');
       if (item.projectId) {
         database.get('farm_projects').find(item.projectId).then((p) => setProject(p)).catch(() => {});
       }
@@ -98,7 +119,7 @@ export default function AddHarvestScreen({ route, navigation }) {
       Alert.alert(t('common.error'), t('projects.errors.not_found'));
       return;
     }
-    if (!crop.trim()) {
+    if (!activeCrop.trim()) {
       Alert.alert(t('common.error'), t('harvest.errors.crop_required'));
       return;
     }
@@ -110,81 +131,157 @@ export default function AddHarvestScreen({ route, navigation }) {
     setSaving(true);
     setBanner(null);
     try {
+      const activeProjectId = project?.id || projectId;
+      if (!activeProjectId) {
+        Alert.alert(t('common.error'), t('quick_entry.select_project'));
+        return;
+      }
+      if (!blockId) {
+        Alert.alert(t('common.error'), 'Please select a block');
+        return;
+      }
+
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('harvests').find(itemId);
           await updateLocalModel(record, (draft) => {
-            draft.crop = crop.trim();
+            draft.crop = activeCrop.trim();
             draft.weight = parseFloat(weight);
+            draft.rejectedWeight = parseFloat(rejectedWeight) || 0;
+            draft.rejectedReason = rejectedReason.trim();
             draft.unit = unit;
             draft.quality = quality;
+            draft.blockId = blockId || null;
             draft.date = date.getTime();
             draft.notes = notes.trim();
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
-        } else {
+          } else {
           await database.get('harvests').create((record) => {
             initializeLocalRecord(record);
-            record.projectId = projectId;
-            record.crop = crop.trim();
+            record.projectId = activeProjectId;
+            record.crop = activeCrop.trim();
             record.weight = parseFloat(weight);
+            record.rejectedWeight = parseFloat(rejectedWeight) || 0;
+            record.rejectedReason = rejectedReason.trim();
             record.unit = unit;
             record.quality = quality;
+            record.blockId = blockId || null;
             record.date = date.getTime();
             record.notes = notes.trim();
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
-        }
-      });
+          }
+          });
 
-
-      syncAll().catch(() => {});
-      navigation.goBack();
-    } catch (err) {
-      setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('harvest.errors.save_local') });
-      Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
-    } finally {
-      setSaving(false);
-    }
-  };
+          syncAll().catch(() => {});
+          
+          if (fromDashboard) {
+            // If we came from Dashboard, go to the project detail screen we just added harvest to
+            navigation.replace('Projects', {
+              screen: 'ProjectDetail',
+              params: { projectId: activeProjectId, initialTab: 'harvest' }
+            });
+          } else {
+            navigation.goBack();
+          }
+          } catch (err) {
+          setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('harvest.errors.save_local') });
+          Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
+          } finally {
+          setSaving(false);
+          }
+          };
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
-    >
+    <>
       <StitchDashboardShell
         hero={StitchFormHero({
           eyebrow: t('harvest.entry_subtitle'),
           title: itemId ? t('harvest.edit_title') : t('harvest.entry_title'),
-          subtitle: crop || t('harvest.placeholders.crop'),
+          subtitle: activeCrop || t('harvest.placeholders.crop'),
           pills: [
-            { label: t('harvest.live_total'), value: liveTotal, icon: 'leaf-outline' },
-            { label: t('harvest.fields.unit'), value: t(`harvest.units.${unit}`), icon: 'scale-outline' },
+            { label: 'Approved', value: `${approvedWeight} ${unit}`, icon: 'checkmark-circle-outline' },
+            { label: 'Rejected', value: `${rejectedWeight || 0} ${unit}`, icon: 'close-circle-outline' },
           ],
-          onBack: () => navigation.goBack(),
+          onBack: () => {
+            if (fromDashboard && (project?.id || projectId)) {
+              navigation.replace('Projects', {
+                screen: 'ProjectDetail',
+                params: { projectId: project?.id || projectId, initialTab: 'harvest' }
+              });
+            } else {
+              navigation.goBack();
+            }
+          },
         })}
         bodyContentStyle={styles.content}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-        <TouchableOpacity style={styles.projectSelector} onPress={() => setShowProjectPicker(true)} activeOpacity={0.88}>
-          <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
-            <Ionicons name="folder-outline" size={20} color={stitchTheme.colors.primary} />
+
+        {(projectId) && blocks.length > 0 ? (
+          <TouchableOpacity style={styles.projectSelector} onPress={() => setShowBlockPicker(true)} activeOpacity={0.88}>
+            <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.accentBrown + '20' }]}>
+              <Ionicons name="layers-outline" size={20} color={stitchTheme.colors.accentBrown} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoLabel}>{t('projects.tabs.block')}</Text>
+              <Text style={styles.infoValue}>{blockId && blocks.find(b => b.id === blockId) ? blocks.find(b => b.id === blockId)?.name : t('common.select_block')}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color={stitchTheme.colors.textMuted} />
+          </TouchableOpacity>
+        ) : null}
+
+        <Modal visible={showBlockPicker} animationType='slide' transparent onRequestClose={() => setShowBlockPicker(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{t('projects.tabs.block')}</Text>
+                <TouchableOpacity onPress={() => setShowBlockPicker(false)} activeOpacity={0.88}>
+                  <Ionicons name='close-outline' size={22} color={stitchTheme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.searchShell}>
+                <Ionicons name='search-outline' size={18} color={stitchTheme.colors.textMuted} />
+                <TextInput
+                  value={blockSearch}
+                  onChangeText={setBlockSearch}
+                  placeholder={t('common.select_block')}
+                  placeholderTextColor={stitchTheme.colors.textMuted}
+                  style={styles.searchInput}
+                />
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
+                {blocks.filter((b) => !blockSearch || b.name.toLowerCase().includes(blockSearch.toLowerCase())).map((b) => (
+                  <TouchableOpacity
+                    key={b.id}
+                    style={[styles.projectOption, blockId === b.id && styles.projectOptionActive]}
+                    onPress={() => {
+                      setBlockId(b.id);
+                      setShowBlockPicker(false);
+                      setBlockSearch('');
+                    }}
+                    activeOpacity={0.88}
+                  >
+                    <View>
+                      <Text style={styles.projectOptionTitle}>{b.name}</Text>
+                      <Text style={styles.projectOptionMeta}>{b.crop || t('projects.fields.crop')}</Text>
+                    </View>
+                    {blockId === b.id ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.infoLabel}>{t('quick_entry.fields.project')}</Text>
-            <Text style={[styles.infoValue, !project && { color: stitchTheme.colors.textMuted }]}>{project?.name || t('quick_entry.select_project')}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={stitchTheme.colors.textMuted} />
-        </TouchableOpacity>
+        </Modal>
 
         <StitchInput
           label={t('harvest.crop_heading')}
-          value={crop}
-          onChangeText={setCrop}
+          value={activeCrop}
+          editable={false}
           placeholder={t('harvest.placeholders.crop')}
         />
 
@@ -196,10 +293,20 @@ export default function AddHarvestScreen({ route, navigation }) {
           keyboardType='decimal-pad'
         />
 
-        <StitchSurface style={styles.liveCard}>
-          <Text style={styles.liveLabel}>{t('harvest.live_total')}</Text>
-          <Text style={styles.liveValue}>{liveTotal}</Text>
-        </StitchSurface>
+        <StitchInput
+          label={t('harvest.fields.rejected_weight')}
+          value={rejectedWeight}
+          onChangeText={setRejectedWeight}
+          placeholder={t('harvest.placeholders.rejected_weight')}
+          keyboardType='decimal-pad'
+        />
+
+        <StitchInput
+          label={t('harvest.fields.rejected_reason')}
+          value={rejectedReason}
+          onChangeText={setRejectedReason}
+          placeholder={t('harvest.placeholders.rejected_reason')}
+        />
 
         <StitchSectionTitle>{t('harvest.quality_heading')}</StitchSectionTitle>
         <View style={styles.qualityRow}>
@@ -259,55 +366,52 @@ export default function AddHarvestScreen({ route, navigation }) {
         />
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('harvest.record')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
-
-        <Text style={styles.footerNote}>{t('harvest.footer_note')}</Text>
-
-        <Modal visible={showProjectPicker} animationType='slide' transparent onRequestClose={() => setShowProjectPicker(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalSheet}>
-              <View style={styles.modalHandle} />
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('projects.title')}</Text>
-                <TouchableOpacity onPress={() => setShowProjectPicker(false)} activeOpacity={0.88}>
-                  <Ionicons name='close-outline' size={22} color={stitchTheme.colors.text} />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.searchShell}>
-                <Ionicons name='search-outline' size={18} color={stitchTheme.colors.textMuted} />
-                <TextInput
-                  value={projectSearch}
-                  onChangeText={setProjectSearch}
-                  placeholder={t('quick_entry.select_project')}
-                  placeholderTextColor={stitchTheme.colors.textMuted}
-                  style={styles.searchInput}
-                />
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
-                {(projects || []).filter((p) => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase())).map((p) => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={[styles.projectOption, project?.id === p.id && styles.projectOptionActive]}
-                    onPress={() => {
-                      setProject(p);
-                      setCrop(p.crop || '');
-                      setShowProjectPicker(false);
-                      setProjectSearch('');
-                    }}
-                    activeOpacity={0.88}
-                  >
-                    <View>
-                      <Text style={styles.projectOptionTitle}>{p.name}</Text>
-                      <Text style={styles.projectOptionMeta}>{p.crop || t('projects.fields.crop')} • {p.landSize || 0} {p.landUnit || 'acres'}</Text>
-                    </View>
-                    {project?.id === p.id ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
+
+      <Modal visible={showBlockPicker} animationType='slide' transparent onRequestClose={() => setShowBlockPicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('projects.tabs.block')}</Text>
+              <TouchableOpacity onPress={() => setShowBlockPicker(false)} activeOpacity={0.88}>
+                <Ionicons name='close-outline' size={22} color={stitchTheme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.searchShell}>
+              <Ionicons name='search-outline' size={18} color={stitchTheme.colors.textMuted} />
+              <TextInput
+                value={blockSearch}
+                onChangeText={setBlockSearch}
+                placeholder={t('common.select_block')}
+                placeholderTextColor={stitchTheme.colors.textMuted}
+                style={styles.searchInput}
+              />
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
+              {blocks.filter((b) => !blockSearch || b.name.toLowerCase().includes(blockSearch.toLowerCase())).map((b) => (
+                <TouchableOpacity
+                  key={b.id}
+                  style={[styles.projectOption, blockId === b.id && styles.projectOptionActive]}
+                  onPress={() => {
+                    setBlockId(b.id);
+                    setShowBlockPicker(false);
+                    setBlockSearch('');
+                  }}
+                  activeOpacity={0.88}
+                >
+                  <View>
+                    <Text style={styles.projectOptionTitle}>{b.name}</Text>
+                    <Text style={styles.projectOptionMeta}>{b.crop || t('projects.fields.crop')}</Text>
+                  </View>
+                  {blockId === b.id ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -318,35 +422,31 @@ const styles = StyleSheet.create({
   field: { minHeight: 56, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: stitchTheme.colors.border },
   fieldText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   quantityField: { minHeight: 72, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.hero.fontSize, lineHeight: stitchTheme.typography.hero.lineHeight, fontWeight: '300', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  liveCard: { marginTop: stitchTheme.spacing.xs, minHeight: 82, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: stitchTheme.colors.primaryContainer, borderRadius: stitchTheme.radius.card, ...stitchShadows.float },
-  liveLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: '#a9d89e' },
-  liveValue: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: '#9ce58b' },
   qualityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
-  qualityCard: { width: '31%', minHeight: 78, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  qualityCard: { ...stitchStyles.collectionCard, width: '31%', minHeight: 78, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, marginBottom: 0 },
   qualityCardWide: { width: '100%', minHeight: 60 },
-  qualityCardActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: 'transparent', ...stitchShadows.soft },
-  qualityTitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.text, textAlign: 'center' },
+  qualityCardActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: 'transparent' },
+  qualityTitle: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.text, textAlign: 'center' },
   qualityTitleActive: { color: stitchTheme.colors.primary },
-  qualityNote: { marginTop: 4, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', textTransform: 'uppercase', color: stitchTheme.colors.textMuted, textAlign: 'center' },
+  qualityNote: { marginTop: 4, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted, textAlign: 'center' },
   qualityNoteActive: { color: stitchTheme.colors.primary },
   unitRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
   unitChip: {},
-  unitChipText: { color: stitchTheme.colors.accentBrown, fontWeight: '800', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight },
-  notesCard: { marginTop: stitchTheme.spacing.md, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, ...stitchShadows.soft },
+  unitChipText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
+  notesCard: { ...stitchStyles.collectionCard, marginTop: stitchTheme.spacing.md },
   notesHeader: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
-  notesIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
-  notesTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  notesIconWrap: { width: 36, height: 36, borderRadius: stitchTheme.radius.sm, backgroundColor: stitchTheme.colors.accentPeach, alignItems: 'center', justifyContent: 'center' },
+  notesTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.primary },
   notesInput: { minHeight: 110, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top' },
   saveButton: { marginTop: stitchTheme.spacing.md },
-  footerNote: { marginTop: stitchTheme.spacing.sm, textAlign: 'center', fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: '#6f786b' },
 
-  projectSelector: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: 14, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  infoIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  infoLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
-  infoValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '700', color: stitchTheme.colors.text, marginTop: 1 },
+  projectSelector: { ...stitchStyles.collectionCard, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, marginBottom: stitchTheme.spacing.sm },
+  infoIcon: { width: 36, height: 36, borderRadius: stitchTheme.radius.xs, alignItems: 'center', justifyContent: 'center' },
+  infoLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  infoValue: { ...stitchTheme.typography.cardTitle, fontSize: 15, color: stitchTheme.colors.text, marginTop: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '80%', paddingBottom: 40 },
+  modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, maxHeight: '80%', paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: stitchTheme.colors.line, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12 },
   modalTitle: { fontSize: stitchTheme.typography.section.fontSize, fontWeight: '800', color: stitchTheme.colors.text },

@@ -4,12 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import ProjectsScreen from '../screens/ProjectsScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
-import AddBudgetItemScreen from '../screens/AddBudgetItemScreen';
-import AddExpenseScreen from '../screens/AddExpenseScreen';
-import AddWorkEntryScreen from '../screens/AddWorkEntryScreen';
-import AddHarvestScreen from '../screens/AddHarvestScreen';
-import AddSaleScreen from '../screens/AddSaleScreen';
 import InventoryScreen from '../screens/InventoryScreen';
+import AddEquipmentScreen from '../screens/AddEquipmentScreen';
 import EmployeesScreen from '../screens/EmployeesScreen';
 import EmployeeDetailScreen from '../screens/EmployeeDetailScreen';
 import QuickEntryScreen from '../screens/QuickEntryScreen';
@@ -34,13 +30,19 @@ const stitchHeaderOptions = {
   headerTitleStyle: { fontWeight: '800', fontSize: 22, color: stitchTheme.colors.primary },
   headerBackTitleVisible: false,
   contentStyle: { backgroundColor: stitchTheme.colors.background },
+  animation: 'simple_push',
 };
 
 function ProjectStackNavigator() {
   const { t } = useTranslation();
 
   return (
-    <ProjectStack.Navigator screenOptions={stitchHeaderOptions}>
+    <ProjectStack.Navigator 
+      screenOptions={{
+        ...stitchHeaderOptions,
+        animationDuration: 200,
+      }}
+    >
       <ProjectStack.Screen
         name="ProjectsList"
         component={ProjectsScreen}
@@ -52,33 +54,13 @@ function ProjectStackNavigator() {
         options={{ headerShown: false }}
       />
       <ProjectStack.Screen
-        name="AddBudgetItem"
-        component={AddBudgetItemScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddExpense"
-        component={AddExpenseScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddWorkEntry"
-        component={AddWorkEntryScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddHarvest"
-        component={AddHarvestScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
-        name="AddSale"
-        component={AddSaleScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectStack.Screen
         name="Inventory"
         component={InventoryScreen}
+        options={{ headerShown: false }}
+      />
+      <ProjectStack.Screen
+        name="AddEquipment"
+        component={AddEquipmentScreen}
         options={{ headerShown: false }}
       />
     </ProjectStack.Navigator>
@@ -89,7 +71,12 @@ function EmployeeStackNavigator() {
   const { t } = useTranslation();
 
   return (
-    <EmployeeStack.Navigator screenOptions={stitchHeaderOptions}>
+    <EmployeeStack.Navigator 
+      screenOptions={{
+        ...stitchHeaderOptions,
+        animationDuration: 200,
+      }}
+    >
       <EmployeeStack.Screen
         name="EmployeesList"
         component={EmployeesScreen}
@@ -108,7 +95,12 @@ function SettingsStackNavigator() {
   const { t } = useTranslation();
 
   return (
-    <SettingsStack.Navigator screenOptions={stitchHeaderOptions}>
+    <SettingsStack.Navigator 
+      screenOptions={{
+        ...stitchHeaderOptions,
+        animationDuration: 200,
+      }}
+    >
       <SettingsStack.Screen
         name="SettingsHome"
         component={SettingsScreen}
@@ -146,6 +138,8 @@ export default function TabNavigator() {
       tabBar={(props) => <StitchTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        animation: 'shift',
+        animationDuration: 180,
         sceneStyle: { backgroundColor: stitchTheme.colors.background },
       }}
       initialRouteName="Dashboard"

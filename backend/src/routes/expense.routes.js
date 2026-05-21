@@ -1,5 +1,7 @@
 const { Router } = require('express');
 const { authenticate } = require('../middleware/auth.middleware');
+const { validateRequest } = require('../middleware/validate.middleware');
+const { createExpenseSchema, updateExpenseSchema } = require('../validators/expense.validator');
 const {
   createExpense,
   listExpenses,
@@ -11,9 +13,9 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post  ('/',            createExpense);   // POST   /expenses
-router.get   ('/:projectId',  listExpenses);    // GET    /expenses/:projectId
-router.put   ('/:id',         updateExpense);   // PUT    /expenses/:id
-router.delete('/:id',         deleteExpense);   // DELETE /expenses/:id
+router.post('/', validateRequest(createExpenseSchema), createExpense);
+router.get('/:projectId', listExpenses);
+router.put('/:id', validateRequest(updateExpenseSchema), updateExpense);
+router.delete('/:id', deleteExpense);
 
 module.exports = router;

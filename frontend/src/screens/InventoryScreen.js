@@ -17,10 +17,11 @@ import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSearchBar } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+
 
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -332,14 +333,14 @@ const styles = StyleSheet.create({
   list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
   chartWrap: { marginTop: stitchTheme.spacing.md },
-  card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, alignItems: 'flex-start' },
-  cardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text },
-  cardMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 4, fontWeight: stitchTheme.typography.caption.fontWeight },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.md, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
-  cardAmount: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.primary },
-  cardDescription: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.bodySmall.fontWeight },
-  cardAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  card: { ...stitchStyles.collectionCard, paddingHorizontal: 0, paddingLeft: 0 },
+  cardAccent: { ...stitchStyles.cardAccent, backgroundColor: stitchTheme.colors.primaryDim },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, alignItems: 'flex-start', paddingLeft: 18, paddingRight: 14 },
+  cardTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
+  cardMeta: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted, marginTop: 4 },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.md, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line, paddingLeft: 18, paddingRight: 14 },
+  cardAmount: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.primary },
+  cardDescription: { marginTop: 6, ...stitchTheme.typography.cardDescription, color: stitchTheme.colors.textMuted, paddingLeft: 18, paddingRight: 14 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.backgroundAccent, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
@@ -349,4 +350,5 @@ const styles = StyleSheet.create({
   half: { flex: 1 },
   saveButton: { marginTop: stitchTheme.spacing.lg },
   payeeChipTextActive: { color: stitchTheme.colors.primary },
+
 });

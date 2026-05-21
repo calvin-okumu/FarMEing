@@ -18,6 +18,7 @@
    - [Work Entries](#work-entries)
    - [Harvests](#harvests)
    - [Sales](#sales)
+   - [Invitations](#invitations)
    - [Inventory](#inventory)
    - [Reports](#reports)
    - [System](#system)
@@ -186,8 +187,17 @@ Base path: `/projects` — **Protected**
 | `DELETE` | `/:id` | Soft delete project |
 | `GET` | `/:id/summary` | Get financial summary (budget vs actuals) |
 | `GET` | `/:id/members` | List project members and roles |
-| `POST` | `/:id/members` | Invite a member to a project |
+| `POST` | `/:id/members` | Invite a member directly by ID |
 | `DELETE` | `/:id/members/:userId` | Remove a member from a project |
+
+### Invitations
+
+Base path: `/invitations` — **Protected**
+
+| Method | Endpoint | Description | Request Body |
+|---|---|---|---|
+| `POST` | `/` | Create an invitation code | `{ projectId, role }` |
+| `POST` | `/join` | Join project via code | `{ inviteCode }` |
 
 ### Sync
 
@@ -314,36 +324,39 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 ### Core
 *   **User:** Central entity. Contains credentials, role (`ADMIN`, `WORKER`), and localization settings (`currency`, `locale`).
 *   **Season:** Represents a farming season, linked to a user.
-*   **FarmProject:** Represents a specific crop cycle on a plot of land. Linked to `User` and optional `Season`. Tracks status (`PLANNING`, `ACTIVE`, `HARVESTED`, `CLOSED`).
+*   **FarmProject:** Represents a specific crop cycle on a plot of land. Linked to `User` and optional `Season`. Tracks status (`PLANNING`, `ACTIVE`, `HARVESTED`, `CLOSED`) and optional `cropVariety`.
 *   **ProjectAccess:** Join model for collaborative project access. Stores per-user membership and role (`OWNER`, `MANAGER`, `VIEWER`).
+*   **ProjectInvitation:** Generates unique codes for users to join projects with specific roles.
 
 ### Financials
 *   **BudgetItem:** Planned costs for a project.
 *   **Expense:** Actual costs incurred. Differentiates `CAPEX` vs `OPEX`. Supports recurring expenses.
-*   **Sale:** Revenue generated from selling harvests. Tracks `paymentStatus` (`pending`, `partial`, `paid`) and `balanceDue` for installment payments.
+*   **Sale:** Revenue generated from selling harvests. Tracks `paymentStatus` (`pending`, `partial`, `paid`) and `balanceDue` for installment payments. Linked to `Harvest` records via `SaleHarvest`.
 *   **SalePayment:** Individual payment installments against a sale. Each has `saleId`, `amount`, `date`, `note`.
 *   **Payment:** Records payments made to employees.
 
 ### Operations
 *   **Employee:** Workers managed by the user.
 *   **WorkEntry:** Logs daily labor. Tracks `activity`, `hoursWorked` / `daysWorked`, `cost`, and approval status.
-*   **Harvest:** Records crop yields (`weight`, `unit`, `quality`).
+*   **Harvest:** Records crop yields (`weight`, `unit`, `quality`). Now includes `rejectedWeight` and `rejectedReason` for tracking waste or losses.
 *   **InventoryItem:** Tracks inputs and resources.
 
 ### Relationships
 *   **User** has many **Projects** and **Employees**.
-*   **Project** has many **BudgetItems**, **Expenses**, **WorkEntries**, **Harvests**, **Sales**, and **ProjectAccess** rows.
+*   **Project** has many **BudgetItems**, **Expenses**, **WorkEntries**, **Harvests**, **Sales**, **ProjectAccess**, and **ProjectInvitations**.
 *   **Employee** has many **WorkEntries** and **Payments**.
-*   **Sale** has many **SalePayments** — each sale can have multiple payment installments.
+*   **Sale** has many **SalePayments** and **SaleHarvests**.
+*   **Harvest** has many **SaleHarvests**.
+*   **SaleHarvest** is a join model linking **Sales** to **Harvests** (many-to-many).
 *   **ProjectAccess** links a **User** to a **Project** with a collaborative role.
 
 ---
 
 ## Sync And Access Notes
 
-- Project ownership and collaboration are modeled through `ProjectAccess`, but the backend also falls back to `FarmProject.userId` for owner access when older or partially synced data is encountered.
-- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows so owner data still syncs if membership rows are temporarily missing. For `salePayment` records, security scoping is applied via the parent `sale.projectId`.
-- `/sync/push` upserts an owner `ProjectAccess` row whenever a `farmProject` is created or updated from the mobile client.
-- `/sync/push` upserts an owner `ProjectAccess` row whenever a `farmProject` is created or updated from the mobile client.
+- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows. Security scoping is applied to all child records (expenses, harvests, etc.).
+- For `saleHarvest` and `salePayment` records, security scoping is applied via the parent `sale.projectId`.
+- `/sync/push` handles upserting all related operational data and ensures `ProjectAccess` rows are created for new projects.
+- `project_invitations` and `project_access` are included in the sync lifecycle to support collaborative workflows.
 - Project-scoped APIs such as members and reports expect the server-side project ID. Mobile clients should prefer `remoteId` when present.
 - After deploying schema or access-model changes, run `npx prisma generate` and restart the process manager so runtime code and Prisma delegates stay aligned.

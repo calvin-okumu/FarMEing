@@ -1,8 +1,8 @@
 {
   "expo": {
     "entryPoint": "./frontend/App.js",
-    "name": "FarmTruck",
-    "slug": "farmtruck",
+    "name": "FarmTrack",
+    "slug": "farmtrack",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./frontend/assets/icon.png",
@@ -28,11 +28,6 @@
     },
     "web": {
       "favicon": "./frontend/assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "86af1b31-414c-4250-a84c-fada504a33e9"
-      }
     },
     "plugins": [
       "expo-font",

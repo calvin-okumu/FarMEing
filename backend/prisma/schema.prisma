@@ -29,10 +29,14 @@ model User {
 }
 
 model ProjectAccess {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   projectId String
-  role      String      // OWNER, MANAGER, VIEWER
+  userName  String?
+  userPhone String?
+  role      String   // OWNER, MANAGER, VIEWER
+
+  isDeleted Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   user      User        @relation(fields: [userId], references: [id])
@@ -74,9 +78,12 @@ model Season {
 model FarmProject {
   id            String       @id @default(uuid())
   userId        String
+  userName      String?
+  userPhone     String?
   seasonId      String?
   name          String
   crop          String
+  cropVariety   String?
   landSize      Float
   landUnit      String       @default("acres")
   startDate     DateTime
@@ -90,19 +97,73 @@ model FarmProject {
   updatedAt     DateTime     @updatedAt
   user          User         @relation(fields: [userId], references: [id])
   season        Season?      @relation(fields: [seasonId], references: [id])
+  blocks        ProjectBlock[]
   budgetItems   BudgetItem[]
   expenses      Expense[]
   workEntries   WorkEntry[]
   harvests      Harvest[]
   sales         Sale[]
   inventoryItems InventoryItem[]
+  equipment      Equipment[]
   employees     EmployeeProject[]
   projectAccess ProjectAccess[]
+  invitations   ProjectInvitation[]
+}
+
+model Equipment {
+  id            String      @id @default(uuid())
+  projectId     String
+  name          String
+  type          String
+  model         String?
+  serialNumber  String?
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  status        String      @default("OPERATIONAL") // OPERATIONAL, MAINTENANCE, BROKEN, DISPOSED
+  notes         String?
+  isDeleted     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  project       FarmProject @relation(fields: [projectId], references: [id])
+}
+
+model ProjectInvitation {
+  id          String      @id @default(uuid())
+  projectId   String
+  role        String      // MANAGER, VIEWER
+  inviteCode  String      @unique
+  expiresAt   DateTime
+  isUsed      Boolean     @default(false)
+  isDeleted   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  project     FarmProject @relation(fields: [projectId], references: [id])
+}
+
+model ProjectBlock {
+  id            String      @id @default(uuid())
+  projectId     String
+  name          String      // e.g. Block A, Section 1
+  landSize      Float?
+  landUnit      String?
+  crop          String?
+  cropVariety   String?
+  expectedYield Float?
+  isDeleted     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  project       FarmProject @relation(fields: [projectId], references: [id])
+  budgetItems   BudgetItem[]
+  expenses      Expense[]
+  workEntries   WorkEntry[]
+  harvests      Harvest[]
+  sales         Sale[]
 }
 
 model BudgetItem {
   id        String      @id @default(uuid())
   projectId String
+  blockId   String?
   category  String
   name      String
   quantity  Float
@@ -114,11 +175,13 @@ model BudgetItem {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   project   FarmProject @relation(fields: [projectId], references: [id])
+  block     ProjectBlock? @relation(fields: [blockId], references: [id])
 }
 
 model Expense {
   id          String      @id @default(uuid())
   projectId   String
+  blockId     String?
   category    String
   expenseType String      @default("OPEX") // CAPEX, OPEX
   amount      Float
@@ -133,8 +196,10 @@ model Expense {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   project     FarmProject @relation(fields: [projectId], references: [id])
+  block       ProjectBlock? @relation(fields: [blockId], references: [id])
   payeeRecord Payee?       @relation(fields: [payeeId], references: [id])
 }
+
 
 model Employee {
   id          String       @id @default(uuid())
@@ -167,6 +232,7 @@ model EmployeeProject {
 model WorkEntry {
   id          String      @id @default(uuid())
   projectId   String
+  blockId     String?
   employeeId  String
   activity    String
   date        DateTime
@@ -186,6 +252,7 @@ model WorkEntry {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   project     FarmProject @relation(fields: [projectId], references: [id])
+  block       ProjectBlock? @relation(fields: [blockId], references: [id])
   employee    Employee    @relation(fields: [employeeId], references: [id])
 }
 
@@ -202,23 +269,30 @@ model Payment {
 }
 
 model Harvest {
-  id        String      @id @default(uuid())
-  projectId String
-  crop      String
-  date      DateTime
-  weight    Float
-  unit      String      @default("kg")
-  quality   String?
-  notes     String?
-  isDeleted Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  project   FarmProject @relation(fields: [projectId], references: [id])
+  id             String         @id @default(uuid())
+  projectId      String
+  blockId        String?
+  crop           String
+  date           DateTime
+  weight         Float
+  rejectedWeight Float?
+  rejectedReason String?
+  unit           String         @default("kg")
+  quality        String?
+  notes          String?
+  isDeleted      Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        FarmProject    @relation(fields: [projectId], references: [id])
+  block          ProjectBlock?  @relation(fields: [blockId], references: [id])
+  saleHarvests   SaleHarvest[]
 }
+
 
 model Sale {
   id             String         @id @default(uuid())
   projectId      String
+  blockId        String?
   date           DateTime
   customer       String?
   weightSold     Float
@@ -232,7 +306,22 @@ model Sale {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   project        FarmProject    @relation(fields: [projectId], references: [id])
+  block          ProjectBlock?  @relation(fields: [blockId], references: [id])
   salePayments   SalePayment[]
+  saleHarvests   SaleHarvest[]
+}
+
+model SaleHarvest {
+  id           String   @id @default(uuid())
+  saleId       String
+  harvestId    String
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sale         Sale     @relation(fields: [saleId], references: [id])
+  harvest      Harvest  @relation(fields: [harvestId], references: [id])
+
+  @@unique([saleId, harvestId])
 }
 
 model SalePayment {

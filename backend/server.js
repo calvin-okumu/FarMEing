@@ -11,10 +11,14 @@ const employeeRoutes = require('./src/routes/employee.routes');
 const paymentRoutes  = require('./src/routes/payment.routes');
 const payeeRoutes    = require('./src/routes/payee.routes');
 const inventoryRoutes = require('./src/routes/inventory.routes');
+const equipmentRoutes = require('./src/routes/equipment.routes');
 const workEntryRoutes = require('./src/routes/workEntry.routes');
 const harvestRoutes   = require('./src/routes/harvest.routes');
 const saleRoutes      = require('./src/routes/sale.routes');
+const seasonRoutes    = require('./src/routes/season.routes');
+const invitationRoutes = require('./src/routes/projectInvitation.routes');
 const syncRoutes      = require('./src/routes/sync.routes');
+
 const reportRoutes    = require('./src/routes/report.routes');
 const { authenticate } = require('./src/middleware/auth.middleware');
 
@@ -48,10 +52,14 @@ apiRouter.use('/employees', employeeRoutes);
 apiRouter.use('/payments', paymentRoutes);
 apiRouter.use('/payees', payeeRoutes);
 apiRouter.use('/inventory', inventoryRoutes);
+apiRouter.use('/equipment', equipmentRoutes);
 apiRouter.use('/work-entries', workEntryRoutes);
 apiRouter.use('/harvests', harvestRoutes);
 apiRouter.use('/sales', saleRoutes);
+apiRouter.use('/seasons', seasonRoutes);
+apiRouter.use('/invitations', invitationRoutes);
 apiRouter.use('/sync', syncRoutes);
+
 apiRouter.use('/reports', reportRoutes);
 
 apiRouter.get('/me', authenticate, (req, res) => {

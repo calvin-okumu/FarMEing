@@ -1,27 +1,17 @@
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen    from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import { stitchTheme } from '../theme/stitchTheme';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        cardStyleInterpolator: ({ current, layouts }) => ({
-          cardStyle: {
-            opacity: current.progress,
-            transform: [
-              {
-                translateX: current.progress.interpolate({
-                  inputRange:  [0, 1],
-                  outputRange: [layouts.screen.width, 0],
-                }),
-              },
-            ],
-          },
-        }),
+        animation: 'fade',
+        contentStyle: { backgroundColor: stitchTheme.colors.background },
       }}
     >
       <Stack.Screen name="Login"    component={LoginScreen} />

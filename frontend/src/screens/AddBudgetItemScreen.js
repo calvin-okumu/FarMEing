@@ -5,17 +5,17 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { updateLocalModel } from '../utils/resourceMutations';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import {
   StitchChip,
   StitchInput,
@@ -40,6 +40,14 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   const [unitPrice, setUnitPrice] = useState('');
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [blockId, setBlockId] = useState('');
+
+  useEffect(() => {
+    if (!projectId) return;
+    const sub = database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks);
+    return () => sub.unsubscribe();
+  }, [projectId]);
 
   useEffect(() => {
     if (!itemId) return;
@@ -55,6 +63,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       setQuantity(String(item.quantity ?? ''));
       setUnit(item.unit || 'kg');
       setUnitPrice(String(item.unitPrice ?? ''));
+      setBlockId(item.blockId || '');
     }).catch(() => {});
   }, [itemId]);
 
@@ -87,6 +96,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             draft.quantity = parseFloat(quantity);
             draft.unit = unit.trim();
             draft.unitPrice = parseFloat(unitPrice);
+            draft.blockId = blockId || null;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
@@ -99,6 +109,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             record.quantity = parseFloat(quantity);
             record.unit = unit.trim();
             record.unitPrice = parseFloat(unitPrice);
+            record.blockId = blockId || null;
             record.isDeleted = false;
           });
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
@@ -116,26 +127,21 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior='padding'
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    <StitchDashboardShell
+      hero={StitchFormHero({
+        eyebrow: t('budget.fields.category'),
+        title: itemId ? t('budget.edit_title') : t('budget.add'),
+        subtitle: t(`budget.categories.${category}`),
+        pills: [
+          { label: t('budget.estimated_total'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+          { label: t('budget.fields.quantity'), value: quantity || '0', icon: 'layers-outline' },
+        ],
+        onBack: () => navigation.goBack(),
+      })}
+      bodyContentStyle={styles.content}
+      banner={banner}
+      onDismissBanner={() => setBanner(null)}
     >
-      <StitchDashboardShell
-        hero={StitchFormHero({
-          eyebrow: t('budget.fields.category'),
-          title: itemId ? t('budget.edit_title') : t('budget.add'),
-          subtitle: t(`budget.categories.${category}`),
-          pills: [
-            { label: t('budget.estimated_total'), value: formatCurrency(total, currency), icon: 'cash-outline' },
-            { label: t('budget.fields.quantity'), value: quantity || '0', icon: 'layers-outline' },
-          ],
-          onBack: () => navigation.goBack(),
-        })}
-        bodyContentStyle={styles.content}
-        banner={banner}
-        onDismissBanner={() => setBanner(null)}
-      >
         <StitchSectionTitle>{t('budget.fields.category')}</StitchSectionTitle>
         <View style={styles.chipsRow}>
           {CATEGORIES.map((cat) => (
@@ -151,6 +157,16 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             placeholder={t('budget.specify_placeholder', { defaultValue: 'e.g. Custom category' })}
           />
         )}
+
+        {blocks.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
+            {blocks.map(b => {
+              const bl = b.landSize ? `${b.name} - ${b.crop || '?'} (${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
+              return <StitchChip key={b.id} label={bl} active={blockId === b.id} onPress={() => setBlockId(b.id)} />;
+            })}
+          </View>
+        ) : null}
 
         <StitchInput
           label={t('budget.fields.name')}
@@ -203,7 +219,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         />
         {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
       </StitchDashboardShell>
-    </KeyboardAvoidingView>
   );
 }
 
@@ -214,16 +229,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
   totalCard: {
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
-    padding: stitchTheme.spacing.md,
+    ...stitchStyles.collectionCard,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...stitchShadows.soft,
+    paddingVertical: 16,
   },
-  totalLabel: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800' },
-  totalValue: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '900' },
+  totalLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  totalValue: { ...stitchTheme.typography.metricValue, color: stitchTheme.colors.primaryContainer },
   button: { marginTop: stitchTheme.spacing.sm },
   loader: { marginTop: stitchTheme.spacing.sm },
 });
+

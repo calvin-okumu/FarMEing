@@ -64,13 +64,16 @@ Supports **English (en)** and **Kiswahili (sw)**.
 ## WatermelonDB Models
 
 ### Models:
-- **FarmProject:** `id`, `userId`, `name`, `crop`, `landSize`, `landUnit`, `startDate`, `endDate`, `expectedYield`, `status`, `contractUrl`, `notes`.
+- **FarmProject:** `id`, `userId`, `name`, `crop`, `cropVariety`, `landSize`, `landUnit`, `startDate`, `endDate`, `expectedYield`, `status`, `contractUrl`, `notes`.
 - **BudgetItem:** `id`, `projectId`, `name`, `category`, `quantity`, `unit`, `unitPrice`, `total`, `notes`.
 - **Expense:** `id`, `projectId`, `category`, `amount`, `date`, `note`, `expenseType`, `isRecurring`, `frequency`, `payee`, `payeeId`, `receiptUrl`.
 - **WorkEntry:** `id`, `projectId`, `employeeId`, `activity`, `date`, `daysWorked`, `ratePerDay`, `totalCost`, `hoursWorked`, `status`, `notes`, `isRecurring`, `frequency`.
-- **Harvest:** `id`, `projectId`, `crop`, `date`, `weight`, `unit`, `quality`, `notes`.
+- **Harvest:** `id`, `projectId`, `crop`, `date`, `weight`, `rejectedWeight`, `rejectedReason`, `unit`, `quality`, `notes`.
 - **Sale:** `id`, `projectId`, `date`, `customer`, `weightSold`, `unitPrice`, `totalAmount`, `paymentStatus`, `balanceDue`, `receiptUrl`, `notes`.
 - **SalePayment:** `id`, `saleId`, `amount`, `date`, `note` — individual payment installments against a sale.
+- **SaleHarvest:** `id`, `saleId`, `harvestId` — join table linking sales to specific harvest records.
+- **ProjectInvitation:** `id`, `projectId`, `role`, `inviteCode`, `expiresAt`, `isUsed`.
+- **ProjectAccess:** `id`, `projectId`, `userId`, `role`.
 - **InventoryItem:** `id`, `projectId`, `name`, `category`, `quantity`, `unit`, `unitCost`, `totalCost`, `usedQty`, `notes`.
 - **Payee:** `id`, `name`, `phone`, `email`, `address`, `category`, `notes`.
 - **Payment:** `id`, `employeeId`, `amount`, `date`, `note`.
@@ -78,8 +81,10 @@ Supports **English (en)** and **Kiswahili (sw)**.
 - **EmployeeProjectAssignment:** `id`, `projectId`, `employeeId`.
 
 ### Associations:
-- **Sale** → `salePayments` (has_many): each sale can have multiple payment installments.
-- **SalePayment** → `sales` (belongs_to): each payment links to its parent sale.
+- **Sale** → `salePayments` (has_many), `saleHarvests` (has_many).
+- **Harvest** → `saleHarvests` (has_many).
+- **SalePayment** → `sales` (belongs_to).
+- **SaleHarvest** → `sales` (belongs_to), `harvests` (belongs_to).
 
 ### Payment tracking:
 - `paymentStatus`: `'pending' | 'partial' | 'paid'` (computed from `totalAmount - sum(salePayments.amount)`)
@@ -110,9 +115,10 @@ The `syncService.js` handles bi-directional synchronization:
   - **Sales tab**: Cards show customer, weight, total amount, and balance due. Tapping navigates to edit sale with full payment management.
   - **Timeline**: Cards use same design as other tabs with colored left accent.
   - **Hero pills**: Metric pills with currency symbol on label row, value below. Revenue pill shows balance due as note.
-- `AddHarvestScreen`: Form to record crop yields. Includes project picker with crop auto-fill from project.
+- `AddHarvestScreen`: Form to record crop yields. Includes project picker with crop auto-fill from project. Now includes fields for **Rejected Quantity** and **Reason** for tracking waste or damaged produce.
 - `AddSaleScreen`: Form to record revenue with multi-installment payment tracking.
   - **Vendor picker**: Select from payees list with free-text fallback.
+  - **Linked Harvests**: Multi-select modal to link specific harvest records to the sale.
   - **Receipt upload**: Camera/Album image upload.
   - **Payment installments**: Add multiple partial payments via modal (amount + date + note).
   - **Status**: Auto-computed (`pending` / `partial` / `paid`) from collected vs total.

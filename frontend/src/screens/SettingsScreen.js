@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   toggleTextActive: { color: stitchTheme.colors.text },
   listCardStack: { gap: stitchTheme.spacing.sm },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...stitchShadows.card },
-  detailIconWrap: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  detailIconWrap: { width: 36, height: 36, borderRadius: stitchTheme.radius.sm, alignItems: 'center', justifyContent: 'center' },
   detailBody: { flex: 1 },
   detailTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, fontFamily: stitchTheme.fonts.heading },
   detailSubtitle: { marginTop: 2, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown },

@@ -1,14 +1,16 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, text, children } from '@nozbe/watermelondb/decorators';
+import { field, text, children, immutableRelation } from '@nozbe/watermelondb/decorators';
 
 export default class Sale extends Model {
   static table = 'sales';
 
   static associations = {
     sale_payments: { type: 'has_many', foreignKey: 'sale_id' },
+    sale_harvests: { type: 'has_many', foreignKey: 'sale_id' },
   };
 
   @text('project_id') projectId;
+  @text('block_id') blockId;
   @field('date') date;
   @text('customer') customer;
   @field('weight_sold') weightSold;
@@ -23,4 +25,6 @@ export default class Sale extends Model {
   @field('updated_at') updatedAt;
 
   @children('sale_payments') salePayments;
+  @children('sale_harvests') saleHarvests;
+  @immutableRelation('project_blocks', 'block_id') block;
 }

@@ -1,5 +1,7 @@
 const { Router } = require('express');
 const { authenticate } = require('../middleware/auth.middleware');
+const { validateRequest } = require('../middleware/validate.middleware');
+const { createHarvestSchema, updateHarvestSchema } = require('../validators/harvest.validator');
 const {
   createHarvest,
   listHarvests,
@@ -11,9 +13,9 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post  ('/',            createHarvest);   // POST   /harvests
-router.get   ('/:projectId',  listHarvests);    // GET    /harvests/:projectId
-router.put   ('/:id',         updateHarvest);   // PUT    /harvests/:id
-router.delete('/:id',         deleteHarvest);   // DELETE /harvests/:id
+router.post('/', validateRequest(createHarvestSchema), createHarvest);
+router.get('/:projectId', listHarvests);
+router.put('/:id', validateRequest(updateHarvestSchema), updateHarvest);
+router.delete('/:id', deleteHarvest);
 
 module.exports = router;

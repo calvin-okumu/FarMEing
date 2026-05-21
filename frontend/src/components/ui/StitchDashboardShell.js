@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { Animated, ActivityIndicator, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, ActivityIndicator, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +43,7 @@ export default function StitchDashboardShell({
   stickyHeader,
   statusBarStyle = 'light-content',
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
+  keyboardOffset = 0,
 }) {
   const syncStatus = useSyncStore((s) => s.status);
   const [isOffline, setIsOffline] = useState(false);
@@ -126,9 +127,15 @@ export default function StitchDashboardShell({
 
       {stickyHeader ? <View style={styles.stickyWrap}>{stickyHeader}</View> : null}
 
-      <ScrollView style={[styles.body, bodyStyle]} contentContainerStyle={mergedBodyContentStyle} showsVerticalScrollIndicator={false} refreshControl={refreshControl} keyboardShouldPersistTaps='handled'>
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+        style={styles.flex}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : keyboardOffset}
+      >
+        <ScrollView style={[styles.body, bodyStyle]} contentContainerStyle={mergedBodyContentStyle} showsVerticalScrollIndicator={false} refreshControl={refreshControl} keyboardShouldPersistTaps='handled'>
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -136,8 +143,9 @@ export default function StitchDashboardShell({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: stitchTheme.colors.forestDeep,
+    backgroundColor: stitchTheme.colors.background,
   },
+  flex: { flex: 1 },
   floatingBanner: {
     marginTop: Platform.OS === 'ios' ? 0 : 10,
   },

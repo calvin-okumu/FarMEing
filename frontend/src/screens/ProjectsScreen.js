@@ -16,10 +16,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { formatAppDate } from '../utils/date';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchBadge, StitchChip, StitchDatePicker, StitchInput, StitchSearchBar, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+
 
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -35,14 +36,18 @@ const isSynced = (r) => r._raw._status === 'synced';
 const DEFAULT_FORM = {
   name: '',
   crop: '',
+  cropVariety: '',
   landSize: '',
   landUnit: 'acres',
   startDate: new Date(),
   expectedYield: '',
   status: 'ACTIVE',
+  numberOfBlocks: '',
+  blockCount: '1',
 };
 
 export default function ProjectsScreen({ navigation, route }) {
+
   const { t } = useTranslation();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -52,6 +57,10 @@ export default function ProjectsScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [banner, setBanner] = useState(null);
+  const [blockSizes, setBlockSizes] = useState([]);
+  const [blockCrops, setBlockCrops] = useState([]);
+  const [blockVarieties, setBlockVarieties] = useState([]);
+  const [blockYields, setBlockYields] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const { control, handleSubmit, reset, setValue, watch } = useForm({
@@ -78,7 +87,7 @@ export default function ProjectsScreen({ navigation, route }) {
     const normalized = query.trim().toLowerCase();
     const searched = !normalized
       ? projects
-      : projects.filter((project) => [project.name, project.crop, project.status].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
+      : projects.filter((project) => [project.name, project.crop, project.cropVariety, project.status].filter(Boolean).some((value) => value.toLowerCase().includes(normalized)));
 
     if (activeFilter === 'local') return searched.filter((project) => !isSynced(project));
     if (activeFilter === 'active') return searched.filter((project) => (project.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
@@ -91,6 +100,10 @@ export default function ProjectsScreen({ navigation, route }) {
     setEditingProject(null);
     reset(DEFAULT_FORM);
     setShowDatePicker(false);
+    setBlockSizes([]);
+    setBlockCrops([]);
+    setBlockVarieties([]);
+    setBlockYields([]);
     setModalVisible(true);
   };
 
@@ -101,17 +114,39 @@ export default function ProjectsScreen({ navigation, route }) {
     }
   }, [route?.params?.openCreate]);
 
-  const openEdit = (project) => {
+  const openEdit = async (project) => {
     setEditingProject(project);
     reset({
       name: project.name || '',
       crop: project.crop || '',
+      cropVariety: project.cropVariety || '',
       landSize: String(project.landSize ?? ''),
       landUnit: project.landUnit || 'acres',
       startDate: project.startDate ? new Date(project.startDate) : new Date(),
       expectedYield: String(project.expectedYield ?? ''),
       status: project.status || 'ACTIVE',
+      blockCount: '',
     });
+    try {
+      const existingBlocks = await database.get('project_blocks').query(Q.where('project_id', project.id), Q.where('is_deleted', false)).fetch();
+      if (existingBlocks.length > 0) {
+        setValue('blockCount', String(existingBlocks.length));
+        setBlockSizes(existingBlocks.map(b => String(b.landSize || '')));
+        setBlockCrops(existingBlocks.map(b => b.crop || ''));
+        setBlockVarieties(existingBlocks.map(b => b.cropVariety || ''));
+        setBlockYields(existingBlocks.map(b => String(b.expectedYield || '')));
+      } else {
+        setBlockSizes([]);
+        setBlockCrops([]);
+        setBlockVarieties([]);
+        setBlockYields([]);
+      }
+    } catch {
+      setBlockSizes([]);
+      setBlockCrops([]);
+      setBlockVarieties([]);
+      setBlockYields([]);
+    }
     setShowDatePicker(false);
     setModalVisible(true);
   };
@@ -119,6 +154,10 @@ export default function ProjectsScreen({ navigation, route }) {
   const closeModal = () => {
     setShowDatePicker(false);
     setModalVisible(false);
+    setBlockSizes([]);
+    setBlockCrops([]);
+    setBlockVarieties([]);
+    setBlockYields([]);
   };
 
   const openStartDatePicker = () => {
@@ -136,18 +175,53 @@ export default function ProjectsScreen({ navigation, route }) {
           await updateLocalModel(record, (draft) => {
             draft.name = data.name.trim();
             draft.crop = data.crop.trim();
+            draft.cropVariety = data.cropVariety?.trim() || '';
             draft.landSize = parseFloat(data.landSize) || 0;
             draft.landUnit = data.landUnit || 'acres';
             draft.startDate = data.startDate.getTime();
             draft.expectedYield = parseFloat(data.expectedYield) || 0;
             draft.status = data.status || 'ACTIVE';
           });
+          const existingBlocks = await database.get('project_blocks').query(Q.where('project_id', editingProject.id), Q.where('is_deleted', false)).fetch();
+          const newCount = Math.min(Math.max(parseInt(data.blockCount) || 0, 0), 26);
+          const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+          const newNames = letters.slice(0, newCount).map(l => `Block ${l}`);
+          for (const b of existingBlocks) {
+            if (!newNames.includes(b.name)) {
+              await b.update((d) => { d.isDeleted = true; });
+            }
+          }
+          for (let i = 0; i < newCount; i++) {
+            const blockName = `Block ${letters[i]}`;
+            const existing = existingBlocks.find(b => b.name === blockName);
+            if (existing) {
+              await existing.update((d) => {
+                d.crop = blockCrops[i] || '';
+                d.cropVariety = blockVarieties[i] || '';
+                d.landSize = parseFloat(blockSizes[i]) || 0;
+                d.landUnit = data.landUnit || 'acres';
+                d.expectedYield = parseFloat(blockYields[i]) || 0;
+              });
+            } else {
+              await database.get('project_blocks').create((d) => {
+                initializeLocalRecord(d);
+                d.projectId = record.id;
+                d.name = `Block ${letters[i]}`;
+                d.crop = blockCrops[i] || '';
+                d.cropVariety = blockVarieties[i] || '';
+                d.landSize = parseFloat(blockSizes[i]) || 0;
+                d.landUnit = data.landUnit || 'acres';
+                d.expectedYield = parseFloat(blockYields[i]) || 0;
+              });
+            }
+          }
         } else {
-          await database.get('farm_projects').create((record) => {
+          const record = await database.get('farm_projects').create((record) => {
             initializeLocalRecord(record);
             record.userId = '';
             record.name = data.name.trim();
             record.crop = data.crop.trim();
+            record.cropVariety = data.cropVariety?.trim() || '';
             record.landSize = parseFloat(data.landSize) || 0;
             record.landUnit = data.landUnit || 'acres';
             record.startDate = data.startDate.getTime();
@@ -156,6 +230,20 @@ export default function ProjectsScreen({ navigation, route }) {
             record.notes = '';
             record.isDeleted = false;
           });
+          const blockCount = Math.min(Math.max(parseInt(data.blockCount) || 0, 0), 26);
+          const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+          for (let i = 0; i < blockCount; i++) {
+            await database.get('project_blocks').create((draft) => {
+              initializeLocalRecord(draft);
+              draft.projectId = record.id;
+              draft.name = `Block ${letters[i]}`;
+              draft.crop = blockCrops[i] || '';
+              draft.cropVariety = blockVarieties[i] || '';
+              draft.landSize = parseFloat(blockSizes[i]) || 0;
+              draft.landUnit = data.landUnit || 'acres';
+              draft.expectedYield = parseFloat(blockYields[i]) || 0;
+            });
+          }
         }
       });
 
@@ -258,32 +346,6 @@ export default function ProjectsScreen({ navigation, route }) {
           <StitchChip label='Local only' active={activeFilter === 'local'} onPress={() => setActiveFilter('local')} icon='phone-portrait-outline' />
         </View>
 
-        <StitchSurface style={styles.snapshotCard} contentStyle={styles.snapshotContent} tone='raised' compact>
-          <View style={styles.snapshotHeader}>
-            <View>
-              <Text style={styles.snapshotEyebrow}>Portfolio Snapshot</Text>
-              <Text style={styles.snapshotTitle}>See what needs attention before you dive into a project.</Text>
-            </View>
-            <View style={styles.snapshotOrb}>
-              <Ionicons name='layers-outline' size={18} color={stitchTheme.colors.primaryContainer} />
-            </View>
-          </View>
-          <View style={styles.snapshotMetricsRow}>
-            <View style={styles.snapshotMetric}>
-              <Text style={styles.snapshotMetricValue}>{String(activeProjects)}</Text>
-              <Text style={styles.snapshotMetricLabel}>Active now</Text>
-            </View>
-            <View style={styles.snapshotMetric}>
-              <Text style={styles.snapshotMetricValue}>{String(syncedProjects)}</Text>
-              <Text style={styles.snapshotMetricLabel}>Synced</Text>
-            </View>
-            <View style={styles.snapshotMetric}>
-              <Text style={styles.snapshotMetricValue}>{String(localProjects)}</Text>
-              <Text style={styles.snapshotMetricLabel}>Need sync</Text>
-            </View>
-          </View>
-        </StitchSurface>
-
         <StitchDashboardSectionHeader title={t('projects.directory_title', { defaultValue: t('projects.portfolio_title') })} subtitle='Browse and open project workspaces' actionLabel={String(filteredProjects.length)} />
         {filteredProjects.length ? filteredProjects.map((item, index) => {
           const accentStyle = index % 2 === 0 ? styles.cardAccentSage : styles.cardAccentAmber;
@@ -363,38 +425,93 @@ export default function ProjectsScreen({ navigation, route }) {
             ))}
           </View>
 
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
-            </View>
-            <View style={styles.half}>
-              <StitchInput
-                label={t('projects.fields.start_date')}
-                value={formatAppDate(watch('startDate'))}
-                onPress={openStartDatePicker}
-                icon='calendar-outline'
-                style={styles.formField}
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' style={styles.formField} />
-            </View>
-            <View style={styles.half}>
-              <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} style={styles.formField} />
-            </View>
-          </View>
-
           <StitchInput
-            label={t('projects.fields.expected_yield')}
-            value={watch('expectedYield')}
-            onChangeText={(val) => setValue('expectedYield', val)}
-            placeholder={t('projects.placeholders.expected_yield')}
-            keyboardType='decimal-pad'
+            label='Number of Blocks'
+            value={watch('blockCount')}
+            onChangeText={(val) => {
+              setValue('blockCount', val);
+              const count = Math.min(Math.max(parseInt(val) || 0, 0), 26);
+              setBlockSizes(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
+              setBlockCrops(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
+              setBlockYields(prev => { const arr = new Array(count).fill(''); arr.forEach((_, i) => arr[i] = prev[i] || ''); return arr; });
+            }}
+            placeholder='0'
+            keyboardType='number-pad'
             style={styles.formField}
           />
+
+          {parseInt(watch('blockCount')) > 0 ? (
+            <View style={{ gap: 12 }}>
+              {Array.from({ length: Math.min(Math.max(parseInt(watch('blockCount')) || 0, 0), 26) }).map((_, i) => {
+                const letter = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i];
+                return (
+                  <View key={i} style={styles.blockCard}>
+                    <Text style={styles.blockCardTitle}>Block {letter}</Text>
+                    <StitchInput label={t('projects.fields.crop')} value={blockCrops[i] || ''} onChangeText={(v) => { const u = [...blockCrops]; u[i] = v; setBlockCrops(u); }} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
+                    <StitchInput label={t('projects.fields.crop_variety')} value={blockVarieties[i] || ''} onChangeText={(v) => { const u = [...blockVarieties]; u[i] = v; setBlockVarieties(u); }} placeholder={t('projects.placeholders.crop_variety')} style={styles.formField} />
+                    <View style={styles.row}>
+                      <View style={styles.half}>
+                        <StitchInput label='Land Size' value={blockSizes[i] || ''} onChangeText={(v) => { const u = [...blockSizes]; u[i] = v; setBlockSizes(u); }} placeholder='0' keyboardType='decimal-pad' style={styles.formField} />
+                      </View>
+                      <View style={styles.half}>
+                        <StitchInput label='Unit' value={watch('landUnit')} onChangeText={(v) => setValue('landUnit', v)} placeholder='acres' style={styles.formField} />
+                      </View>
+                    </View>
+                    <StitchInput label='Expected Yield' value={blockYields[i] || ''} onChangeText={(v) => { const u = [...blockYields]; u[i] = v; setBlockYields(u); }} placeholder='0' keyboardType='decimal-pad' style={styles.formField} />
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <StitchInput label={t('projects.fields.crop')} value={watch('crop')} onChangeText={(val) => setValue('crop', val)} placeholder={t('projects.placeholders.crop')} style={styles.formField} />
+                  <StitchInput label={t('projects.fields.crop_variety')} value={watch('cropVariety')} onChangeText={(val) => setValue('cropVariety', val)} placeholder={t('projects.placeholders.crop_variety')} style={styles.formField} />
+                </View>
+                <View style={styles.half}>
+                  <StitchInput label={t('projects.fields.land_size')} value={watch('landSize')} onChangeText={(val) => setValue('landSize', val)} placeholder={t('common.zero')} keyboardType='decimal-pad' style={styles.formField} />
+                </View>
+              </View>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <StitchInput label={t('projects.fields.unit')} value={watch('landUnit')} onChangeText={(val) => setValue('landUnit', val)} placeholder={t('projects.placeholders.unit')} style={styles.formField} />
+                </View>
+                <View style={styles.half}>
+                  <StitchInput
+                    label={t('projects.fields.start_date')}
+                    value={formatAppDate(watch('startDate'))}
+                    onPress={openStartDatePicker}
+                    icon='calendar-outline'
+                    style={styles.formField}
+                  />
+                </View>
+              </View>
+              <StitchInput
+                label={t('projects.fields.expected_yield')}
+                value={watch('expectedYield')}
+                onChangeText={(val) => setValue('expectedYield', val)}
+                placeholder={t('projects.placeholders.expected_yield')}
+                keyboardType='decimal-pad'
+                style={styles.formField}
+              />
+            </>
+          )}
+
+          {!parseInt(watch('blockCount')) ? null : (
+            <View style={styles.row}>
+              <View style={styles.half}>
+                <StitchInput
+                  label={t('projects.fields.start_date')}
+                  value={formatAppDate(watch('startDate'))}
+                  onPress={openStartDatePicker}
+                  icon='calendar-outline'
+                  style={styles.formField}
+                />
+              </View>
+              <View style={styles.half} />
+            </View>
+          )}
 
           {showDatePicker ? (
             <Controller
@@ -423,60 +540,53 @@ export default function ProjectsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
-  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
+  list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + stitchTheme.spacing.xl },
   hero: { paddingBottom: 0 },
-  heroStatsRow: { flexDirection: 'row', gap: 7, marginTop: 4 },
+  heroStatsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xxs + 1, marginTop: stitchTheme.spacing.xxs },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
-  snapshotCard: { marginBottom: stitchTheme.spacing.xs },
-  snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
-  snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  snapshotEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
-  snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
-  snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
-  snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
-  snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  snapshotMetricValue: { fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.4 },
-  snapshotMetricLabel: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 },
-  card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
-  cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  card: { ...stitchStyles.collectionCard, paddingHorizontal: 0, paddingLeft: 0 },
+  cardAccent: { ...stitchStyles.cardAccent },
   cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },
   cardAccentAmber: { backgroundColor: stitchTheme.colors.accentBrown },
-  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8 },
-  cardIconWrap: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs + 2, paddingLeft: 18, paddingRight: 14 },
+  cardIconWrap: { width: 42, height: 42, borderRadius: stitchTheme.radius.sm, alignItems: 'center', justifyContent: 'center' },
   cardAvatarForest: { backgroundColor: 'rgba(26,61,43,0.12)' },
   cardAvatarWarm: { backgroundColor: 'rgba(201,125,46,0.14)' },
   cardTitleWrap: { flex: 1, minWidth: 0 },
-  statusBadge: { marginLeft: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
-  statusBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, letterSpacing: 0.8 },
-  cardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, letterSpacing: -0.3 },
-  cardCrop: { marginTop: 2, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.line, marginVertical: 12, marginHorizontal: 4 },
-  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, paddingLeft: 8, marginBottom: 12 },
+  statusBadge: { borderRadius: stitchTheme.radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
+  statusBadgeText: { ...stitchTheme.typography.caption, letterSpacing: 0.8 },
+  cardTitle: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  cardCrop: { marginTop: stitchTheme.spacing.xxs / 3, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
+  cardDivider: { height: 1, backgroundColor: stitchTheme.colors.line, marginVertical: stitchTheme.spacing.sm, marginHorizontal: 18 },
+  cardInsightRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs, paddingLeft: 18, paddingRight: 14, marginBottom: stitchTheme.spacing.sm },
   cardInsightPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
-  cardInsightText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
+  cardInsightText: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textSoft },
   cardSyncPill: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.successSurface },
   cardSyncPillWarning: { backgroundColor: stitchTheme.colors.warningSurface },
   cardSyncDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: stitchTheme.colors.primaryDim },
   cardSyncDotWarning: { backgroundColor: stitchTheme.colors.accentBrown },
-  cardSyncText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
+  cardSyncText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.primaryContainer, letterSpacing: 0.4 },
   cardSyncTextWarning: { color: stitchTheme.colors.accentBrown },
-  cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingLeft: 8, gap: stitchTheme.spacing.sm },
+  cardMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingLeft: 18, paddingRight: 14, gap: stitchTheme.spacing.sm },
   metaStack: { flex: 1 },
-  metaLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  metaValue: { marginTop: 3, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
-  cardActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  metaLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  metaValue: { marginTop: 3, ...stitchTheme.typography.cardDescription, fontWeight: '800', color: stitchTheme.colors.text },
+  cardActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs, alignItems: 'center' },
   cardActionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
   cardActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
-  cardActionText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '700' },
-  cardDeleteText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
+  cardActionText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.primaryContainer },
+  cardDeleteText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentRed },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
-  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: 8 },
-  formContent: { gap: 16 },
+  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
+  formContent: { gap: stitchTheme.spacing.md },
   formField: { marginBottom: 0 },
+  blockCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border, ...stitchShadows.card },
+  blockCardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
   formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
   saveButton: { marginTop: stitchTheme.spacing.lg, marginBottom: stitchTheme.spacing.md },
 });
+

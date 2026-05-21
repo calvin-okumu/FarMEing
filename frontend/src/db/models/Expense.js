@@ -6,9 +6,11 @@ export default class Expense extends Model {
 
   static associations = {
     payees: { type: 'belongs_to', key: 'payee_id' },
+    project_blocks: { type: 'belongs_to', key: 'block_id' },
   };
 
   @text('project_id')  projectId;
+  @text('block_id')    blockId;
   @text('category')    category;
   @text('expense_type') expenseType;
   @field('amount')     amount;
@@ -24,4 +26,6 @@ export default class Expense extends Model {
   @field('updated_at') updatedAt;
 
   @immutableRelation('payees', 'payee_id') payeeRecord;
+  @immutableRelation('project_blocks', 'block_id') block;
 }
+

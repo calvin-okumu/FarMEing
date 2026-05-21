@@ -1,5 +1,7 @@
 const { Router } = require('express');
 const { authenticate } = require('../middleware/auth.middleware');
+const { validateRequest } = require('../middleware/validate.middleware');
+const { createBudgetItemSchema, updateBudgetItemSchema } = require('../validators/budget.validator');
 const {
   createBudgetItem,
   listBudgetItems,
@@ -11,9 +13,9 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post  ('/',               createBudgetItem);   // POST   /budget
-router.get   ('/:projectId',     listBudgetItems);    // GET    /budget/:projectId
-router.put   ('/:id',            updateBudgetItem);   // PUT    /budget/:id
-router.delete('/:id',            deleteBudgetItem);   // DELETE /budget/:id
+router.post('/', validateRequest(createBudgetItemSchema), createBudgetItem);
+router.get('/:projectId', listBudgetItems);
+router.put('/:id', validateRequest(updateBudgetItemSchema), updateBudgetItem);
+router.delete('/:id', deleteBudgetItem);
 
 module.exports = router;

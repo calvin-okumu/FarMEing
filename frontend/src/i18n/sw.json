@@ -8,6 +8,8 @@
     "error": "Hitilafu",
     "success": "Imefanikiwa",
     "back": "Rudi",
+    "add": "Ongeza",
+    "invite": "Alika",
     "date": "Tarehe",
     "notes": "Maelezo",
     "recurring": "Je, inajirudia?",
@@ -30,7 +32,8 @@
       "other": "Nyingine"
     },
     "today": "Leo",
-    "earlier": "Awali"
+    "earlier": "Awali",
+    "select_block": "Chagua Kitalu"
   },
   "months": {
     "january": "Januari",
@@ -63,6 +66,7 @@
     "access_revoked": "Ufikiaji umeondolewa.",
     "revoke_access": "Ondoa Ufikiaji",
     "no_members": "Hakuna wanachama wengine wenye ufikiaji bado.",
+    "sync_required": "Mradi lazima usawazishwe na seva kabla ya kualika wanachama wa timu.",
     "role": "Jukumu Liliopewa"
   },
   "export": {
@@ -227,12 +231,16 @@
       "harvest": "Mavuno",
       "sales": "Mauzo",
       "inventory": "Inventory",
+      "equipment": "Vifaa",
       "team": "Timu",
-      "timeline": "Ratiba"
+      "timeline": "Ratiba",
+      "block": "Kitalu cha Mradi"
     },
+
     "fields": {
       "name": "Jina la Mradi",
       "crop": "Zao",
+      "crop_variety": "Aina ya Zao",
       "land_size": "Ukubwa wa Ardhi",
       "unit": "Kipimo",
       "expected_yield": "Mazao Yanayotarajiwa (kg)",
@@ -242,6 +250,7 @@
     "placeholders": {
       "name": "mf. Shamba la Kaskazini",
       "crop": "mf. Ngano, Mahindi",
+      "crop_variety": "mf. Pioneer 30G19",
       "unit": "ekari",
       "expected_yield": "mf. 5000"
     },
@@ -475,11 +484,15 @@
     "fields": {
       "crop": "Jina la Zao",
       "weight": "Uzito",
+      "rejected_weight": "Kiasi Kilichokataliwa",
+      "rejected_reason": "Sababu ya Kukataliwa",
       "unit": "Kipimo",
       "quality": "Ubora"
     },
     "placeholders": {
       "crop": "mf. Nyanya",
+      "rejected_weight": "0.00",
+      "rejected_reason": "mf. Uharibifu wa wadudu",
       "notes": "Maelezo ya hiari..."
     },
     "record": "Rekodi Mavuno",
@@ -518,12 +531,13 @@
     "quantity_heading": "Quantity Sold (kg) / Kiasi kilichouzwa (kg)",
     "price_heading": "Price per kg / Bei kwa kg",
     "buyer_heading": "Buyer Name / Jina la Mnunuzi",
+    "linked_harvests": "Mavuno Yaliyounganishwa",
     "date_label": "Date of Sale",
     "crop_category": "Crop Category",
     "complete": "Complete Sale / Maliza Mauzo",
     "footer_note": "By completing, this transaction will be recorded in your digital ledger.",
     "fields": {
-      "customer": "Mteja (Si lazima)",
+      "customer": "Jina la Mteja",
       "weight_sold": "Uzito Uliouzwa (kg)",
       "unit_price": "Bei kwa Kipimo"
     },
@@ -545,6 +559,8 @@
     "errors": {
       "weight_required": "Uzito sahihi unahitajika",
       "unit_price_required": "Bei sahihi kwa kipimo inahitajika",
+      "customer_required": "Jina la mteja linahitajika",
+      "crop_required": "Jina la zao linahitajika",
       "save_local": "Imeshindikana kuhifadhi mauzo"
     }
   },
@@ -568,6 +584,42 @@
       "unit": "Kipimo",
       "unit_cost": "Gharama kwa Kipimo",
       "used_qty": "Kiasi kilichotumika"
+    }
+  },
+  "equipment": {
+    "title": "Vifaa",
+    "manage_subtitle": "Fuatilia mashine, zana, na matengenezo",
+    "search_placeholder": "Tafuta vifaa, namba za siri, au aina",
+    "empty_title": "Hakuna Vifaa Bado",
+    "empty_subtitle": "Ongeza matrekta, pampu, na zana ili kufuatilia matengenezo na hali yake.",
+    "create_title": "Ongeza Vifaa",
+    "edit_title": "Hariri Vifaa",
+    "delete_title": "Futa Vifaa",
+    "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "fields": {
+      "name": "Jina la Vifaa",
+      "type": "Aina",
+      "model": "Modeli",
+      "serial_number": "Namba ya Siri",
+      "purchase_date": "Tarehe ya Kununua",
+      "purchase_price": "Bei ya Kununua",
+      "status": "Hali",
+      "notes": "Maelezo ya Matengenezo"
+    },
+    "statuses": {
+      "OPERATIONAL": "Inafanya Kazi",
+      "MAINTENANCE": "Matengenezo",
+      "BROKEN": "Imeharibika",
+      "DISPOSED": "Imeondolewa"
+    },
+    "types": {
+      "tractor": "Trekta",
+      "pump": "Pampu ya Maji",
+      "sprayer": "Kinyunyizio",
+      "vehicle": "Chombo cha Usafiri",
+      "tool": "Zana ya Mkono",
+      "generator": "Jenereta",
+      "other": "Nyingine"
     }
   },
   "payments": {

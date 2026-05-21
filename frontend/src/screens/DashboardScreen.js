@@ -1,21 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
+import { syncAll } from '../services/syncService';
+import api from '../lib/api';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import useSettingsStore from '../store/useSettingsStore';
+import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 
 const colors = stitchTheme.colors;
 const spacing = stitchTheme.spacing;
 const radius = stitchTheme.radius;
 const type = stitchTheme.typography;
+
 
 const RESOURCE_GROUPS = [
     { key: 'financial', label: 'Financial', cards: [
@@ -29,6 +33,7 @@ const RESOURCE_GROUPS = [
     ]},
     { key: 'admin', label: 'Admin', cards: [
         { id: 'inventory', titleKey: 'projects.tabs.inventory', icon: 'cube-outline', color: colors.primaryDim },
+        { id: 'equipment', titleKey: 'equipment.title', icon: 'construct-outline', color: colors.primary },
         { id: 'payees', titleKey: 'payees.title', icon: 'business-outline', color: colors.accentPeach },
     ]},
 ];
@@ -99,10 +104,32 @@ export default function DashboardScreen({ navigation }) {
     const [sales, setSales] = useState([]);
     const [budgetItems, setBudgetItems] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
+    const [equipment, setEquipment] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('all');
+    const [pendingResource, setPendingResource] = useState(null);
     const [projectPickerVisible, setProjectPickerVisible] = useState(false);
+    const [joinModalVisible, setJoinModalVisible] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+    const [joining, setJoining] = useState(false);
     const [projectSearch, setProjectSearch] = useState('');
     const [showAllResources, setShowAllResources] = useState(false);
+
+    const handleJoinProject = async () => {
+        if (!inviteCode.trim()) return;
+        setJoining(true);
+        try {
+            const { data } = await api.post('/invitations/join', { inviteCode: inviteCode.trim().toUpperCase() });
+            setJoinModalVisible(false);
+            setInviteCode('');
+            // Trigger sync to fetch the new project
+            syncAll().catch(() => {});
+            Alert.alert(t('common.success'), data.message || 'Joined project successfully!');
+        } catch (err) {
+            Alert.alert(t('common.error'), err.response?.data?.error || 'Invalid or expired code');
+        } finally {
+            setJoining(false);
+        }
+    };
 
     useEffect(() => {
         Animated.timing(headerAnim, {
@@ -120,6 +147,7 @@ export default function DashboardScreen({ navigation }) {
         const saleQuery = database.get('sales').query(Q.where('is_deleted', false));
         const budgetQuery = database.get('budget_items').query(Q.where('is_deleted', false));
         const inventoryQuery = database.get('inventory_items').query(Q.where('is_deleted', false));
+        const equipmentQuery = database.get('equipments').query(Q.where('is_deleted', false));
 
         const subs = [
             projectQuery.observe().subscribe((rows) => {
@@ -135,6 +163,7 @@ export default function DashboardScreen({ navigation }) {
             saleQuery.observe().subscribe(setSales),
             budgetQuery.observe().subscribe(setBudgetItems),
             inventoryQuery.observe().subscribe(setInventoryItems),
+            equipmentQuery.observe().subscribe(setEquipment),
         ];
 
         return () => subs.forEach((sub) => sub.unsubscribe());
@@ -165,6 +194,7 @@ export default function DashboardScreen({ navigation }) {
     const filteredHarvests = useMemo(() => harvests.filter(matchesProject), [harvests, filterIds]);
     const filteredSales = useMemo(() => sales.filter(matchesProject), [sales, filterIds]);
     const filteredInventoryItems = useMemo(() => inventoryItems.filter(matchesProject), [inventoryItems, filterIds]);
+    const filteredEquipment = useMemo(() => equipment.filter(matchesProject), [equipment, filterIds]);
 
     const summary = useMemo(
         () => computeProjectSummary({
@@ -174,8 +204,9 @@ export default function DashboardScreen({ navigation }) {
             harvests: filteredHarvests,
             sales: filteredSales,
             inventoryItems: filteredInventoryItems,
+            equipment: filteredEquipment,
         }),
-        [filteredBudgetItems, filteredExpenses, filteredWorkEntries, filteredHarvests, filteredSales, filteredInventoryItems]
+        [filteredBudgetItems, filteredExpenses, filteredWorkEntries, filteredHarvests, filteredSales, filteredInventoryItems, filteredEquipment]
     );
 
     const pendingLabor = filteredWorkEntries.filter((entry) => entry.status !== 'APPROVED');
@@ -189,15 +220,29 @@ export default function DashboardScreen({ navigation }) {
     const moreCards = allResourceCards.slice(3);
 
     const handleResourceOpen = (resourceId) => {
-        if (!selectedProject) {
+        const project = projects.find(p => p.id === selectedProjectId);
+        if (!project) {
+            setPendingResource(resourceId);
             setProjectPickerVisible(true);
             return;
         }
 
+        navigateToResource(resourceId, project);
+    };
+
+    const navigateToResource = (resourceId, project) => {
         if (resourceId === 'inventory') {
             navigation.navigate('Projects', {
                 screen: 'Inventory',
-                params: { projectId: selectedProject.id, projectName: selectedProject.name },
+                params: { projectId: project.id, projectName: project.name },
+            });
+            return;
+        }
+
+        if (resourceId === 'equipment') {
+            navigation.navigate('Projects', {
+                screen: 'ProjectDetail',
+                params: { projectId: project.id, initialTab: 'equipment' },
             });
             return;
         }
@@ -207,10 +252,26 @@ export default function DashboardScreen({ navigation }) {
             return;
         }
 
-        navigation.navigate('Projects', {
-            screen: 'ProjectDetail',
-            params: { projectId: selectedProject.id, initialTab: resourceId },
-        });
+        // Direct entry screens for operational resources
+        const entryScreens = {
+            harvest: 'AddHarvest',
+            sales: 'AddSale',
+            labor: 'AddWorkEntry',
+            budget: 'AddBudgetItem',
+            expenses: 'AddExpense',
+        };
+
+        if (entryScreens[resourceId]) {
+            navigation.navigate(entryScreens[resourceId], {
+                projectId: project.id,
+                fromDashboard: true,
+            });
+        } else {
+            navigation.navigate('Projects', {
+                screen: 'ProjectDetail',
+                params: { projectId: project.id, initialTab: resourceId },
+            });
+        }
     };
 
     const budgetUsagePct = summary.totalBudget > 0 ? ((summary.totalCost / summary.totalBudget) * 100).toFixed(1) : '0.0';
@@ -230,28 +291,16 @@ export default function DashboardScreen({ navigation }) {
                     },
                     children: (
                         <View style={styles.heroPills}>
-                            <StitchHeroPill label={t('dashboard.scope')} value={selectedLabel} icon='albums-outline' style={styles.heroPillPrimary} />
+                            <StitchHeroPill label={t('dashboard.scope')} value={selectedLabel} icon='layers-outline' style={styles.heroPillPrimary} />
                             <StitchHeroPill label={t('dashboard.total_spent')} value={summary.totalCost} currency={currency} icon='wallet-outline' style={styles.heroPillSecondary} />
+                            <TouchableOpacity onPress={() => setJoinModalVisible(true)} activeOpacity={0.8}>
+                                <StitchHeroPill label={t('team.join', { defaultValue: 'Join' })} value={t('team.project', { defaultValue: 'Project' })} icon='add-circle-outline' style={styles.heroPillSecondary} />
+                            </TouchableOpacity>
                         </View>
                     ),
                 }}
+                bodyContentStyle={styles.list}
             >
-                {/* Scope Bar */}
-                <StitchSurface style={styles.scopeBar} contentStyle={styles.scopeBarContent} tone='raised' compact>
-                    <Text style={styles.scopeBarLabel}>{t('dashboard.scope')}</Text>
-                    <Text style={styles.scopeBarValue} numberOfLines={1}>{selectedLabel}</Text>
-                    <Text style={styles.scopeBarMeta}>{selectorMeta}</Text>
-                    <View style={styles.scopeBarChips}>
-                        <StitchChip label={t('dashboard.all_projects')} active={selectedProjectId === 'all'} onPress={() => setSelectedProjectId('all')} />
-                        {activeProjects.slice(0, 2).map((project) => (
-                            <StitchChip key={project.id} label={project.name} active={selectedProjectId === project.id} onPress={() => setSelectedProjectId(project.id)} />
-                        ))}
-                        {activeProjects.length > 2 ? (
-                            <StitchChip label={`+${activeProjects.length - 2}`} onPress={() => setProjectPickerVisible(true)} />
-                        ) : null}
-                    </View>
-                </StitchSurface>
-
                 {/* Financial Pulse */}
                 <StitchSurface style={styles.pulseCard} contentStyle={styles.pulseContent} tone='raised' compact>
                     <View style={styles.pulseTopRow}>
@@ -312,6 +361,49 @@ export default function DashboardScreen({ navigation }) {
                         ))}
                     </View>
                 ) : null}
+
+                <Modal visible={joinModalVisible} animationType="slide" transparent>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalSheet}>
+                            <View style={styles.modalHandle} />
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>{t('team.join_project', { defaultValue: 'Join Project' })}</Text>
+                                <TouchableOpacity onPress={() => setJoinModalVisible(false)}>
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={{ padding: spacing.md }}>
+                                <Text style={styles.projectOptionMeta}>{t('team.invite_code_hint', { defaultValue: 'Enter the 8-character invitation code provided by the project owner.' })}</Text>
+                                <View style={styles.searchShell}>
+                                    <Ionicons name="key-outline" size={18} color={colors.textMuted} />
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        value={inviteCode}
+                                        onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                                        placeholder="E.g. A1B2C3D4"
+                                        placeholderTextColor={colors.textMuted}
+                                        autoCapitalize="characters"
+                                        maxLength={8}
+                                    />
+                                </View>
+                                <TouchableOpacity 
+                                    style={[styles.viewAllRow, { marginTop: spacing.md, backgroundColor: colors.primaryContainer }]} 
+                                    onPress={handleJoinProject}
+                                    disabled={joining || !inviteCode}
+                                >
+                                    {joining ? (
+                                        <ActivityIndicator color={colors.white} />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="enter-outline" size={20} color={colors.primarySoft} />
+                                            <Text style={[styles.viewAllText, { color: colors.white }]}>{t('team.join_now', { defaultValue: 'Join Project' })}</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </StitchDashboardShell>
 
             <Modal visible={projectPickerVisible} animationType='slide' transparent onRequestClose={() => setProjectPickerVisible(false)}>
@@ -345,6 +437,7 @@ export default function DashboardScreen({ navigation }) {
                                 onPress={() => {
                                     setSelectedProjectId('all');
                                     setProjectPickerVisible(false);
+                                    setPendingResource(null);
                                 }}
                                 activeOpacity={0.88}
                             >
@@ -362,6 +455,10 @@ export default function DashboardScreen({ navigation }) {
                                     onPress={() => {
                                         setSelectedProjectId(project.id);
                                         setProjectPickerVisible(false);
+                                        if (pendingResource) {
+                                            navigateToResource(pendingResource, project);
+                                            setPendingResource(null);
+                                        }
                                     }}
                                     activeOpacity={0.88}
                                 >
@@ -381,16 +478,10 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + spacing.xl },
     heroPills: { flexDirection: 'row', gap: spacing.xs, marginTop: 2 },
     heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.24)', borderWidth: 1, ...stitchShadows.soft },
     heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
-
-    scopeBar: { marginBottom: spacing.sm },
-    scopeBarContent: { backgroundColor: colors.surfaceHighlight, gap: spacing.xs },
-    scopeBarLabel: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, color: colors.textMuted, fontWeight: type.caption.fontWeight, textTransform: 'uppercase', letterSpacing: 0.8 },
-    scopeBarValue: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text },
-    scopeBarMeta: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, color: colors.textMuted },
-    scopeBarChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
 
     pulseCard: { marginBottom: spacing.sm },
     pulseContent: { backgroundColor: colors.surfaceHighlight, gap: spacing.md },
@@ -412,82 +503,71 @@ const styles = StyleSheet.create({
     metricBlock: {
         flex: 1,
         borderRadius: radius.md,
-        paddingVertical: spacing.sm + 2,
-        paddingHorizontal: spacing.sm + 2,
+        padding: 14,
         backgroundColor: colors.surfaceInset,
     },
     metricBlockReversed: { backgroundColor: `${colors.primary}10` },
     metricBlockTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
     metricBlockOrb: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-    metricBlockLabel: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, fontWeight: type.caption.fontWeight, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.7 },
-    metricBlockValue: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text, letterSpacing: -0.3 },
+    metricBlockLabel: { ...type.eyebrow, color: colors.textMuted },
+    metricBlockValue: { ...type.metricValue, color: colors.text, marginTop: 2 },
     metricBlockNote: { marginTop: 1, fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, color: colors.textMuted, fontWeight: type.caption.fontWeight },
 
   miniStat: {
     flex: 1,
     borderRadius: radius.md,
-    padding: spacing.sm + 2,
+    padding: 14,
     backgroundColor: colors.surfaceInset,
   },
   miniStatTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.xs, flexWrap: 'wrap' },
   miniStatOrb: { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  miniStatLabel: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, fontWeight: type.caption.fontWeight, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 },
-  miniStatValue: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text },
+  miniStatLabel: { ...type.eyebrow, color: colors.textMuted, flex: 1 },
+  miniStatValue: { ...type.metricValue, fontSize: 16, color: colors.text },
 
-    sectionSpacing: { marginTop: spacing.md },
+    sectionSpacing: { marginTop: spacing.lg, marginBottom: spacing.xs },
     resourcePinned: {
+        ...stitchStyles.collectionCard,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginBottom: spacing.sm,
-        backgroundColor: colors.surfaceHighlight,
-        borderRadius: radius.lg,
-        paddingVertical: spacing.sm + 2,
-        paddingHorizontal: spacing.sm + 2,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.55)',
-        ...stitchShadows.card,
+        paddingVertical: 14,
+        marginBottom: spacing.xs,
     },
     resourcePinnedOrb: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-    resourcePinnedTitle: { flex: 1, fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.text },
+    resourcePinnedTitle: { flex: 1, ...type.cardTitle, color: colors.text },
     viewAllRow: {
+        ...stitchStyles.collectionCard,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginBottom: spacing.sm,
-        paddingVertical: spacing.sm,
-        borderRadius: radius.lg,
-        backgroundColor: colors.surfaceHighlight,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.55)',
-        ...stitchShadows.card,
+        paddingVertical: 14,
+        marginTop: spacing.xxs,
+        backgroundColor: colors.surfaceInset,
+        borderWidth: 0,
+        ...stitchShadows.soft,
     },
-    viewAllText: { fontSize: type.cardTitle.fontSize, lineHeight: type.cardTitle.lineHeight, fontWeight: type.cardTitle.fontWeight, color: colors.accentBrown },
-    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    viewAllText: { ...type.cardTitle, fontSize: 15, color: colors.accentBrown },
+    resourceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
     resourceTile: {
-        backgroundColor: colors.surfaceHighlight,
-        width: '48.5%',
-        borderRadius: radius.lg,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.sm + 2,
+        ...stitchStyles.collectionCard,
+        width: '47.5%',
         alignItems: 'center',
         gap: spacing.sm,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
-        ...stitchShadows.card,
+        paddingVertical: spacing.md,
+        paddingLeft: 14,
+        marginBottom: spacing.xs,
     },
     resourceTileOrb: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    resourceTileTitle: { fontSize: type.caption.fontSize, lineHeight: type.caption.lineHeight, fontWeight: type.caption.fontWeight, color: colors.text, textAlign: 'center' },
+    resourceTileTitle: { ...type.cardMeta, color: colors.text, textAlign: 'center' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
-    modalSheet: { backgroundColor: colors.backgroundAccent, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '78%' },
-    modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: spacing.sm },
-    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-    modalTitle: { fontSize: type.title.fontSize, lineHeight: type.title.lineHeight, fontWeight: '800', color: colors.text },
-    modalSubtitle: { marginTop: 2, fontSize: type.caption.fontSize, lineHeight: 15, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: '700' },
-    searchShell: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radius.card, backgroundColor: colors.surfaceHighlight, borderWidth: 1, borderColor: colors.line, paddingHorizontal: spacing.md, minHeight: 52, marginBottom: spacing.sm },
-    searchInput: { flex: 1, fontSize: type.body.fontSize, lineHeight: type.body.lineHeight, color: colors.text },
+    modalSheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg, maxHeight: '85%' },
+    modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: spacing.sm, marginTop: 12 },
+    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm, paddingVertical: spacing.sm },
+    modalTitle: { ...type.cardTitle, color: colors.text },
+    searchShell: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surfaceInset, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 14, marginTop: spacing.md },
+    searchInput: { flex: 1, ...type.body, color: colors.text, padding: 0 },
     modalList: { gap: spacing.xs, paddingBottom: spacing.sm },
     projectOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceHighlight, borderRadius: radius.card, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, borderWidth: 1, borderColor: 'rgba(17,42,30,0.06)' },
     projectOptionActive: { backgroundColor: colors.mintLight, borderColor: 'rgba(17,42,30,0.1)' },

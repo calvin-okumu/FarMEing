@@ -3,7 +3,12 @@ import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 
 import schema      from './schema';
 import migrations from './migrations';
+import Season      from './models/Season';
+import ProjectBlock from './models/ProjectBlock';
 import FarmProject from './models/FarmProject';
+import Equipment   from './models/Equipment';
+
+
 import BudgetItem  from './models/BudgetItem';
 import Expense     from './models/Expense';
 import WorkEntry   from './models/WorkEntry';
@@ -15,6 +20,9 @@ import InventoryItem from './models/InventoryItem';
 import Payee        from './models/Payee';
 import EmployeeProjectAssignment from './models/EmployeeProjectAssignment';
 import SalePayment  from './models/SalePayment';
+import SaleHarvest  from './models/SaleHarvest';
+import ProjectAccess from './models/ProjectAccess';
+import ProjectInvitation from './models/ProjectInvitation';
 
 // SQLiteAdapter uses expo-sqlite under the hood on Expo Go
 const adapter = new SQLiteAdapter({
@@ -29,7 +37,26 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [FarmProject, BudgetItem, Expense, WorkEntry, Employee, Payment, Harvest, Sale, InventoryItem, Payee, EmployeeProjectAssignment, SalePayment],
+  modelClasses: [
+    Season,
+    ProjectBlock,
+    FarmProject,
+    Equipment,
+    BudgetItem,
+    Expense,
+    WorkEntry,
+    Employee,
+    Payment,
+    Harvest,
+    Sale,
+    InventoryItem,
+    Payee,
+    EmployeeProjectAssignment,
+    SalePayment,
+    SaleHarvest,
+    ProjectAccess,
+    ProjectInvitation,
+  ],
 });
 
 export async function resetLocalDatabase() {
@@ -39,7 +66,12 @@ export async function resetLocalDatabase() {
 }
 
 // Convenience collection getters
+export const seasonsCollection = database.get('seasons');
+export const blocksCollection    = database.get('project_blocks');
 export const projectsCollection  = database.get('farm_projects');
+export const equipmentCollection = database.get('equipments');
+
+
 export const budgetItemsCollection = database.get('budget_items');
 export const expensesCollection  = database.get('expenses');
 export const workEntriesCollection = database.get('work_entries');
@@ -47,6 +79,7 @@ export const employeesCollection = database.get('employees');
 export const paymentsCollection = database.get('payments');
 export const harvestsCollection = database.get('harvests');
 export const salesCollection = database.get('sales');
+export const saleHarvestsCollection = database.get('sale_harvests');
 export const inventoryCollection = database.get('inventory_items');
 export const payeesCollection = database.get('payees');
 export const assignmentsCollection = database.get('employee_project_assignments');

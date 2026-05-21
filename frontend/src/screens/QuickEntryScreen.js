@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -21,7 +20,7 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
-import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
+import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import StatusBanner from '../components/ui/StatusBanner';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
@@ -31,7 +30,6 @@ import {
   StitchChip,
   StitchDatePicker,
   StitchInput,
-  StitchMiniBars,
   StitchPrimaryButton,
   StitchSectionTitle,
   StitchSurface,
@@ -53,6 +51,8 @@ export default function QuickEntryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [selectedBlockId, setSelectedBlockId] = useState('');
   const [projectDropdownVisible, setProjectDropdownVisible] = useState(false);
   const [employeeName, setEmployeeName] = useState('');
   const [employeeDropdownVisible, setEmployeeDropdownVisible] = useState(false);
@@ -74,8 +74,6 @@ export default function QuickEntryScreen({ navigation }) {
   const employeeLabel = entryMode === 'crew' ? t('quick_entry.fields.crew_name') : t('quick_entry.fields.employee');
   const employeePlaceholder = entryMode === 'crew' ? t('quick_entry.placeholders.crew_name') : t('quick_entry.placeholders.employee');
   const helperText = entryMode === 'crew' ? t('quick_entry.crew_hint') : t('quick_entry.single_worker_hint');
-  const graphValues = useMemo(() => [parseFloat(workers) || 1, parseFloat(days) || 1, parseFloat(rate) || 1, total || 1], [workers, days, rate, total]);
-  const syncedProjectCount = useMemo(() => projects.filter((project) => isSynced(project)).length, [projects]);
   const crewModeActive = entryMode === 'crew';
 
   useEffect(() => {
@@ -124,6 +122,20 @@ export default function QuickEntryScreen({ navigation }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedProject) {
+      setBlocks([]);
+      setSelectedBlockId('');
+      return;
+    }
+    const sub = database.get('project_blocks')
+      .query(Q.where('project_id', selectedProject.id), Q.where('is_deleted', false))
+      .observe()
+      .subscribe(setBlocks);
+    setSelectedBlockId('');
+    return () => sub.unsubscribe();
+  }, [selectedProject]);
+
   const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) setDate(selectedDate);
@@ -164,6 +176,7 @@ export default function QuickEntryScreen({ navigation }) {
       await database.get('work_entries').create((record) => {
         initializeLocalRecord(record);
         record.projectId = selectedProject.id;
+        record.blockId = selectedBlockId || null;
         record.employeeId = employee.id;
         const effectiveActivity = activity === 'other' && otherActivity.trim() ? otherActivity.trim() : activity;
         record.activity = effectiveActivity.charAt(0).toUpperCase() + effectiveActivity.slice(1);
@@ -211,6 +224,7 @@ export default function QuickEntryScreen({ navigation }) {
       await saveLocally();
       setEmployeeName('');
       setSelectedEmployee(null);
+      setSelectedBlockId('');
       setEntryMode('individual');
       setActivity('planting');
       setOtherActivity('');
@@ -247,59 +261,28 @@ export default function QuickEntryScreen({ navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={'padding'}
-      style={styles.flex}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
-    >
-      <View style={styles.container}>
-        <StitchDashboardShell
-          hero={{
-            eyebrow: t('quick_entry.fields.activity'),
-            title: 'Quick Entry',
-            subtitle: selectedProject?.name || 'Log labor and save it directly to a project.',
-            actionIcon: 'arrow-back',
-            onActionPress: () => navigation.goBack(),
-            style: styles.hero,
-            children: (
-              <View style={styles.heroPills}>
-                <StitchHeroPill label={t('quick_entry.total')} value={total} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
-                <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' style={styles.heroPillSecondary} />
-                <StitchHeroPill label={t('quick_entry.fields.activity')} value={t(`common.activities.${activity}`)} icon='flash-outline' style={styles.heroPillTertiary} />
-              </View>
-            ),
-          }}
-          bodyContentStyle={styles.content}
-          banner={banner}
-          onDismissBanner={() => setBanner(null)}
-        >
-          <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
-
-          <StitchSurface style={styles.snapshotCard} contentStyle={styles.snapshotContent} tone='raised' compact>
-            <View style={styles.snapshotHeader}>
-              <View>
-                <Text style={styles.snapshotEyebrow}>Field Snapshot</Text>
-                <Text style={styles.snapshotTitle}>Build a labor record in seconds with project, worker mode, and payout preview in one place.</Text>
-              </View>
-              <View style={styles.snapshotOrb}>
-                <Ionicons name='flash-outline' size={18} color={stitchTheme.colors.primaryContainer} />
-              </View>
+    <View style={styles.container}>
+      <StitchDashboardShell
+        hero={{
+          eyebrow: t('quick_entry.fields.activity'),
+          title: 'Quick Entry',
+          subtitle: selectedProject?.name || 'Log labor and save it directly to a project.',
+          actionIcon: 'arrow-back',
+          onActionPress: () => navigation.goBack(),
+          style: styles.hero,
+          children: (
+            <View style={styles.heroPills}>
+              <StitchHeroPill label={t('quick_entry.total')} value={total} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('quick_entry.fields.workers')} value={`${workers} x ${days}`} icon='people-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={t('quick_entry.fields.activity')} value={t(`common.activities.${activity}`)} icon='flash-outline' style={styles.heroPillTertiary} />
             </View>
-            <View style={styles.snapshotMetricsRow}>
-              <View style={styles.snapshotMetric}>
-                <Text style={styles.snapshotMetricValue}>{String(projects.length)}</Text>
-                <Text style={styles.snapshotMetricLabel}>Projects</Text>
-              </View>
-              <View style={styles.snapshotMetric}>
-                <Text style={styles.snapshotMetricValue}>{String(syncedProjectCount)}</Text>
-                <Text style={styles.snapshotMetricLabel}>Synced</Text>
-              </View>
-              <View style={styles.snapshotMetric}>
-                <Text style={styles.snapshotMetricValue}>{crewModeActive ? workers : '1'}</Text>
-                <Text style={styles.snapshotMetricLabel}>{crewModeActive ? 'Crew size' : 'Single entry'}</Text>
-              </View>
-            </View>
-          </StitchSurface>
+          ),
+        }}
+        bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
+      >
+        <StitchDashboardSectionHeader title='Quick Entry' subtitle={helperText} actionLabel={selectedProject?.name || t('quick_entry.select_project')} />
 
           <StitchSurface style={styles.formSummaryCard} contentStyle={styles.formSummaryContent} tone='raised' compact>
             <View style={styles.summaryTopRow}>
@@ -321,7 +304,6 @@ export default function QuickEntryScreen({ navigation }) {
                 <Text style={styles.summaryPillText}>{t(`common.activities.${activity}`)}</Text>
               </View>
             </View>
-            <StitchMiniBars values={graphValues} activeIndex={3} softIndex={crewModeActive ? 0 : 1} style={styles.summaryGraph} />
             <View style={styles.summaryFooter}>
               <View>
                 <Text style={styles.summaryLabel}>Estimated payout</Text>
@@ -385,6 +367,18 @@ export default function QuickEntryScreen({ navigation }) {
                 )}
               </View>
             ) : null}
+
+            {selectedProject && blocks.length > 0 && (
+              <View style={{ marginTop: stitchTheme.spacing.xs }}>
+                <StitchSectionTitle>{t('projects.fields.block', { defaultValue: 'Select Block' })}</StitchSectionTitle>
+                <View style={styles.chipsRow}>
+                  <StitchChip label='Overall' active={!selectedBlockId} onPress={() => setSelectedBlockId('')} />
+                  {blocks.map(b => (
+                    <StitchChip key={b.id} label={b.name} active={selectedBlockId === b.id} onPress={() => setSelectedBlockId(b.id)} />
+                  ))}
+                </View>
+              </View>
+            )}
 
             <StitchSectionTitle>{employeeLabel} *</StitchSectionTitle>
             <TextInput
@@ -474,8 +468,7 @@ export default function QuickEntryScreen({ navigation }) {
             {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
           </View>
         </StitchDashboardShell>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -485,7 +478,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
   content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
   hero: { paddingBottom: 0 },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.xxs },
   heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
   heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
   heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
@@ -493,40 +486,37 @@ const styles = StyleSheet.create({
   snapshotCard: { marginBottom: stitchTheme.spacing.xs },
   snapshotContent: { gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight },
   snapshotHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  snapshotEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  snapshotEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.accentBrown },
   snapshotTitle: { marginTop: 4, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 20, color: stitchTheme.colors.textSoft, fontWeight: '700', maxWidth: '92%' },
   snapshotOrb: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.surfaceTint },
   snapshotMetricsRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
   snapshotMetric: { flex: 1, borderRadius: stitchTheme.radius.md, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  snapshotMetricValue: { fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.4 },
-  snapshotMetricLabel: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 },
-  formSummaryCard: { marginBottom: stitchTheme.spacing.xs },
+  snapshotMetricValue: { ...stitchTheme.typography.metricValue, fontSize: 22, lineHeight: 26, color: stitchTheme.colors.text },
+  snapshotMetricLabel: { marginTop: 3, ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  formSummaryCard: { ...stitchStyles.collectionCard, marginBottom: stitchTheme.spacing.xs },
   formSummaryContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, gap: stitchTheme.spacing.md },
   summaryTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: stitchTheme.spacing.sm },
-  summaryEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  summaryTitle: { marginTop: 4, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  summaryEyebrow: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  summaryTitle: { marginTop: 4, ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
   summaryModeBadge: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.successSurface },
   summaryModeBadgeWarm: { backgroundColor: stitchTheme.colors.warningSurface },
-  summaryModeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  summaryModeText: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.primaryContainer, letterSpacing: 0.6 },
   summaryModeTextWarm: { color: stitchTheme.colors.accentBrown },
   summaryMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
   summaryPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
-  summaryPillText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textSoft, fontWeight: '700' },
+  summaryPillText: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textSoft },
   summaryGraph: { height: 68, marginTop: 2 },
   summaryFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: stitchTheme.spacing.sm },
-  summaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.7 },
-  summaryValue: { marginTop: 4, fontSize: 24, lineHeight: 28, color: stitchTheme.colors.text, fontWeight: '900', letterSpacing: -0.5 },
+  summaryLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
+  summaryValue: { marginTop: 4, ...stitchTheme.typography.metricValue, fontSize: 24, lineHeight: 28, color: stitchTheme.colors.text },
   summaryRightBlock: { alignItems: 'flex-end' },
-  summaryValueSmall: { marginTop: 4, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+  summaryValueSmall: { marginTop: 4, ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.text },
   formCard: {
-    backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
+    ...stitchStyles.collectionCard,
     padding: stitchTheme.spacing.md,
     gap: stitchTheme.spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.55)',
-    ...stitchShadows.card,
   },
+
   inputShell: {
     minHeight: 50,
     borderRadius: stitchTheme.radius.md,

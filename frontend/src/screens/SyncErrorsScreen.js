@@ -103,13 +103,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: stitchTheme.spacing.xs,
   },
   typeTag: {
     backgroundColor: stitchTheme.colors.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: stitchTheme.radius.xs / 2,
   },
   typeTagText: {
     fontSize: 10,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: stitchTheme.colors.accentRed,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: stitchTheme.spacing.xs,
   },
   itemId: {
     fontSize: 11,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 80,
-    gap: 16,
+    gap: stitchTheme.spacing.md,
   },
   emptyText: {
     fontSize: 18,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     ...stitchShadows.float,
   },
   retryButtonText: {
-    color: '#fff',
+    color: stitchTheme.colors.white,
     fontSize: 18,
     fontWeight: '800',
   },

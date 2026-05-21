@@ -51,6 +51,8 @@ export const stitchTheme = {
     mintLight: '#d8f3e4',
     sand: '#e4d9c5',
     warmWhite: '#fdfaf4',
+    white: '#ffffff',
+    pureWhite: '#ffffff',
   },
   radius: {
     xs: 10,
@@ -78,7 +80,11 @@ export const stitchTheme = {
     display: { fontSize: 32, lineHeight: 38, fontWeight: '900' },
     title: { fontSize: 22, lineHeight: 27, fontWeight: '800' },
     section: { fontSize: 20, lineHeight: 25, fontWeight: '800' },
-    cardTitle: { fontSize: 16, lineHeight: 21, fontWeight: '800' },
+    cardTitle: { fontSize: 18, lineHeight: 23, fontWeight: '800' },
+    cardMeta: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
+    cardDescription: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
+    eyebrow: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+    metricValue: { fontSize: 18, fontWeight: '900', letterSpacing: -0.3 },
     body: { fontSize: 17, lineHeight: 25, fontWeight: '500' },
     bodySmall: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
     label: { fontSize: 12, lineHeight: 15, fontWeight: '800' },
@@ -109,3 +115,35 @@ export const stitchShadows = {
     elevation: 2,
   },
 };
+
+export const stitchStyles = {
+  collectionCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    padding: 14,
+    paddingLeft: 18,
+    marginBottom: stitchTheme.spacing.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...stitchShadows.card,
+  },
+  metricCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    flex: 1,
+    borderRadius: stitchTheme.radius.card,
+    padding: stitchTheme.spacing.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    ...stitchShadows.card,
+  },
+  cardAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+};
+
