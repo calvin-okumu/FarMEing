@@ -341,6 +341,10 @@ const getProjectSummary = async (req, res) => {
         where: { projectId: req.params.id, isDeleted: false },
         _sum: { totalCost: true },
       }),
+      prisma.equipment.aggregate({
+        where: { projectId: req.params.id, isDeleted: false },
+        _sum: { purchasePrice: true },
+      }),
       prisma.expense.findMany({ where: { projectId: req.params.id, isDeleted: false } }),
       prisma.workEntry.findMany({
         where: { projectId: req.params.id, isDeleted: false },
@@ -354,10 +358,11 @@ const getProjectSummary = async (req, res) => {
     const totalExpenses = expenseAgg._sum.amount ?? 0;
     const totalLabor = laborAgg._sum.totalCost ?? 0;
     const totalInventory = inventoryAgg._sum.totalCost ?? 0;
+    const totalEquipment = equipmentAgg._sum.purchasePrice ?? 0;
     const totalHarvest = harvests.reduce((sum, h) => sum + (h.weight - (h.rejectedWeight || 0)), 0);
     const totalRejected = harvests.reduce((sum, h) => sum + (h.rejectedWeight || 0), 0);
     const totalRevenue = saleAgg._sum.totalAmount ?? 0;
-    const totalCost = totalExpenses + totalLabor + totalInventory;
+    const totalCost = totalExpenses + totalLabor + totalInventory + totalEquipment;
 
     // Per-block harvest breakdown
     const blocksBreakdown = result.project.blocks.map(block => {
@@ -413,6 +418,7 @@ const getProjectSummary = async (req, res) => {
         totalExpenses,
         totalLaborCost: totalLabor,
         totalInventoryCost: totalInventory,
+        totalEquipmentCost: totalEquipment,
         totalCost,
         totalHarvest,
         totalRejected,

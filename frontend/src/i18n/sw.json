@@ -9,6 +9,7 @@
     "success": "Imefanikiwa",
     "back": "Rudi",
     "add": "Ongeza",
+    "invite": "Alika",
     "date": "Tarehe",
     "notes": "Maelezo",
     "recurring": "Je, inajirudia?",
@@ -65,6 +66,7 @@
     "access_revoked": "Ufikiaji umeondolewa.",
     "revoke_access": "Ondoa Ufikiaji",
     "no_members": "Hakuna wanachama wengine wenye ufikiaji bado.",
+    "sync_required": "Mradi lazima usawazishwe na seva kabla ya kualika wanachama wa timu.",
     "role": "Jukumu Liliopewa"
   },
   "export": {

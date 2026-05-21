@@ -157,7 +157,7 @@ const fromWatermelon = (record) => {
   }
 
   // Date fields in the schema that might come as timestamps
-  const dateFields = ['date', 'startDate', 'endDate', 'expiresAt', 'createdAt', 'updatedAt'];
+  const dateFields = ['date', 'startDate', 'endDate', 'expiresAt', 'createdAt', 'updatedAt', 'purchaseDate'];
   dateFields.forEach(field => {
     if (result[field] !== undefined && result[field] !== null) {
       if (typeof result[field] === 'number') {

@@ -8,6 +8,9 @@ const PROJECT_BOUND_TABLES = [
   'harvests',
   'sales',
   'inventory_items',
+  'equipments',
+  'project_access',
+  'project_invitations',
 ];
 
 export async function updateLocalModel(record, applyChanges) {

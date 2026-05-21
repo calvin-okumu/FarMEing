@@ -16,6 +16,7 @@ const getProjectData = async (id, userId, res) => {
       harvests: { where: { isDeleted: false }, include: { block: true } },
       sales: { where: { isDeleted: false }, include: { salePayments: { where: { isDeleted: false } } } },
       inventoryItems: { where: { isDeleted: false } },
+      equipment: { where: { isDeleted: false } },
     },
   });
 };
@@ -56,8 +57,9 @@ const generateProjectReport = async (req, res) => {
     const totalExpenses = project.expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
     const totalLabor = project.workEntries.reduce((sum, item) => sum + (item.totalCost || 0), 0);
     const totalInventory = project.inventoryItems.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+    const totalEquipment = project.equipment.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
     const totalRevenue = project.sales.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-    const totalCost = totalExpenses + totalLabor + totalInventory;
+    const totalCost = totalExpenses + totalLabor + totalInventory + totalEquipment;
     const netProfit = totalRevenue - totalCost;
     const collectedRevenue = project.sales.reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
     const pendingRevenue = project.sales.reduce((sum, item) => sum + (item.balanceDue || 0), 0);
@@ -76,6 +78,7 @@ const generateProjectReport = async (req, res) => {
     doc.text(`- Operational Expenses: ${totalExpenses.toLocaleString()}`);
     doc.text(`- Labor Costs: ${totalLabor.toLocaleString()}`);
     doc.text(`- Inventory Purchases: ${totalInventory.toLocaleString()}`);
+    doc.text(`- Equipment Investments: ${totalEquipment.toLocaleString()}`);
     doc.moveDown();
 
     // ── Production ───────────────────────────────────────────────────────────
@@ -199,8 +202,9 @@ const generateProjectExcelReport = async (req, res) => {
     const totalExpenses = project.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const totalLabor = project.workEntries.reduce((sum, w) => sum + (w.totalCost || 0), 0);
     const totalInventory = project.inventoryItems.reduce((sum, i) => sum + (i.totalCost || 0), 0);
+    const totalEquipment = project.equipment.reduce((sum, eq) => sum + (eq.purchasePrice || 0), 0);
     const totalRevenue = project.sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-    const totalCost = totalExpenses + totalLabor + totalInventory;
+    const totalCost = totalExpenses + totalLabor + totalInventory + totalEquipment;
     const collectedRevenue = project.sales.reduce((sum, s) => sum + ((s.totalAmount || 0) - (s.balanceDue || 0)), 0);
     const pendingRevenue = project.sales.reduce((sum, s) => sum + (s.balanceDue || 0), 0);
 
@@ -364,6 +368,31 @@ const generateProjectExcelReport = async (req, res) => {
           cost: i.unitCost,
           used: i.usedQty,
           notes: i.notes
+        });
+      });
+    }
+
+    // Equipment Sheet
+    if (project.equipment.length > 0) {
+      const equipSheet = workbook.addWorksheet('Equipment');
+      equipSheet.columns = [
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Type', key: 'type', width: 20 },
+        { header: 'Model', key: 'model', width: 20 },
+        { header: 'Serial Number', key: 'serial', width: 25 },
+        { header: 'Purchase Date', key: 'date', width: 15 },
+        { header: 'Purchase Price', key: 'price', width: 15 },
+        { header: 'Status', key: 'status', width: 15 },
+      ];
+      project.equipment.forEach(e => {
+        equipSheet.addRow({
+          name: e.name,
+          type: e.type,
+          model: e.model,
+          serial: e.serialNumber,
+          date: e.purchaseDate ? e.purchaseDate.toLocaleDateString() : 'N/A',
+          price: e.purchasePrice,
+          status: e.status
         });
       });
     }

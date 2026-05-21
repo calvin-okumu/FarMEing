@@ -247,6 +247,7 @@ export default function ReportsScreen({ navigation }) {
           <View style={[styles.stackedBarPart, { flex: portfolio.totalLaborCost || 1, backgroundColor: stitchTheme.colors.primaryDim }]} />
           <View style={[styles.stackedBarPart, { flex: portfolio.totalExpenses || 1, backgroundColor: stitchTheme.colors.accentBrown }]} />
           <View style={[styles.stackedBarPart, { flex: portfolio.totalInventoryCost || 1, backgroundColor: stitchTheme.colors.primarySoft }]} />
+          <View style={[styles.stackedBarPart, { flex: portfolio.totalEquipmentCost || 1, backgroundColor: stitchTheme.colors.primary }]} />
         </View>
         
         <View style={styles.breakdownRow}>
@@ -269,6 +270,14 @@ export default function ReportsScreen({ navigation }) {
             <Text style={styles.breakdownLabel}>{t('dashboard.inventory_purchases', { defaultValue: 'Inventory Purchases' })}</Text>
           </View>
           <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalInventoryCost, currency)}</Text>
+        </View>
+
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownMeta}>
+            <View style={[styles.dot, { backgroundColor: stitchTheme.colors.primary }]} />
+            <Text style={styles.breakdownLabel}>{t('equipment.title')}</Text>
+          </View>
+          <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalEquipmentCost, currency)}</Text>
         </View>
         
         <View style={styles.breakdownDivider} />

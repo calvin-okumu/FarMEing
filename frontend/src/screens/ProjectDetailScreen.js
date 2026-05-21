@@ -113,7 +113,7 @@ function TeamMemberCard({ member, isOwner, onRemove, t }) {
         <StitchBadge label={member.role} tone={member.role === 'OWNER' ? 'success' : 'neutral'} />
       </View>
       {isOwner && member.role !== 'OWNER' ? (
-        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.accessId)} activeOpacity={0.8}>
           <Ionicons name="person-remove-outline" size={15} color={stitchTheme.colors.accentRed} />
           <Text style={styles.removeMemberText}>{t('team.revoke_access')}</Text>
         </TouchableOpacity>
@@ -166,6 +166,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
         const teamWithNames = access.map((a) => {
           const isMe = a.userId === user?.id;
           return { 
+            accessId: a.id,
             id: a.userId, 
             role: a.role, 
             name: isMe ? user?.name : (a.userName || (a.role === 'OWNER' ? 'Project Owner' : 'Team Member')), 
@@ -201,21 +202,28 @@ export default function ProjectDetailScreen({ route, navigation }) {
       invSub.unsubscribe();
     };
   }, [project]);
+const handleInvitePress = async () => {
+  setInviteVisible(true);
+};
+
 const handleInvite = async () => {
   setTeamLoading(true);
   try {
-    const resolvedProjectId = project?.remoteId || project?._raw?.remote_id;
-    if (!resolvedProjectId) {
-      Alert.alert(t('common.error'), 'Project must be synced to the server before you can invite team members.');
-      return;
-    }
-    await api.post('/invitations', { projectId: resolvedProjectId, role: inviteRole });
+    // Attempt sync first to ensure project is on server
+    await syncAll();
+
+    // Use project.id as the identifier (backend uses client UUID)
+    await api.post('/invitations', { projectId: project.id, role: inviteRole });
+    
     syncAll().catch(() => {});
     setInviteVisible(false);
     setBanner({ tone: 'success', title: t('team.invite_created'), message: t('team.invite_created_msg') });
   } catch (err) {
     console.error('[Invite] Error:', err);
-    const msg = err.response?.data?.error || err.message || 'Failed to create invitation';
+    const status = err.response?.status;
+    const msg = status === 404 
+      ? t('team.sync_required') 
+      : (err.response?.data?.error || err.message || 'Failed to create invitation');
     Alert.alert(t('common.error'), msg);
   } finally {
     setTeamLoading(false);
@@ -645,10 +653,10 @@ const handleInvite = async () => {
             else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
             else if (activeTab === 'sales') navigation.navigate('AddSale', params);
             else if (activeTab === 'equipment') navigation.navigate('AddEquipment', { projectId: project.id });
-            else if (activeTab === 'team') setInviteVisible(true);
+            else if (activeTab === 'team') handleInvitePress();
           }} activeOpacity={0.88}>
             <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
-            <Text style={styles.addRowText}>Add</Text>
+            <Text style={styles.addRowText}>{activeTab === 'team' ? t('common.invite', { defaultValue: 'Invite' }) : t('common.add')}</Text>
           </TouchableOpacity>
         </StitchSurface>
         )}
@@ -709,14 +717,6 @@ const handleInvite = async () => {
               </>
             )}
             
-            {project?.userId === user?.id && (
-              <StitchPrimaryButton 
-                label={t('team.invite_member', { defaultValue: 'Invite Member' })} 
-                onPress={() => setInviteVisible(true)} 
-                icon="person-add-outline" 
-                style={{ marginTop: 20, marginHorizontal: 16 }} 
-              />
-            )}
           </View>
         )}
 
