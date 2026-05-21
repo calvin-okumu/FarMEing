@@ -143,7 +143,7 @@ export default function StitchDashboardShell({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: stitchTheme.colors.forestDeep,
+    backgroundColor: stitchTheme.colors.background,
   },
   flex: { flex: 1 },
   floatingBanner: {

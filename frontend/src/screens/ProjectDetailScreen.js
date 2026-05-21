@@ -28,6 +28,7 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
+import i18n from '../i18n';
 
 import { deleteLocalModel } from '../utils/resourceMutations';
 import { syncAll } from '../services/syncService';
@@ -266,15 +267,15 @@ const handleInvite = async () => {
       const extension = format === 'excel' ? 'xlsx' : 'pdf';
       const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.${extension}`;
       const endpoint = format === 'excel' ? 'excel' : 'pdf';
+      const lang = i18n.language || 'en';
 
       const downloadRes = await FileSystem.downloadAsync(
-        `${BASE_URL}reports/project/${resolvedProjectId}/${endpoint}`,
+        `${BASE_URL}reports/project/${resolvedProjectId}/${endpoint}?lang=${lang}`,
         fileUri,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
       if (downloadRes.status !== 200) {
         throw new Error(`Failed to download ${format} report`);
       }
@@ -383,7 +384,7 @@ const handleInvite = async () => {
   }, [salePayments]);
 
   const localTimeline = useMemo(() => {
-    const workItems = workEntries.slice(0, 4).map((entry) => ({
+    const workItems = workEntries.map((entry) => ({
       type: 'WORK',
       date: entry.date,
       icon: 'people-outline',
@@ -395,7 +396,7 @@ const handleInvite = async () => {
       amount: entry.totalCost,
     }));
 
-    const expenseItems = expenses.slice(0, 2).map((expense) => ({
+    const expenseItems = expenses.map((expense) => ({
       type: 'EXPENSE',
       date: expense.date,
       icon: 'wallet-outline',
@@ -406,7 +407,7 @@ const handleInvite = async () => {
       amount: expense.amount,
     }));
 
-    const harvestItems = harvests.slice(0, 2).map((harvest) => ({
+    const harvestItems = harvests.map((harvest) => ({
       type: 'HARVEST',
       date: harvest.date,
       icon: 'leaf-outline',
@@ -417,7 +418,7 @@ const handleInvite = async () => {
       amount: harvest.approvedWeight,
     }));
 
-    const saleItems = sales.slice(0, 2).map((sale) => ({
+    const saleItems = sales.map((sale) => ({
       type: 'SALE',
       date: sale.date,
       icon: 'cash-outline',
@@ -433,8 +434,40 @@ const handleInvite = async () => {
       amount: sale.totalAmount,
     }));
 
-    return [...workItems, ...expenseItems, ...harvestItems, ...saleItems].sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [workEntries, expenses, harvests, sales, employeeMap, t]);
+    const inventoryItemsTimeline = inventoryItems.map((item) => ({
+      type: 'INVENTORY',
+      date: item.createdAt,
+      icon: 'cube-outline',
+      title: `${item.name}`,
+      body: `Inventory purchase: ${item.quantity} ${item.unit}`,
+      timeLabel: formatAppDate(item.createdAt),
+      dotColor: stitchTheme.colors.primarySoft,
+      amount: item.totalCost,
+    }));
+
+    const equipmentItems = equipment.map((eq) => ({
+      type: 'EQUIPMENT',
+      date: eq.purchaseDate || eq.createdAt,
+      icon: 'construct-outline',
+      title: `${eq.name}`,
+      body: `Equipment: ${eq.type} ${eq.model ? `• ${eq.model}` : ''}`,
+      timeLabel: formatAppDate(eq.purchaseDate || eq.createdAt),
+      dotColor: stitchTheme.colors.primary,
+      amount: eq.purchasePrice,
+    }));
+
+    const all = [
+      ...workItems, 
+      ...expenseItems, 
+      ...harvestItems, 
+      ...saleItems, 
+      ...inventoryItemsTimeline, 
+      ...equipmentItems
+    ];
+
+    // Sort descending (newest first)
+    return all.sort((a, b) => (b.date || 0) - (a.date || 0));
+  }, [workEntries, expenses, harvests, sales, inventoryItems, equipment, employeeMap, t]);
 
   const collectionSearch = searchQuery.trim().toLowerCase();
   const isLocalOnly = project?._raw?._status !== 'synced';
@@ -532,13 +565,22 @@ const handleInvite = async () => {
     );
   };
 
+  const timelineGroups = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+
+    const todayItems = localTimeline.filter(item => (item.date || 0) >= todayMs);
+    const earlierItems = localTimeline.filter(item => (item.date || 0) < todayMs);
+
+    return [
+      { title: t('common.today'), tone: 'today', items: todayItems },
+      { title: t('common.earlier'), tone: 'past', items: earlierItems.slice(0, 30) },
+    ].filter(g => g.items.length > 0);
+  }, [localTimeline, t]);
+
   if (loading) return <StitchScreenSkeleton />;
   if (!project) return null;
-
-  const timelineGroups = [
-    { title: t('common.today'), tone: 'today', items: localTimeline.slice(0, 3) },
-    { title: t('common.earlier'), tone: 'past', items: localTimeline.slice(3) },
-  ];
 
   return (
     <View style={styles.screen}>
@@ -641,9 +683,13 @@ const handleInvite = async () => {
         ) : null}
 
         {/* --- Section Header + Add Button --- */}
-        <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} />
+        <StitchDashboardSectionHeader
+          title={t(`projects.tabs.${activeTab}`)}
+          actionLabel={activeTab === 'team' ? t('common.invite') : undefined}
+          onActionPress={activeTab === 'team' ? handleInvitePress : undefined}
+        />
 
-        {activeTab !== 'timeline' && activeTab !== 'inventory' && (
+        {activeTab !== 'timeline' && activeTab !== 'inventory' && activeTab !== 'team' && (
         <StitchSurface style={styles.addRowCard} contentStyle={styles.addRowContent} tone='raised' compact>
           <TouchableOpacity style={styles.addRowButton} onPress={() => {
             const params = { projectId: project.id };
@@ -653,10 +699,9 @@ const handleInvite = async () => {
             else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
             else if (activeTab === 'sales') navigation.navigate('AddSale', params);
             else if (activeTab === 'equipment') navigation.navigate('AddEquipment', { projectId: project.id });
-            else if (activeTab === 'team') handleInvitePress();
           }} activeOpacity={0.88}>
             <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
-            <Text style={styles.addRowText}>{activeTab === 'team' ? t('common.invite', { defaultValue: 'Invite' }) : t('common.add')}</Text>
+            <Text style={styles.addRowText}>{t('common.add')}</Text>
           </TouchableOpacity>
         </StitchSurface>
         )}
@@ -784,10 +829,17 @@ const handleInvite = async () => {
         </View></View>
       </Modal>
 
-      <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('resource.confirm_delete_generic', { name: deleteTarget?.item?.crop || deleteTarget?.item?.name || 'Item' })} onCancel={() => setDeleteTarget(null)} onConfirm={async () => {
+      <ConfirmDialog 
+        visible={!!deleteTarget} 
+        title={t('common.delete')} 
+        message={t('resource.confirm_delete_generic', { name: deleteTarget?.item?.crop || deleteTarget?.item?.name || 'Item' })} 
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setDeleteTarget(null)} 
+        onConfirm={async () => {
         const { type, item } = deleteTarget;
         await database.write(async () => {
-          const tableMap = { budget: 'budget_items', expenses: 'expenses', labor: 'work_entries', harvest: 'harvests', sales: 'sales' };
+          const tableMap = { budget: 'budget_items', expenses: 'expenses', labor: 'work_entries', harvest: 'harvests', sales: 'sales', equipment: 'equipments' };
           const record = await database.get(tableMap[type]).find(item.id);
           await deleteLocalModel(record);
         });

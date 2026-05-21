@@ -30,13 +30,19 @@ const stitchHeaderOptions = {
   headerTitleStyle: { fontWeight: '800', fontSize: 22, color: stitchTheme.colors.primary },
   headerBackTitleVisible: false,
   contentStyle: { backgroundColor: stitchTheme.colors.background },
+  animation: 'simple_push',
 };
 
 function ProjectStackNavigator() {
   const { t } = useTranslation();
 
   return (
-    <ProjectStack.Navigator screenOptions={stitchHeaderOptions}>
+    <ProjectStack.Navigator 
+      screenOptions={{
+        ...stitchHeaderOptions,
+        animationDuration: 200,
+      }}
+    >
       <ProjectStack.Screen
         name="ProjectsList"
         component={ProjectsScreen}
@@ -65,7 +71,12 @@ function EmployeeStackNavigator() {
   const { t } = useTranslation();
 
   return (
-    <EmployeeStack.Navigator screenOptions={stitchHeaderOptions}>
+    <EmployeeStack.Navigator 
+      screenOptions={{
+        ...stitchHeaderOptions,
+        animationDuration: 200,
+      }}
+    >
       <EmployeeStack.Screen
         name="EmployeesList"
         component={EmployeesScreen}
@@ -84,7 +95,12 @@ function SettingsStackNavigator() {
   const { t } = useTranslation();
 
   return (
-    <SettingsStack.Navigator screenOptions={stitchHeaderOptions}>
+    <SettingsStack.Navigator 
+      screenOptions={{
+        ...stitchHeaderOptions,
+        animationDuration: 200,
+      }}
+    >
       <SettingsStack.Screen
         name="SettingsHome"
         component={SettingsScreen}
@@ -122,7 +138,8 @@ export default function TabNavigator() {
       tabBar={(props) => <StitchTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
+        animation: 'shift',
+        animationDuration: 180,
         sceneStyle: { backgroundColor: stitchTheme.colors.background },
       }}
       initialRouteName="Dashboard"

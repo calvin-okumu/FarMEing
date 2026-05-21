@@ -84,7 +84,6 @@ const fieldMapping = {
   saleId: 'sale_id',
   paymentStatus: 'payment_status',
   balanceDue: 'balance_due',
-  receiptUrl: 'receipt_url',
   unitCost: 'unit_cost',
   usedQty: 'used_qty',
   createdAt: 'created_at',
@@ -169,7 +168,7 @@ const fromWatermelon = (record) => {
   });
 
   // Foreign keys or IDs should be null if they are empty strings
-  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId', 'blockId', 'harvestId'];
+  const idFields = ['projectId', 'employeeId', 'payeeId', 'seasonId', 'saleId', 'blockId', 'harvestId', 'userId'];
   idFields.forEach(field => {
     if (result[field] === '') {
       result[field] = null;
@@ -286,6 +285,8 @@ exports.push = async (req, res) => {
   if (!changes) return res.status(400).json({ error: 'Missing changes' });
 
   console.log(`[sync] Push started for user ${req.user.id}`);
+  const accessibleProjectIds = await getAccessibleProjectIdsForUser(req.user.id);
+
   const results = {
     success: true,
     processed: {},
@@ -326,6 +327,14 @@ exports.push = async (req, res) => {
           if (existing && existing.isDeleted) {
             console.warn(`[sync] Skipping update for soft-deleted ${prismaModel} ${data.id}`);
             continue;
+          }
+
+          // Authorization Check for project-linked records
+          if (data.projectId && prismaModel !== 'farmProject') {
+            if (!accessibleProjectIds.includes(data.projectId)) {
+              console.warn(`[sync] Unauthorized project access for ${prismaModel} ${data.id} (projectId: ${data.projectId})`);
+              throw new Error('Unauthorized project access');
+            }
           }
 
           // Safety Check: If payeeId is provided, verify it exists.

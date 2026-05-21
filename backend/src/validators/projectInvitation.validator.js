@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const createInvitationSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().min(1),
   role: z.enum(['MANAGER', 'VIEWER']),
 });
 
