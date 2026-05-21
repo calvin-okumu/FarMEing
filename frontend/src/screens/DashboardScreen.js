@@ -33,6 +33,7 @@ const RESOURCE_GROUPS = [
     ]},
     { key: 'admin', label: 'Admin', cards: [
         { id: 'inventory', titleKey: 'projects.tabs.inventory', icon: 'cube-outline', color: colors.primaryDim },
+        { id: 'equipment', titleKey: 'equipment.title', icon: 'construct-outline', color: colors.primary },
         { id: 'payees', titleKey: 'payees.title', icon: 'business-outline', color: colors.accentPeach },
     ]},
 ];
@@ -103,6 +104,7 @@ export default function DashboardScreen({ navigation }) {
     const [sales, setSales] = useState([]);
     const [budgetItems, setBudgetItems] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
+    const [equipment, setEquipment] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('all');
     const [pendingResource, setPendingResource] = useState(null);
     const [projectPickerVisible, setProjectPickerVisible] = useState(false);
@@ -145,6 +147,7 @@ export default function DashboardScreen({ navigation }) {
         const saleQuery = database.get('sales').query(Q.where('is_deleted', false));
         const budgetQuery = database.get('budget_items').query(Q.where('is_deleted', false));
         const inventoryQuery = database.get('inventory_items').query(Q.where('is_deleted', false));
+        const equipmentQuery = database.get('equipments').query(Q.where('is_deleted', false));
 
         const subs = [
             projectQuery.observe().subscribe((rows) => {
@@ -160,6 +163,7 @@ export default function DashboardScreen({ navigation }) {
             saleQuery.observe().subscribe(setSales),
             budgetQuery.observe().subscribe(setBudgetItems),
             inventoryQuery.observe().subscribe(setInventoryItems),
+            equipmentQuery.observe().subscribe(setEquipment),
         ];
 
         return () => subs.forEach((sub) => sub.unsubscribe());
@@ -190,6 +194,7 @@ export default function DashboardScreen({ navigation }) {
     const filteredHarvests = useMemo(() => harvests.filter(matchesProject), [harvests, filterIds]);
     const filteredSales = useMemo(() => sales.filter(matchesProject), [sales, filterIds]);
     const filteredInventoryItems = useMemo(() => inventoryItems.filter(matchesProject), [inventoryItems, filterIds]);
+    const filteredEquipment = useMemo(() => equipment.filter(matchesProject), [equipment, filterIds]);
 
     const summary = useMemo(
         () => computeProjectSummary({
@@ -199,8 +204,9 @@ export default function DashboardScreen({ navigation }) {
             harvests: filteredHarvests,
             sales: filteredSales,
             inventoryItems: filteredInventoryItems,
+            equipment: filteredEquipment,
         }),
-        [filteredBudgetItems, filteredExpenses, filteredWorkEntries, filteredHarvests, filteredSales, filteredInventoryItems]
+        [filteredBudgetItems, filteredExpenses, filteredWorkEntries, filteredHarvests, filteredSales, filteredInventoryItems, filteredEquipment]
     );
 
     const pendingLabor = filteredWorkEntries.filter((entry) => entry.status !== 'APPROVED');
@@ -229,6 +235,14 @@ export default function DashboardScreen({ navigation }) {
             navigation.navigate('Projects', {
                 screen: 'Inventory',
                 params: { projectId: project.id, projectName: project.name },
+            });
+            return;
+        }
+
+        if (resourceId === 'equipment') {
+            navigation.navigate('Projects', {
+                screen: 'ProjectDetail',
+                params: { projectId: project.id, initialTab: 'equipment' },
             });
             return;
         }

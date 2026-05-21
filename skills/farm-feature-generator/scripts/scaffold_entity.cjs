@@ -28,27 +28,37 @@ console.log(`Scaffolding ${Entity}...`);
 const toSnakeCase = (str) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
 const getPrismaType = (type) => {
-  if (type.startsWith('enum:')) return 'String'; // Simple for now
-  if (type === 'number') return 'Float';
-  if (type === 'date') return 'DateTime';
-  if (type === 'boolean') return 'Boolean';
+  if (type.startsWith('enum:')) return 'String';
+  if (type.includes('number')) return 'Float';
+  if (type.includes('date')) return 'DateTime';
+  if (type.includes('boolean')) return 'Boolean';
   return 'String';
 };
 
-const getZodType = (type) => {
+const getZodType = (type, forceOptional = false) => {
+  let base;
   if (type.startsWith('enum:')) {
     const vals = type.split(':')[1].split(',');
-    return `z.enum(['${vals.join("', '")}'])`;
+    base = `z.enum(['${vals.join("', '")}'])`;
+  } else if (type.includes('number')) {
+    base = 'z.number()';
+  } else if (type.includes('date')) {
+    base = 'z.string().datetime({ offset: true }).or(z.string().date())';
+  } else if (type.includes('boolean')) {
+    base = 'z.boolean()';
+  } else {
+    base = 'z.string()';
   }
-  if (type === 'number') return 'z.number()';
-  if (type === 'date') return 'z.string().datetime({ offset: true }).or(z.string().date())';
-  if (type === 'boolean') return 'z.boolean()';
-  return 'z.string()';
+
+  if (forceOptional || type.includes('?')) {
+    return `${base}.optional()`;
+  }
+  return base;
 };
 
 const getWatermelonType = (type) => {
-  if (type === 'number' || type === 'date') return 'number';
-  if (type === 'boolean') return 'boolean';
+  if (type.includes('number') || type.includes('date')) return 'number';
+  if (type.includes('boolean')) return 'boolean';
   return 'string';
 };
 
@@ -59,7 +69,11 @@ const prismaFields = Object.entries(fields).map(([name, type]) => {
 }).join('\n');
 
 const zodFields = Object.entries(fields).map(([name, type]) => {
-  return `  ${name}: ${getZodType(type)}${type.includes('?') ? '.optional()' : ''},`;
+  return `  ${name}: ${getZodType(type)},`;
+}).join('\n');
+
+const updateZodFields = Object.entries(fields).map(([name, type]) => {
+  return `  ${name}: ${getZodType(type, true)},`;
 }).join('\n');
 
 const watermelonColumns = Object.entries(fields).map(([name, type]) => {
@@ -67,8 +81,7 @@ const watermelonColumns = Object.entries(fields).map(([name, type]) => {
 }).join('\n');
 
 const modelFields = Object.entries(fields).map(([name, type]) => {
-  const decorator = type === 'date' ? `@date('${toSnakeCase(name)}')` : `@field('${toSnakeCase(name)}')`;
-  return `  ${decorator} ${name};`;
+  return `  @field('${toSnakeCase(name)}') ${name};`;
 }).join('\n');
 
 // --- File Generation ---
@@ -91,7 +104,7 @@ const create${Entity} = async (req, res) => {
     const record = await prisma.${entity}.create({
       data: {
         ...data,
-        ${Object.entries(fields).filter(([_, t]) => t === 'date').map(([n]) => `${n}: data.${n} ? new Date(data.${n}) : undefined`).join(',\n        ')}
+        ${Object.entries(fields).filter(([_, t]) => t.includes('date')).map(([n]) => `${n}: data.${n} ? new Date(data.${n}) : undefined`).join(',\n        ')}
       },
     });
     return res.status(201).json({ ${entity}: record });
@@ -129,7 +142,7 @@ ${zodFields}
 });
 
 const update${Entity}Schema = z.object({
-${zodFields.replace(/,/g, '.optional(),')}
+${updateZodFields}
 }).refine(data => Object.keys(data).length > 0, {
   message: 'At least one field is required for update',
 });
@@ -147,8 +160,8 @@ export default class ${Entity} extends Model {
   @field('project_id') projectId;
 ${modelFields}
   @field('is_deleted') isDeleted;
-  @readonly @date('created_at') createdAt;
-  @readonly @date('updated_at') updatedAt;
+  @field('created_at') createdAt;
+  @field('updated_at') updatedAt;
 }`
   }
 ];

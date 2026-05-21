@@ -8,6 +8,7 @@
     "error": "Hitilafu",
     "success": "Imefanikiwa",
     "back": "Rudi",
+    "add": "Ongeza",
     "date": "Tarehe",
     "notes": "Maelezo",
     "recurring": "Je, inajirudia?",
@@ -228,10 +229,12 @@
       "harvest": "Mavuno",
       "sales": "Mauzo",
       "inventory": "Inventory",
+      "equipment": "Vifaa",
       "team": "Timu",
       "timeline": "Ratiba",
       "block": "Kitalu cha Mradi"
-      },
+    },
+
     "fields": {
       "name": "Jina la Mradi",
       "crop": "Zao",
@@ -579,6 +582,42 @@
       "unit": "Kipimo",
       "unit_cost": "Gharama kwa Kipimo",
       "used_qty": "Kiasi kilichotumika"
+    }
+  },
+  "equipment": {
+    "title": "Vifaa",
+    "manage_subtitle": "Fuatilia mashine, zana, na matengenezo",
+    "search_placeholder": "Tafuta vifaa, namba za siri, au aina",
+    "empty_title": "Hakuna Vifaa Bado",
+    "empty_subtitle": "Ongeza matrekta, pampu, na zana ili kufuatilia matengenezo na hali yake.",
+    "create_title": "Ongeza Vifaa",
+    "edit_title": "Hariri Vifaa",
+    "delete_title": "Futa Vifaa",
+    "confirm_delete": "Una uhakika unataka kufuta \"{{name}}\"?",
+    "fields": {
+      "name": "Jina la Vifaa",
+      "type": "Aina",
+      "model": "Modeli",
+      "serial_number": "Namba ya Siri",
+      "purchase_date": "Tarehe ya Kununua",
+      "purchase_price": "Bei ya Kununua",
+      "status": "Hali",
+      "notes": "Maelezo ya Matengenezo"
+    },
+    "statuses": {
+      "OPERATIONAL": "Inafanya Kazi",
+      "MAINTENANCE": "Matengenezo",
+      "BROKEN": "Imeharibika",
+      "DISPOSED": "Imeondolewa"
+    },
+    "types": {
+      "tractor": "Trekta",
+      "pump": "Pampu ya Maji",
+      "sprayer": "Kinyunyizio",
+      "vehicle": "Chombo cha Usafiri",
+      "tool": "Zana ya Mkono",
+      "generator": "Jenereta",
+      "other": "Nyingine"
     }
   },
   "payments": {

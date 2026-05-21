@@ -14,24 +14,26 @@ export function computeEmployeeBalance(workEntries = [], payments = []) {
   };
 }
 
-export function computeProjectSummary({ budgetItems = [], expenses = [], workEntries = [], harvests = [], sales = [], inventoryItems = [] } = {}) {
+export function computeProjectSummary({ budgetItems = [], expenses = [], workEntries = [], harvests = [], sales = [], inventoryItems = [], equipment = [] } = {}) {
   const totalBudget = budgetItems.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
   const totalExpenses = expenses.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.amount || 0), 0);
   const totalLaborCost = workEntries
     .filter((item) => !item.isDeleted)
     .reduce((sum, item) => sum + (item.totalCost || 0), 0);
   const totalInventoryCost = inventoryItems.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalCost || 0), 0);
+  const totalEquipmentCost = equipment.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
   const totalHarvest = harvests.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.weight || 0), 0);
   const totalRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
   const collectedRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
   const pendingRevenue = sales.filter((item) => !item.isDeleted).reduce((sum, item) => sum + (item.balanceDue || 0), 0);
-  const totalCost = totalExpenses + totalLaborCost + totalInventoryCost;
+  const totalCost = totalExpenses + totalLaborCost + totalInventoryCost + totalEquipmentCost;
 
   return {
     totalBudget: parseFloat(totalBudget.toFixed(2)),
     totalExpenses: parseFloat(totalExpenses.toFixed(2)),
     totalLaborCost: parseFloat(totalLaborCost.toFixed(2)),
     totalInventoryCost: parseFloat(totalInventoryCost.toFixed(2)),
+    totalEquipmentCost: parseFloat(totalEquipmentCost.toFixed(2)),
     totalCost: parseFloat(totalCost.toFixed(2)),
     totalHarvest: parseFloat(totalHarvest.toFixed(2)),
     totalRevenue: parseFloat(totalRevenue.toFixed(2)),
@@ -48,6 +50,7 @@ export function computePortfolioSummary(projectsData = []) {
     totalExpenses: 0,
     totalLaborCost: 0,
     totalInventoryCost: 0,
+    totalEquipmentCost: 0,
     totalCost: 0,
     totalHarvest: 0,
     totalRevenue: 0,
@@ -62,6 +65,7 @@ export function computePortfolioSummary(projectsData = []) {
     totalExpenses: acc.totalExpenses + curr.totalExpenses,
     totalLaborCost: acc.totalLaborCost + curr.totalLaborCost,
     totalInventoryCost: acc.totalInventoryCost + curr.totalInventoryCost,
+    totalEquipmentCost: acc.totalEquipmentCost + (curr.totalEquipmentCost || 0),
     totalCost: acc.totalCost + curr.totalCost,
     totalHarvest: acc.totalHarvest + curr.totalHarvest,
     totalRevenue: acc.totalRevenue + curr.totalRevenue,

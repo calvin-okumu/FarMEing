@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import ProjectsScreen from '../screens/ProjectsScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
 import InventoryScreen from '../screens/InventoryScreen';
+import AddEquipmentScreen from '../screens/AddEquipmentScreen';
 import EmployeesScreen from '../screens/EmployeesScreen';
 import EmployeeDetailScreen from '../screens/EmployeeDetailScreen';
 import QuickEntryScreen from '../screens/QuickEntryScreen';
@@ -49,6 +50,11 @@ function ProjectStackNavigator() {
       <ProjectStack.Screen
         name="Inventory"
         component={InventoryScreen}
+        options={{ headerShown: false }}
+      />
+      <ProjectStack.Screen
+        name="AddEquipment"
+        component={AddEquipmentScreen}
         options={{ headerShown: false }}
       />
     </ProjectStack.Navigator>

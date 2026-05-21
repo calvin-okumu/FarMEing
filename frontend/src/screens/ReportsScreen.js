@@ -81,6 +81,7 @@ export default function ReportsScreen({ navigation }) {
     harvests: [],
     sales: [],
     inventoryItems: [],
+    equipment: [],
     employees: [],
     blocks: [],
   });
@@ -92,6 +93,7 @@ export default function ReportsScreen({ navigation }) {
     const harvestQuery = database.get('harvests').query(Q.where('is_deleted', false));
     const saleQuery = database.get('sales').query(Q.where('is_deleted', false));
     const inventoryQuery = database.get('inventory_items').query(Q.where('is_deleted', false));
+    const equipmentQuery = database.get('equipments').query(Q.where('is_deleted', false));
     const employeeQuery = database.get('employees').query(Q.where('is_deleted', false));
     const blockQuery = database.get('project_blocks').query(Q.where('is_deleted', false));
 
@@ -102,6 +104,7 @@ export default function ReportsScreen({ navigation }) {
       harvestQuery.observe().subscribe(rows => setData(prev => ({ ...prev, harvests: rows }))),
       saleQuery.observe().subscribe(rows => setData(prev => ({ ...prev, sales: rows }))),
       inventoryQuery.observe().subscribe(rows => setData(prev => ({ ...prev, inventoryItems: rows }))),
+      equipmentQuery.observe().subscribe(rows => setData(prev => ({ ...prev, equipment: rows }))),
       employeeQuery.observe().subscribe(rows => setData(prev => ({ ...prev, employees: rows }))),
       blockQuery.observe().subscribe(rows => setData(prev => ({ ...prev, blocks: rows }))),
     ];
@@ -125,6 +128,7 @@ export default function ReportsScreen({ navigation }) {
           harvests: data.harvests.filter(filterByProject),
           sales: data.sales.filter(filterByProject),
           inventoryItems: data.inventoryItems.filter(filterByProject),
+          equipment: (data.equipment || []).filter(filterByProject),
         })
       };
     });

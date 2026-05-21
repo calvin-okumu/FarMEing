@@ -8,6 +8,7 @@
     "error": "Error",
     "success": "Success",
     "back": "Back",
+    "add": "Add",
     "date": "Date",
     "notes": "Notes",
     "recurring": "Is Recurring?",
@@ -252,10 +253,12 @@
       "harvest": "Harvest",
       "sales": "Sales",
       "inventory": "Inventory",
+      "equipment": "Equipment",
       "team": "Team",
       "timeline": "Timeline",
       "block": "Project Block"
-      },
+    },
+
     "fields": {
       "name": "Project Name",
       "crop": "Crop",
@@ -603,6 +606,42 @@
       "unit": "Unit",
       "unit_cost": "Unit Cost",
       "used_qty": "Used Quantity"
+    }
+  },
+  "equipment": {
+    "title": "Equipment",
+    "manage_subtitle": "Track machinery, tools, and maintenance",
+    "search_placeholder": "Search equipment, serials, or type",
+    "empty_title": "No Equipment Yet",
+    "empty_subtitle": "Add tractors, pumps, and tools to track their maintenance and health.",
+    "create_title": "Add Equipment",
+    "edit_title": "Edit Equipment",
+    "delete_title": "Delete Equipment",
+    "confirm_delete": "Are you sure you want to delete \"{{name}}\"?",
+    "fields": {
+      "name": "Equipment Name",
+      "type": "Type",
+      "model": "Model",
+      "serial_number": "Serial Number",
+      "purchase_date": "Purchase Date",
+      "purchase_price": "Purchase Price",
+      "status": "Status",
+      "notes": "Maintenance Notes"
+    },
+    "statuses": {
+      "OPERATIONAL": "Operational",
+      "MAINTENANCE": "Maintenance",
+      "BROKEN": "Broken",
+      "DISPOSED": "Disposed"
+    },
+    "types": {
+      "tractor": "Tractor",
+      "pump": "Water Pump",
+      "sprayer": "Sprayer",
+      "vehicle": "Vehicle",
+      "tool": "Hand Tool",
+      "generator": "Generator",
+      "other": "Other"
     }
   },
   "payments": {

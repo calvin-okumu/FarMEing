@@ -104,9 +104,27 @@ model FarmProject {
   harvests      Harvest[]
   sales         Sale[]
   inventoryItems InventoryItem[]
+  equipment      Equipment[]
   employees     EmployeeProject[]
   projectAccess ProjectAccess[]
   invitations   ProjectInvitation[]
+}
+
+model Equipment {
+  id            String      @id @default(uuid())
+  projectId     String
+  name          String
+  type          String
+  model         String?
+  serialNumber  String?
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  status        String      @default("OPERATIONAL") // OPERATIONAL, MAINTENANCE, BROKEN, DISPOSED
+  notes         String?
+  isDeleted     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  project       FarmProject @relation(fields: [projectId], references: [id])
 }
 
 model ProjectInvitation {

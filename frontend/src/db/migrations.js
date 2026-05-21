@@ -339,6 +339,28 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 29,
+      steps: [
+        createTable({
+          name: 'equipments',
+          columns: [
+            { name: 'project_id',     type: 'string' },
+            { name: 'name',           type: 'string' },
+            { name: 'type',           type: 'string' },
+            { name: 'model',          type: 'string', isOptional: true },
+            { name: 'serial_number',  type: 'string', isOptional: true },
+            { name: 'purchase_date',  type: 'number', isOptional: true },
+            { name: 'purchase_price', type: 'number', isOptional: true },
+            { name: 'status',         type: 'string' },
+            { name: 'notes',          type: 'string', isOptional: true },
+            { name: 'is_deleted',     type: 'boolean' },
+            { name: 'created_at',     type: 'number' },
+            { name: 'updated_at',     type: 'number' },
+          ],
+        }),
+      ],
+    },
   ],
 });
 

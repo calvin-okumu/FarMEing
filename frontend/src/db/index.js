@@ -6,6 +6,7 @@ import migrations from './migrations';
 import Season      from './models/Season';
 import ProjectBlock from './models/ProjectBlock';
 import FarmProject from './models/FarmProject';
+import Equipment   from './models/Equipment';
 
 
 import BudgetItem  from './models/BudgetItem';
@@ -40,6 +41,7 @@ export const database = new Database({
     Season,
     ProjectBlock,
     FarmProject,
+    Equipment,
     BudgetItem,
     Expense,
     WorkEntry,
@@ -67,6 +69,7 @@ export async function resetLocalDatabase() {
 export const seasonsCollection = database.get('seasons');
 export const blocksCollection    = database.get('project_blocks');
 export const projectsCollection  = database.get('farm_projects');
+export const equipmentCollection = database.get('equipments');
 
 
 export const budgetItemsCollection = database.get('budget_items');

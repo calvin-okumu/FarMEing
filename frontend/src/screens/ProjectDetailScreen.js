@@ -37,7 +37,7 @@ import { database } from '../db';
 import { Q } from '@nozbe/watermelondb';
 
 const screenWidth = Dimensions.get('window').width;
-const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'team', 'timeline'];
+const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'equipment', 'team', 'timeline'];
 
 function MetricCard({ title, value, note, icon, accent, tone = 'default' }) {
   return (
@@ -134,6 +134,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [harvests, setHarvests] = useState([]);
   const [sales, setSales] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [salePayments, setSalePayments] = useState([]);
   const [blocks, setBlocks] = useState([]);
@@ -317,6 +318,7 @@ const handleInvite = async () => {
         database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests),
         database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales),
         database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems),
+        database.get('equipments').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setEquipment),
         database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
         database.get('sale_payments').query(Q.where('is_deleted', false)).observe().subscribe(setSalePayments),
         database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks),
@@ -334,9 +336,10 @@ const handleInvite = async () => {
       harvests: harvests.filter(i => i.blockId === selectedBlockId),
       sales,
       inventoryItems,
-    } : { budgetItems, expenses, workEntries, harvests, sales, inventoryItems };
+      equipment,
+    } : { budgetItems, expenses, workEntries, harvests, sales, inventoryItems, equipment };
     return computeProjectSummary(data);
-  }, [budgetItems, expenses, workEntries, harvests, sales, inventoryItems, selectedBlockId]);
+  }, [budgetItems, expenses, workEntries, harvests, sales, inventoryItems, equipment, selectedBlockId]);
   const totalBudget = summary.totalBudget;
   const totalSpent = summary.totalCost;
   const totalRevenue = summary.totalRevenue;
@@ -470,7 +473,14 @@ const handleInvite = async () => {
     return [...base].sort((a, b) => sortMode === 'latest' ? (a.role || '').localeCompare(b.role || '') : (a.name || '').localeCompare(b.name || ''));
   }, [team, collectionSearch, sortMode]);
 
-  const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'team'].includes(activeTab);
+  const filteredEquipment = useMemo(() => {
+    const base = collectionSearch
+      ? equipment.filter((item) => [item.name, item.type, item.model, item.serialNumber].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : equipment;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
+  }, [equipment, collectionSearch, sortMode]);
+
+  const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'equipment', 'team'].includes(activeTab);
 
   const renderCollectionCard = (title, meta, amount, tone = 'default', type, item, description = '') => {
     const accentColor = tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown;
@@ -488,6 +498,7 @@ const handleInvite = async () => {
           else if (type === 'labor') navigation.navigate('AddWorkEntry', params);
           else if (type === 'harvest') navigation.navigate('AddHarvest', params);
           else if (type === 'sales') navigation.navigate('AddSale', params);
+          else if (type === 'equipment') navigation.navigate('AddEquipment', { projectId: project.id, itemId: item.id });
         }}
       >
         <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
@@ -633,6 +644,7 @@ const handleInvite = async () => {
             else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
             else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
             else if (activeTab === 'sales') navigation.navigate('AddSale', params);
+            else if (activeTab === 'equipment') navigation.navigate('AddEquipment', { projectId: project.id });
             else if (activeTab === 'team') setInviteVisible(true);
           }} activeOpacity={0.88}>
             <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
@@ -650,6 +662,7 @@ const handleInvite = async () => {
           const due = item.balanceDue > 0 ? `${formatCurrency(item.balanceDue, currency)} due` : '';
           return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, due);
         })}
+        {activeTab === 'equipment' && filteredEquipment.map(item => renderCollectionCard(item.name, item.type, t(`equipment.statuses.${item.status}`), item.status === 'OPERATIONAL' ? 'positive' : 'negative', 'equipment', item, item.model))}
 
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
@@ -710,6 +723,12 @@ const handleInvite = async () => {
         {activeTab === 'inventory' && (
           <View style={styles.teamTab}>
             <Text style={styles.emptyText}>{t('inventory.accessible_from_workspace', { defaultValue: 'Inventory management available from the workspace menu.' })}</Text>
+            <StitchPrimaryButton
+              label="Open Inventory"
+              onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })}
+              icon="cube-outline"
+              style={{ marginTop: 20, marginHorizontal: 16 }}
+            />
           </View>
         )}
 

@@ -1,8 +1,26 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 28, // Incremented version
+  version: 29, // Incremented version
   tables: [
+    // ── Equipment ─────────────────────────────────────────────────────────────
+    tableSchema({
+      name: 'equipments',
+      columns: [
+        { name: 'project_id',     type: 'string' },
+        { name: 'name',           type: 'string' },
+        { name: 'type',           type: 'string' },
+        { name: 'model',          type: 'string', isOptional: true },
+        { name: 'serial_number',  type: 'string', isOptional: true },
+        { name: 'purchase_date',  type: 'number', isOptional: true },
+        { name: 'purchase_price', type: 'number', isOptional: true },
+        { name: 'status',         type: 'string' },
+        { name: 'notes',          type: 'string', isOptional: true },
+        { name: 'is_deleted',     type: 'boolean' },
+        { name: 'created_at',     type: 'number' },
+        { name: 'updated_at',     type: 'number' },
+      ],
+    }),
     // ── ProjectAccess ────────────────────────────────────────────────────────
     tableSchema({
       name: 'project_access',

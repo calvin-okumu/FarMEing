@@ -14,6 +14,7 @@ const tableMap = {
   sale_payments: 'salePayment',
   inventory_items: 'inventoryItem',
   payees: 'payee',
+  equipments: 'equipment',
   employee_project_assignments: 'employeeProject',
   project_access: 'projectAccess',
   project_invitations: 'projectInvitation',
@@ -28,6 +29,7 @@ const SYNC_ORDER = [
   'project_access',
   'project_invitations',
   'project_blocks',
+  'equipments',
   'employees',
   'employee_project_assignments',
   'budget_items',
@@ -95,6 +97,9 @@ const fieldMapping = {
   isUsed: 'is_used',
   userName: 'user_name',
   userPhone: 'user_phone',
+  serialNumber: 'serial_number',
+  purchaseDate: 'purchase_date',
+  purchasePrice: 'purchase_price',
   cropVariety: 'crop_variety',
 };
 
@@ -189,9 +194,10 @@ exports.pull = async (req, res) => {
 
     // 2. Fetch changes for all tables in parallel
     const tablePromises = Object.entries(tableMap).map(async ([watermelonTable, prismaModel]) => {
-      let where = {
-        updatedAt: { gt: lastPulledAtDate },
-      };
+      try {
+        let where = {
+          updatedAt: { gt: lastPulledAtDate },
+        };
 
       // Apply security scoping
       if (prismaModel === 'user' || prismaModel === 'season') {
@@ -214,7 +220,7 @@ exports.pull = async (req, res) => {
         where.id = { in: accessibleProjectIds };
       } else {
         // All other models are directly linked to a project
-        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock', 'projectAccess', 'projectInvitation'].includes(prismaModel)) {
+        if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock', 'projectAccess', 'projectInvitation', 'equipment'].includes(prismaModel)) {
           where.projectId = { in: accessibleProjectIds };
         } else if (prismaModel === 'saleHarvest') {
           where.sale = { projectId: { in: accessibleProjectIds } };
@@ -253,6 +259,10 @@ exports.pull = async (req, res) => {
       });
 
       return { watermelonTable, created, updated, deleted };
+    } catch (err) {
+      console.error(`[sync] Error pulling table ${watermelonTable} (${prismaModel}):`, err);
+      throw err;
+    }
     });
 
     const results = await Promise.all(tablePromises);
@@ -381,7 +391,7 @@ exports.push = async (req, res) => {
             where.projectAccess = { some: { userId: req.user.id, role: 'OWNER' } };
           } else if (['projectAccess', 'projectInvitation'].includes(prismaModel)) {
             where.project = { projectAccess: { some: { userId: req.user.id, role: 'OWNER' } } };
-          } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock'].includes(prismaModel)) {
+          } else if (['budgetItem', 'expense', 'harvest', 'sale', 'inventoryItem', 'employeeProject', 'projectBlock', 'equipment'].includes(prismaModel)) {
             where.project = { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } };
           } else if (prismaModel === 'saleHarvest') {
             where.sale = { project: { projectAccess: { some: { userId: req.user.id, role: { in: ['OWNER', 'MANAGER'] } } } } };
