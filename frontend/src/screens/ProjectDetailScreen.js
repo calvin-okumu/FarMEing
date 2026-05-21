@@ -1,52 +1,59 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Q } from '@nozbe/watermelondb';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
+import api, { BASE_URL } from '../lib/api';
 import useSettingsStore from '../store/useSettingsStore';
-import useSyncStore from '../store/useSyncStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchInput, StitchPrimaryButton, StitchSearchBar, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
+import { BarChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import SearchBar from '../components/ui/SearchBar';
-import StatusBanner from '../components/ui/StatusBanner';
+
 import { deleteLocalModel } from '../utils/resourceMutations';
-import { markRecordSynced } from '../utils/localRecord';
 import useAuthStore from '../store/useAuthStore';
-import {
-  useBudgetItemsQuery,
-  useExpensesQuery,
-  useHarvestsQuery,
-  useSalesQuery,
-  useWorkEntriesQuery,
-  useWorkEntryActivityAnalyticsQuery,
-  useWorkEntryEmployeeAnalyticsQuery,
-} from '../hooks/api/useProjectResourcesApi';
 
-const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'timeline'];
+const screenWidth = Dimensions.get('window').width;
+const TAB_ORDER = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'inventory', 'team', 'timeline'];
 
-function SummaryCard({ label, value, tone = 'default' }) {
+function MetricCard({ title, value, note, icon, accent, tone = 'default' }) {
   return (
-    <View style={[styles.summaryCard, tone === 'accent' && styles.summaryCardAccent]}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={[styles.summaryValue, tone === 'accent' && styles.summaryValueAccent]}>{value}</Text>
+    <View style={[styles.metricCard, tone === 'accent' && styles.metricCardAccent]}>
+      <View style={styles.metricInner}>
+        <View style={styles.metricTop}>
+          <Text style={[styles.metricTitle, tone === 'accent' && styles.metricTitleAccent]}>{title}</Text>
+          <View style={[styles.metricIconWrap, tone === 'accent' && styles.metricIconWrapAccent, { backgroundColor: accent ? `${accent}22` : stitchTheme.colors.surfaceTint }]}>
+            <Ionicons name={icon} size={15} color={tone === 'accent' ? stitchTheme.colors.surfaceHighlight : accent || stitchTheme.colors.primaryContainer} />
+          </View>
+        </View>
+        <Text style={[styles.metricValue, tone === 'accent' && styles.metricValueAccent]}>{value}</Text>
+        <Text style={[styles.metricNote, tone === 'accent' && styles.metricNoteAccent]}>{note}</Text>
+      </View>
     </View>
   );
 }
@@ -57,7 +64,7 @@ function TimelineSection({ title, tone, items, t, currency }) {
   return (
     <View style={styles.timelineSection}>
       <View style={styles.timelineSectionHeader}>
-        <View style={[styles.timelineSectionChip, tone === 'today' ? styles.timelineSectionChipToday : styles.timelineSectionChipPast]}>
+        <View style={[styles.timelineSectionChip, tone === 'today' && styles.timelineSectionChipToday]}>
           <Text style={[styles.timelineSectionChipText, tone === 'today' && styles.timelineSectionChipTextToday]}>{title}</Text>
         </View>
         <View style={styles.timelineSectionLine} />
@@ -67,41 +74,24 @@ function TimelineSection({ title, tone, items, t, currency }) {
         <View key={`${title}-${index}`} style={styles.timelineItemWrap}>
           <View style={styles.timelineRail}>
             <View style={[styles.timelineDot, { backgroundColor: item.dotColor }]}>
-              <Ionicons name={item.icon} size={15} color={item.iconColor || '#ffffff'} />
+              <Ionicons name={item.icon} size={11} color={item.iconColor || stitchTheme.colors.surfaceHighlight} />
             </View>
             {index !== items.length - 1 ? <View style={styles.timelineVertical} /> : null}
           </View>
           <View style={styles.timelineCard}>
-            <View style={styles.timelineTopRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.timelineTitle}>{item.title}</Text>
-                <View style={styles.timelineMetaRow}>
-                  <Ionicons name={item.timeIcon || 'time-outline'} size={13} color={stitchTheme.colors.textMuted} />
-                  <Text style={styles.timelineMetaText}>{item.timeLabel}</Text>
-                </View>
+            <View style={[styles.cardAccent, { backgroundColor: item.dotColor }]} />
+            <View style={styles.collectionTopRow}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{item.timeLabel}</Text>
+                <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{item.title}</Text>
               </View>
-              {item.badge ? (
-                <View style={[styles.timelineBadge, { backgroundColor: item.badgeBackground || stitchTheme.colors.successSurface }]}>
-                  <Text style={[styles.timelineBadgeText, { color: item.badgeColor || stitchTheme.colors.primary }]}>{item.badge}</Text>
-                </View>
+              {item.amount ? (
+                <Text style={[styles.collectionAmount, { flexShrink: 0 }, item.type === 'SALE' ? styles.collectionAmountPositive : (item.type !== 'HARVEST' ? styles.collectionAmountNegative : null)]}>
+                  {item.type === 'HARVEST' ? `${item.amount} kg` : formatCurrency(item.amount, currency)}
+                </Text>
               ) : null}
-              {item.amountLabel ? <Text style={styles.timelineAmountText}>{item.amountLabel}</Text> : null}
             </View>
-            <Text style={styles.timelineBody}>{item.body}</Text>
-            {item.preview ? (
-              <View style={styles.timelinePreviewRow}>
-                {item.preview.map((previewItem, previewIndex) => (
-                  <View key={previewIndex} style={[styles.timelinePreview, { backgroundColor: previewItem.backgroundColor }]}> 
-                    <Ionicons name={previewItem.icon} size={28} color={previewItem.color} />
-                  </View>
-                ))}
-              </View>
-            ) : null}
-            {item.type === 'HARVEST' ? (
-              <Text style={styles.timelineFooterValue}>{`${item.amount} ${t('harvest.units.kg')}`}</Text>
-            ) : item.type === 'SALE' || item.type === 'EXPENSE' ? (
-              <Text style={styles.timelineFooterValue}>{formatCurrency(item.amount || 0, currency)}</Text>
-            ) : null}
+            <Text style={styles.collectionDescription} numberOfLines={2} ellipsizeMode='tail'>{item.body}</Text>
           </View>
         </View>
       ))}
@@ -109,28 +99,28 @@ function TimelineSection({ title, tone, items, t, currency }) {
   );
 }
 
-function ResourceOverviewCard({ eyebrow, title, value, tone = 'soft' }) {
+function TeamMemberCard({ member, isOwner, onRemove, t }) {
   return (
-    <View style={[styles.resourceOverviewCard, tone === 'accent' ? styles.resourceOverviewCardAccent : styles.resourceOverviewCardSoft]}>
-      <Text style={styles.resourceOverviewEyebrow}>{eyebrow}</Text>
-      <Text style={styles.resourceOverviewTitle}>{title}</Text>
-      <Text style={styles.resourceOverviewValue}>{value}</Text>
-    </View>
-  );
-}
-
-function WorkspaceAction({ label, icon, onPress, tone = 'default' }) {
-  return (
-    <TouchableOpacity
-      style={[styles.workspaceAction, tone === 'accent' && styles.workspaceActionAccent]}
-      onPress={onPress}
-      activeOpacity={0.88}
-    >
-      <View style={[styles.workspaceActionIcon, tone === 'accent' && styles.workspaceActionIconAccent]}>
-        <Ionicons name={icon} size={16} color={tone === 'accent' ? '#ffffff' : stitchTheme.colors.primary} />
+    <View style={styles.collectionCard}>
+      <View style={styles.collectionTopRow}>
+        <View style={styles.teamInfo}>
+          <View style={styles.teamAvatar}>
+            <Text style={styles.teamAvatarText}>{member.name.charAt(0).toUpperCase()}</Text>
+          </View>
+          <View>
+            <Text style={styles.collectionTitle}>{member.name}</Text>
+            <Text style={styles.collectionMeta}>{member.phone}</Text>
+          </View>
+        </View>
+        <StitchBadge label={member.role} tone={member.role === 'OWNER' ? 'success' : 'neutral'} />
       </View>
-      <Text style={[styles.workspaceActionText, tone === 'accent' && styles.workspaceActionTextAccent]}>{label}</Text>
-    </TouchableOpacity>
+      {isOwner && member.role !== 'OWNER' ? (
+        <TouchableOpacity style={styles.removeMemberBtn} onPress={() => onRemove(member.id)} activeOpacity={0.8}>
+          <Ionicons name="person-remove-outline" size={15} color={stitchTheme.colors.accentRed} />
+          <Text style={styles.removeMemberText}>{t('team.revoke_access')}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
   );
 }
 
@@ -138,8 +128,6 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const { t } = useTranslation();
   const { projectId, initialTab } = route.params || {};
   const currency = useSettingsStore((s) => s.currency);
-  const user = useAuthStore((s) => s.user);
-  const syncStatus = useSyncStore((s) => s.status);
 
   const [project, setProject] = useState(null);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -147,23 +135,119 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [workEntries, setWorkEntries] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [sales, setSales] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [salePayments, setSalePayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState('latest');
+  const [exporting, setExporting] = useState(false);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [team, setTeam] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [inviteVisible, setInviteVisible] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
+  const [allProjects, setAllProjects] = useState([]);
   const [banner, setBanner] = useState(null);
+  const apiProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
 
-  const remoteProjectId = project?.remoteId || null;
+  const fetchTeam = async () => {
+    if (!apiProjectId) return;
+    setTeamLoading(true);
+    try {
+      const res = await api.get(`/projects/${apiProjectId}/members`);
+      setTeam(res.data.members);
+    } catch (err) {
+      if (err.statusCode === 404) {
+        setTeam([]);
+      } else {
+        console.warn('[Team] Fetch error:', err.message);
+      }
+    } finally {
+      setTeamLoading(false);
+    }
+  };
 
-  const budgetQuery = useBudgetItemsQuery(remoteProjectId);
-  const expenseQuery = useExpensesQuery(remoteProjectId);
-  const workQuery = useWorkEntriesQuery(remoteProjectId);
-  const harvestQuery = useHarvestsQuery(remoteProjectId);
-  const salesQuery = useSalesQuery(remoteProjectId);
-  const laborByEmployeeQuery = useWorkEntryEmployeeAnalyticsQuery(remoteProjectId);
-  const laborByActivityQuery = useWorkEntryActivityAnalyticsQuery(remoteProjectId);
+  useEffect(() => {
+    if (activeTab === 'team') {
+      fetchTeam();
+    }
+  }, [activeTab, apiProjectId]);
+
+  const handleInvite = async () => {
+    const targetProjects = inviteForm.projectIds.length > 0 ? inviteForm.projectIds : [apiProjectId];
+    if (!inviteForm.phone || targetProjects.length === 0) return;
+    let successCount = 0;
+    let failCount = 0;
+    for (const pid of targetProjects) {
+      try {
+        await api.post(`/projects/${pid}/members`, {
+          phone: inviteForm.phone,
+          role: inviteForm.role,
+          note: inviteForm.note,
+        });
+        successCount++;
+      } catch (err) {
+        failCount++;
+      }
+    }
+    setInviteVisible(false);
+    setInviteForm({ phone: '', role: 'MANAGER', note: '', projectIds: [] });
+    fetchTeam();
+    if (successCount > 0) {
+      setBanner({ tone: 'success', title: t('common.success'), message: t('team.invited_success') });
+    }
+    if (failCount > 0) {
+      Alert.alert(t('common.error'), `${failCount} invitation(s) failed.`);
+    }
+  };
+
+  const handleRemoveMember = async (targetUserId) => {
+    if (!apiProjectId) return;
+    try {
+      await api.delete(`/projects/${apiProjectId}/members/${targetUserId}`);
+      fetchTeam();
+      setBanner({ tone: 'success', title: t('common.success'), message: t('team.access_revoked') });
+    } catch (err) {
+      Alert.alert('Error', 'Could not remove team member.');
+    }
+  };
+
+  const handleExport = async (format = 'pdf') => {
+    setExportModalVisible(false);
+    setExporting(true);
+    try {
+      await syncAll();
+      const resolvedProjectId = project?.remoteId || project?._raw?.remote_id || project?.id || projectId;
+      if (!resolvedProjectId) {
+        throw new Error(t('export.not_available'));
+      }
+      const token = useAuthStore.getState().token;
+      const extension = format === 'excel' ? 'xlsx' : 'pdf';
+      const fileUri = `${FileSystem.documentDirectory}Report_${project.name.replace(/\s+/g, '_')}.${extension}`;
+      const endpoint = format === 'excel' ? 'excel' : 'pdf';
+
+      const downloadRes = await FileSystem.downloadAsync(
+        `${BASE_URL}reports/project/${resolvedProjectId}/${endpoint}`,
+        fileUri,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (downloadRes.status !== 200) {
+        throw new Error(`Failed to download ${format} report`);
+      }
+      await Sharing.shareAsync(downloadRes.uri);
+    } catch (err) {
+      console.error('[Export] Error:', err.message);
+      Alert.alert('Export Failed', `Could not generate or download the ${format} report.`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     if (initialTab && TAB_ORDER.includes(initialTab)) {
@@ -192,225 +276,38 @@ export default function ProjectDetailScreen({ route, navigation }) {
   }, [projectId]);
 
   useEffect(() => {
-    if (!projectId || !budgetQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of budgetQuery.data) {
-        const existing = await database.get('budget_items').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.name = item.name || '';
-            record.quantity = item.quantity || 0;
-            record.unit = item.unit || '';
-            record.unitPrice = item.unitPrice || 0;
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('budget_items').create((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.name = item.name || '';
-            record.quantity = item.quantity || 0;
-            record.unit = item.unit || '';
-            record.unitPrice = item.unitPrice || 0;
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, budgetQuery.data]);
+    const sub = database.get('farm_projects').query().observe().subscribe(setAllProjects);
+    return () => sub.unsubscribe();
+  }, []);
 
-  useEffect(() => {
-    if (!projectId || !expenseQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of expenseQuery.data) {
-        const existing = await database.get('expenses').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.expenseType = item.expenseType || 'OPEX';
-            record.amount = item.amount || 0;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.note = item.note || '';
-            record.receiptUrl = item.receiptUrl || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('expenses').create((record) => {
-            record.projectId = projectId;
-            record.category = item.category || '';
-            record.expenseType = item.expenseType || 'OPEX';
-            record.amount = item.amount || 0;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.note = item.note || '';
-            record.receiptUrl = item.receiptUrl || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, expenseQuery.data]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!projectId) return;
 
-  useEffect(() => {
-    if (!projectId || !workQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of workQuery.data) {
-        const existing = await database.get('work_entries').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.employeeId = item.employeeId || item.employee?.id || '';
-            record.activity = item.activity || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.daysWorked = item.daysWorked || 0;
-            record.ratePerDay = item.ratePerDay || 0;
-            record.totalCost = item.totalCost || 0;
-            record.hoursWorked = item.hoursWorked || 0;
-            record.imageUrl = item.imageUrl || '';
-            record.status = item.status || 'PENDING';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('work_entries').create((record) => {
-            record.projectId = projectId;
-            record.employeeId = item.employeeId || item.employee?.id || '';
-            record.activity = item.activity || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.daysWorked = item.daysWorked || 0;
-            record.ratePerDay = item.ratePerDay || 0;
-            record.totalCost = item.totalCost || 0;
-            record.hoursWorked = item.hoursWorked || 0;
-            record.imageUrl = item.imageUrl || '';
-            record.status = item.status || 'PENDING';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, workQuery.data]);
+      const projectIds = [projectId];
 
-  useEffect(() => {
-    if (!projectId || !harvestQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of harvestQuery.data) {
-        const existing = await database.get('harvests').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.crop = item.crop || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.weight = item.weight || 0;
-            record.unit = item.unit || 'kg';
-            record.quality = item.quality || '';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('harvests').create((record) => {
-            record.projectId = projectId;
-            record.crop = item.crop || '';
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.weight = item.weight || 0;
-            record.unit = item.unit || 'kg';
-            record.quality = item.quality || '';
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, harvestQuery.data]);
+      const subs = [
+        database.get('budget_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setBudgetItems),
+        database.get('expenses').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setExpenses),
+        database.get('work_entries').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setWorkEntries),
+        database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests),
+        database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales),
+        database.get('inventory_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setInventoryItems),
+        database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
+        database.get('sale_payments').query(Q.where('is_deleted', false)).observe().subscribe(setSalePayments),
+      ];
 
-  useEffect(() => {
-    if (!projectId || !salesQuery.data?.length) return;
-    database.write(async () => {
-      for (const item of salesQuery.data) {
-        const existing = await database.get('sales').query(Q.where('remote_id', item.id)).fetch();
-        if (existing[0]) {
-          await existing[0].update((record) => {
-            record.projectId = projectId;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.customer = item.customer || '';
-            record.weightSold = item.weightSold || 0;
-            record.unitPrice = item.unitPrice || 0;
-            record.totalAmount = item.totalAmount || 0;
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        } else {
-          await database.get('sales').create((record) => {
-            record.projectId = projectId;
-            record.date = item.date ? new Date(item.date).getTime() : Date.now();
-            record.customer = item.customer || '';
-            record.weightSold = item.weightSold || 0;
-            record.unitPrice = item.unitPrice || 0;
-            record.totalAmount = item.totalAmount || 0;
-            record.notes = item.notes || '';
-            record.isDeleted = !!item.isDeleted;
-            markRecordSynced(record, item.id);
-          });
-        }
-      }
-    }).catch(() => {});
-  }, [projectId, salesQuery.data]);
+      return () => subs.forEach(s => s.unsubscribe());
+    }, [projectId])
+  );
 
-  useEffect(() => {
-    if (!projectId) return;
-
-    const projectIds = [projectId];
-    if (project?.remoteId) projectIds.push(project.remoteId);
-
-    const budgetSub = database.get('budget_items').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setBudgetItems);
-    const expenseSub = database.get('expenses').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setExpenses);
-    const workSub = database.get('work_entries').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setWorkEntries);
-    const harvestSub = database.get('harvests').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setHarvests);
-    const saleSub = database.get('sales').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setSales);
-    const empSub = database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees);
-
-    return () => {
-      budgetSub.unsubscribe();
-      expenseSub.unsubscribe();
-      workSub.unsubscribe();
-      harvestSub.unsubscribe();
-      saleSub.unsubscribe();
-      empSub.unsubscribe();
-    };
-  }, [projectId, project?.remoteId]);
-
-  const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales }), [budgetItems, expenses, workEntries, harvests, sales]);
+  const summary = useMemo(() => computeProjectSummary({ budgetItems, expenses, workEntries, harvests, sales, inventoryItems }), [budgetItems, expenses, workEntries, harvests, sales, inventoryItems]);
   const totalBudget = summary.totalBudget;
-  const totalExpenses = summary.totalExpenses;
-  const totalLabor = summary.totalLaborCost;
   const totalSpent = summary.totalCost;
-  const totalHarvest = summary.totalHarvest;
   const totalRevenue = summary.totalRevenue;
+  const collectedRevenue = summary.collectedRevenue || 0;
+  const pendingRevenue = summary.pendingRevenue || 0;
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-  const resourcesSyncing = budgetQuery.isFetching || expenseQuery.isFetching || workQuery.isFetching || harvestQuery.isFetching || salesQuery.isFetching;
-  const activeQueryError = activeTab === 'budget' ? budgetQuery.error
-    : activeTab === 'expenses' ? expenseQuery.error
-    : activeTab === 'labor' ? workQuery.error || laborByEmployeeQuery.error || laborByActivityQuery.error
-    : activeTab === 'harvest' ? harvestQuery.error
-    : activeTab === 'sales' ? salesQuery.error
-    : null;
-  const activeQueryLoading = activeTab === 'budget' ? budgetQuery.isLoading
-    : activeTab === 'expenses' ? expenseQuery.isLoading
-    : activeTab === 'labor' ? workQuery.isLoading || laborByEmployeeQuery.isLoading || laborByActivityQuery.isLoading
-    : activeTab === 'harvest' ? harvestQuery.isLoading
-    : activeTab === 'sales' ? salesQuery.isLoading
-    : false;
 
   const employeeMap = new Map();
   employees.forEach((employee) => {
@@ -418,632 +315,570 @@ export default function ProjectDetailScreen({ route, navigation }) {
     if (employee.remoteId) employeeMap.set(employee.remoteId, employee.name);
   });
 
-  const localLaborByEmployee = useMemo(() => {
-    const grouped = new Map();
-    workEntries.forEach((item) => {
-      if (item.isDeleted) return;
-      const key = item.employeeId || 'unknown';
-      const existing = grouped.get(key) || { employeeId: key, employeeName: employeeMap.get(key) || t('employees.unknown'), totalCost: 0, totalDays: 0, entryCount: 0 };
-      existing.totalCost += item.totalCost || 0;
-      existing.totalDays += item.daysWorked || 0;
-      existing.entryCount += 1;
-      grouped.set(key, existing);
-    });
-    return [...grouped.values()].sort((a, b) => b.totalCost - a.totalCost);
-  }, [workEntries, employees, t]);
+  const saleCustomerMap = useMemo(() => {
+    const map = {};
+    sales.forEach(s => { map[s.id] = s.customer || 'Cash'; if (s.remoteId) map[s.remoteId] = s.customer || 'Cash'; });
+    return map;
+  }, [sales]);
 
-  const localLaborByActivity = useMemo(() => {
-    const grouped = new Map();
-    workEntries.forEach((item) => {
-      if (item.isDeleted) return;
-      const key = item.activity || 'Other';
-      const existing = grouped.get(key) || { activity: key, totalCost: 0, totalDays: 0, entryCount: 0 };
-      existing.totalCost += item.totalCost || 0;
-      existing.totalDays += item.daysWorked || 0;
-      existing.entryCount += 1;
-      grouped.set(key, existing);
-    });
-    return [...grouped.values()].sort((a, b) => b.totalCost - a.totalCost);
-  }, [workEntries]);
+  const projectPayments = useMemo(() => {
+    return salePayments.filter(p => saleCustomerMap[p.saleId]).sort((a, b) => b.date - a.date);
+  }, [salePayments, saleCustomerMap]);
 
-  const laborByEmployee = laborByEmployeeQuery.data?.length ? laborByEmployeeQuery.data : localLaborByEmployee;
-  const laborByActivity = laborByActivityQuery.data?.length ? laborByActivityQuery.data : localLaborByActivity;
+  const paymentsBySale = useMemo(() => {
+    const map = {};
+    for (const p of salePayments) {
+      if (!map[p.saleId]) map[p.saleId] = [];
+      map[p.saleId].push(p);
+    }
+    for (const id of Object.keys(map)) map[id].sort((a, b) => a.date - b.date);
+    return map;
+  }, [salePayments]);
 
   const localTimeline = useMemo(() => {
     const workItems = workEntries.slice(0, 4).map((entry) => ({
       type: 'WORK',
       date: entry.date,
-      icon: entry.activity?.toLowerCase().includes('irrig') ? 'water-outline' : entry.activity?.toLowerCase().includes('spray') ? 'flask-outline' : 'leaf-outline',
-      title: `${entry.activity} / ${t(`labor.activity_notes.${entry.activity?.toLowerCase() || 'other'}`, { defaultValue: t('labor.activity_notes.other') })}`,
-      body: entry.notes || t('timeline.work_default_body', { employee: employeeMap.get(entry.employeeId) || t('employees.unknown') }),
+      icon: 'people-outline',
+      title: `${entry.activity}`,
+      body: entry.notes || `Activity by ${employeeMap.get(entry.employeeId) || 'Staff'}`,
       badge: entry.status === 'APPROVED' ? t('timeline.completed') : t(`labor.status.${entry.status.toLowerCase()}`),
-      badgeBackground: entry.status === 'APPROVED' ? stitchTheme.colors.successSurface : stitchTheme.colors.warningSurface,
-      badgeColor: entry.status === 'APPROVED' ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown,
-      timeIcon: 'time-outline',
       timeLabel: formatAppDate(entry.date),
-      dotColor: entry.activity?.toLowerCase().includes('irrig') ? stitchTheme.colors.primary : stitchTheme.colors.accentBrown,
+      dotColor: stitchTheme.colors.primary,
       amount: entry.totalCost,
-      preview: entry.imageUrl ? [{ icon: 'image-outline', backgroundColor: stitchTheme.colors.surfaceMuted, color: stitchTheme.colors.primary }] : null,
     }));
 
     const expenseItems = expenses.slice(0, 2).map((expense) => ({
       type: 'EXPENSE',
       date: expense.date,
       icon: 'wallet-outline',
-      title: `${t('timeline.expense_title')} / ${t('expenses.categories.' + expense.category, { defaultValue: expense.category })}`,
-      body: expense.note || t('timeline.expense_default_body', { category: t(`expenses.categories.${expense.category}`, { defaultValue: expense.category }) }),
-      timeIcon: 'calendar-outline',
+      title: `${expense.category}`,
+      body: expense.note || 'Farm operational expense',
       timeLabel: formatAppDate(expense.date),
       dotColor: stitchTheme.colors.accentPeach,
-      iconColor: stitchTheme.colors.accentBrown,
-      amount: -expense.amount,
-      amountLabel: `- ${formatCurrency(expense.amount, currency)}`,
+      amount: expense.amount,
     }));
 
     const harvestItems = harvests.slice(0, 2).map((harvest) => ({
       type: 'HARVEST',
       date: harvest.date,
       icon: 'leaf-outline',
-      title: `${t('timeline.harvest_title', { defaultValue: 'Harvest update' })} / ${harvest.crop || t('harvest.entry_title')}`,
-      body: harvest.notes || t('timeline.harvest_default_body', { defaultValue: `Harvest quality: ${harvest.quality || t('harvest.default_quality')}`, quality: harvest.quality || t('harvest.default_quality') }),
-      timeIcon: 'calendar-outline',
+      title: `Harvest: ${harvest.crop}`,
+      body: harvest.notes || 'Yield recorded',
       timeLabel: formatAppDate(harvest.date),
       dotColor: stitchTheme.colors.primaryDim,
       amount: harvest.weight,
-      amountLabel: `${harvest.weight || 0} ${harvest.unit || t('harvest.units.kg')}`,
-      badge: harvest.quality ? t(`harvest.qualities.${harvest.quality}`, { defaultValue: harvest.quality }) : null,
-      badgeBackground: stitchTheme.colors.successSurface,
-      badgeColor: stitchTheme.colors.primary,
     }));
 
     const saleItems = sales.slice(0, 2).map((sale) => ({
       type: 'SALE',
       date: sale.date,
       icon: 'cash-outline',
-      title: `${t('timeline.sale_title', { defaultValue: 'Sale recorded' })} / ${sale.customer || t('sales.cash_sale')}`,
-      body: sale.notes || t('timeline.sale_default_body', { defaultValue: `Recorded sale for ${sale.customer || t('sales.cash_sale')}`, customer: sale.customer || t('sales.cash_sale') }),
-      timeIcon: 'calendar-outline',
+      title: `Sale to ${sale.customer || 'Cash'}`,
+      body: [sale.paymentStatus !== 'paid' ? `${sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)} — ${formatCurrency(sale.totalAmount - (sale.balanceDue || 0), currency)} paid` : '', sale.notes || 'Revenue recorded'].filter(Boolean).join(' | '),
       timeLabel: formatAppDate(sale.date),
       dotColor: stitchTheme.colors.accentBrown,
       amount: sale.totalAmount,
-      amountLabel: formatCurrency(sale.totalAmount || 0, currency),
-      badge: sale.weightSold ? `${sale.weightSold} ${t('harvest.units.kg')}` : null,
-      badgeBackground: stitchTheme.colors.warningSurface,
-      badgeColor: stitchTheme.colors.accentBrown,
     }));
 
     return [...workItems, ...expenseItems, ...harvestItems, ...saleItems].sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [workEntries, expenses, harvests, sales, employeeMap, t, currency]);
+  }, [workEntries, expenses, harvests, sales, employeeMap, t]);
 
-  const mergedTimeline = localTimeline;
-  const activeLocalCount = activeTab === 'budget' ? budgetItems.length
-    : activeTab === 'expenses' ? expenses.length
-    : activeTab === 'labor' ? workEntries.length
-    : activeTab === 'harvest' ? harvests.length
-    : activeTab === 'sales' ? sales.length
-    : activeTab === 'timeline' ? mergedTimeline.length
-    : 0;
+  const collectionSearch = searchQuery.trim().toLowerCase();
+  const isLocalOnly = project?._raw?._status !== 'synced';
 
-  const groupedTimeline = useMemo(() => {
-    const today = [];
-    const earlier = [];
-    const now = new Date();
+  const filteredBudgetItems = useMemo(() => {
+    const base = collectionSearch
+      ? budgetItems.filter((item) => [item.name, item.category].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : budgetItems;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
+  }, [budgetItems, collectionSearch, sortMode]);
 
-    mergedTimeline.forEach((item) => {
-      const itemDate = new Date(item.date);
-      const normalized = {
-        ...item,
-        timeLabel: item.timeLabel || formatAppDate(item.date),
-        icon: item.icon || 'leaf-outline',
-        dotColor: item.dotColor || stitchTheme.colors.primary,
-      };
+  const filteredExpenses = useMemo(() => {
+    const base = collectionSearch
+      ? expenses.filter((item) => [item.category, item.note].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : expenses;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.amount || 0) - (a.amount || 0));
+  }, [expenses, collectionSearch, sortMode]);
 
-      if (
-        itemDate.getDate() === now.getDate() &&
-        itemDate.getMonth() === now.getMonth() &&
-        itemDate.getFullYear() === now.getFullYear()
-      ) {
-        today.push(normalized);
-      } else {
-        earlier.push(normalized);
-      }
-    });
+  const filteredWorkEntries = useMemo(() => {
+    const base = collectionSearch
+      ? workEntries.filter((item) => [item.activity, employeeMap.get(item.employeeId), item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : workEntries;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalCost || 0) - (a.totalCost || 0));
+  }, [workEntries, collectionSearch, sortMode, employeeMap]);
 
-    return { today, earlier };
-  }, [mergedTimeline]);
+  const filteredHarvests = useMemo(() => {
+    const base = collectionSearch
+      ? harvests.filter((item) => [item.crop, item.notes].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : harvests;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.weight || 0) - (a.weight || 0));
+  }, [harvests, collectionSearch, sortMode]);
 
-  const sortItems = (items, amountAccessor) => {
-    const list = [...items];
-    if (sortMode === 'amount') {
-      return list.sort((a, b) => (amountAccessor(b) || 0) - (amountAccessor(a) || 0));
-    }
-    return list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  };
+  const filteredSales = useMemo(() => {
+    const base = collectionSearch
+      ? sales.filter((item) => [item.customer, item.notes, item.paymentStatus].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : sales;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.date || 0) - (a.date || 0) : (b.totalAmount || 0) - (a.totalAmount || 0));
+  }, [sales, collectionSearch, sortMode]);
 
-  const textMatches = (value) => (value || '').toString().toLowerCase().includes(searchQuery.trim().toLowerCase());
-  const hasQuery = searchQuery.trim().length > 0;
+  const filteredTeam = useMemo(() => {
+    const base = collectionSearch
+      ? team.filter((item) => [item.name, item.phone, item.role].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : team;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (a.role || '').localeCompare(b.role || '') : (a.name || '').localeCompare(b.name || ''));
+  }, [team, collectionSearch, sortMode]);
 
-  const visibleBudgetItems = useMemo(() => {
-    const filtered = hasQuery ? budgetItems.filter((item) => textMatches(item.name) || textMatches(item.category) || textMatches(item.unit)) : budgetItems;
-    return sortItems(filtered, (item) => item.quantity * item.unitPrice);
-  }, [budgetItems, searchQuery, sortMode]);
+  const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'team'].includes(activeTab);
 
-  const visibleExpenses = useMemo(() => {
-    const filtered = hasQuery ? expenses.filter((item) => textMatches(item.category) || textMatches(item.expenseType) || textMatches(item.note)) : expenses;
-    return sortItems(filtered, (item) => item.amount);
-  }, [expenses, searchQuery, sortMode]);
-
-  const visibleWorkEntries = useMemo(() => {
-    const filtered = hasQuery ? workEntries.filter((item) => textMatches(item.activity) || textMatches(item.status) || textMatches(employeeMap.get(item.employeeId))) : workEntries;
-    return sortItems(filtered, (item) => item.totalCost);
-  }, [workEntries, searchQuery, sortMode, employees]);
-
-  const visibleHarvests = useMemo(() => {
-    const filtered = hasQuery ? harvests.filter((item) => textMatches(item.crop) || textMatches(item.quality) || textMatches(item.unit)) : harvests;
-    return sortItems(filtered, (item) => item.weight);
-  }, [harvests, searchQuery, sortMode]);
-
-  const visibleSales = useMemo(() => {
-    const filtered = hasQuery ? sales.filter((item) => textMatches(item.customer) || textMatches(item.notes)) : sales;
-    return sortItems(filtered, (item) => item.totalAmount);
-  }, [sales, searchQuery, sortMode]);
-
-  const handleEditItem = (type, item) => {
-    const params = { projectId: project.id, itemId: item.id };
-    if (type === 'budget') navigation.navigate('AddBudgetItem', params);
-    if (type === 'expenses') navigation.navigate('AddExpense', params);
-    if (type === 'labor') navigation.navigate('AddWorkEntry', params);
-    if (type === 'harvest') navigation.navigate('AddHarvest', params);
-    if (type === 'sales') navigation.navigate('AddSale', params);
-  };
-
-  const handleDeleteItem = async () => {
-    if (!deleteTarget) return;
-    const { type, item } = deleteTarget;
-
-    try {
-      await database.write(async () => {
-        const tableMap = {
-          budget: 'budget_items',
-          expenses: 'expenses',
-          labor: 'work_entries',
-          harvest: 'harvests',
-          sales: 'sales',
-        };
-        const record = await database.get(tableMap[type]).find(item.id);
-        await deleteLocalModel(record);
-      });
-      syncAll().catch(() => {});
-      setDeleteTarget(null);
-      setBanner({ tone: 'success', title: t('feedback.deleted'), message: t('feedback.deleted_remote') });
-    } catch (error) {
-      setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
-      Alert.alert(t('common.error'), error.message || t('common.error'));
-    }
-  };
-
-  const handleStatusChange = async (item, status) => {
-    try {
-      await database.write(async () => {
-        const record = await database.get('work_entries').find(item.id);
-        await record.update((draft) => {
-          draft.status = status;
-          draft.updatedAt = Date.now();
-          draft.syncStatus = draft.remoteId ? 'pending_update' : draft.syncStatus;
-        });
-      });
-      syncAll().catch(() => {});
-      setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
-    } catch (error) {
-      setBanner({ tone: 'error', title: t('common.error'), message: error.message || t('common.error') });
-      Alert.alert(t('common.error'), error.message || t('common.error'));
-    }
-  };
-
-  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item) => (
-    <View style={styles.collectionCard}>
-      <View style={styles.collectionTopRow}>
-        <Text style={styles.collectionTitle}>{title}</Text>
-        <Text style={[styles.collectionAmount, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]}>{amount}</Text>
-      </View>
-      <Text style={styles.collectionMeta}>{meta}</Text>
-      {type && item ? (
+  const renderCollectionCard = (title, meta, amount, tone = 'default', type, item, description = '') => {
+    const accentColor = tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown;
+    const descColor = type === 'sales' && description ? stitchTheme.colors.accentRed : stitchTheme.colors.textMuted;
+    const descWeight = type === 'sales' && description ? '800' : stitchTheme.typography.bodySmall.fontWeight;
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={styles.collectionCard}
+        activeOpacity={0.85}
+        onPress={() => {
+          const params = { projectId: project.id, itemId: item.id };
+          if (type === 'budget') navigation.navigate('AddBudgetItem', params);
+          else if (type === 'expenses') navigation.navigate('AddExpense', params);
+          else if (type === 'labor') navigation.navigate('AddWorkEntry', params);
+          else if (type === 'harvest') navigation.navigate('AddHarvest', params);
+          else if (type === 'sales') navigation.navigate('AddSale', params);
+        }}
+      >
+        <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
+        <View style={styles.collectionTopRow}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+            <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{meta}</Text>
+            <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{title}</Text>
+          </View>
+          <Text style={[styles.collectionAmount, { flexShrink: 0 }, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]} numberOfLines={1}>{amount}</Text>
+        </View>
+        {description ? <Text style={[styles.collectionDescription, { color: descColor, fontWeight: descWeight }]} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
         <View style={styles.collectionActionRow}>
-          <Text style={styles.collectionActionLabel}>Actions</Text>
-          <View style={styles.collectionActionGroup}>
-          <TouchableOpacity style={styles.collectionActionButton} onPress={() => handleEditItem(type, item)} activeOpacity={0.88}>
-            <Ionicons name="create-outline" size={16} color={stitchTheme.colors.primary} />
-            <Text style={styles.collectionActionText}>{t('common.edit')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.collectionActionButton, styles.collectionActionButtonDanger]} onPress={() => setDeleteTarget({ type, item })} activeOpacity={0.88}>
-            <Ionicons name="trash-outline" size={16} color={stitchTheme.colors.accentRed} />
+          <TouchableOpacity
+            style={[styles.collectionActionButton, styles.collectionActionButtonDanger]}
+            activeOpacity={0.8}
+            onPress={() => setDeleteTarget({ type, item })}
+          >
+            <Ionicons name="trash-outline" size={14} color={stitchTheme.colors.accentRed} />
             <Text style={styles.collectionActionTextDanger}>{t('common.delete')}</Text>
           </TouchableOpacity>
-          </View>
         </View>
-      ) : null}
-      {type === 'labor' ? (
-        <>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusBadge, item.status === 'APPROVED' ? styles.statusApproved : item.status === 'REJECTED' ? styles.statusRejected : styles.statusPending]}>
-              <Text style={[styles.statusBadgeText, item.status === 'APPROVED' ? styles.statusApprovedText : item.status === 'REJECTED' ? styles.statusRejectedText : styles.statusPendingText]}>
-                {t(`labor.status.${item.status.toLowerCase()}`)}
-              </Text>
-            </View>
-          </View>
-          {user?.role === 'ADMIN' ? (
-            <View style={styles.statusActions}>
-              <TouchableOpacity style={[styles.statusActionButton, styles.statusActionApprove]} onPress={() => handleStatusChange(item, 'APPROVED')} activeOpacity={0.88}>
-                <Text style={styles.statusActionApproveText}>{t('labor.approve')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.statusActionButton, styles.statusActionReject]} onPress={() => handleStatusChange(item, 'REJECTED')} activeOpacity={0.88}>
-                <Text style={styles.statusActionRejectText}>{t('labor.reject')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </>
-      ) : null}
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} />
-      </View>
+      </TouchableOpacity>
     );
-  }
-
-  if (!project) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{t('projects.errors.not_found')}</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>{t('common.back')}</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const handlePrimaryAction = () => {
-    const params = { projectId: project.id };
-    if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
-    else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
-    else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
-    else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
-    else if (activeTab === 'sales') navigation.navigate('AddSale', params);
-    else if (activeTab === 'inventory') navigation.navigate('Inventory', { projectId: project.id, projectName: project.name });
-    else navigation.navigate('AddExpense', params);
   };
 
-  const activeTabLabel = t(`projects.tabs.${activeTab}`);
-  const activeTabCount = activeTab === 'budget' ? visibleBudgetItems.length
-    : activeTab === 'expenses' ? visibleExpenses.length
-    : activeTab === 'labor' ? visibleWorkEntries.length
-    : activeTab === 'harvest' ? visibleHarvests.length
-    : activeTab === 'sales' ? visibleSales.length
-    : activeTab === 'timeline' ? mergedTimeline.length
-    : 1;
+  if (loading) return <StitchScreenSkeleton />;
+  if (!project) return null;
+
+  const timelineGroups = [
+    { title: t('common.today'), tone: 'today', items: localTimeline.slice(0, 3) },
+    { title: t('common.earlier'), tone: 'past', items: localTimeline.slice(3) },
+  ];
 
   return (
     <View style={styles.screen}>
       <StitchDashboardShell
         hero={{
-          eyebrow: t('timeline.project_activity'),
+          eyebrow: project.crop || t('projects.fields.crop'),
           title: project.name,
-          subtitle: `${project.crop} • ${project.landSize} ${project.landUnit}`,
+          subtitle: `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
           actionIcon: 'arrow-back',
           onActionPress: () => navigation.goBack(),
-          style: styles.hero,
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} icon='wallet-outline' style={styles.heroPillPrimary} />
-              <StitchHeroPill label={t('dashboard.revenue')} value={formatCurrency(totalRevenue, currency)} icon='cash-outline' style={styles.heroPillSecondary} />
-              <StitchHeroPill label={t('projects.tabs.harvest')} value={`${totalHarvest.toLocaleString()} ${t('harvest.units.kg')}`} icon='leaf-outline' style={styles.heroPillTertiary} />
+              <StitchHeroPill label={t('dashboard.total_spent')} value={totalSpent} currency={currency} icon='wallet-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('dashboard.revenue')} value={collectedRevenue.toLocaleString()} note={pendingRevenue > 0 ? pendingRevenue.toLocaleString() : ''} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
+              <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
+                <StitchHeroPill
+                  label={t('export.short_label')}
+                  value={t('export.short_value')}
+                  icon='download-outline'
+                  style={styles.heroPillSecondary}
+                />
+              </TouchableOpacity>
             </View>
           ),
         }}
         bodyContentStyle={styles.content}
-      >
-        <StatusBanner {...banner} style={styles.banner} />
-
-        <StitchSurface style={styles.heroCard}>
-          <View style={styles.heroRow}>
-            <Text style={styles.heroMeta}>{project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}</Text>
-            <View style={[styles.heroStatus, project.status === 'ACTIVE' ? styles.heroStatusActive : styles.heroStatusMuted]}>
-              <Text style={[styles.heroStatusText, project.status === 'ACTIVE' ? styles.heroStatusTextActive : styles.heroStatusTextMuted]}>{project.status}</Text>
-            </View>
-          </View>
-          <View style={styles.summaryGrid}>
-            <SummaryCard label={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} />
-            <SummaryCard label={t('dashboard.non_labor_costs', { defaultValue: 'Non-Labor Costs' })} value={formatCurrency(totalExpenses, currency)} />
-            <SummaryCard label={t('dashboard.labor_cost')} value={formatCurrency(totalLabor, currency)} />
-            <SummaryCard label={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} tone="accent" />
-          </View>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, totalSpent > totalBudget && styles.progressBarFillDanger]} />
-          </View>
-          <Text style={styles.progressText}>{t('dashboard.budget')}: {budgetProgress.toFixed(1)}% {t('dashboard.total_spent')}</Text>
-        </StitchSurface>
-
-        <View style={styles.overviewGrid}>
-          <ResourceOverviewCard
-            eyebrow={t('dashboard.profit', { defaultValue: 'Profit' })}
-            title={totalRevenue >= totalSpent ? t('timeline.completed') : t('dashboard.total_spent')}
-            value={formatCurrency(totalRevenue - totalSpent, currency)}
-            tone="accent"
-          />
-          <ResourceOverviewCard
-            eyebrow={t('dashboard.total_spent')}
-            title={project.crop || t('projects.fields.crop')}
-            value={`${budgetProgress.toFixed(0)}%`}
-          />
-        </View>
-
-        <StitchDashboardSectionHeader
-          title='Workspace'
-          subtitle='Choose the next project operation'
-          actionLabel={activeTabLabel}
-        />
-
-        <View style={styles.workspaceActionsRow}>
-          <WorkspaceAction label='Budget' icon='wallet-outline' onPress={() => setActiveTab('budget')} />
-          <WorkspaceAction label='Expense' icon='receipt-outline' onPress={() => setActiveTab('expenses')} />
-          <WorkspaceAction label='Labor' icon='people-outline' onPress={() => setActiveTab('labor')} />
-        </View>
-        <View style={styles.workspaceActionsRow}>
-          <WorkspaceAction label='Harvest' icon='leaf-outline' onPress={() => setActiveTab('harvest')} />
-          <WorkspaceAction label='Sales' icon='cash-outline' onPress={() => setActiveTab('sales')} />
-          <WorkspaceAction label={activeTab === 'inventory' ? 'Open Stock' : 'Timeline'} icon={activeTab === 'inventory' ? 'cube-outline' : 'time-outline'} onPress={() => activeTab === 'inventory' ? handlePrimaryAction() : setActiveTab('timeline')} tone='accent' />
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          {TAB_ORDER.map((tab) => {
-            const active = activeTab === tab;
-            return (
-              <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={active} onPress={() => setActiveTab(tab)} />
-            );
-          })}
-        </ScrollView>
-
-        {activeTab !== 'timeline' ? (
-          <StitchDashboardSectionHeader
-            title={activeTabLabel}
-            subtitle={activeTab === 'inventory' ? t('inventory.project_inventory_subtitle') : 'Browse records and create a new entry'}
-            actionLabel={activeTab === 'inventory' ? t('inventory.open') : `Add (${activeTabCount})`}
-            onActionPress={handlePrimaryAction}
-          />
-        ) : null}
-
-        {activeTab !== 'timeline' && activeTab !== 'inventory' ? (
-          <View style={styles.toolbarBlock}>
-            <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder={t('resource.search_in_tab')} />
-            <View style={styles.sortRow}>
-              <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} />
-              <StitchChip label={t('resource.sort_amount')} active={sortMode === 'amount'} onPress={() => setSortMode('amount')} />
-              {resourcesSyncing || syncStatus === 'syncing' ? <Text style={styles.syncHint}>{t('resource.syncing')}</Text> : null}
-            </View>
-            {activeQueryLoading && activeLocalCount === 0 ? <StatusBanner tone="info" title={t('resource.loading_title')} message={t('resource.loading_body')} /> : null}
-            {activeQueryError && activeLocalCount === 0 ? <StatusBanner tone="error" title={t('common.error')} message={activeQueryError.message || t('resource.loading_error')} /> : null}
-          </View>
-        ) : null}
-
-        {activeTab === 'budget' ? visibleBudgetItems.length ? visibleBudgetItems.map((item) => (
-          <View key={item.id}>
-            {renderCollectionCard(item.name, `${item.category} • ${item.quantity} ${item.unit}`, formatCurrency(item.quantity * item.unitPrice, currency), 'default', 'budget', item)}
-          </View>
-        )) : <Text style={styles.emptyText}>{t('budget.empty')}</Text> : null}
-
-        {activeTab === 'expenses' ? visibleExpenses.length ? visibleExpenses.map((item) => (
-          <View key={item.id}>
-            {renderCollectionCard(t(`expenses.categories.${item.category}`, { defaultValue: item.category }), `${formatAppDate(item.date)} • ${item.expenseType}`, formatCurrency(item.amount, currency), 'negative', 'expenses', item)}
-          </View>
-        )) : <Text style={styles.emptyText}>{t('expenses.empty')}</Text> : null}
-
-        {activeTab === 'labor' ? (
-          workEntries.length ? (
-            <>
-              {laborByEmployee.length ? (
-                <View style={styles.analyticsRow}>
-                  <StitchSurface style={styles.analyticsCard}>
-                    <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_employee')}</Text>
-                    <Text style={styles.analyticsTitle}>{laborByEmployee[0]?.employeeName || t('employees.unknown')}</Text>
-                    <Text style={styles.analyticsValue}>{formatCurrency(laborByEmployee[0]?.totalCost || 0, currency)}</Text>
-                  </StitchSurface>
-                  <StitchSurface style={styles.analyticsCard}>
-                    <Text style={styles.analyticsLabel}>{t('dashboard.labor_by_activity')}</Text>
-                    <Text style={styles.analyticsTitle}>{laborByActivity[0]?.activity || t('common.activities.other')}</Text>
-                    <Text style={styles.analyticsValue}>{formatCurrency(laborByActivity[0]?.totalCost || 0, currency)}</Text>
-                  </StitchSurface>
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
+        stickyHeader={
+          <View>
+            <View style={styles.stickyTopRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+                {TAB_ORDER.map((tab) => (
+                  <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
+                ))}
+              </ScrollView>
+              {showCollectionControls ? (
+                <View style={styles.stickyControlsRow}>
+                  <View style={styles.stickySearchWrap}>
+                    <Ionicons name='search-outline' size={14} color={stitchTheme.colors.textMuted} />
+                    <TextInput
+                      style={styles.stickySearchInput}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholder={`Search ${t(`projects.tabs.${activeTab}`)}`}
+                      placeholderTextColor={stitchTheme.colors.textMuted}
+                    />
+                  </View>
+                  <StitchChip label={t('resource.sort_latest')} active={sortMode === 'latest'} onPress={() => setSortMode('latest')} icon='time-outline' />
+                  <StitchChip label={t('status.top_value')} active={sortMode === 'value'} onPress={() => setSortMode('value')} icon='swap-vertical-outline' />
                 </View>
               ) : null}
-              {visibleWorkEntries.map((item) => (
-                <View key={item.id}>
-                  {renderCollectionCard(employeeMap.get(item.employeeId) || t('employees.unknown'), `${item.activity} • ${item.daysWorked} ${t('labor.days')}`, formatCurrency(item.totalCost, currency), 'default', 'labor', item)}
-                </View>
-              ))}
-            </>
-          ) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
-        ) : null}
-
-        {activeTab === 'harvest' ? visibleHarvests.length ? visibleHarvests.map((item) => (
-          <View key={item.id}>
-            {renderCollectionCard(item.crop, `${item.quality ? t(`harvest.qualities.${item.quality}`, { defaultValue: item.quality }) : t('harvest.default_quality')} • ${formatAppDate(item.date)}`, `${item.weight} ${item.unit}`, 'default', 'harvest', item)}
-          </View>
-        )) : <Text style={styles.emptyText}>{t('harvest.empty')}</Text> : null}
-
-        {activeTab === 'sales' ? visibleSales.length ? visibleSales.map((item) => (
-          <View key={item.id}>
-            {renderCollectionCard(item.customer || t('sales.cash_sale'), `${formatAppDate(item.date)} • ${item.weightSold} ${t('harvest.units.kg')}`, formatCurrency(item.totalAmount, currency), 'positive', 'sales', item)}
-          </View>
-        )) : <Text style={styles.emptyText}>{t('sales.empty')}</Text> : null}
-
-        {activeTab === 'inventory' ? (
-          <>
-            <View style={styles.analyticsRow}>
-              <StitchSurface style={styles.analyticsCard}>
-                <Text style={styles.analyticsLabel}>{t('inventory.title')}</Text>
-                <Text style={styles.analyticsTitle}>{t('inventory.project_inventory_subtitle')}</Text>
-                <Text style={styles.analyticsValue}>{project.crop || t('projects.fields.crop')}</Text>
-              </StitchSurface>
-              <StitchSurface style={styles.analyticsCard}>
-                <Text style={styles.analyticsLabel}>{t('projects.tabs.inventory')}</Text>
-                <Text style={styles.analyticsTitle}>Open stock register</Text>
-                <Text style={styles.analyticsValue}>{project.landSize} {project.landUnit}</Text>
-              </StitchSurface>
             </View>
-            <View style={[styles.collectionCard, styles.inventoryCard]}>
-              <View style={[styles.cardAccent, styles.cardAccentSage]} />
-              <View style={styles.collectionTopRow}>
-                <View style={styles.inventoryCopy}>
-                  <Text style={styles.collectionTitle}>{t('inventory.title')}</Text>
-                  <Text style={styles.collectionMeta}>{t('inventory.project_inventory_subtitle')}</Text>
-                </View>
-                <TouchableOpacity onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })} activeOpacity={0.88} style={styles.inventoryOpenRow}>
-                  <Text style={styles.inventoryLink}>{t('inventory.open')}</Text>
-                  <Ionicons name='chevron-forward' size={12} color={stitchTheme.colors.primaryContainer} />
-                </TouchableOpacity>
+          </View>
+        }
+      >
+        {/* --- Metric Cards --- */}
+        <View style={styles.overviewGrid}>
+          <MetricCard title={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} note={t('dashboard.planned_allocation')} icon='card-outline' accent={stitchTheme.colors.primaryDim} />
+          <MetricCard title={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} note={`${budgetProgress.toFixed(1)}% used`} icon='wallet-outline' accent={stitchTheme.colors.accentBrown} />
+        </View>
+
+        {/* --- Budget Chart --- */}
+        {totalBudget > 0 ? (
+          <StitchSurface style={styles.chartCard} contentStyle={styles.chartContent} tone='raised' compact>
+            <View style={styles.chartTopRow}>
+              <View>
+                <Text style={styles.chartEyebrow}>Budget vs Actual</Text>
+                <Text style={styles.chartTitle}>{formatCurrency(totalBudget - totalSpent, currency)} remaining</Text>
+              </View>
+              <View style={[styles.chartProgressRing, budgetProgress > 100 && styles.chartProgressRingDanger]}>
+                <Text style={[styles.chartProgressText, budgetProgress > 100 && styles.chartProgressTextDanger]}>{Math.min(budgetProgress, 999).toFixed(0)}%</Text>
               </View>
             </View>
-          </>
+            <View style={styles.chartBarTrack}>
+              <View style={[styles.chartBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, budgetProgress > 100 && styles.chartBarFillDanger]} />
+            </View>
+            <BarChart
+              data={{
+                labels: [t('dashboard.budget'), t('dashboard.total_spent')],
+                datasets: [{ data: [totalBudget, totalSpent] }]
+              }}
+              width={screenWidth - 80}
+              height={130}
+              yAxisLabel={currency === 'TZS' ? 'T' : '$'}
+              chartConfig={{
+                backgroundColor: 'transparent',
+                backgroundGradientFrom: stitchTheme.colors.surfaceInset,
+                backgroundGradientTo: stitchTheme.colors.surfaceInset,
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
+                labelColor: () => stitchTheme.colors.textMuted,
+                style: { borderRadius: 12 },
+                propsForLabels: { fontSize: 10, fontWeight: '700' },
+                barPercentage: 0.5,
+              }}
+              style={{ borderRadius: 12, marginTop: 12 }}
+              fromZero
+              showValuesOnTopOfBars
+            />
+          </StitchSurface>
         ) : null}
 
-        {activeTab === 'timeline' ? (
-          <View style={styles.timelineContainer}>
-            <View style={styles.timelineHeaderBlock}>
-              <Text style={styles.timelineLead}>{t('timeline.lead_copy')}</Text>
-            </View>
-            <TimelineSection title={t('timeline.today')} tone="today" items={groupedTimeline.today} t={t} currency={currency} />
-            <TimelineSection title={t('timeline.yesterday')} tone="past" items={groupedTimeline.earlier} t={t} currency={currency} />
-            {!groupedTimeline.today.length && !groupedTimeline.earlier.length ? <Text style={styles.emptyText}>{t('projects.pull_to_sync')}</Text> : null}
+        {/* --- Section Header + Add Button --- */}
+        <StitchDashboardSectionHeader title={t(`projects.tabs.${activeTab}`)} />
+
+        {activeTab !== 'timeline' && activeTab !== 'inventory' && (
+        <StitchSurface style={styles.addRowCard} contentStyle={styles.addRowContent} tone='raised' compact>
+          <TouchableOpacity style={styles.addRowButton} onPress={() => {
+            const params = { projectId: project.id };
+            if (activeTab === 'budget') navigation.navigate('AddBudgetItem', params);
+            else if (activeTab === 'expenses') navigation.navigate('AddExpense', params);
+            else if (activeTab === 'labor') navigation.navigate('AddWorkEntry', params);
+            else if (activeTab === 'harvest') navigation.navigate('AddHarvest', params);
+            else if (activeTab === 'sales') navigation.navigate('AddSale', params);
+            else if (activeTab === 'team') setInviteVisible(true);
+          }} activeOpacity={0.88}>
+            <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primaryContainer} />
+            <Text style={styles.addRowText}>Add</Text>
+          </TouchableOpacity>
+        </StitchSurface>
+        )}
+
+        {/* --- Content Tabs --- */}
+        {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, formatAppDate(item.createdAt), formatCurrency(item.total, currency), 'negative', 'budget', item, item.notes))}
+        {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item, item.note))}
+        {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
+        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.weight} kg`, 'default', 'harvest', item, item.notes))}
+        {activeTab === 'sales' && filteredSales.map(item => {
+          const due = item.balanceDue > 0 ? `${formatCurrency(item.balanceDue, currency)} due` : '';
+          return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, due);
+        })}
+
+        {activeTab === 'team' && (
+          <View style={styles.teamTab}>
+            {teamLoading ? <ActivityIndicator color={stitchTheme.colors.primary} style={{ marginVertical: 20 }} /> : null}
+            {filteredTeam.map(member => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                isOwner={project.accessRole === 'OWNER'}
+                onRemove={handleRemoveMember}
+                t={t}
+              />
+            ))}
+            {!teamLoading && team.length === 0 && <Text style={styles.emptyText}>{t('team.no_members')}</Text>}
+            <StitchPrimaryButton label="Invite Member" onPress={() => setInviteVisible(true)} icon="person-add-outline" style={{ marginTop: 20, marginHorizontal: 16 }} />
           </View>
-        ) : null}
+        )}
+
+        {activeTab === 'inventory' && (
+          <View style={styles.teamTab}>
+            <Text style={styles.emptyText}>{t('inventory.accessible_from_workspace', { defaultValue: 'Inventory management available from the workspace menu.' })}</Text>
+          </View>
+        )}
+
+        {activeTab === 'timeline' && timelineGroups.map((group) => (
+          <TimelineSection
+            key={group.title}
+            title={group.title}
+            tone={group.tone}
+            items={group.items}
+            t={t}
+            currency={currency}
+          />
+        ))}
 
         <View style={{ height: 40 }} />
       </StitchDashboardShell>
 
-      <ConfirmDialog
-        visible={!!deleteTarget}
-        title={t('common.delete')}
-        message={t('resource.confirm_delete_generic', { name: deleteTarget?.item?.name || deleteTarget?.item?.customer || deleteTarget?.item?.crop || deleteTarget?.item?.activity || '' })}
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={handleDeleteItem}
-      />
+      <Modal visible={exportModalVisible} animationType="fade" transparent>
+        <TouchableOpacity style={styles.modalOverlay} onPress={() => setExportModalVisible(false)}>
+          <View style={styles.formatMenu}>
+            <Text style={styles.formatTitle}>Export Report</Text>
+            <TouchableOpacity style={styles.formatOption} onPress={() => handleExport('pdf')}>
+              <Ionicons name="file-tray-full-outline" size={20} color={stitchTheme.colors.primary} />
+              <Text style={styles.formatText}>Portable Document (PDF)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.formatOption} onPress={() => handleExport('excel')}>
+              <Ionicons name="grid-outline" size={20} color={stitchTheme.colors.primary} />
+              <Text style={styles.formatText}>Excel Spreadsheet (XLSX)</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={inviteVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}><KeyboardAvoidingView behavior='padding' style={styles.keyboardView}><View style={styles.modalContent}>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>{t('team.invite_title')}</Text><TouchableOpacity onPress={() => setInviteVisible(false)}><Ionicons name="close" size={24} color={stitchTheme.colors.text} /></TouchableOpacity></View>
+
+          <StitchInput label={t('team.invite_phone')} value={inviteForm.phone} onChangeText={(phone) => setInviteForm(f => ({ ...f, phone }))} placeholder='e.g. 0712345678' keyboardType='phone-pad' style={styles.formField} />
+
+          <StitchInput label={t('common.notes')} value={inviteForm.note} onChangeText={(note) => setInviteForm(f => ({ ...f, note }))} placeholder='e.g. Farm contractor, input supplier' style={styles.formField} />
+
+          <Text style={styles.formFieldLabel}>{t('projects.fields.name')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectSelectionRow}>
+            {allProjects.map((proj) => (
+              <TouchableOpacity
+                key={proj.id}
+                style={[styles.projectChip, inviteForm.projectIds.includes(proj.id) && styles.projectChipActive]}
+                onPress={() => setInviteForm(f => ({
+                  ...f,
+                  projectIds: f.projectIds.includes(proj.id)
+                    ? f.projectIds.filter(id => id !== proj.id)
+                    : [...f.projectIds, proj.id],
+                }))}
+              >
+                <Text style={[styles.projectChipText, inviteForm.projectIds.includes(proj.id) && styles.projectChipTextActive]}>{proj.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.formFieldLabel}>{t('team.role')}</Text>
+          <View style={styles.roleRow}>
+            {['MANAGER', 'VIEWER'].map(role => (
+              <TouchableOpacity key={role} style={[styles.roleChip, inviteForm.role === role && styles.roleChipActive]} onPress={() => setInviteForm(f => ({ ...f, role }))}>
+                <Text style={[styles.roleChipText, inviteForm.role === role && styles.roleChipTextActive]}>{role}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <StitchPrimaryButton label={t('team.send_invitation')} onPress={handleInvite} icon="send-outline" />
+        </View></KeyboardAvoidingView></View>
+      </Modal>
+
+      <ConfirmDialog visible={!!deleteTarget} title={t('common.delete')} message={t('resource.confirm_delete_generic')} onCancel={() => setDeleteTarget(null)} onConfirm={async () => {
+        const { type, item } = deleteTarget;
+        await database.write(async () => {
+          const tableMap = { budget: 'budget_items', expenses: 'expenses', labor: 'work_entries', harvest: 'harvests', sales: 'sales' };
+          const record = await database.get(tableMap[type]).find(item.id);
+          await deleteLocalModel(record);
+        });
+        setDeleteTarget(null);
+        syncAll();
+      }} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 64 },
-  hero: { paddingBottom: stitchTheme.spacing.md },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 10, marginBottom: stitchTheme.spacing.xs },
-  heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)', borderWidth: 1 },
-  heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
-  heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1 },
-  banner: { marginTop: stitchTheme.spacing.xs },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: stitchTheme.colors.background, paddingHorizontal: stitchTheme.spacing.xl },
-  errorText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.textMuted, marginBottom: stitchTheme.spacing.md },
-  backButton: { backgroundColor: stitchTheme.colors.primaryContainer, paddingHorizontal: stitchTheme.spacing.lg, paddingVertical: 10, borderRadius: stitchTheme.radius.pill },
-  backButtonText: { color: '#ffffff', fontWeight: '700' },
-  heroCard: { borderRadius: stitchTheme.radius.card },
-  overviewGrid: { flexDirection: 'row', gap: 8, marginTop: stitchTheme.spacing.xs, marginBottom: 12 },
-  resourceOverviewCard: { flex: 1, borderRadius: 15, padding: 12, ...stitchShadows.soft },
-  resourceOverviewCardSoft: { backgroundColor: stitchTheme.colors.surfaceHighlight },
-  resourceOverviewCardAccent: { backgroundColor: stitchTheme.colors.surfaceTint },
-  resourceOverviewEyebrow: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
-  resourceOverviewTitle: { marginTop: 3, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  resourceOverviewValue: { marginTop: 2, fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.5 },
-  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.sm },
-  heroMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown, fontWeight: '600' },
-  heroStatus: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
-  heroStatusActive: { backgroundColor: stitchTheme.colors.primarySoft },
-  heroStatusMuted: { backgroundColor: stitchTheme.colors.surfaceMuted },
-  heroStatusText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', letterSpacing: 0.8 },
-  heroStatusTextActive: { color: stitchTheme.colors.primary },
-  heroStatusTextMuted: { color: stitchTheme.colors.accentBrown },
-  summaryRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.md },
-  summaryCard: { flex: 1, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, padding: stitchTheme.spacing.sm },
-  summaryCardAccent: { backgroundColor: stitchTheme.colors.successSurface },
-  summaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 },
-  summaryValue: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
-  summaryValueAccent: { color: stitchTheme.colors.primary },
-  progressBarTrack: { height: 8, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceMuted, overflow: 'hidden', marginTop: stitchTheme.spacing.md },
-  progressBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryContainer },
-  progressBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
-  progressText: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, textAlign: 'right' },
-  tabsRow: { gap: 6, paddingBottom: 12, paddingTop: 4 },
-  toolbarBlock: { gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
-  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  syncHint: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted },
-  collectionCard: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card, overflow: 'hidden' },
+  content: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
+  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
+  heroPillPrimary: { backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  heroPillSecondary: { backgroundColor: 'rgba(183,228,199,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  heroPillTertiary: { backgroundColor: 'rgba(253,205,188,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+
+  /* Insights Strip */
+  insightsCard: { marginBottom: stitchTheme.spacing.sm },
+  insightsContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, paddingVertical: stitchTheme.spacing.sm, paddingHorizontal: stitchTheme.spacing.sm },
+  insightsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
+  insightItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, padding: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset },
+  insightDot: { width: 8, height: 8, borderRadius: 4 },
+  insightLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  insightValue: { marginTop: 1, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.text, fontWeight: '800' },
+
+  /* Metric Cards */
+  overviewGrid: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
+  metricCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    flex: 1,
+    borderRadius: stitchTheme.radius.card,
+    padding: stitchTheme.spacing.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    ...stitchShadows.card,
+  },
+  metricCardAccent: { backgroundColor: stitchTheme.colors.primary },
+  metricInner: { padding: 0 },
+  metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  metricTitle: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  metricTitleAccent: { color: 'rgba(255,255,255,0.7)' },
+  metricIconWrap: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  metricIconWrapAccent: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  metricValue: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  metricValueAccent: { color: stitchTheme.colors.surfaceHighlight },
+  metricNote: { marginTop: 2, fontSize: 10, color: stitchTheme.colors.textMuted, fontWeight: '700' },
+  metricNoteAccent: { color: 'rgba(255,255,255,0.6)' },
+
+  /* Chart Card */
+  chartCard: { marginBottom: stitchTheme.spacing.sm },
+  chartContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, gap: 12 },
+  chartTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  chartEyebrow: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  chartTitle: { marginTop: 2, fontSize: 15, fontWeight: '900', color: stitchTheme.colors.text, letterSpacing: -0.3 },
+  chartProgressRing: { width: 48, height: 48, borderRadius: 24, backgroundColor: stitchTheme.colors.surfaceTint, alignItems: 'center', justifyContent: 'center' },
+  chartProgressRingDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
+  chartProgressText: { fontSize: 12, fontWeight: '900', color: stitchTheme.colors.primaryContainer },
+  chartProgressTextDanger: { color: stitchTheme.colors.accentRed },
+  chartProgressInner: {},
+  chartBarTrack: { height: 6, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceInset, overflow: 'hidden' },
+  chartBarFill: { height: '100%', backgroundColor: stitchTheme.colors.primaryDim },
+  chartBarFillDanger: { backgroundColor: stitchTheme.colors.accentRed },
+  sectionSubtitle: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: stitchTheme.spacing.xs },
+  salePaymentsWrap: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line, gap: 6 },
+  salePaymentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  salePaymentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: stitchTheme.colors.primaryDim },
+  salePaymentAmount: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
+  salePaymentDate: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '600' },
+  salePaymentNote: { flex: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '500' },
+
+  /* Tabs & Controls */
+  tabsRow: { gap: stitchTheme.spacing.xs, paddingVertical: 6 },
+  controlsCard: { marginBottom: stitchTheme.spacing.sm },
+  controlsContent: { gap: stitchTheme.spacing.sm, backgroundColor: stitchTheme.colors.surfaceHighlight },
+  stickyTopRow: { gap: 8 },
+  stickyControlsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  stickySearchWrap: { flex: 1, minHeight: 34, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  stickySearchInput: { flex: 1, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: 15, color: stitchTheme.colors.text, paddingVertical: 0 },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
+
+  /* Collection Cards */
+  collectionCard: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    padding: 14,
+    paddingLeft: 18,
+    marginBottom: stitchTheme.spacing.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...stitchShadows.card,
+  },
   cardAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  cardAccentSage: { backgroundColor: stitchTheme.colors.primaryDim },
-  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.xs },
-  collectionTitle: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  collectionAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.text },
-  collectionAmountPositive: { color: stitchTheme.colors.primary },
+  collectionTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  collectionTitle: { fontSize: 18, lineHeight: 23, fontWeight: '800', color: stitchTheme.colors.text },
+  collectionAmount: { fontSize: 18, lineHeight: 23, fontWeight: '800', color: stitchTheme.colors.text, marginLeft: 8 },
+  collectionAmountPositive: { color: stitchTheme.colors.primaryContainer },
   collectionAmountNegative: { color: stitchTheme.colors.accentRed },
-  collectionMeta: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted },
-  collectionActionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
-  collectionActionLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  collectionActionGroup: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs },
-  collectionActionButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 7, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset },
+  collectionMeta: { fontSize: 12, lineHeight: 16, color: stitchTheme.colors.textMuted, fontWeight: '700' },
+  collectionDescription: { marginTop: 8, fontSize: 14, lineHeight: 20, color: stitchTheme.colors.textMuted, fontWeight: '500' },
+  collectionActionRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },
+  collectionActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+  },
   collectionActionButtonDanger: { backgroundColor: stitchTheme.colors.dangerSurface },
-  collectionActionText: { color: stitchTheme.colors.primary, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800' },
-  collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800' },
-  inventoryCard: { paddingHorizontal: 17 },
-  inventoryCopy: { flex: 1, paddingLeft: 8 },
-  inventoryOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  inventoryLink: { color: stitchTheme.colors.primaryContainer, fontWeight: '700', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
-  analyticsRow: { flexDirection: 'row', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.sm },
-  analyticsCard: { flex: 1 },
-  analyticsLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.accentBrown, textTransform: 'uppercase', letterSpacing: 0.8 },
-  analyticsTitle: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  analyticsValue: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
-  statusRow: { marginTop: stitchTheme.spacing.sm },
-  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
-  statusPending: { backgroundColor: stitchTheme.colors.warningSurface },
-  statusApproved: { backgroundColor: stitchTheme.colors.successSurface },
-  statusRejected: { backgroundColor: stitchTheme.colors.dangerSurface },
-  statusBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  statusPendingText: { color: stitchTheme.colors.accentBrown },
-  statusApprovedText: { color: stitchTheme.colors.primary },
-  statusRejectedText: { color: stitchTheme.colors.accentRed },
-  statusActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.sm },
-  statusActionButton: { flex: 1, minHeight: 38, borderRadius: stitchTheme.radius.md, alignItems: 'center', justifyContent: 'center' },
-  statusActionApprove: { backgroundColor: stitchTheme.colors.successSurface },
-  statusActionReject: { backgroundColor: stitchTheme.colors.dangerSurface },
-  statusActionApproveText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
-  statusActionRejectText: { color: stitchTheme.colors.accentRed, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
-  emptyText: { textAlign: 'center', marginTop: stitchTheme.spacing.xl, color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
-  timelineContainer: { gap: stitchTheme.spacing.xs },
-  timelineHeaderBlock: { marginBottom: stitchTheme.spacing.sm },
-  timelineLead: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.accentBrown, maxWidth: 300 },
-  timelineSection: { marginBottom: stitchTheme.spacing.sm },
-  timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: stitchTheme.spacing.md },
-  timelineSectionChip: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 7, borderRadius: stitchTheme.radius.pill },
-  timelineSectionChipToday: { backgroundColor: stitchTheme.colors.primarySoft },
-  timelineSectionChipPast: { backgroundColor: stitchTheme.colors.surfaceMuted },
-  timelineSectionChipText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  timelineSectionChipTextToday: { color: stitchTheme.colors.primary },
-  timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.line },
-  timelineItemWrap: { flexDirection: 'row' },
-  timelineRail: { width: 34, alignItems: 'center' },
-  timelineDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  timelineVertical: { width: 2, flex: 1, backgroundColor: stitchTheme.colors.line, marginTop: 4 },
-  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
-  timelineTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.xs },
-  timelineTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  timelineMetaText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted },
-  timelineBadge: { paddingHorizontal: stitchTheme.spacing.sm, paddingVertical: 6, borderRadius: stitchTheme.radius.pill },
-  timelineBadgeText: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  timelineAmountText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.accentRed },
-  timelineBody: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: 22, color: stitchTheme.colors.text, marginBottom: stitchTheme.spacing.xs },
-  timelinePreviewRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 4 },
-  timelinePreview: { width: 80, height: 80, borderRadius: stitchTheme.radius.lg, alignItems: 'center', justifyContent: 'center' },
-  timelineFooterValue: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  collectionActionText: { color: stitchTheme.colors.primary, fontSize: 11, fontWeight: '800' },
+  collectionActionTextDanger: { color: stitchTheme.colors.accentRed, fontSize: 11, fontWeight: '800' },
+
+  /* Timeline */
+  timelineSection: { marginBottom: stitchTheme.spacing.lg },
+  timelineSectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  timelineSectionChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceMuted },
+  timelineSectionChipToday: { backgroundColor: stitchTheme.colors.primaryContainer },
+  timelineSectionChipText: { fontSize: 10, fontWeight: '800', color: stitchTheme.colors.textSoft, textTransform: 'uppercase', letterSpacing: 0.5 },
+  timelineSectionChipTextToday: { color: stitchTheme.colors.surfaceHighlight },
+  timelineSectionLine: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.line, marginLeft: 10 },
+  timelineItemWrap: { flexDirection: 'row', minHeight: 50 },
+  timelineRail: { width: 28, alignItems: 'center' },
+  timelineDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', zIndex: 2, ...stitchShadows.soft },
+  timelineVertical: { position: 'absolute', top: 22, bottom: 0, width: 2, backgroundColor: stitchTheme.colors.line, zIndex: 1 },
+  timelineCard: { flex: 1, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: 14, paddingLeft: 18, marginBottom: 10, marginLeft: 6, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...stitchShadows.card },
+  timelineTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+  timelineTitle: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.text },
+  timelineMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  timelineMetaText: { fontSize: 10, color: stitchTheme.colors.textMuted, fontWeight: '600' },
+  timelineBody: { fontSize: 12, color: stitchTheme.colors.textSoft, lineHeight: 16 },
+  timelineFooterValue: { marginTop: 6, fontSize: 13, fontWeight: '900', color: stitchTheme.colors.primaryContainer },
+
+  /* Team */
+  teamTab: { paddingBottom: 20 },
+  teamInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  teamAvatar: { width: 36, height: 36, borderRadius: 10, backgroundColor: stitchTheme.colors.surfaceTint, alignItems: 'center', justifyContent: 'center' },
+  teamAvatarText: { color: stitchTheme.colors.primary, fontSize: 15, fontWeight: '800' },
+  removeMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  removeMemberText: { color: stitchTheme.colors.accentRed, fontSize: 12, fontWeight: '800' },
+
+  /* Overlays */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  formatMenu: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: 24, padding: 20, width: '94%', alignSelf: 'center', marginBottom: 32, ...stitchShadows.float },
+  formatTitle: { fontSize: 18, fontWeight: '900', color: stitchTheme.colors.primary, marginBottom: 16, textAlign: 'center' },
+  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: stitchTheme.colors.surfaceInset, marginBottom: 8 },
+  formatText: { fontSize: 14, fontWeight: '700', color: stitchTheme.colors.text },
+  keyboardView: { width: '100%' },
+  modalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: stitchTheme.colors.primary },
+  input: { borderRadius: 14, padding: 16, backgroundColor: stitchTheme.colors.surfaceInset, color: stitchTheme.colors.text, fontSize: 16, marginBottom: 20 },
+  roleRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  roleChip: { flex: 1, height: 50, borderRadius: 14, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  roleChipActive: { backgroundColor: stitchTheme.colors.primarySoft },
+  roleChipText: { fontSize: 13, fontWeight: '800', color: stitchTheme.colors.textMuted },
+  roleChipTextActive: { color: stitchTheme.colors.primary },
+  formField: { marginBottom: 0 },
+  formFieldLabel: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  projectSelectionRow: { gap: 8, paddingVertical: 4 },
+  projectChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: 'transparent' },
+  projectChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  projectChipText: { fontSize: 13, fontWeight: '700', color: stitchTheme.colors.textMuted },
+  projectChipTextActive: { color: stitchTheme.colors.primary },
+  emptyText: { textAlign: 'center', marginTop: 40, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
+  addRowCard: { marginBottom: stitchTheme.spacing.sm, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', ...stitchShadows.card },
+  addRowContent: { backgroundColor: stitchTheme.colors.surfaceHighlight },
+  addRowButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  addRowText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.primaryContainer, fontWeight: '800' },
 });

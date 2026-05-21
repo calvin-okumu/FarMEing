@@ -15,14 +15,47 @@ model User {
   name      String
   phone     String   @unique
   password  String
-  role      String   @default("ADMIN") // ADMIN, WORKER
+  role      String   @default("OWNER") // OWNER, MANAGER, VIEWER
   currency  String   @default("TZS")
   locale    String   @default("sw-TZ")
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   projects  FarmProject[]
   employees Employee[]
   seasons   Season[]
+  payees    Payee[]
+  projectAccess ProjectAccess[]
+}
+
+model ProjectAccess {
+  id        String      @id @default(uuid())
+  userId    String
+  projectId String
+  role      String      // OWNER, MANAGER, VIEWER
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id])
+  project   FarmProject @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
+}
+
+model Payee {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  category  String?  // e.g. Supplier, Contractor, Individual
+  notes     String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  expenses  Expense[]
+  inventoryItems InventoryItem[]
 }
 
 model Season {
@@ -31,6 +64,7 @@ model Season {
   name      String
   startDate DateTime
   endDate   DateTime?
+  isDeleted Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   user      User        @relation(fields: [userId], references: [id])
@@ -61,6 +95,9 @@ model FarmProject {
   workEntries   WorkEntry[]
   harvests      Harvest[]
   sales         Sale[]
+  inventoryItems InventoryItem[]
+  employees     EmployeeProject[]
+  projectAccess ProjectAccess[]
 }
 
 model BudgetItem {
@@ -91,24 +128,40 @@ model Expense {
   note        String?
   receiptUrl  String?
   payee       String?
+  payeeId     String?
   isDeleted   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   project     FarmProject @relation(fields: [projectId], references: [id])
+  payeeRecord Payee?       @relation(fields: [payeeId], references: [id])
 }
 
 model Employee {
-  id          String      @id @default(uuid())
+  id          String       @id @default(uuid())
   userId      String
   name        String
   phone       String?
   role        String?
-  isDeleted   Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  user        User        @relation(fields: [userId], references: [id])
+  isDeleted   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id])
   workEntries WorkEntry[]
   payments    Payment[]
+  assignments EmployeeProject[]
+}
+
+model EmployeeProject {
+  id        String      @id @default(uuid())
+  employeeId String
+  projectId String
+  isDeleted Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  employee  Employee    @relation(fields: [employeeId], references: [id])
+  project   FarmProject @relation(fields: [projectId], references: [id])
+
+  @@unique([employeeId, projectId])
 }
 
 model WorkEntry {
@@ -142,6 +195,7 @@ model Payment {
   amount     Float
   date       DateTime
   note       String?
+  isDeleted  Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   employee   Employee @relation(fields: [employeeId], references: [id])
@@ -163,18 +217,37 @@ model Harvest {
 }
 
 model Sale {
-  id          String      @id @default(uuid())
-  projectId   String
-  date        DateTime
-  customer    String?
-  weightSold  Float
-  unitPrice   Float
-  totalAmount Float
-  notes       String?
-  isDeleted   Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  project     FarmProject @relation(fields: [projectId], references: [id])
+  id             String         @id @default(uuid())
+  projectId      String
+  date           DateTime
+  customer       String?
+  weightSold     Float
+  unitPrice      Float
+  totalAmount    Float
+  paymentStatus  String?
+  balanceDue     Float?
+  receiptUrl     String?
+  notes          String?
+  isDeleted      Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        FarmProject    @relation(fields: [projectId], references: [id])
+  salePayments   SalePayment[]
+}
+
+model SalePayment {
+  id           String   @id @default(uuid())
+  saleId       String
+  amount       Float
+  date         DateTime
+  note         String?
+  syncStatus   String?
+  lastSyncedAt DateTime?
+  lastError    String?
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sale         Sale     @relation(fields: [saleId], references: [id])
 }
 
 model InventoryItem {
@@ -189,7 +262,10 @@ model InventoryItem {
   usedQty   Float    @default(0)
   notes     String?
   payee     String?
+  payeeId   String?
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  project   FarmProject @relation(fields: [projectId], references: [id])
+  payeeRecord Payee?    @relation(fields: [payeeId], references: [id])
 }

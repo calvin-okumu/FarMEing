@@ -1,7 +1,23 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchTheme } from '../../theme/stitchTheme';
 import { StitchIconButton } from './StitchPrimitives';
+
+const CURRENCY_META = {
+  USD: { symbol: '$', locale: 'en-US' },
+  TZS: { symbol: 'TSh', locale: 'sw-TZ' },
+  KES: { symbol: 'KSh', locale: 'en-KE' },
+};
+
+function formatNumeric(amount, currency = 'USD') {
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const meta = CURRENCY_META[currency] || CURRENCY_META.USD;
+  try {
+    return new Intl.NumberFormat(meta.locale, { maximumFractionDigits: 0 }).format(safeAmount);
+  } catch {
+    return safeAmount.toLocaleString();
+  }
+}
 
 export default function StitchHeroHeader({
   eyebrow,
@@ -27,7 +43,7 @@ export default function StitchHeroHeader({
           {subtitle ? <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text> : null}
         </View>
         {onActionPress ? (
-          <StitchIconButton icon={actionIcon || 'ellipsis-horizontal'} onPress={onActionPress} style={styles.actionButton} />
+          <StitchIconButton icon={actionIcon || 'ellipsis-horizontal'} onPress={onActionPress} iconSize={22} style={styles.actionButton} />
         ) : null}
       </View>
 
@@ -36,14 +52,18 @@ export default function StitchHeroHeader({
   );
 }
 
-export function StitchHeroPill({ label, value, icon, style }) {
+export function StitchHeroPill({ label, value, icon, style, currency, note, hideCurrency }) {
+  const sym = currency && !hideCurrency ? (CURRENCY_META[currency]?.symbol || '$') : null;
+  const displayValue = currency && typeof value === 'number' ? formatNumeric(value, currency) : value;
   return (
     <View style={[styles.pill, style]}>
       <View style={styles.pillLabelRow}>
         {icon ? <Ionicons name={icon} size={12} color="rgba(255,255,255,0.58)" /> : null}
         <Text style={styles.pillLabel}>{label}</Text>
+        {sym ? <Text style={styles.pillCurrency}>{sym}</Text> : null}
       </View>
-      <Text style={styles.pillValue} numberOfLines={1}>{value}</Text>
+      <Text style={styles.pillValue} numberOfLines={1}>{displayValue}</Text>
+      {note ? <Text style={styles.pillNote} numberOfLines={1}>{note}</Text> : null}
     </View>
   );
 }
@@ -51,9 +71,9 @@ export function StitchHeroPill({ label, value, icon, style }) {
 const styles = StyleSheet.create({
   hero: {
     backgroundColor: stitchTheme.colors.forestDeep,
-    paddingTop: stitchTheme.spacing.md,
+    paddingTop: stitchTheme.spacing.xs + 6,
     paddingHorizontal: stitchTheme.spacing.screen,
-    paddingBottom: stitchTheme.spacing.lg,
+    paddingBottom: stitchTheme.spacing.sm + 2,
     overflow: 'hidden',
   },
   circleLarge: {
@@ -94,7 +114,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.3,
     textTransform: 'uppercase',
     color: stitchTheme.colors.primaryDim,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   eyebrowCompact: {
     marginBottom: 2,
@@ -112,26 +132,34 @@ const styles = StyleSheet.create({
     lineHeight: 31,
   },
   subtitle: {
-    marginTop: 5,
+    marginTop: 2,
     fontSize: stitchTheme.typography.bodySmall.fontSize,
     lineHeight: stitchTheme.typography.bodySmall.lineHeight,
     fontFamily: stitchTheme.fonts.body,
     color: 'rgba(255,255,255,0.58)',
   },
   subtitleCompact: {
-    marginTop: 3,
+    marginTop: 2,
     maxWidth: '88%',
   },
   actionButton: {
-    marginTop: 4,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderColor: 'rgba(255,255,255,0.15)',
+    marginTop: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(253,250,244,0.18)',
+    borderColor: 'rgba(255,255,255,0.34)',
+    shadowColor: '#08160f',
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   footer: {
-    marginTop: stitchTheme.spacing.md,
+    marginTop: stitchTheme.spacing.xs + 4,
   },
   footerCompact: {
-    marginTop: stitchTheme.spacing.sm,
+    marginTop: stitchTheme.spacing.xs,
   },
   circleLargeCompact: {
     top: -70,
@@ -158,6 +186,7 @@ const styles = StyleSheet.create({
   pillLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 6,
     marginBottom: 4,
   },
@@ -170,12 +199,28 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.52)',
   },
+  pillCurrency: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    lineHeight: stitchTheme.typography.caption.lineHeight,
+    fontWeight: '800',
+    fontFamily: stitchTheme.fonts.label,
+    letterSpacing: 0.5,
+    color: 'rgba(255,255,255,0.52)',
+  },
   pillValue: {
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '900',
     fontFamily: stitchTheme.fonts.heading,
     color: '#ffffff',
+    letterSpacing: -0.3,
+  },
+  pillNote: {
+    marginTop: 2,
+    fontSize: 18,
+    lineHeight: 23,
+    color: 'rgba(255,140,120,0.85)',
+    fontWeight: '800',
     letterSpacing: -0.3,
   },
 });

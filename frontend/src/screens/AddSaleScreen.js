@@ -8,12 +8,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
@@ -21,16 +24,15 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchPrimaryButton, StitchSectionLabel, StitchSurface } from '../components/ui/StitchPrimitives';
-import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
+import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { updateLocalModel } from '../utils/resourceMutations';
-import StatusBanner from '../components/ui/StatusBanner';
 
 export default function AddSaleScreen({ route, navigation }) {
   const { t, i18n } = useTranslation();
-  const { projectId, itemId } = route.params;
+  const { projectId, itemId } = route.params || {};
   const { currency, language, setLanguage } = useSettingsStore();
   const [project, setProject] = useState(null);
   const [customer, setCustomer] = useState('');
@@ -39,8 +41,17 @@ export default function AddSaleScreen({ route, navigation }) {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
+  const [salePayments, setSalePayments] = useState([]);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [payees, setPayees] = useState([]);
+  const [paymentDateTarget, setPaymentDateTarget] = useState(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentDate, setNewPaymentDate] = useState(new Date());
+  const [newPaymentNote, setNewPaymentNote] = useState('');
+  const [newPaymentShowDatePicker, setNewPaymentShowDatePicker] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -56,16 +67,84 @@ export default function AddSaleScreen({ route, navigation }) {
 
   useEffect(() => {
     if (!itemId) return;
-    database.get('sales').find(itemId).then((item) => {
+    database.get('sales').find(itemId).then(async (item) => {
       setCustomer(item.customer || '');
       setWeightSold(String(item.weightSold ?? ''));
       setUnitPrice(String(item.unitPrice ?? ''));
       setDate(item.date ? new Date(item.date) : new Date());
       setNotes(item.notes || '');
+      setPhoto(item.receiptUrl || null);
+      const payments = await item.salePayments.fetch();
+      const seen = new Set();
+      const unique = payments.filter(p => {
+        const key = `${p.amount}_${p.date}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (unique.length > 0) {
+        setSalePayments(unique.map(p => ({ id: p.id, amount: String(p.amount), date: new Date(p.date), _record: p })));
+      } else if (item.balanceDue != null && item.balanceDue < item.totalAmount) {
+        const paid = item.totalAmount - item.balanceDue;
+        setSalePayments([{ amount: String(paid), date: item.date ? new Date(item.date) : new Date() }]);
+      }
     }).catch(() => {});
   }, [itemId]);
 
+  useEffect(() => {
+    const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
+    return () => sub.unsubscribe();
+  }, []);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
+  };
+
   const total = (parseFloat(weightSold) || 0) * (parseFloat(unitPrice) || 0);
+  const totalCollected = salePayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const balanceDue = Math.max(0, total - totalCollected);
+  const paymentStatus = totalCollected <= 0 ? 'pending' : balanceDue <= 0 ? 'paid' : 'partial';
+
+  const [selectedPaymentIndex, setSelectedPaymentIndex] = useState(null);
+
+  const addPayment = () => {
+    setNewPaymentAmount('');
+    setNewPaymentDate(new Date());
+    setNewPaymentNote('');
+    setPaymentModalVisible(true);
+  };
+  const confirmAddPayment = () => {
+    if (newPaymentAmount && parseFloat(newPaymentAmount) > 0) {
+      setSalePayments([...salePayments, { amount: newPaymentAmount, date: newPaymentDate, note: newPaymentNote }]);
+    }
+    setPaymentModalVisible(false);
+  };
+  const removePayment = (index) => {
+    setSalePayments(salePayments.filter((_, i) => i !== index));
+    setSelectedPaymentIndex(null);
+  };
+  const updatePayment = (index, field, value) => {
+    const updated = [...salePayments];
+    updated[index] = { ...updated[index], [field]: value };
+    setSalePayments(updated);
+  };
 
   const onDateChange = (_event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -79,6 +158,10 @@ export default function AddSaleScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
+    if (!itemId && !projectId) {
+      Alert.alert(t('common.error'), t('projects.errors.not_found'));
+      return;
+    }
     if (!weightSold || parseFloat(weightSold) <= 0) {
       Alert.alert(t('common.error'), t('sales.errors.weight_required'));
       return;
@@ -91,6 +174,7 @@ export default function AddSaleScreen({ route, navigation }) {
     setSaving(true);
     setBanner(null);
     try {
+      const activePayments = salePayments.filter(p => p.amount && parseFloat(p.amount) > 0);
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('sales').find(itemId);
@@ -101,10 +185,48 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.totalAmount = total;
             draft.date = date.getTime();
             draft.notes = notes.trim();
+            draft.paymentStatus = paymentStatus;
+            draft.balanceDue = balanceDue;
+            draft.receiptUrl = photo || '';
           });
+          const existingPayments = await record.salePayments.fetch();
+          const existingIds = existingPayments.map(p => p.id);
+          const keptIds = activePayments.filter(p => p.id).map(p => p.id);
+          const paymentKeys = new Set();
+          for (const ep of existingPayments) {
+            const key = `${ep.amount}_${ep.date}`;
+            if (paymentKeys.has(key)) {
+              await ep.update((draft) => { draft.isDeleted = true; });
+            } else {
+              paymentKeys.add(key);
+              if (!keptIds.includes(ep.id)) {
+                await ep.update((draft) => { draft.isDeleted = true; });
+              }
+            }
+          }
+          for (const p of activePayments) {
+            if (p.id) {
+              const existing = existingPayments.find(ep => ep.id === p.id);
+              if (existing) {
+                await existing.update((draft) => {
+                  draft.amount = parseFloat(p.amount);
+                  draft.date = p.date.getTime();
+                  draft.note = p.note || '';
+                });
+              }
+            } else {
+            await database.get('sale_payments').create((draft) => {
+              initializeLocalRecord(draft);
+              draft.saleId = record.id;
+              draft.amount = parseFloat(p.amount);
+              draft.date = p.date.getTime();
+              draft.note = p.note || '';
+            });
+          }
+          }
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          await database.get('sales').create((record) => {
+          const record = await database.get('sales').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
             record.customer = customer.trim();
@@ -113,8 +235,20 @@ export default function AddSaleScreen({ route, navigation }) {
             record.totalAmount = total;
             record.date = date.getTime();
             record.notes = notes.trim();
+            record.paymentStatus = paymentStatus;
+            record.balanceDue = balanceDue;
+            record.receiptUrl = photo || '';
             record.isDeleted = false;
           });
+          for (const p of activePayments) {
+            await database.get('sale_payments').create((draft) => {
+              initializeLocalRecord(draft);
+              draft.saleId = record.id;
+              draft.amount = parseFloat(p.amount);
+              draft.date = p.date.getTime();
+              draft.note = p.note || '';
+            });
+          }
           setBanner({ tone: 'warning', title: t('feedback.saved_local_title'), message: t('feedback.saved_local_body') });
         }
       });
@@ -137,25 +271,22 @@ export default function AddSaleScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <StitchDashboardShell
-        hero={{
+        hero={StitchFormHero({
           eyebrow: t('sales.entry_eyebrow'),
           title: itemId ? t('sales.edit_title') : t('sales.entry_title'),
           subtitle: project?.name || t('sales.screen_title'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
-          children: (
-            <View style={styles.heroPills}>
-              <StitchHeroPill label={t('sales.total_revenue')} value={formatCurrency(total, currency)} icon='cash-outline' />
-              <StitchHeroPill label={t('sales.quantity_heading')} value={weightSold || '0'} icon='cube-outline' />
-            </View>
-          ),
-        }}
+          pills: [
+            { label: t('sales.total_revenue'), value: formatCurrency(total, currency), icon: 'cash-outline' },
+            { label: t('sales.quantity_heading'), value: weightSold || '0', icon: 'cube-outline' },
+          ],
+          onBack: () => navigation.goBack(),
+        })}
         bodyContentStyle={styles.content}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} style={styles.banner} />
-
         <StitchSurface style={styles.panel}>
-          <StitchSectionLabel>{t('sales.quantity_heading')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('sales.quantity_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
             <TextInput
               style={styles.largeInput}
@@ -163,12 +294,12 @@ export default function AddSaleScreen({ route, navigation }) {
               onChangeText={setWeightSold}
               placeholder="0.00"
               keyboardType="decimal-pad"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={stitchTheme.colors.textMuted}
             />
             <Text style={styles.unitBadge}>{t('harvest.units.kg')}</Text>
           </View>
 
-          <StitchSectionLabel>{t('sales.price_heading')}</StitchSectionLabel>
+          <StitchSectionTitle>{t('sales.price_heading')}</StitchSectionTitle>
           <View style={styles.fieldLarge}>
             <Text style={styles.currencyText}>{currency}</Text>
             <TextInput
@@ -177,7 +308,7 @@ export default function AddSaleScreen({ route, navigation }) {
               onChangeText={setUnitPrice}
               placeholder="0.00"
               keyboardType="decimal-pad"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={stitchTheme.colors.textMuted}
             />
           </View>
 
@@ -186,32 +317,97 @@ export default function AddSaleScreen({ route, navigation }) {
             <Text style={styles.totalHeroValue}>{formatCurrency(total, currency)}</Text>
           </View>
 
-          <StitchSectionLabel>{t('sales.buyer_heading')}</StitchSectionLabel>
-          <View style={styles.fieldLarge}>
-            <Ionicons name="person" size={20} color="#76806f" />
-            <TextInput
-              style={styles.mediumInput}
-              value={customer}
-              onChangeText={setCustomer}
-              placeholder={t('sales.placeholders.customer')}
-              placeholderTextColor="#76806f"
-            />
-          </View>
+          <StitchInput
+            label={t('common.notes')}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder={t('sales.placeholders.notes')}
+            multiline
+          />
 
-          <View style={styles.infoCard}>
-            <View style={[styles.infoIcon, { backgroundColor: '#e1efda' }]}>
-              <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
+          <StitchSectionTitle>{t('sales.payments_section')}</StitchSectionTitle>
+          <View style={styles.paymentSummary}>
+            <Text style={styles.paymentSummaryLabel}>{t('sales.collected')}</Text>
+            <Text style={styles.paymentSummaryValue}>{formatCurrency(totalCollected, currency)}</Text>
+          </View>
+          {balanceDue > 0 ? (
+            <View style={styles.paymentSummary}>
+              <Text style={styles.paymentSummaryLabel}>{t('sales.balance_due')}</Text>
+              <Text style={[styles.paymentSummaryValue, { color: stitchTheme.colors.accentRed }]}>{formatCurrency(balanceDue, currency)}</Text>
             </View>
-            <View style={styles.infoBody}>
-              <Text style={styles.infoLabel}>{t('sales.date_label')}</Text>
-              <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.86}>
-                <Text style={styles.infoValue}>{formatAppDate(date)}</Text>
+          ) : null}
+          {salePayments.filter(p => p.amount && parseFloat(p.amount) > 0).length > 0 ? (
+            <View style={styles.paymentBreakdownWrap}>
+              {salePayments.map((p, i) => (
+                parseFloat(p.amount) > 0 ? (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.paymentRow, selectedPaymentIndex === i && styles.paymentRowSelected]}
+                    onPress={() => setSelectedPaymentIndex(selectedPaymentIndex === i ? null : i)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.paymentRowLabel}>{formatAppDate(p.date)}</Text>
+                      <TouchableOpacity onPress={() => { setPaymentDateTarget(i); setShowDatePicker(true); }} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                        <Ionicons name="calendar-outline" size={14} color={stitchTheme.colors.textMuted} />
+                      </TouchableOpacity>
+                      {p.note ? <Text style={styles.paymentRowNote} numberOfLines={1}>{p.note}</Text> : null}
+                    </View>
+                    <TextInput
+                      style={styles.paymentRowInput}
+                      value={p.amount}
+                      onChangeText={(v) => updatePayment(i, 'amount', v)}
+                      keyboardType="decimal-pad"
+                    />
+                  </TouchableOpacity>
+                ) : null
+              ))}
+            </View>
+          ) : null}
+          {balanceDue > 0 || selectedPaymentIndex != null ? (
+            <View style={styles.addPaymentRow}>
+              <TouchableOpacity style={styles.addPaymentBtn} onPress={addPayment} activeOpacity={0.88}>
+                <Ionicons name="add-circle-outline" size={18} color={stitchTheme.colors.primary} />
+                <Text style={styles.addPaymentText}>{t('sales.add_payment')}</Text>
               </TouchableOpacity>
+              {selectedPaymentIndex != null ? (
+                <TouchableOpacity style={styles.deletePaymentBtn} onPress={() => removePayment(selectedPaymentIndex)} activeOpacity={0.8}>
+                  <Ionicons name="trash-outline" size={20} color={stitchTheme.colors.accentRed} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-          </View>
+          ) : null}
+
+          <StitchSectionTitle>{t('sales.buyer_heading')}</StitchSectionTitle>
+          <StitchPicker
+            label=''
+            options={[{ label: 'Other (type manually)', value: '' }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
+            selectedValue={payees.find((p) => p.name === customer)?.id || ''}
+            onSelect={(val) => {
+              if (!val) {
+                setCustomer('');
+              } else {
+                setCustomer((payees || []).find((p) => p.id === val)?.name || '');
+              }
+            }}
+            searchable
+            placeholder='Select Vendor'
+          />
+          {!payees.find((p) => p.name === customer) ? (
+            <View style={styles.fieldLarge}>
+              <Ionicons name="person" size={20} color={stitchTheme.colors.textMuted} />
+              <TextInput
+                style={styles.mediumInput}
+                value={customer}
+                onChangeText={setCustomer}
+                placeholder='Or type vendor name'
+                placeholderTextColor="#76806f"
+              />
+            </View>
+          ) : null}
 
           <View style={styles.infoCard}>
-            <View style={[styles.infoIcon, { backgroundColor: '#f8e8e1' }]}>
+            <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.warningSurface }]}>
               <Ionicons name="cube-outline" size={20} color={stitchTheme.colors.accentBrown} />
             </View>
             <View style={styles.infoBody}>
@@ -220,25 +416,121 @@ export default function AddSaleScreen({ route, navigation }) {
             </View>
           </View>
 
-          <TextInput
-            style={styles.notesField}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={t('sales.placeholders.notes')}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#76806f"
-          />
+          <View style={styles.uploadCard}>
+          <View style={styles.uploadLeft}>
+            <View style={styles.uploadIconWrap}>
+              <Ionicons name={photo ? 'image' : 'receipt-outline'} size={22} color={stitchTheme.colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.uploadTitle}>Attach Receipt</Text>
+              <Text style={styles.uploadSubtitle}>Upload a photo of the receipt or delivery note</Text>
+            </View>
+          </View>
+          <View style={styles.uploadActions}>
+            <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.88}>
+              <Text style={styles.uploadButtonText}>Album</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.uploadButton} onPress={takePhoto} activeOpacity={0.88}>
+              <Text style={styles.uploadButtonText}>Camera</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {photo ? (
+          <View style={styles.photoWrap}>
+            <Image source={{ uri: photo }} style={styles.photo} />
+            <TouchableOpacity style={styles.removePhoto} onPress={() => setPhoto(null)} activeOpacity={0.85}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
         </StitchSurface>
 
-        {showDatePicker ? (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-          />
-        ) : null}
+        <StitchInput
+          label={t('sales.date_label')}
+          value={formatAppDate(date)}
+          onPress={() => setShowDatePicker(true)}
+          icon='calendar-outline'
+        />
+
+        <StitchDatePicker
+          visible={showDatePicker}
+          date={paymentDateTarget != null ? salePayments[paymentDateTarget]?.date || date : date}
+          onDateChange={(d) => {
+            if (paymentDateTarget != null) {
+              updatePayment(paymentDateTarget, 'date', d);
+              setPaymentDateTarget(null);
+            } else {
+              setDate(d);
+            }
+            setShowDatePicker(false);
+          }}
+          onClose={() => { setShowDatePicker(false); setPaymentDateTarget(null); }}
+        />
+
+        <StitchDatePicker
+          visible={newPaymentShowDatePicker}
+          date={newPaymentDate}
+          onDateChange={(d) => { setNewPaymentDate(d); setNewPaymentShowDatePicker(false); }}
+          onClose={() => setNewPaymentShowDatePicker(false)}
+        />
+
+        <Modal visible={paymentModalVisible} animationType='slide' transparent>
+          <View style={styles.paymentModalOverlay}>
+            <View style={styles.paymentModalContent}>
+              <View style={styles.paymentModalHeader}>
+                <Text style={styles.paymentModalTitle}>{t('sales.add_payment')}</Text>
+                <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
+                  <Ionicons name="close" size={22} color={stitchTheme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.fieldLarge}>
+                <Text style={styles.currencyText}>{currency}</Text>
+                <TextInput
+                  style={styles.mediumInput}
+                  value={newPaymentAmount}
+                  onChangeText={setNewPaymentAmount}
+                  placeholder={t('sales.amount_placeholder')}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={stitchTheme.colors.textMuted}
+                  autoFocus
+                />
+              </View>
+              <TouchableOpacity style={styles.infoCard} onPress={() => setNewPaymentShowDatePicker(true)} activeOpacity={0.86}>
+                <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.successSurface }]}>
+                  <Ionicons name="calendar-outline" size={20} color={stitchTheme.colors.primary} />
+                </View>
+                <View style={styles.infoBody}>
+                  <Text style={styles.infoLabel}>{t('common.date')}</Text>
+                  <Text style={styles.infoValue}>{formatAppDate(newPaymentDate)}</Text>
+                </View>
+              </TouchableOpacity>
+              <TextInput
+                style={styles.modalNoteInput}
+                value={newPaymentNote}
+                onChangeText={setNewPaymentNote}
+                placeholder={t('sales.note_placeholder')}
+                placeholderTextColor={stitchTheme.colors.textMuted}
+              />
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.uploadButton, { flex: 1 }]}
+                  onPress={() => setPaymentModalVisible(false)}
+                  activeOpacity={0.88}
+                >
+                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.textMuted }]}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.uploadButton, { flex: 1, backgroundColor: stitchTheme.colors.primaryContainer }]}
+                  onPress={confirmAddPayment}
+                  activeOpacity={0.88}
+                >
+                  <Text style={[styles.uploadButtonText, { color: stitchTheme.colors.primarySoft }]}>{t('sales.add')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <StitchPrimaryButton label={itemId ? t('common.save') : t('sales.complete')} onPress={handleSave} disabled={saving} loading={saving} icon="checkmark-circle" style={styles.saveButton} />
         <Text style={styles.footerNote}>{t('sales.footer_note')}</Text>
@@ -251,10 +543,29 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32, gap: stitchTheme.spacing.sm },
-  heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginBottom: stitchTheme.spacing.sm },
   banner: { marginTop: stitchTheme.spacing.xs },
   panel: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card },
   fieldLarge: { minHeight: 60, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  paymentRowLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
+  paymentRowNote: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: '500', marginTop: 1 },
+  paymentRowInput: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer, textAlign: 'right', paddingVertical: 2, minWidth: 80 },
+  paymentBreakdownWrap: { marginTop: 4 },
+  paymentDateBtn: { paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 12, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  addPaymentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: stitchTheme.spacing.xs, paddingVertical: 10, borderRadius: stitchTheme.radius.md, borderWidth: 1, borderColor: stitchTheme.colors.border, borderStyle: 'dashed', marginTop: stitchTheme.spacing.xs },
+  addPaymentText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
+  addPaymentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  deletePaymentBtn: { marginTop: stitchTheme.spacing.xs, width: 42, height: 42, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.accentRed },
+  paymentRowSelected: { backgroundColor: stitchTheme.colors.surfaceTint, borderRadius: stitchTheme.radius.md, paddingHorizontal: 4, marginHorizontal: -4 },
+  paymentModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  paymentModalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48, gap: stitchTheme.spacing.sm },
+  paymentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  paymentModalTitle: { fontSize: 20, fontWeight: '900', color: stitchTheme.colors.primary },
+  modalNoteInput: { minHeight: 44, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
+  paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.xs, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
+  paymentSummaryLabel: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted, textTransform: 'uppercase' },
+  paymentSummaryValue: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.primaryContainer },
+  statusRow: { flexDirection: 'row', gap: stitchTheme.spacing.xs, flexWrap: 'wrap' },
   largeInput: { flex: 1, fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '700', color: stitchTheme.colors.text },
   mediumInput: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text },
   unitBadge: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '700', color: stitchTheme.colors.textMuted },
@@ -270,4 +581,16 @@ const styles = StyleSheet.create({
   notesField: { marginTop: stitchTheme.spacing.sm, minHeight: 92, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: 22, color: stitchTheme.colors.text, textAlignVertical: 'top', borderWidth: 1, borderColor: stitchTheme.colors.border },
   saveButton: { marginTop: stitchTheme.spacing.md },
   footerNote: { marginTop: stitchTheme.spacing.xs, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: '#6f786b' },
+
+  uploadCard: { marginTop: stitchTheme.spacing.xs, borderRadius: stitchTheme.radius.card, backgroundColor: stitchTheme.colors.surfaceHighlight, padding: stitchTheme.spacing.md, gap: stitchTheme.spacing.md, ...stitchShadows.soft },
+  uploadLeft: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md },
+  uploadIconWrap: { width: 44, height: 44, borderRadius: 16, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center' },
+  uploadTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
+  uploadSubtitle: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
+  uploadActions: { flexDirection: 'row', gap: stitchTheme.spacing.xs },
+  uploadButton: { flex: 1, minHeight: 40, borderRadius: stitchTheme.radius.pill, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  uploadButtonText: { color: stitchTheme.colors.primary, fontWeight: '800', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
+  photoWrap: { marginTop: stitchTheme.spacing.sm, borderRadius: stitchTheme.radius.card, overflow: 'hidden', position: 'relative' },
+  photo: { width: '100%', height: 160, resizeMode: 'cover' },
+  removePhoto: { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
 });

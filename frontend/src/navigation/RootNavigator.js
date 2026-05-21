@@ -66,7 +66,11 @@ export default function RootNavigator() {
   // when `token` changes (login → tabs, logout → auth)
   return (
     <View style={styles.appShell}>
-      {token ? <TabNavigator /> : <AuthNavigator />}
+      {token ? (
+        <>
+          <TabNavigator />
+        </>
+      ) : <AuthNavigator />}
       {backendStatus === 'offline' ? (
         <View pointerEvents="none" style={styles.offlineBannerWrap}>
           <View style={styles.offlineBanner}>

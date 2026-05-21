@@ -22,7 +22,7 @@ function getDefaultBaseUrl() {
     return 'http://localhost:3000';
 }
 
-export const BASE_URL = getDefaultBaseUrl();
+export const BASE_URL = getDefaultBaseUrl() + '/api/';
 
 const api = axios.create({
     baseURL: BASE_URL,

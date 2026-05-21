@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { createSaleSchema, updateSaleSchema } = require('../validators/sale.validator');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,40 +19,14 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
-const findOwnedProject = async (projectId, userId, res) => {
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Project not found' });
-    return null;
-  }
-  return project;
-};
-
-const findOwnedSale = async (saleId, userId, res) => {
-  const sale = await prisma.sale.findUnique({
-    where:   { id: saleId },
-    include: { project: { select: { userId: true, isDeleted: true } } },
-  });
-  if (
-    !sale ||
-    sale.isDeleted ||
-    sale.project.isDeleted ||
-    sale.project.userId !== userId
-  ) {
-    res.status(404).json({ error: 'Sale not found' });
-    return null;
-  }
-  return sale;
-};
-
 // ── POST /sales ──────────────────────────────────────────────────────────────
 
 const createSale = async (req, res) => {
   const data = validate(createSaleSchema, req.body, res);
   if (!data) return;
 
-  const project = await findOwnedProject(data.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(data.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const sale = await prisma.sale.create({
     data: {
@@ -71,11 +46,12 @@ const createSale = async (req, res) => {
 // ── GET /sales/:projectId ────────────────────────────────────────────────────
 
 const listSales = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
+  const includeDeleted = req.query.includeDeleted === 'true';
 
   const sales = await prisma.sale.findMany({
-    where:   { projectId: req.params.projectId, isDeleted: false },
+    where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { date: 'desc' },
   });
 
@@ -89,8 +65,11 @@ const listSales = async (req, res) => {
 // ── PUT /sales/:id ───────────────────────────────────────────────────────────
 
 const updateSale = async (req, res) => {
-  const sale = await findOwnedSale(req.params.id, req.user.id, res);
-  if (!sale) return;
+  const sale = await prisma.sale.findUnique({ where: { id: req.params.id } });
+  if (!sale || sale.isDeleted) return res.status(404).json({ error: 'Sale not found' });
+
+  const access = await verifyProjectAccess(sale.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const data = validate(updateSaleSchema, req.body, res);
   if (!data) return;
@@ -109,8 +88,11 @@ const updateSale = async (req, res) => {
 // ── DELETE /sales/:id ────────────────────────────────────────────────────────
 
 const deleteSale = async (req, res) => {
-  const sale = await findOwnedSale(req.params.id, req.user.id, res);
-  if (!sale) return;
+  const sale = await prisma.sale.findUnique({ where: { id: req.params.id } });
+  if (!sale || sale.isDeleted) return res.status(404).json({ error: 'Sale not found' });
+
+  const access = await verifyProjectAccess(sale.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   await prisma.sale.update({
     where: { id: req.params.id },

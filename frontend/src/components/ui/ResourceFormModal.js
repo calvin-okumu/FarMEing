@@ -6,7 +6,7 @@ export default function ResourceFormModal({ visible, title, onClose, children })
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <KeyboardAvoidingView behavior='padding' style={styles.keyboardView}>
           <View style={styles.content}>
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
@@ -23,15 +23,16 @@ export default function ResourceFormModal({ visible, title, onClose, children })
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(12, 18, 12, 0.42)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   content: {
     backgroundColor: stitchTheme.colors.background,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    padding: 22,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingVertical: 36,
+    paddingHorizontal: 22,
+    maxHeight: '95%',
+    paddingBottom: Platform.OS === 'ios' ? 44 : 28,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   title: { fontSize: 28, fontWeight: '900', color: stitchTheme.colors.primary },

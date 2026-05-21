@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { createHarvestSchema, updateHarvestSchema } = require('../validators/harvest.validator');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,42 +19,14 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
-/** Verify the project exists, belongs to the user, and is not soft-deleted. */
-const findOwnedProject = async (projectId, userId, res) => {
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Project not found' });
-    return null;
-  }
-  return project;
-};
-
-/** Verify the harvest exists, is not soft-deleted, and belongs to the user's project. */
-const findOwnedHarvest = async (harvestId, userId, res) => {
-  const harvest = await prisma.harvest.findUnique({
-    where:   { id: harvestId },
-    include: { project: { select: { userId: true, isDeleted: true } } },
-  });
-  if (
-    !harvest ||
-    harvest.isDeleted ||
-    harvest.project.isDeleted ||
-    harvest.project.userId !== userId
-  ) {
-    res.status(404).json({ error: 'Harvest not found' });
-    return null;
-  }
-  return harvest;
-};
-
 // ── POST /harvests ────────────────────────────────────────────────────────────
 
 const createHarvest = async (req, res) => {
   const data = validate(createHarvestSchema, req.body, res);
   if (!data) return;
 
-  const project = await findOwnedProject(data.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(data.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const harvest = await prisma.harvest.create({
     data: {
@@ -73,11 +46,12 @@ const createHarvest = async (req, res) => {
 // ── GET /harvests/:projectId ──────────────────────────────────────────────────
 
 const listHarvests = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
+  const includeDeleted = req.query.includeDeleted === 'true';
 
   const harvests = await prisma.harvest.findMany({
-    where:   { projectId: req.params.projectId, isDeleted: false },
+    where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { date: 'desc' },
   });
 
@@ -91,8 +65,11 @@ const listHarvests = async (req, res) => {
 // ── PUT /harvests/:id ─────────────────────────────────────────────────────────
 
 const updateHarvest = async (req, res) => {
-  const harvest = await findOwnedHarvest(req.params.id, req.user.id, res);
-  if (!harvest) return;
+  const harvest = await prisma.harvest.findUnique({ where: { id: req.params.id } });
+  if (!harvest || harvest.isDeleted) return res.status(404).json({ error: 'Harvest not found' });
+
+  const access = await verifyProjectAccess(harvest.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const data = validate(updateHarvestSchema, req.body, res);
   if (!data) return;
@@ -111,8 +88,11 @@ const updateHarvest = async (req, res) => {
 // ── DELETE /harvests/:id (soft delete) ────────────────────────────────────────
 
 const deleteHarvest = async (req, res) => {
-  const harvest = await findOwnedHarvest(req.params.id, req.user.id, res);
-  if (!harvest) return;
+  const harvest = await prisma.harvest.findUnique({ where: { id: req.params.id } });
+  if (!harvest || harvest.isDeleted) return res.status(404).json({ error: 'Harvest not found' });
+
+  const access = await verifyProjectAccess(harvest.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   await prisma.harvest.update({
     where: { id: req.params.id },

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "frontend",
+    "name": "FarmTruck",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.farmtrack.app"
     },
     "android": {
       "softwareKeyboardLayoutMode": "pan",
@@ -33,7 +34,11 @@
       }
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "expo-font",
+      "expo-sqlite",
+      "expo-localization",
+      "expo-secure-store",
+      "expo-sharing"
     ]
   }
 }

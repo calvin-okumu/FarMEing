@@ -19,15 +19,31 @@ const validate = (schema, body, res) => {
 };
 
 /**
- * Find an employee that belongs to the authenticated user and is not deleted.
- * Returns the employee or sends 404 and returns null.
+ * Find an employee that the user is authorized to see.
+ * Authorization: Either the user created the employee, 
+ * OR the employee is assigned to a project the user has access to.
  */
-const findOwnedEmployee = async (employeeId, userId, res) => {
-  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
-  if (!employee || employee.isDeleted || employee.userId !== userId) {
+const findAccessibleEmployee = async (employeeId, userId, res) => {
+  const employee = await prisma.employee.findUnique({ 
+    where: { id: employeeId },
+    include: {
+      assignments: {
+        where: { project: { projectAccess: { some: { userId } } } }
+      }
+    }
+  });
+
+  if (!employee || employee.isDeleted) {
     res.status(404).json({ error: 'Employee not found' });
     return null;
   }
+
+  // Check if user is the creator OR has access via an assignment
+  if (employee.userId !== userId && employee.assignments.length === 0) {
+    res.status(403).json({ error: 'Permission denied' });
+    return null;
+  }
+
   return employee;
 };
 
@@ -52,8 +68,17 @@ const createEmployee = async (req, res) => {
 // ── GET /employees ────────────────────────────────────────────────────────────
 
 const listEmployees = async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === 'true';
+  
+  // Find employees created by user OR assigned to projects user has access to
   const employees = await prisma.employee.findMany({
-    where:   { userId: req.user.id, isDeleted: false },
+    where: {
+      ...(includeDeleted ? {} : { isDeleted: false }),
+      OR: [
+        { userId: req.user.id },
+        { assignments: { some: { project: { projectAccess: { some: { userId: req.user.id } } } } } }
+      ]
+    },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -63,7 +88,7 @@ const listEmployees = async (req, res) => {
 // ── PUT /employees/:id ────────────────────────────────────────────────────────
 
 const updateEmployee = async (req, res) => {
-  const employee = await findOwnedEmployee(req.params.id, req.user.id, res);
+  const employee = await findAccessibleEmployee(req.params.id, req.user.id, res);
   if (!employee) return;
 
   const data = validate(updateEmployeeSchema, req.body, res);
@@ -80,7 +105,7 @@ const updateEmployee = async (req, res) => {
 // ── DELETE /employees/:id (soft delete) ───────────────────────────────────────
 
 const deleteEmployee = async (req, res) => {
-  const employee = await findOwnedEmployee(req.params.id, req.user.id, res);
+  const employee = await findAccessibleEmployee(req.params.id, req.user.id, res);
   if (!employee) return;
 
   await prisma.employee.update({
@@ -93,11 +118,11 @@ const deleteEmployee = async (req, res) => {
 
 // ── GET /employees/:id/balance ────────────────────────────────────────────────
 // totalEarned  = sum of WorkEntry.totalCost  (non-deleted entries)
-// totalPaid    = sum of Payment.amount        (all payments)
+// totalPaid    = sum of Payment.amount        (non-deleted payments)
 // balance      = totalEarned - totalPaid      (amount still owed)
 
 const getEmployeeBalance = async (req, res) => {
-  const employee = await findOwnedEmployee(req.params.id, req.user.id, res);
+  const employee = await findAccessibleEmployee(req.params.id, req.user.id, res);
   if (!employee) return;
 
   const [earnedAgg, paidAgg] = await Promise.all([
@@ -106,7 +131,7 @@ const getEmployeeBalance = async (req, res) => {
       _sum:  { totalCost: true },
     }),
     prisma.payment.aggregate({
-      where: { employeeId: req.params.id },
+      where: { employeeId: req.params.id, isDeleted: false },
       _sum:  { amount: true },
     }),
   ]);

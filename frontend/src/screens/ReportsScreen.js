@@ -1,126 +1,395 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Q } from '@nozbe/watermelondb';
+import { useTranslation } from 'react-i18next';
+import { database } from '../db';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import { StitchChip, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { formatCurrency } from '../utils/currency';
+import { computeProjectSummary, computePortfolioSummary } from '../utils/localAnalytics';
+import useSettingsStore from '../store/useSettingsStore';
+import { syncAll } from '../services/syncService';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
+import { PieChart, BarChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
 
-const INSIGHT_CARDS = [
-  {
-    id: 'finance',
-    eyebrow: 'Finance',
-    title: 'Profit and cost views',
-    value: 'Ready',
-    icon: 'cash-outline',
-    accent: stitchTheme.colors.primaryDim,
-  },
-  {
-    id: 'labor',
-    eyebrow: 'Labor',
-    title: 'Worker and activity trends',
-    value: 'Ready',
-    icon: 'people-outline',
-    accent: stitchTheme.colors.accentBrown,
-  },
-];
+const screenWidth = Dimensions.get('window').width;
 
-const REPORT_MODULES = [
-  {
-    id: 'seasonal',
-    title: 'Seasonal summaries',
-    desc: 'Compare budget, spend, harvest, and sales across projects.',
-    icon: 'stats-chart-outline',
-    dark: true,
-  },
-  {
-    id: 'performance',
-    title: 'Performance rollups',
-    desc: 'Surface strongest projects, labor hotspots, and yield patterns.',
-    icon: 'bar-chart-outline',
-  },
-  {
-    id: 'cashflow',
-    title: 'Cash flow reports',
-    desc: 'Track operating cost vs revenue with export-friendly snapshots.',
-    icon: 'wallet-outline',
-  },
-  {
-    id: 'exports',
-    title: 'Shareable exports',
-    desc: 'Generate clean printable views for farmers, staff, and partners.',
-    icon: 'download-outline',
-  },
-];
-
-function InsightCard({ card }) {
+function ProjectPerformanceCard({ project, summary, currency, navigation }) {
+  const isProfitable = summary.netProfit >= 0;
+  
   return (
-    <View style={styles.insightCard}>
-      <View style={[styles.cardAccent, { backgroundColor: card.accent }]} />
-      <View style={styles.insightInner}>
-        <View style={styles.insightTop}>
-          <Text style={styles.insightEyebrow}>{card.eyebrow}</Text>
-          <View style={styles.insightIconBox}>
-            <Ionicons name={card.icon} size={16} color={stitchTheme.colors.primary} />
-          </View>
+    <TouchableOpacity 
+      style={styles.perfCard} 
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('Projects', { screen: 'ProjectDetail', params: { projectId: project.id } })}
+    >
+      <View style={[styles.perfAccent, { backgroundColor: isProfitable ? stitchTheme.colors.primaryDim : stitchTheme.colors.accentRed }]} />
+      <View style={styles.perfHeader}>
+        <View>
+          <Text style={styles.perfName}>{project.name}</Text>
+          <Text style={styles.perfCrop}>{project.crop || 'No Crop'}</Text>
         </View>
-        <Text style={styles.insightTitle}>{card.title}</Text>
-        <Text style={styles.insightValue}>{card.value}</Text>
+        <View style={styles.perfStatus}>
+          <Text style={[styles.perfProfit, { color: isProfitable ? stitchTheme.colors.primary : stitchTheme.colors.accentRed }]}>
+            {formatCurrency(summary.netProfit, currency)}
+          </Text>
+          <Text style={styles.perfLabel}>Net Profit</Text>
+        </View>
       </View>
-    </View>
-  );
-}
-
-function ModuleCard({ card }) {
-  return (
-    <TouchableOpacity activeOpacity={0.88} style={[styles.moduleCard, card.dark && styles.moduleCardDark]}>
-      <View style={[styles.moduleIconBox, card.dark && styles.moduleIconBoxDark]}>
-        <Ionicons name={card.icon} size={18} color={card.dark ? '#ffffff' : stitchTheme.colors.primary} />
+      
+      <View style={styles.perfDivider} />
+      
+      <View style={styles.perfFooter}>
+        <View style={styles.perfStat}>
+          <Text style={styles.perfStatLabel}>Revenue</Text>
+          <Text style={styles.perfStatValue}>{formatCurrency(summary.totalRevenue, currency)}</Text>
+        </View>
+        <View style={styles.perfStat}>
+          <Text style={styles.perfStatLabel}>Total Cost</Text>
+          <Text style={styles.perfStatValue}>{formatCurrency(summary.totalCost, currency)}</Text>
+        </View>
+        <View style={styles.perfStat}>
+          <Text style={styles.perfStatLabel}>Harvest</Text>
+          <Text style={styles.perfStatValue}>{summary.totalHarvest} kg</Text>
+        </View>
       </View>
-      <Text style={[styles.moduleTitle, card.dark && styles.moduleTitleDark]}>{card.title}</Text>
-      <Text style={[styles.moduleDesc, card.dark && styles.moduleDescDark]}>{card.desc}</Text>
     </TouchableOpacity>
   );
 }
 
-export default function ReportsScreen() {
+export default function ReportsScreen({ navigation }) {
+  const { t } = useTranslation();
+  const currency = useSettingsStore((s) => s.currency);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  const [data, setData] = useState({
+    projects: [],
+    expenses: [],
+    workEntries: [],
+    harvests: [],
+    sales: [],
+    inventoryItems: [],
+    employees: [],
+  });
+
+  useEffect(() => {
+    const projectQuery = database.get('farm_projects').query(Q.where('is_deleted', false));
+    const expenseQuery = database.get('expenses').query(Q.where('is_deleted', false));
+    const workQuery = database.get('work_entries').query(Q.where('is_deleted', false));
+    const harvestQuery = database.get('harvests').query(Q.where('is_deleted', false));
+    const saleQuery = database.get('sales').query(Q.where('is_deleted', false));
+    const inventoryQuery = database.get('inventory_items').query(Q.where('is_deleted', false));
+    const employeeQuery = database.get('employees').query(Q.where('is_deleted', false));
+
+    const subs = [
+      projectQuery.observe().subscribe(rows => setData(prev => ({ ...prev, projects: rows }))),
+      expenseQuery.observe().subscribe(rows => setData(prev => ({ ...prev, expenses: rows }))),
+      workQuery.observe().subscribe(rows => setData(prev => ({ ...prev, workEntries: rows }))),
+      harvestQuery.observe().subscribe(rows => setData(prev => ({ ...prev, harvests: rows }))),
+      saleQuery.observe().subscribe(rows => setData(prev => ({ ...prev, sales: rows }))),
+      inventoryQuery.observe().subscribe(rows => setData(prev => ({ ...prev, inventoryItems: rows }))),
+      employeeQuery.observe().subscribe(rows => setData(prev => ({ ...prev, employees: rows }))),
+    ];
+
+    setLoading(false);
+    return () => subs.forEach(s => s.unsubscribe());
+  }, []);
+
+  const projectSummaries = useMemo(() => {
+    return data.projects.map(project => {
+      const pids = [project.id];
+      if (project.remoteId) pids.push(project.remoteId);
+      
+      const filterByProject = (item) => pids.includes(item.projectId);
+      
+      return {
+        project,
+        summary: computeProjectSummary({
+          expenses: data.expenses.filter(filterByProject),
+          workEntries: data.workEntries.filter(filterByProject),
+          harvests: data.harvests.filter(filterByProject),
+          sales: data.sales.filter(filterByProject),
+          inventoryItems: data.inventoryItems.filter(filterByProject),
+        })
+      };
+    });
+  }, [data]);
+
+  const portfolio = useMemo(() => computePortfolioSummary(projectSummaries.map(s => s.summary)), [projectSummaries]);
+
+  const laborStats = useMemo(() => {
+    const workerMap = {};
+    const activityMap = {};
+
+    data.workEntries.forEach(entry => {
+      if (entry.isDeleted) return;
+      
+      activityMap[entry.activity] = (activityMap[entry.activity] || 0) + (entry.daysWorked || 0);
+
+      const empId = entry.employeeId;
+      if (!workerMap[empId]) {
+        const employee = data.employees.find(e => e.id === empId || (e.remoteId && e.remoteId === empId));
+        workerMap[empId] = { id: empId, name: employee?.name || 'Unknown', earned: 0 };
+      }
+      workerMap[empId].earned += (entry.totalCost || 0);
+    });
+
+    return {
+      activities: Object.entries(activityMap).map(([name, days]) => ({ name, days })).sort((a, b) => b.days - a.days),
+      workers: Object.values(workerMap).sort((a, b) => b.earned - a.earned).slice(0, 5)
+    };
+  }, [data.workEntries, data.employees]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await syncAll();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  if (loading) return <StitchScreenSkeleton />;
+
   return (
     <StitchDashboardShell
       hero={{
-        eyebrow: 'Insights',
-        title: 'Reports',
-        subtitle: 'The reporting surface follows the dashboard system and is ready for live financial and operational views.',
-        actionIcon: 'analytics-outline',
-        onActionPress: () => {},
+        eyebrow: t('dashboard.portfolio_performance', { defaultValue: 'Portfolio Performance' }),
+        title: formatCurrency(portfolio.netProfit, currency),
+        subtitle: portfolio.netProfit >= 0 ? t('dashboard.portfolio_profitable', { defaultValue: 'Your overall portfolio is profitable.' }) : t('dashboard.portfolio_at_loss', { defaultValue: 'Portfolio is currently at a loss.' }),
+        actionIcon: 'sync-outline',
+        onActionPress: handleRefresh,
         children: (
           <View style={styles.heroPills}>
-            <StitchHeroPill label='Status' value='Planned' icon='time-outline' style={styles.heroPillPrimary} />
-            <StitchHeroPill label='Mode' value='Dashboard-led' icon='grid-outline' style={styles.heroPillSecondary} />
+            <StitchHeroPill label={t('dashboard.revenue')} value={portfolio.totalRevenue} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
+            <StitchHeroPill label={t('dashboard.total_cost')} value={portfolio.totalCost} currency={currency} icon='wallet-outline' style={styles.heroPillSecondary} />
           </View>
         ),
       }}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={stitchTheme.colors.primaryContainer} />}
       bodyContentStyle={styles.bodyContent}
     >
-      <StitchDashboardSectionHeader title='Overview' subtitle='Reporting foundation' badgeLabel='Soon' />
+      <StitchDashboardSectionHeader 
+        title={t('dashboard.seasonal_summary', { defaultValue: 'Seasonal Summary' })} 
+        subtitle={t('dashboard.financial_breakdown', { defaultValue: 'Financial breakdown per project' })} 
+        actionLabel={`${data.projects.length} Projects`} 
+      />
 
-      <View style={styles.insightGrid}>
-        {INSIGHT_CARDS.map((card) => (
-          <InsightCard key={card.id} card={card} />
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <Text style={styles.chartTitle}>{t('dashboard.project_profitability', { defaultValue: 'Project Profitability (Top 5)' })}</Text>
+        <BarChart
+          data={{
+            labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
+            datasets: [{
+              data: projectSummaries.slice(0, 5).map(s => Math.max(0, s.summary.netProfit))
+            }]
+          }}
+          width={screenWidth - 48}
+          height={200}
+          yAxisLabel={currency === 'TZS' ? 'TSh ' : '$'}
+          chartConfig={{
+            backgroundColor: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientFrom: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientTo: stitchTheme.colors.surfaceHighlight,
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            style: { borderRadius: 16 },
+            propsForLabels: { fontSize: 10, fontWeight: '700' }
+          }}
+          style={{ marginVertical: 8, borderRadius: 16 }}
+          fromZero
+          showValuesOnTopOfBars
+        />
+      </StitchSurface>
+
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <Text style={styles.chartTitle}>Revenue Collection (Top 5)</Text>
+        <BarChart
+          data={{
+            labels: projectSummaries.slice(0, 5).map(s => s.project.name.substring(0, 6)),
+            datasets: [
+              {
+                data: projectSummaries.slice(0, 5).map(s => s.summary.totalRevenue)
+              },
+              {
+                data: projectSummaries.slice(0, 5).map(s => s.summary.collectedRevenue || 0)
+              }
+            ]
+          }}
+          width={screenWidth - 48}
+          height={200}
+          yAxisLabel={currency === 'TZS' ? 'TSh ' : '$'}
+          chartConfig={{
+            backgroundColor: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientFrom: stitchTheme.colors.surfaceHighlight,
+            backgroundGradientTo: stitchTheme.colors.surfaceHighlight,
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(17, 154, 84, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            style: { borderRadius: 16 },
+            propsForLabels: { fontSize: 10, fontWeight: '700' },
+            barPercentage: 0.4
+          }}
+          style={{ marginVertical: 8, borderRadius: 16 }}
+          fromZero
+          showValuesOnTopOfBars
+        />
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: 'rgba(17,154,84,0.5)' }]} /><Text style={styles.legendText}>Total Revenue</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: stitchTheme.colors.primaryContainer }]} /><Text style={styles.legendText}>Collected</Text></View>
+        </View>
+      </StitchSurface>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.perfScroll}>
+        {projectSummaries.map(({ project, summary }) => (
+          <ProjectPerformanceCard 
+            key={project.id} 
+            project={project} 
+            summary={summary} 
+            currency={currency} 
+            navigation={navigation}
+          />
         ))}
+        {!data.projects.length ? <Text style={styles.emptyText}>{t('dashboard.no_active_projects', { defaultValue: 'No active projects found.' })}</Text> : null}
+      </ScrollView>
+
+      <StitchDashboardSectionHeader title={t('dashboard.cost_allocation', { defaultValue: 'Cost Allocation' })} subtitle={t('dashboard.spending_breakdown', { defaultValue: 'Portfolio spending breakdown' })} style={styles.sectionSpacing} />
+      
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <PieChart
+          data={[
+            {
+              name: t('dashboard.labor_costs'),
+              population: portfolio.totalLaborCost,
+              color: stitchTheme.colors.primaryDim,
+              legendFontColor: stitchTheme.colors.text,
+              legendFontSize: 11,
+            },
+            {
+              name: t('dashboard.expenses_short'),
+              population: portfolio.totalExpenses,
+              color: stitchTheme.colors.accentBrown,
+              legendFontColor: stitchTheme.colors.text,
+              legendFontSize: 11,
+            },
+            {
+              name: 'Stock',
+              population: portfolio.totalInventoryCost,
+              color: stitchTheme.colors.primarySoft,
+              legendFontColor: stitchTheme.colors.text,
+              legendFontSize: 11,
+            },
+          ]}
+          width={screenWidth - 32}
+          height={180}
+          chartConfig={{
+            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+          }}
+          accessor={"population"}
+          backgroundColor={"transparent"}
+          paddingLeft={"15"}
+          center={[10, 0]}
+          absolute
+        />
+      </StitchSurface>
+
+      <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownMeta}>
+            <View style={[styles.dot, { backgroundColor: stitchTheme.colors.primaryDim }]} />
+            <Text style={styles.breakdownLabel}>{t('dashboard.labor_costs', { defaultValue: 'Labor Costs' })}</Text>
+          </View>
+          <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalLaborCost, currency)}</Text>
+        </View>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownMeta}>
+            <View style={[styles.dot, { backgroundColor: stitchTheme.colors.accentBrown }]} />
+            <Text style={styles.breakdownLabel}>{t('dashboard.operational_expenses', { defaultValue: 'Operational Expenses' })}</Text>
+          </View>
+          <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalExpenses, currency)}</Text>
+        </View>
+        <View style={styles.breakdownRow}>
+          <View style={styles.breakdownMeta}>
+            <View style={[styles.dot, { backgroundColor: stitchTheme.colors.primarySoft }]} />
+            <Text style={styles.breakdownLabel}>{t('dashboard.inventory_purchases', { defaultValue: 'Inventory Purchases' })}</Text>
+          </View>
+          <Text style={styles.breakdownValue}>{formatCurrency(portfolio.totalInventoryCost, currency)}</Text>
+        </View>
+        
+        <View style={styles.breakdownDivider} />
+        
+        <View style={styles.breakdownRow}>
+          <Text style={styles.totalLabel}>{t('dashboard.total_spending', { defaultValue: 'Total Spending' })}</Text>
+          <Text style={styles.totalValue}>{formatCurrency(portfolio.totalCost, currency)}</Text>
+        </View>
+      </StitchSurface>
+
+      {data.harvests.filter(h => !h.isDeleted).length > 0 ? (
+        <StitchSurface style={styles.chartCard} contentStyle={styles.chartCardContent} tone='raised' compact>
+          <Text style={styles.chartTitle}>Harvest by Crop</Text>
+          <PieChart
+            data={(() => {
+              const cropMap = {};
+              data.harvests.filter(h => !h.isDeleted).forEach(h => {
+                cropMap[h.crop] = (cropMap[h.crop] || 0) + (h.weight || 0);
+              });
+              const colors = [stitchTheme.colors.primaryDim, stitchTheme.colors.accentBrown, stitchTheme.colors.primarySoft, stitchTheme.colors.accentRed, stitchTheme.colors.primary];
+              return Object.entries(cropMap).slice(0, 5).map(([crop, weight], i) => ({
+                name: crop,
+                population: weight,
+                color: colors[i % colors.length],
+                legendFontColor: stitchTheme.colors.text,
+                legendFontSize: 11,
+              }));
+            })()}
+            width={screenWidth - 32}
+            height={180}
+            chartConfig={{ color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})` }}
+            accessor={"population"}
+            backgroundColor={"transparent"}
+            paddingLeft={"15"}
+            center={[10, 0]}
+            absolute
+          />
+        </StitchSurface>
+      ) : null}
+
+      <StitchDashboardSectionHeader title={t('dashboard.labor_contributors', { defaultValue: 'Labor Contributors' })} subtitle={t('dashboard.top_workers_earned', { defaultValue: 'Top workers by total earned' })} style={styles.sectionSpacing} />
+      <View style={styles.laborStatsRow}>
+        {laborStats.workers.map(worker => (
+          <View key={worker.id} style={styles.workerStatCard}>
+            <Text style={styles.workerStatName} numberOfLines={1}>{worker.name}</Text>
+            <Text style={styles.workerStatValue}>{formatCurrency(worker.earned, currency)}</Text>
+          </View>
+        ))}
+        {!laborStats.workers.length ? <Text style={styles.emptySmall}>{t('dashboard.no_labor_data', { defaultValue: 'No labor data found.' })}</Text> : null}
       </View>
 
-      <StitchDashboardSectionHeader title='Modules' subtitle='Planned views' actionLabel='Dashboard system' style={styles.sectionSpacing} />
-
-      <View style={styles.moduleGrid}>
-        {REPORT_MODULES.map((card) => (
-          <ModuleCard key={card.id} card={card} />
+      <StitchDashboardSectionHeader title={t('dashboard.activity_mix', { defaultValue: 'Activity Mix' })} subtitle={t('dashboard.days_by_activity', { defaultValue: 'Days worked by activity type' })} style={styles.sectionSpacing} />
+      <View style={styles.activityGrid}>
+        {laborStats.activities.map(act => (
+          <View key={act.name} style={styles.activityStat}>
+            <Text style={styles.activityStatLabel}>{act.name}</Text>
+            <Text style={styles.activityStatValue}>{act.days} {t('common.days', { defaultValue: 'days' })}</Text>
+          </View>
         ))}
+        {!laborStats.activities.length ? <Text style={styles.emptySmall}>{t('dashboard.no_activity_data', { defaultValue: 'No activity data found.' })}</Text> : null}
       </View>
+
+      <View style={{ height: 40 }} />
     </StitchDashboardShell>
   );
 }
 
 const styles = StyleSheet.create({
   bodyContent: {
-    paddingBottom: 128,
+    paddingBottom: 100,
   },
   heroPills: {
     flexDirection: 'row',
@@ -141,105 +410,227 @@ const styles = StyleSheet.create({
   sectionSpacing: {
     marginTop: stitchTheme.spacing.lg,
   },
-  insightGrid: {
-    flexDirection: 'row',
-    gap: stitchTheme.spacing.xs,
+  chartCard: {
+    marginBottom: stitchTheme.spacing.xs,
+    marginHorizontal: 0,
   },
-  insightCard: {
-    flex: 1,
+  chartCardContent: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    alignItems: 'center',
+    gap: stitchTheme.spacing.sm,
+  },
+  chartTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  perfScroll: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  perfCard: {
+    width: 240,
     backgroundColor: stitchTheme.colors.surfaceHighlight,
     borderRadius: stitchTheme.radius.card,
+    padding: 16,
     overflow: 'hidden',
-    ...stitchShadows.soft,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...stitchShadows.card,
   },
-  cardAccent: {
+  perfAccent: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
     width: 4,
   },
-  insightInner: {
-    padding: stitchTheme.spacing.md,
-    paddingLeft: stitchTheme.spacing.lg,
+  perfHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  insightTop: {
+  perfName: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+    color: stitchTheme.colors.text,
+  },
+  perfCrop: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    fontWeight: stitchTheme.typography.caption.fontWeight,
+    color: stitchTheme.colors.textMuted,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  perfStatus: {
+    alignItems: 'flex-end',
+  },
+  perfProfit: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+  },
+  perfLabel: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    fontWeight: stitchTheme.typography.caption.fontWeight,
+    color: stitchTheme.colors.text,
+  },
+  perfCrop: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: stitchTheme.colors.textMuted,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  perfStatus: {
+    alignItems: 'flex-end',
+  },
+  perfProfit: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  perfLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: stitchTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    marginTop: 1,
+  },
+  perfDivider: {
+    height: 1,
+    backgroundColor: stitchTheme.colors.line,
+    marginVertical: 12,
+    opacity: 0.6,
+  },
+  perfFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  perfStat: {
+    flex: 1,
+  },
+  perfStatLabel: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    fontWeight: stitchTheme.typography.caption.fontWeight,
+    color: stitchTheme.colors.textMuted,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  perfStatValue: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    fontWeight: stitchTheme.typography.cardTitle.fontWeight,
+    color: stitchTheme.colors.text,
+  },
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    paddingVertical: 6,
   },
-  insightEyebrow: {
-    fontSize: stitchTheme.typography.bodySmall.fontSize,
+  breakdownMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  breakdownLabel: {
+    fontSize: 13,
     fontWeight: '700',
     color: stitchTheme.colors.textSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
   },
-  insightIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: stitchTheme.colors.surfaceInset,
-  },
-  insightTitle: {
-    fontSize: stitchTheme.typography.caption.fontSize,
-    lineHeight: stitchTheme.typography.caption.lineHeight,
-    color: stitchTheme.colors.accentBrown,
-    fontWeight: '700',
-  },
-  insightValue: {
-    marginTop: 2,
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
-    fontWeight: '900',
+  breakdownValue: {
+    fontSize: 13,
+    fontWeight: '800',
     color: stitchTheme.colors.text,
   },
-  moduleGrid: {
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: stitchTheme.colors.line,
+    marginVertical: 10,
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
+    textTransform: 'uppercase',
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
+  },
+  laborStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: stitchTheme.spacing.xs,
+    gap: 8,
   },
-  moduleCard: {
-    width: '48.5%',
+  workerStatCard: {
+    flex: 1,
+    minWidth: '48%',
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(17,42,30,0.06)',
+  },
+  workerStatName: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: stitchTheme.colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  workerStatValue: {
+    marginTop: 4,
+    fontSize: 15,
+    fontWeight: '900',
+    color: stitchTheme.colors.primary,
+  },
+  activityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  activityStat: {
     backgroundColor: stitchTheme.colors.surfaceHighlight,
-    borderRadius: stitchTheme.radius.card,
-    padding: stitchTheme.spacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(17,42,30,0.04)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     ...stitchShadows.soft,
   },
-  moduleCardDark: {
-    backgroundColor: stitchTheme.colors.primary,
-  },
-  moduleIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: stitchTheme.colors.surfaceInset,
-    marginBottom: stitchTheme.spacing.sm,
-  },
-  moduleIconBoxDark: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  moduleTitle: {
-    fontSize: stitchTheme.typography.cardTitle.fontSize,
-    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+  activityStatLabel: {
+    fontSize: 12,
+    fontWeight: '700',
     color: stitchTheme.colors.text,
-    fontWeight: '800',
+    textTransform: 'capitalize',
   },
-  moduleTitleDark: {
-    color: '#ffffff',
+  activityStatValue: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: stitchTheme.colors.accentBrown,
   },
-  moduleDesc: {
-    marginTop: 4,
-    fontSize: stitchTheme.typography.caption.fontSize,
-    lineHeight: 16,
+  emptyText: {
     color: stitchTheme.colors.textMuted,
+    fontSize: 13,
+    paddingVertical: 20,
   },
-  moduleDescDark: {
-    color: 'rgba(255,255,255,0.72)',
+  emptySmall: {
+    color: stitchTheme.colors.textMuted,
+    fontSize: 11,
+    fontStyle: 'italic',
   },
+  legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { fontSize: 11, fontWeight: '600', color: stitchTheme.colors.textMuted },
 });

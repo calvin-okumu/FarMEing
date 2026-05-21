@@ -33,7 +33,7 @@ export default function ConfirmDialog({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(12, 18, 12, 0.42)',
+    backgroundColor: 'rgba(26,61,43,0.38)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 52,
     borderRadius: 22,
-    backgroundColor: '#ebe7e3',
+    backgroundColor: stitchTheme.colors.surfaceInset,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -73,10 +73,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 52,
     borderRadius: 22,
-    backgroundColor: '#9c1111',
+    backgroundColor: stitchTheme.colors.accentRed,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelText: { color: stitchTheme.colors.text, fontWeight: '800' },
-  confirmText: { color: '#fff', fontWeight: '800' },
+  confirmText: { color: stitchTheme.colors.surfaceHighlight, fontWeight: '800' },
 });

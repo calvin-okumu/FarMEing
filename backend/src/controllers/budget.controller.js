@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { createBudgetItemSchema, updateBudgetItemSchema } = require('../validators/budget.validator');
+const { verifyProjectAccess } = require('../lib/project-access');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,43 +19,14 @@ const validate = (schema, body, res) => {
   return result.data;
 };
 
-/**
- * Verify the project exists, belongs to the authenticated user, and is not deleted.
- * Returns the project or sends 404 and returns null.
- */
-const findOwnedProject = async (projectId, userId, res) => {
-  const project = await prisma.farmProject.findUnique({ where: { id: projectId } });
-  if (!project || project.isDeleted || project.userId !== userId) {
-    res.status(404).json({ error: 'Project not found' });
-    return null;
-  }
-  return project;
-};
-
-/**
- * Verify the budget item exists, is not deleted, and its project belongs to the user.
- * Returns the item or sends 404 and returns null.
- */
-const findOwnedItem = async (itemId, userId, res) => {
-  const item = await prisma.budgetItem.findUnique({
-    where:   { id: itemId },
-    include: { project: { select: { userId: true, isDeleted: true } } },
-  });
-  if (!item || item.isDeleted || item.project.isDeleted || item.project.userId !== userId) {
-    res.status(404).json({ error: 'Budget item not found' });
-    return null;
-  }
-  return item;
-};
-
 // ── POST /budget ──────────────────────────────────────────────────────────────
 
 const createBudgetItem = async (req, res) => {
   const data = validate(createBudgetItemSchema, req.body, res);
   if (!data) return;
 
-  const project = await findOwnedProject(data.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(data.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   // Server-side total calculation — never trust client input
   const total = parseFloat((data.quantity * data.unitPrice).toFixed(2));
@@ -78,11 +50,12 @@ const createBudgetItem = async (req, res) => {
 // ── GET /budget/:projectId ────────────────────────────────────────────────────
 
 const listBudgetItems = async (req, res) => {
-  const project = await findOwnedProject(req.params.projectId, req.user.id, res);
-  if (!project) return;
+  const access = await verifyProjectAccess(req.params.projectId, req.user.id, res);
+  if (!access) return;
+  const includeDeleted = req.query.includeDeleted === 'true';
 
   const items = await prisma.budgetItem.findMany({
-    where:   { projectId: req.params.projectId, isDeleted: false },
+    where:   { projectId: req.params.projectId, ...(includeDeleted ? {} : { isDeleted: false }) },
     orderBy: { createdAt: 'asc' },
   });
 
@@ -97,8 +70,11 @@ const listBudgetItems = async (req, res) => {
 // ── PUT /budget/:id ───────────────────────────────────────────────────────────
 
 const updateBudgetItem = async (req, res) => {
-  const item = await findOwnedItem(req.params.id, req.user.id, res);
-  if (!item) return;
+  const item = await prisma.budgetItem.findUnique({ where: { id: req.params.id } });
+  if (!item || item.isDeleted) return res.status(404).json({ error: 'Budget item not found' });
+
+  const access = await verifyProjectAccess(item.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   const data = validate(updateBudgetItemSchema, req.body, res);
   if (!data) return;
@@ -119,8 +95,11 @@ const updateBudgetItem = async (req, res) => {
 // ── DELETE /budget/:id (soft delete) ──────────────────────────────────────────
 
 const deleteBudgetItem = async (req, res) => {
-  const item = await findOwnedItem(req.params.id, req.user.id, res);
-  if (!item) return;
+  const item = await prisma.budgetItem.findUnique({ where: { id: req.params.id } });
+  if (!item || item.isDeleted) return res.status(404).json({ error: 'Budget item not found' });
+
+  const access = await verifyProjectAccess(item.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
+  if (!access) return;
 
   await prisma.budgetItem.update({
     where: { id: req.params.id },

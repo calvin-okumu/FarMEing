@@ -18,13 +18,14 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
-import { StitchMiniBars, StitchPrimaryButton, StitchSectionLabel } from '../components/ui/StitchPrimitives';
+import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSearchBar } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
-import SearchBar from '../components/ui/SearchBar';
+
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatusBanner from '../components/ui/StatusBanner';
+import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
@@ -40,6 +41,7 @@ const DEFAULT_FORM = {
   usedQty: '',
   notes: '',
   payee: '',
+  payeeId: null,
 };
 
 export default function InventoryScreen({ route, navigation }) {
@@ -55,6 +57,12 @@ export default function InventoryScreen({ route, navigation }) {
   const [banner, setBanner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [payees, setPayees] = useState([]);
+
+  useEffect(() => {
+    const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
+    return () => sub.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!projectId) {
@@ -105,6 +113,7 @@ export default function InventoryScreen({ route, navigation }) {
       usedQty: String(item.usedQty ?? ''),
       notes: item.notes || '',
       payee: item.payee || '',
+      payeeId: item.payeeId || null,
     });
     setModalVisible(true);
   };
@@ -129,6 +138,7 @@ export default function InventoryScreen({ route, navigation }) {
             draft.totalCost = parseFloat((quantity * unitCost).toFixed(2));
             draft.notes = formData.notes.trim();
             draft.payee = formData.payee.trim();
+            draft.payeeId = formData.payeeId;
           });
         } else {
           await database.get('inventory_items').create((record) => {
@@ -143,6 +153,7 @@ export default function InventoryScreen({ route, navigation }) {
             record.totalCost = parseFloat((quantity * unitCost).toFixed(2));
             record.notes = formData.notes.trim();
             record.payee = formData.payee.trim();
+            record.payeeId = formData.payeeId;
             record.isDeleted = false;
           });
         }
@@ -178,7 +189,7 @@ export default function InventoryScreen({ route, navigation }) {
   const chartValues = useMemo(() => filteredItems.slice(0, 5).map((item, index) => Math.max(index + 1, item.totalCost || 1)), [filteredItems]);
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={stitchTheme.colors.primaryContainer} /></View>;
+    return <StitchScreenSkeleton />;
   }
 
   return (
@@ -194,7 +205,7 @@ export default function InventoryScreen({ route, navigation }) {
             <>
               <View style={styles.heroPills}>
                 <StitchHeroPill label={t('inventory.title')} value={String(filteredItems.length)} icon='cube-outline' />
-                <StitchHeroPill label={t('inventory.total_value')} value={formatCurrency(grandTotalCost, currency)} icon='cash-outline' />
+                <StitchHeroPill label={t('inventory.total_value')} value={grandTotalCost} currency={currency} icon='cash-outline' />
               </View>
               <StitchMiniBars values={chartValues.length ? chartValues : [1, 2, 3]} activeIndex={Math.max(chartValues.length - 1, 0)} softIndex={1} style={styles.chartWrap} />
             </>
@@ -202,9 +213,10 @@ export default function InventoryScreen({ route, navigation }) {
         }}
         bodyContentStyle={styles.list}
         refreshControl={<RefreshControlProxy refreshing={isRefreshing} onRefresh={handleRefresh} />}
+        banner={banner}
+        onDismissBanner={() => setBanner(null)}
       >
-        <StatusBanner {...banner} />
-        <SearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
+        <StitchSearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
         <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel='New Item' onActionPress={openCreate} />
         {filteredItems.length ? filteredItems.map((item) => (
           <TouchableOpacity key={item.id} style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
@@ -214,10 +226,11 @@ export default function InventoryScreen({ route, navigation }) {
                 <Text style={styles.cardMeta}>{item.category} • {item.quantity} {item.unit}</Text>
               </View>
               <TouchableOpacity onPress={() => setDeleteTarget(item)} hitSlop={8}>
-                <Ionicons name="trash-outline" size={20} color="#9c1111" />
+                <Ionicons name="trash-outline" size={20} color={stitchTheme.colors.accentRed} />
               </TouchableOpacity>
-            </View>
-            <View style={styles.cardBottom}>
+              </View>
+              {item.notes ? <Text style={styles.cardDescription} numberOfLines={2} ellipsizeMode='tail'>{item.notes}</Text> : null}
+              <View style={styles.cardBottom}>
               <Text style={styles.cardAmount}>{formatCurrency(item.totalCost, currency)}</Text>
               <Text style={styles.cardMeta}>{t('inventory.used_qty')}: {item.usedQty}</Text>
             </View>
@@ -234,34 +247,41 @@ export default function InventoryScreen({ route, navigation }) {
                   <Text style={styles.modalTitle}>{editingItem ? t('inventory.edit_title') : t('inventory.create_title')}</Text>
                   <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={22} color={stitchTheme.colors.text} /></TouchableOpacity>
                 </View>
-                <StitchSectionLabel>{t('inventory.fields.name')}</StitchSectionLabel>
-                <TextInput style={styles.input} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} placeholderTextColor="#8a9388" />
-                <StitchSectionLabel>{t('inventory.fields.category')}</StitchSectionLabel>
-                <TextInput style={styles.input} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} placeholderTextColor="#8a9388" />
-                <StitchSectionLabel>Supplier / Payee</StitchSectionLabel>
-                <TextInput style={styles.input} value={formData.payee} onChangeText={(payee) => setFormData((p) => ({ ...p, payee }))} placeholderTextColor="#8a9388" />
+                <StitchInput label={t('inventory.fields.name')} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} />
+                <StitchInput label={t('inventory.fields.category')} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} />
+
+                <StitchPicker
+                  label={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+                  options={[{ label: t('common.none', { defaultValue: 'None' }), value: null }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
+                  selectedValue={formData.payeeId}
+                  onSelect={(val) => {
+                    if (!val) {
+                      setFormData((p) => ({ ...p, payee: '', payeeId: null }));
+                    } else {
+                      setFormData((p) => ({ ...p, payee: (payees || []).find((pay) => pay.id === val)?.name || '', payeeId: val }));
+                    }
+                  }}
+                  searchable
+                  placeholder={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+                />
+
                 <View style={styles.row}>
                   <View style={styles.half}>
-                    <StitchSectionLabel>{t('inventory.fields.quantity')}</StitchSectionLabel>
-                    <TextInput style={styles.input} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.quantity')} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType='decimal-pad' />
                   </View>
                   <View style={styles.half}>
-                    <StitchSectionLabel>{t('inventory.fields.unit')}</StitchSectionLabel>
-                    <TextInput style={styles.input} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.unit')} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} />
                   </View>
                 </View>
                 <View style={styles.row}>
                   <View style={styles.half}>
-                    <StitchSectionLabel>{t('inventory.fields.unit_cost')}</StitchSectionLabel>
-                    <TextInput style={styles.input} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.unit_cost')} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType='decimal-pad' />
                   </View>
                   <View style={styles.half}>
-                    <StitchSectionLabel>{t('inventory.fields.used_qty')}</StitchSectionLabel>
-                    <TextInput style={styles.input} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType="decimal-pad" placeholderTextColor="#8a9388" />
+                    <StitchInput label={t('inventory.fields.used_qty')} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType='decimal-pad' />
                   </View>
                 </View>
-                <StitchSectionLabel>{t('common.notes')}</StitchSectionLabel>
-                <TextInput style={[styles.input, styles.notesInput]} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline placeholderTextColor="#8a9388" />
+                <StitchInput label={t('common.notes')} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline />
                 <StitchPrimaryButton
                   label={editingItem ? t('common.save') : t('inventory.create_title')}
                   onPress={handleSubmit}
@@ -314,10 +334,12 @@ const styles = StyleSheet.create({
   chartWrap: { marginTop: stitchTheme.spacing.md },
   card: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, padding: stitchTheme.spacing.md, marginBottom: stitchTheme.spacing.sm, ...stitchShadows.card },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: stitchTheme.spacing.sm, alignItems: 'flex-start' },
-  cardTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  cardMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 4 },
+  cardTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.text },
+  cardMeta: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 4, fontWeight: stitchTheme.typography.caption.fontWeight },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.md, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
-  cardAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
+  cardAmount: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: stitchTheme.typography.cardTitle.fontWeight, color: stitchTheme.colors.primary },
+  cardDescription: { marginTop: 6, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, fontWeight: stitchTheme.typography.bodySmall.fontWeight },
+  cardAmount: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
   keyboardView: { width: '100%' },
   modalContent: { backgroundColor: stitchTheme.colors.backgroundAccent, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
@@ -325,7 +347,6 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
-  input: { borderRadius: stitchTheme.radius.md, padding: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, backgroundColor: stitchTheme.colors.surfaceInset, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  notesInput: { minHeight: 96, textAlignVertical: 'top' },
   saveButton: { marginTop: stitchTheme.spacing.lg },
+  payeeChipTextActive: { color: stitchTheme.colors.primary },
 });

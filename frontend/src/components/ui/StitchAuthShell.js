@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
+import StatusBanner from './StatusBanner';
 
 export default function StitchAuthShell({
   brand = 'FarmTrack',
@@ -9,10 +10,18 @@ export default function StitchAuthShell({
   title,
   subtitle,
   onBack,
+  banner,
+  onDismissBanner,
   children,
 }) {
   return (
     <SafeAreaView style={styles.safe}>
+      <StatusBanner 
+        {...banner} 
+        variant="toast" 
+        onDismiss={onDismissBanner} 
+        style={styles.floatingBanner}
+      />
       <View style={styles.heroWrapper}>
         <View style={styles.heroOrbLarge} />
         <View style={styles.heroOrbSmall} />
@@ -49,6 +58,9 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: stitchTheme.colors.forestDeep,
+  },
+  floatingBanner: {
+    zIndex: 99,
   },
   heroWrapper: {
     backgroundColor: stitchTheme.colors.forestDeep,

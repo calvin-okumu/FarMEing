@@ -1,55 +1,120 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { stitchTheme } from '../../theme/stitchTheme';
+import { stitchTheme, stitchShadows } from '../../theme/stitchTheme';
 
 const TONES = {
   success: {
-    backgroundColor: '#e9f6e6',
-    borderColor: '#b8dfb1',
+    backgroundColor: stitchTheme.colors.successSurface,
+    borderColor: stitchTheme.colors.primaryDim,
     icon: 'checkmark-circle',
     iconColor: stitchTheme.colors.primary,
     titleColor: stitchTheme.colors.primary,
     textColor: stitchTheme.colors.text,
   },
   warning: {
-    backgroundColor: '#fbf0dc',
-    borderColor: '#f1d59b',
+    backgroundColor: stitchTheme.colors.warningSurface,
+    borderColor: stitchTheme.colors.accentBrown,
     icon: 'warning',
-    iconColor: '#9b5c22',
-    titleColor: '#9b5c22',
+    iconColor: stitchTheme.colors.accentBrown,
+    titleColor: stitchTheme.colors.accentBrown,
     textColor: stitchTheme.colors.text,
   },
   error: {
-    backgroundColor: '#fde9e9',
-    borderColor: '#f3b6b6',
+    backgroundColor: stitchTheme.colors.dangerSurface,
+    borderColor: stitchTheme.colors.accentRed,
     icon: 'alert-circle',
-    iconColor: '#9c1111',
-    titleColor: '#9c1111',
+    iconColor: stitchTheme.colors.accentRed,
+    titleColor: stitchTheme.colors.accentRed,
     textColor: stitchTheme.colors.text,
   },
   info: {
-    backgroundColor: '#e9f0fb',
-    borderColor: '#bfd0f3',
+    backgroundColor: stitchTheme.colors.accentBlueSoft,
+    borderColor: stitchTheme.colors.accentBlue,
     icon: 'information-circle',
-    iconColor: '#305db8',
-    titleColor: '#305db8',
+    iconColor: stitchTheme.colors.accentBlue,
+    titleColor: stitchTheme.colors.accentBlue,
     textColor: stitchTheme.colors.text,
   },
 };
 
-export default function StatusBanner({ tone = 'info', title, message, style }) {
+export default function StatusBanner({ 
+  tone = 'info', 
+  title, 
+  message, 
+  style, 
+  duration = 4000, 
+  onDismiss,
+  variant = 'inline' 
+}) {
+  const slideAnim = useRef(new Animated.Value(-100)).current;
+
+  useEffect(() => {
+    if (title || message) {
+      // Slide in
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 10,
+      }).start();
+
+      if (onDismiss && duration > 0) {
+        const timer = setTimeout(() => {
+          // Slide out before dismissing
+          Animated.timing(slideAnim, {
+            toValue: -120,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => onDismiss());
+        }, duration);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      slideAnim.setValue(-100);
+    }
+  }, [title, message, duration, onDismiss, slideAnim]);
+
   if (!title && !message) return null;
   const palette = TONES[tone] || TONES.info;
 
-  return (
-    <View style={[styles.wrap, { backgroundColor: palette.backgroundColor, borderColor: palette.borderColor }, style]}>
+  const isToast = variant === 'toast';
+
+  const content = (
+    <Animated.View 
+      style={[
+        styles.wrap, 
+        { 
+          backgroundColor: palette.backgroundColor, 
+          borderColor: palette.borderColor,
+          transform: [{ translateY: slideAnim }]
+        }, 
+        isToast && styles.toastWrap,
+        style
+      ]}
+    >
       <Ionicons name={palette.icon} size={20} color={palette.iconColor} />
       <View style={styles.body}>
         {title ? <Text style={[styles.title, { color: palette.titleColor }]}>{title}</Text> : null}
         {message ? <Text style={[styles.message, { color: palette.textColor }]}>{message}</Text> : null}
       </View>
-    </View>
+      {isToast && (
+        <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
+          <Ionicons name="close" size={18} color={palette.iconColor} />
+        </TouchableOpacity>
+      )}
+    </Animated.View>
   );
+
+  if (isToast) {
+    return (
+      <View style={styles.toastContainer} pointerEvents="box-none">
+        {content}
+      </View>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({
@@ -62,7 +127,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
+  toastContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  toastWrap: {
+    width: '100%',
+    ...stitchShadows.float,
+    backgroundColor: '#fff', // Ensure high contrast for floating
+  },
   body: { flex: 1 },
   title: { fontSize: 13, fontWeight: '800', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 },
   message: { fontSize: 14, lineHeight: 20 },
+  closeButton: {
+    padding: 2,
+    marginLeft: 4,
+  }
 });
