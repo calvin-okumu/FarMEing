@@ -23,7 +23,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
-import { StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
+import { StitchBlockPicker, StitchChip, StitchDatePicker, StitchInput, StitchPrimaryButton, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -268,15 +268,17 @@ export default function AddWorkEntryScreen({ route, navigation }) {
           />
         )}
 
-        {blocks.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            <StitchChip label='Overall' active={!formData.blockId} onPress={() => setValue('blockId', '')} />
-            {blocks.map(b => {
-              const bl = b.landSize ? `${b.name} - ${b.crop || '?'} (${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
-              return <StitchChip key={b.id} label={bl} active={formData.blockId === b.id} onPress={() => setValue('blockId', b.id)} />;
-            })}
-          </View>
-        ) : null}
+        <StitchBlockPicker
+          label={t('projects.tabs.block', { defaultValue: 'Block' })}
+          blocks={blocks}
+          selectedValue={formData.blockId}
+          onSelect={(value) => setValue('blockId', value)}
+          placeholder={t('common.select_block')}
+          searchPlaceholder={t('common.select_block')}
+          allowClear
+          clearLabel='Overall'
+          getSubtitle={(block) => (block.landSize ? `${block.crop || '?'} (${block.landSize} ${block.landUnit || 'acres'})` : (block.crop || t('projects.fields.crop')))}
+        />
 
         <StitchSectionTitle>{t('labor.employee')}</StitchSectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.employeeRow}>

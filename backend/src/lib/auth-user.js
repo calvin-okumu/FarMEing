@@ -21,6 +21,22 @@ const LEGACY_AUTH_USER_SELECT = {
   createdAt: true,
 };
 
+function normalizePhone(phone) {
+  if (typeof phone !== 'string') return '';
+
+  const trimmed = phone.trim();
+  const hasPlus = trimmed.startsWith('+');
+  const digitsOnly = trimmed.replace(/\D/g, '');
+
+  return hasPlus ? `+${digitsOnly}` : digitsOnly;
+}
+
+function buildPhoneLookupVariants(phone) {
+  const raw = typeof phone === 'string' ? phone.trim() : '';
+  const normalized = normalizePhone(phone);
+  return Array.from(new Set([raw, normalized].filter(Boolean)));
+}
+
 function isMissingRoleColumnError(error) {
   return (
     error?.name === 'PrismaClientKnownRequestError' &&
@@ -44,13 +60,17 @@ function withLegacyRole(user, fallbackRole = 'ADMIN') {
 
 async function findAuthUserByPhone(phone, options = {}) {
   const { includePassword = false } = options;
+  const phoneVariants = buildPhoneLookupVariants(phone);
   const select = {
     ...AUTH_USER_SELECT,
     ...(includePassword ? { password: true } : {}),
   };
 
   try {
-    const user = await prisma.user.findUnique({ where: { phone }, select });
+    const user = await prisma.user.findFirst({
+      where: { OR: phoneVariants.map((value) => ({ phone: value })) },
+      select,
+    });
     if (!user || user.isDeleted) return null;
     return user;
   } catch (error) {
@@ -58,8 +78,8 @@ async function findAuthUserByPhone(phone, options = {}) {
       throw error;
     }
 
-    const legacyUser = await prisma.user.findUnique({
-      where: { phone },
+    const legacyUser = await prisma.user.findFirst({
+      where: { OR: phoneVariants.map((value) => ({ phone: value })) },
       select: {
         ...LEGACY_AUTH_USER_SELECT,
         ...(includePassword ? { password: true } : {}),
@@ -94,9 +114,11 @@ async function findAuthUserById(id) {
 }
 
 async function createAuthUser({ name, phone, password, role }) {
+  const normalizedPhone = normalizePhone(phone);
+
   try {
     return await prisma.user.create({
-      data: { name, phone, password, role: role || 'ADMIN' },
+      data: { name, phone: normalizedPhone, password, role: role || 'ADMIN' },
       select: AUTH_USER_SELECT,
     });
   } catch (error) {
@@ -105,7 +127,7 @@ async function createAuthUser({ name, phone, password, role }) {
     }
 
     const legacyUser = await prisma.user.create({
-      data: { name, phone, password },
+      data: { name, phone: normalizedPhone, password },
       select: LEGACY_AUTH_USER_SELECT,
     });
 
@@ -114,7 +136,9 @@ async function createAuthUser({ name, phone, password, role }) {
 }
 
 module.exports = {
+  buildPhoneLookupVariants,
   createAuthUser,
   findAuthUserById,
   findAuthUserByPhone,
+  normalizePhone,
 };

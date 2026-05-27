@@ -23,6 +23,13 @@ export const stitchTheme = {
     surfaceGhost: 'rgba(253,250,244,0.86)',
     navTrack: 'rgba(248,243,236,0.80)',
     navActive: '#fdfaf4',
+    overlaySoft: 'rgba(255,255,255,0.12)',
+    overlayMedium: 'rgba(255,255,255,0.18)',
+    overlayStrong: 'rgba(255,255,255,0.68)',
+    scrim: 'rgba(26,61,43,0.38)',
+    tabBarBackground: 'rgba(17,42,30,0.94)',
+    tabBarIconInactive: 'rgba(255,255,255,0.68)',
+    tabBarLabelInactive: 'rgba(255,255,255,0.62)',
     text: '#1a1a18',
     textMuted: '#8a9280',
     textSoft: '#4a5240',
@@ -146,4 +153,3 @@ export const stitchStyles = {
     width: 4,
   },
 };
-

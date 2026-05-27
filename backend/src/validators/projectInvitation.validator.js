@@ -6,7 +6,7 @@ const createInvitationSchema = z.object({
 });
 
 const joinProjectSchema = z.object({
-  inviteCode: z.string().min(6),
+  inviteCode: z.string().trim().length(8),
 });
 
 module.exports = { createInvitationSchema, joinProjectSchema };

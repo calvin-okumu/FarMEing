@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Modal, TextInput, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
+import { stitchShadows, stitchStyles, stitchTheme } from '../../theme/stitchTheme';
 
 function getSurfaceTone(tone) {
   if (tone === 'muted') {
@@ -206,28 +206,49 @@ export function StitchChip({ label, active, onPress, style, textStyle, icon }) {
   );
 }
 
-export function StitchPrimaryButton({ label, onPress, disabled, loading, icon = 'checkmark-circle', style }) {
+export function StitchPrimaryButton({ label, onPress, disabled, loading, icon = 'checkmark-circle', style, tone = 'default' }) {
+  const isSolid = tone === 'solid';
+
   return (
     <TouchableOpacity
-      style={[styles.primaryButton, disabled && styles.primaryButtonDisabled, style]}
+      style={[styles.primaryButton, isSolid && styles.primaryButtonSolid, disabled && styles.primaryButtonDisabled, style]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.9}
     >
-      <Ionicons name={icon} size={20} color={stitchTheme.colors.primary} />
-      <Text style={styles.primaryButtonText}>{loading ? '...' : label}</Text>
+      <Ionicons name={icon} size={20} color={isSolid ? stitchTheme.colors.white : stitchTheme.colors.primary} />
+      <Text style={[styles.primaryButtonText, isSolid && styles.primaryButtonTextSolid]}>{loading ? '...' : label}</Text>
     </TouchableOpacity>
   );
 }
 
-export function StitchInput({ label, value, onChangeText, placeholder, error, icon, secureTextEntry, keyboardType, multiline, style, onPress }) {
+export function StitchInput({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  error,
+  icon,
+  secureTextEntry,
+  keyboardType,
+  multiline,
+  style,
+  onPress,
+  autoCapitalize,
+  autoCorrect,
+  autoFocus,
+  textContentType,
+  returnKeyType,
+  onSubmitEditing,
+  trailing,
+  inputStyle,
+}) {
   const [focused, setFocused] = useState(false);
 
   const shell = (
     <View style={[styles.inputShell, focused && styles.inputShellFocused, error && styles.inputShellError]}>
       {icon ? <Ionicons name={icon} size={18} color={error ? stitchTheme.colors.accentRed : focused ? stitchTheme.colors.primaryContainer : stitchTheme.colors.textMuted} /> : null}
       <TextInput
-        style={[styles.inputField, multiline && styles.inputFieldMultiline]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -236,9 +257,17 @@ export function StitchInput({ label, value, onChangeText, placeholder, error, ic
         keyboardType={keyboardType}
         multiline={multiline}
         editable={!onPress}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        autoFocus={autoFocus}
+        textContentType={textContentType}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
         onFocus={() => { if (!onPress) setFocused(true); }}
         onBlur={() => setFocused(false)}
+        style={[styles.inputField, multiline && styles.inputFieldMultiline, inputStyle]}
       />
+      {trailing}
     </View>
   );
 
@@ -251,6 +280,147 @@ export function StitchInput({ label, value, onChangeText, placeholder, error, ic
         </TouchableOpacity>
       ) : shell}
       {error ? <Text style={styles.inputError}>{error}</Text> : null}
+    </View>
+  );
+}
+
+export function StitchListRow({ icon, title, subtitle, tint = stitchTheme.colors.successSurface, iconColor = stitchTheme.colors.primary, rightText, onPress, style }) {
+  const Component = onPress ? TouchableOpacity : View;
+
+  return (
+    <Component style={[styles.listRow, style]} onPress={onPress} activeOpacity={onPress ? 0.88 : undefined}>
+      <View style={[styles.listRowIconWrap, { backgroundColor: tint }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
+      <View style={styles.listRowBody}>
+        <Text style={styles.listRowTitle}>{title}</Text>
+        <Text style={styles.listRowSubtitle}>{subtitle}</Text>
+      </View>
+      {rightText ? <Text style={styles.listRowValue}>{rightText}</Text> : <Ionicons name='chevron-forward' size={20} color={stitchTheme.colors.textMuted} />}
+    </Component>
+  );
+}
+
+export function StitchBlockPicker({
+  blocks,
+  selectedValue,
+  onSelect,
+  label,
+  title,
+  placeholder = 'Select block',
+  searchPlaceholder = 'Search blocks',
+  allowClear = false,
+  clearLabel = 'Overall',
+  getSubtitle,
+  icon = 'layers-outline',
+  tint = stitchTheme.colors.accentBrown,
+  style,
+}) {
+  const { t } = useTranslation();
+  const [visible, setVisible] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const selectedBlock = useMemo(
+    () => (blocks || []).find((block) => block.id === selectedValue) || null,
+    [blocks, selectedValue]
+  );
+
+  const filteredBlocks = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return blocks || [];
+    return (blocks || []).filter((block) => block.name.toLowerCase().includes(query));
+  }, [blocks, search]);
+
+  const activeLabel = selectedBlock
+    ? selectedBlock.name
+    : allowClear && !selectedValue
+      ? clearLabel
+      : placeholder;
+  const modalTitle = title || label || t('projects.tabs.block', { defaultValue: 'Block' });
+
+  if (!blocks || blocks.length === 0) {
+    return null;
+  }
+
+  const handleSelect = (value) => {
+    onSelect(value);
+    setVisible(false);
+    setSearch('');
+  };
+
+  return (
+    <View style={style}>
+      <TouchableOpacity style={styles.blockSelector} onPress={() => setVisible(true)} activeOpacity={0.88}>
+        <View style={[styles.blockSelectorIconWrap, { backgroundColor: tint + '20' }]}>
+          <Ionicons name={icon} size={20} color={tint} />
+        </View>
+        <View style={styles.blockSelectorBody}>
+          {label ? <Text style={styles.blockSelectorLabel}>{label}</Text> : null}
+          <Text style={styles.blockSelectorValue} numberOfLines={1}>{activeLabel}</Text>
+        </View>
+        <Ionicons name='chevron-down' size={18} color={stitchTheme.colors.textMuted} />
+      </TouchableOpacity>
+
+      <Modal visible={visible} animationType='slide' transparent onRequestClose={() => setVisible(false)}>
+        <TouchableOpacity style={styles.blockPickerOverlay} activeOpacity={1} onPress={() => setVisible(false)}>
+          <View style={styles.blockPickerSheet}>
+            <View style={styles.blockPickerHandle} />
+            <View style={styles.blockPickerHeader}>
+              <Text style={styles.blockPickerTitle}>{modalTitle}</Text>
+              <TouchableOpacity onPress={() => setVisible(false)} activeOpacity={0.88}>
+                <Ionicons name='close-outline' size={22} color={stitchTheme.colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.blockPickerSearchShell}>
+              <Ionicons name='search-outline' size={18} color={stitchTheme.colors.textMuted} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder={searchPlaceholder}
+                placeholderTextColor={stitchTheme.colors.textMuted}
+                style={styles.blockPickerSearchInput}
+              />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.blockPickerList}>
+              {allowClear ? (
+                <TouchableOpacity
+                  style={[styles.blockPickerOption, !selectedBlock && styles.blockPickerOptionActive]}
+                  onPress={() => handleSelect('')}
+                  activeOpacity={0.88}
+                >
+                  <View>
+                    <Text style={styles.blockPickerOptionTitle}>{clearLabel}</Text>
+                    <Text style={styles.blockPickerOptionMeta}>{t('common.none', { defaultValue: 'All blocks' })}</Text>
+                  </View>
+                  {!selectedBlock ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                </TouchableOpacity>
+              ) : null}
+
+              {filteredBlocks.map((block) => {
+                const active = selectedValue === block.id;
+                const subtitle = getSubtitle ? getSubtitle(block) : (block.crop || t('projects.fields.crop'));
+
+                return (
+                  <TouchableOpacity
+                    key={block.id}
+                    style={[styles.blockPickerOption, active && styles.blockPickerOptionActive]}
+                    onPress={() => handleSelect(block.id)}
+                    activeOpacity={0.88}
+                  >
+                    <View>
+                      <Text style={styles.blockPickerOptionTitle}>{block.name}</Text>
+                      <Text style={styles.blockPickerOptionMeta}>{subtitle}</Text>
+                    </View>
+                    {active ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -709,11 +879,18 @@ const styles = StyleSheet.create({
   primaryButtonDisabled: {
     opacity: 0.6,
   },
+  primaryButtonSolid: {
+    backgroundColor: stitchTheme.colors.primaryContainer,
+    borderColor: 'transparent',
+  },
   primaryButtonText: {
     color: stitchTheme.colors.primary,
     fontSize: stitchTheme.typography.bodySmall.fontSize,
     lineHeight: stitchTheme.typography.bodySmall.lineHeight,
     fontWeight: '900',
+  },
+  primaryButtonTextSolid: {
+    color: stitchTheme.colors.white,
   },
   miniBars: {
     height: 86,
@@ -775,6 +952,163 @@ const styles = StyleSheet.create({
   inputFieldMultiline: { minHeight: 100, textAlignVertical: 'top' },
   inputError: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, color: stitchTheme.colors.accentRed, fontWeight: '700' },
 
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: stitchTheme.spacing.md,
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderRadius: stitchTheme.radius.card,
+    paddingHorizontal: stitchTheme.spacing.md,
+    paddingVertical: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...stitchShadows.card,
+  },
+  listRowIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: stitchTheme.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listRowBody: {
+    flex: 1,
+  },
+  listRowTitle: {
+    fontSize: stitchTheme.typography.cardTitle.fontSize,
+    lineHeight: stitchTheme.typography.cardTitle.lineHeight,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+    fontFamily: stitchTheme.fonts.heading,
+  },
+  listRowSubtitle: {
+    marginTop: 2,
+    fontSize: stitchTheme.typography.bodySmall.fontSize,
+    lineHeight: stitchTheme.typography.bodySmall.lineHeight,
+    color: stitchTheme.colors.accentBrown,
+  },
+  listRowValue: {
+    fontSize: stitchTheme.typography.caption.fontSize,
+    lineHeight: stitchTheme.typography.caption.lineHeight,
+    fontWeight: '800',
+    color: stitchTheme.colors.primary,
+    textTransform: 'uppercase',
+  },
+
+  blockSelector: {
+    ...stitchStyles.collectionCard,
+    marginBottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  blockSelectorIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: stitchTheme.radius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockSelectorBody: {
+    flex: 1,
+  },
+  blockSelectorLabel: {
+    fontSize: stitchTheme.typography.eyebrow.fontSize,
+    lineHeight: stitchTheme.typography.eyebrow.lineHeight,
+    fontWeight: stitchTheme.typography.eyebrow.fontWeight,
+    fontFamily: stitchTheme.fonts.label,
+    color: stitchTheme.colors.textMuted,
+  },
+  blockSelectorValue: {
+    marginTop: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+    fontFamily: stitchTheme.fonts.heading,
+  },
+  blockPickerOverlay: {
+    flex: 1,
+    backgroundColor: stitchTheme.colors.scrim,
+    justifyContent: 'flex-end',
+  },
+  blockPickerSheet: {
+    backgroundColor: stitchTheme.colors.surfaceHighlight,
+    borderTopLeftRadius: stitchTheme.radius.xl,
+    borderTopRightRadius: stitchTheme.radius.xl,
+    maxHeight: '80%',
+    paddingBottom: 40,
+  },
+  blockPickerHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: stitchTheme.colors.line,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  blockPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  blockPickerTitle: {
+    fontSize: stitchTheme.typography.section.fontSize,
+    lineHeight: stitchTheme.typography.section.lineHeight,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  blockPickerSearchShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 24,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    minHeight: 44,
+    borderRadius: stitchTheme.radius.md,
+    backgroundColor: stitchTheme.colors.surfaceInset,
+    borderWidth: 1,
+    borderColor: stitchTheme.colors.border,
+  },
+  blockPickerSearchInput: {
+    flex: 1,
+    fontSize: stitchTheme.typography.body.fontSize,
+    lineHeight: stitchTheme.typography.body.lineHeight,
+    color: stitchTheme.colors.text,
+  },
+  blockPickerList: {
+    paddingHorizontal: 24,
+    gap: 4,
+  },
+  blockPickerOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: stitchTheme.radius.md,
+  },
+  blockPickerOptionActive: {
+    backgroundColor: stitchTheme.colors.surfaceTint,
+  },
+  blockPickerOptionTitle: {
+    fontSize: stitchTheme.typography.body.fontSize,
+    lineHeight: stitchTheme.typography.body.lineHeight,
+    fontWeight: '800',
+    color: stitchTheme.colors.text,
+  },
+  blockPickerOptionMeta: {
+    fontSize: stitchTheme.typography.bodySmall.fontSize,
+    lineHeight: stitchTheme.typography.bodySmall.lineHeight,
+    color: stitchTheme.colors.textMuted,
+    marginTop: 2,
+  },
+
   pickerWrap: { gap: 6 },
   pickerShell: {
     flexDirection: 'row',
@@ -789,7 +1123,7 @@ const styles = StyleSheet.create({
   },
   pickerText: { flex: 1, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text, fontWeight: '700' },
   pickerPlaceholder: { color: stitchTheme.colors.textMuted },
-  pickerOverlay: { flex: 1, backgroundColor: 'rgba(26,61,43,0.38)', justifyContent: 'flex-end' },
+  pickerOverlay: { flex: 1, backgroundColor: stitchTheme.colors.scrim, justifyContent: 'flex-end' },
   pickerSheet: {
     backgroundColor: stitchTheme.colors.background,
     borderTopLeftRadius: stitchTheme.radius.xl,

@@ -20,7 +20,7 @@ import { initializeLocalRecord } from '../utils/localRecord';
 import { formatAppDate } from '../utils/date';
 import useSettingsStore from '../store/useSettingsStore';
 import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
-import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBlockPicker, StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -248,15 +248,17 @@ export default function AddExpenseScreen({ route, navigation }) {
           />
         )}
 
-        {blocks.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
-            {blocks.map(b => {
-              const bl = b.landSize ? `${b.name} - ${b.crop || '?'} (${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
-              return <StitchChip key={b.id} label={bl} active={blockId === b.id} onPress={() => setBlockId(b.id)} />;
-            })}
-          </View>
-        ) : null}
+        <StitchBlockPicker
+          label={t('projects.tabs.block', { defaultValue: 'Block' })}
+          blocks={blocks}
+          selectedValue={blockId}
+          onSelect={setBlockId}
+          placeholder={t('common.select_block')}
+          searchPlaceholder={t('common.select_block')}
+          allowClear
+          clearLabel='Overall'
+          getSubtitle={(block) => (block.landSize ? `${block.crop || '?'} (${block.landSize} ${block.landUnit || 'acres'})` : (block.crop || t('projects.fields.crop')))}
+        />
 
         <StitchInput
           label={t('common.date')}

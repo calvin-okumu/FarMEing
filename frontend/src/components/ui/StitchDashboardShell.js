@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { Animated, ActivityIndicator, Keyboard, Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stitchTheme } from '../../theme/stitchTheme';
 import StitchHeroHeader from './StitchHeroHeader';
 import StatusBanner from './StatusBanner';
@@ -45,6 +45,7 @@ export default function StitchDashboardShell({
   statusBarBackgroundColor = stitchTheme.colors.forestDeep,
   keyboardOffset = 0,
 }) {
+  const insets = useSafeAreaInsets();
   const syncStatus = useSyncStore((s) => s.status);
   const [isOffline, setIsOffline] = useState(false);
   const heroHeight = useRef(new Animated.Value(EXPANDED_HERO_HEIGHT)).current;
@@ -88,7 +89,8 @@ export default function StitchDashboardShell({
   ];
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
+      <View style={[styles.topCap, { height: insets.top }]} />
       <StatusBar barStyle={statusBarStyle} backgroundColor={statusBarBackgroundColor} />
       
       <StatusBanner 
@@ -136,7 +138,9 @@ export default function StitchDashboardShell({
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      
+      <View style={{ height: insets.bottom, backgroundColor: stitchTheme.colors.background }} />
+    </View>
   );
 }
 
@@ -144,6 +148,10 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: stitchTheme.colors.background,
+  },
+  topCap: {
+    backgroundColor: stitchTheme.colors.forestDeep,
+    width: '100%',
   },
   flex: { flex: 1 },
   floatingBanner: {

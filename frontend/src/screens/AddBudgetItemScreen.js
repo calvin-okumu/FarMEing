@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   Alert,
-  Platform,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
@@ -15,18 +15,29 @@ import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { updateLocalModel } from '../utils/resourceMutations';
-import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
+import { stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import {
-  StitchChip,
+  StitchBlockPicker,
   StitchInput,
   StitchPrimaryButton,
   StitchSectionTitle,
+  StitchSurface,
 } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 
 const CATEGORIES = ['seeds', 'fertilizer', 'pesticides', 'labor', 'equipment', 'fuel', 'irrigation', 'other'];
+const CATEGORY_META = {
+  seeds: { icon: 'leaf-outline' },
+  fertilizer: { icon: 'flask-outline' },
+  pesticides: { icon: 'bug-outline' },
+  labor: { icon: 'people-outline' },
+  equipment: { icon: 'construct-outline' },
+  fuel: { icon: 'flame-outline' },
+  irrigation: { icon: 'water-outline' },
+  other: { icon: 'apps-outline' },
+};
 
 export default function AddBudgetItemScreen({ route, navigation }) {
   const { t } = useTranslation();
@@ -68,6 +79,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   }, [itemId]);
 
   const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
+  const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
 
   const handleSave = async () => {
     if (!itemId && !projectId) {
@@ -89,7 +101,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       await database.write(async () => {
         if (itemId) {
           const record = await database.get('budget_items').find(itemId);
-          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await updateLocalModel(record, (draft) => {
             draft.category = effectiveCategory;
             draft.name = name.trim();
@@ -100,7 +111,6 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
         } else {
-          const effectiveCategory = category === 'other' && otherCategory.trim() ? otherCategory.trim() : category;
           await database.get('budget_items').create((record) => {
             initializeLocalRecord(record);
             record.projectId = projectId;
@@ -129,12 +139,12 @@ export default function AddBudgetItemScreen({ route, navigation }) {
   return (
     <StitchDashboardShell
       hero={StitchFormHero({
-        eyebrow: t('budget.fields.category'),
+        eyebrow: t('dashboard.budget'),
         title: itemId ? t('budget.edit_title') : t('budget.add'),
-        subtitle: t(`budget.categories.${category}`),
+        subtitle: name || t(`budget.categories.${category}`),
         pills: [
           { label: t('budget.estimated_total'), value: formatCurrency(total, currency), icon: 'cash-outline' },
-          { label: t('budget.fields.quantity'), value: quantity || '0', icon: 'layers-outline' },
+          { label: t('budget.fields.quantity'), value: `${quantity || '0'} ${unit || ''}`.trim(), icon: 'layers-outline' },
         ],
         onBack: () => navigation.goBack(),
       })}
@@ -142,11 +152,30 @@ export default function AddBudgetItemScreen({ route, navigation }) {
       banner={banner}
       onDismissBanner={() => setBanner(null)}
     >
+        <StitchSurface style={styles.summaryCard}>
+          <StitchSectionTitle>{t('budget.estimated_total')}</StitchSectionTitle>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryFormula}>{`${quantity || '0'} x ${unitPrice || '0.00'}`}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(total, currency)}</Text>
+          </View>
+        </StitchSurface>
+
         <StitchSectionTitle>{t('budget.fields.category')}</StitchSectionTitle>
-        <View style={styles.chipsRow}>
-          {CATEGORIES.map((cat) => (
-            <StitchChip key={cat} label={t(`budget.categories.${cat}`)} active={category === cat} onPress={() => setCategory(cat)} />
-          ))}
+        <View style={styles.categoryGrid}>
+          {CATEGORIES.map((cat) => {
+            const active = category === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoryTile, active && styles.categoryTileActive]}
+                onPress={() => setCategory(cat)}
+                activeOpacity={0.9}
+              >
+                <Ionicons name={CATEGORY_META[cat]?.icon || 'apps-outline'} size={22} color={stitchTheme.colors.primary} />
+                <Text style={styles.categoryTileText}>{t(`budget.categories.${cat}`)}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {category === 'other' && (
@@ -158,15 +187,17 @@ export default function AddBudgetItemScreen({ route, navigation }) {
           />
         )}
 
-        {blocks.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            <StitchChip label='Overall' active={!blockId} onPress={() => setBlockId('')} />
-            {blocks.map(b => {
-              const bl = b.landSize ? `${b.name} - ${b.crop || '?'} (${b.landSize} ${b.landUnit || 'acres'})` : b.crop ? `${b.name} - ${b.crop}` : b.name;
-              return <StitchChip key={b.id} label={bl} active={blockId === b.id} onPress={() => setBlockId(b.id)} />;
-            })}
-          </View>
-        ) : null}
+        <StitchBlockPicker
+          label={t('projects.tabs.block', { defaultValue: 'Block' })}
+          blocks={blocks}
+          selectedValue={blockId}
+          onSelect={setBlockId}
+          placeholder={t('common.select_block')}
+          searchPlaceholder={t('common.select_block')}
+          allowClear
+          clearLabel='Overall'
+          getSubtitle={(block) => (block.landSize ? `${block.crop || '?'} (${block.landSize} ${block.landUnit || 'acres'})` : (block.crop || t('projects.fields.crop')))}
+        />
 
         <StitchInput
           label={t('budget.fields.name')}
@@ -211,13 +242,14 @@ export default function AddBudgetItemScreen({ route, navigation }) {
         ) : null}
 
         <StitchPrimaryButton
-          label={saving ? '...' : itemId ? t('common.save') : t('budget.add')}
+          label={itemId ? t('common.save') : t('budget.add')}
           onPress={handleSave}
           disabled={saving}
-          icon={saving ? 'time-outline' : itemId ? 'save-outline' : 'add-circle'}
+          loading={saving}
+          icon={itemId ? 'save-outline' : 'add-circle'}
+          tone='solid'
           style={styles.button}
         />
-        {saving ? <ActivityIndicator style={styles.loader} color={stitchTheme.colors.primaryContainer} /> : null}
       </StitchDashboardShell>
   );
 }
@@ -225,7 +257,15 @@ export default function AddBudgetItemScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: stitchTheme.spacing.screen, paddingTop: stitchTheme.spacing.md, gap: stitchTheme.spacing.sm, paddingBottom: STITCH_TAB_BAR_HEIGHT + 32 },
+  summaryCard: { marginBottom: stitchTheme.spacing.xs },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: stitchTheme.spacing.sm },
+  summaryFormula: { ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.textMuted },
+  summaryValue: { ...stitchTheme.typography.title, color: stitchTheme.colors.primaryContainer },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.xs },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: stitchTheme.spacing.sm },
+  categoryTile: { ...stitchStyles.collectionCard, width: '48%', minHeight: 68, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: stitchTheme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.sm, marginBottom: 0 },
+  categoryTileActive: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderColor: stitchTheme.colors.primaryDim },
+  categoryTileText: { flex: 1, ...stitchTheme.typography.cardMeta, color: stitchTheme.colors.text },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
   totalCard: {
@@ -238,6 +278,4 @@ const styles = StyleSheet.create({
   totalLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
   totalValue: { ...stitchTheme.typography.metricValue, color: stitchTheme.colors.primaryContainer },
   button: { marginTop: stitchTheme.spacing.sm },
-  loader: { marginTop: stitchTheme.spacing.sm },
 });
-

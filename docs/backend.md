@@ -10,9 +10,12 @@
 4. [Middleware](#middleware)
 5. [API Endpoints](#api-endpoints)
    - [Auth](#auth)
+   - [Seasons](#seasons)
    - [Projects](#projects)
    - [Budget Items](#budget-items)
    - [Expenses](#expenses)
+   - [Payees](#payees)
+   - [Equipment](#equipment)
    - [Employees](#employees)
    - [Payments](#payments)
    - [Work Entries](#work-entries)
@@ -101,12 +104,16 @@ backend/
     │   ├── auth.controller.js
     │   ├── budget.controller.js
     │   ├── employee.controller.js
+    │   ├── equipment.controller.js
     │   ├── expense.controller.js
     │   ├── harvest.controller.js
     │   ├── inventory.controller.js
+    │   ├── payee.controller.js
     │   ├── payment.controller.js
     │   ├── project.controller.js
     │   ├── sale.controller.js
+    │   ├── season.controller.js
+    │   ├── sync.controller.js
     │   └── workEntry.controller.js
     ├── middleware/
     │   └── auth.middleware.js   # JWT verification
@@ -114,16 +121,24 @@ backend/
     │   ├── auth.routes.js
     │   ├── budget.routes.js
     │   ├── employee.routes.js
+    │   ├── equipment.routes.js
     │   ├── expense.routes.js
     │   ├── harvest.routes.js
     │   ├── inventory.routes.js
+    │   ├── payee.routes.js
     │   ├── payment.routes.js
     │   ├── project.routes.js
+    │   ├── projectInvitation.routes.js
+    │   ├── report.routes.js
     │   ├── sale.routes.js
+    │   ├── season.routes.js
+    │   ├── sync.routes.js
     │   └── workEntry.routes.js
     ├── validators/              # Zod schemas (one file per resource)
     └── lib/
-        └── prisma.js            # Shared PrismaClient singleton
+        ├── prisma.js            # Shared PrismaClient singleton
+        ├── i18n.js              # Server-side translations for reports
+        └── project-access.js    # Access control logic
 ```
 
 ---
@@ -174,6 +189,17 @@ Base path: `/auth` — **Public**
 | `POST` | `/register` | Register new user | `{ name, phone, password, role? }` |
 | `POST` | `/login` | Authenticate user | `{ phone, password }` |
 
+### Seasons
+
+Base path: `/seasons` — **Protected**
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | List all farming seasons for the user |
+| `POST` | `/` | Create a new farming season |
+| `PUT` | `/:id` | Update season details |
+| `DELETE` | `/:id` | Soft delete a season |
+
 ### Projects
 
 Base path: `/projects` — **Protected**
@@ -185,7 +211,7 @@ Base path: `/projects` — **Protected**
 | `GET` | `/:id` | Get project details |
 | `PUT` | `/:id` | Update project |
 | `DELETE` | `/:id` | Soft delete project |
-| `GET` | `/:id/summary` | Get financial summary (budget vs actuals) |
+| `GET` | `/:id/summary` | Get financial summary (budget vs actuals, production totals) |
 | `GET` | `/:id/members` | List project members and roles |
 | `POST` | `/:id/members` | Invite a member directly by ID |
 | `DELETE` | `/:id/members/:userId` | Remove a member from a project |
@@ -205,8 +231,8 @@ Base path: `/sync` — **Protected**
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/pull` | Pull changes from server |
-| `POST` | `/push` | Push changes to server |
+| `GET` | `/pull` | Pull changes from server (scoped by project access) |
+| `POST` | `/push` | Push changes to server (validated for project permissions) |
 
 ### Reports
 
@@ -214,8 +240,8 @@ Base path: `/reports` — **Protected**
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/project/:id/pdf` | Download a PDF report for a project (includes financial summary, collected/pending revenue, payment installments, budget, harvest, and sales records) |
-| `GET` | `/project/:id/excel` | Download an Excel report for a project (Summary, Expenses, Labor, Harvest, Sales with payment status columns, Sale Payments sheet, Budget, and Inventory sheets) |
+| `GET` | `/project/:id/pdf` | Download localized PDF report (Yield Analysis, Labor Efficiency, Vendor Breakdown) |
+| `GET` | `/project/:id/excel` | Download localized Excel report (Summary, Detailed worksheets with Auto-Filters) |
 
 ### Budget Items
 
@@ -235,9 +261,33 @@ Base path: `/expenses` — **Protected**
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/:projectId` | List expenses for a project |
-| `POST` | `/` | Create an expense |
+| `POST` | `/` | Create an expense (supports CAPEX/OPEX and Payees) |
 | `PUT` | `/:id` | Update an expense |
 | `DELETE` | `/:id` | Delete an expense |
+
+### Payees
+
+Base path: `/payees` — **Protected**
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | List all payees (suppliers, vendors, workers) |
+| `POST` | `/` | Create a new payee |
+| `GET` | `/:id` | Get payee details |
+| `GET` | `/:id/summary` | Get financial history for a specific payee |
+| `PUT` | `/:id` | Update payee details |
+| `DELETE` | `/:id` | Soft delete a payee |
+
+### Equipment
+
+Base path: `/equipment` — **Protected**
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/:projectId` | List machinery and tools for a project |
+| `POST` | `/` | Record new equipment investment |
+| `PUT` | `/:id` | Update equipment status or details |
+| `DELETE` | `/:id` | Soft delete an equipment record |
 
 ### Employees
 
@@ -260,6 +310,7 @@ Base path: `/payments` — **Protected**
 | `GET` | `/` | List all payments made |
 | `POST` | `/` | Record a payment to an employee |
 | `GET` | `/:employeeId` | List payments for a specific employee |
+| `DELETE` | `/:id` | Soft delete a payment |
 
 ### Work Entries
 
@@ -282,7 +333,7 @@ Base path: `/harvests` — **Protected**
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/:projectId` | List harvest records for a project |
-| `POST` | `/` | Record a harvest |
+| `POST` | `/` | Record a harvest (includes rejected weight tracking) |
 | `PUT` | `/:id` | Update a harvest record |
 | `DELETE` | `/:id` | Delete a harvest record |
 
@@ -293,7 +344,7 @@ Base path: `/sales` — **Protected**
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/:projectId` | List sales for a project |
-| `POST` | `/` | Record a sale |
+| `POST` | `/` | Record a sale (supports payment installments) |
 | `PUT` | `/:id` | Update a sale record |
 | `DELETE` | `/:id` | Delete a sale record |
 

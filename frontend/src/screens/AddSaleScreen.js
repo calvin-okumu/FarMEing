@@ -23,7 +23,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
-import { StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBlockPicker, StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
 import StitchDashboardShell from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -62,8 +62,6 @@ export default function AddSaleScreen({ route, navigation }) {
   const [blocks, setBlocks] = useState([]);
   const [blockId, setBlockId] = useState('');
   const [linkedHarvestIds, setLinkedHarvestIds] = useState([]);
-  const [showBlockPicker, setShowBlockPicker] = useState(false);
-  const [blockSearch, setBlockSearch] = useState('');
   const [showHarvestPicker, setShowHarvestPicker] = useState(false);
 
   useEffect(() => {
@@ -430,18 +428,15 @@ export default function AddSaleScreen({ route, navigation }) {
       banner={banner}
       onDismissBanner={() => setBanner(null)}
     >
-        {(projectId) && blocks.length > 0 ? (
-          <TouchableOpacity style={styles.projectSelector} onPress={() => setShowBlockPicker(true)} activeOpacity={0.88}>
-            <View style={[styles.infoIcon, { backgroundColor: stitchTheme.colors.accentBrown + '20' }]}>
-              <Ionicons name="layers-outline" size={20} color={stitchTheme.colors.accentBrown} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoLabel}>{t('projects.tabs.block')}</Text>
-              <Text style={styles.infoValue}>{blockId && blocks.find(b => b.id === blockId) ? blocks.find(b => b.id === blockId)?.name : t('common.select_block')}</Text>
-            </View>
-            <Ionicons name="chevron-down" size={18} color={stitchTheme.colors.textMuted} />
-          </TouchableOpacity>
-        ) : null}
+        <StitchBlockPicker
+          label={t('projects.tabs.block')}
+          blocks={blocks}
+          selectedValue={blockId}
+          onSelect={setBlockId}
+          placeholder={t('common.select_block')}
+          searchPlaceholder={t('common.select_block')}
+          getSubtitle={(block) => block.crop || t('projects.fields.crop')}
+        />
 
         <StitchSurface style={styles.panel}>
           <StitchSectionTitle>{t('sales.linked_harvests')}</StitchSectionTitle>
@@ -606,39 +601,6 @@ export default function AddSaleScreen({ route, navigation }) {
             </View>
           ) : null}
         </StitchSurface>
-
-        <Modal visible={showBlockPicker} animationType='slide' transparent onRequestClose={() => setShowBlockPicker(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalSheet}>
-              <View style={styles.modalHandle} />
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('projects.tabs.block')}</Text>
-                <TouchableOpacity onPress={() => setShowBlockPicker(false)} activeOpacity={0.88}>
-                  <Ionicons name='close-outline' size={22} color={stitchTheme.colors.text} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
-                {blocks.map((b) => (
-                  <TouchableOpacity
-                    key={b.id}
-                    style={[styles.projectOption, blockId === b.id && styles.projectOptionActive]}
-                    onPress={() => {
-                      setBlockId(b.id);
-                      setShowBlockPicker(false);
-                    }}
-                    activeOpacity={0.88}
-                  >
-                    <View>
-                      <Text style={styles.projectOptionTitle}>{b.name}</Text>
-                      <Text style={styles.projectOptionMeta}>{b.crop || t('projects.fields.crop')}</Text>
-                    </View>
-                    {blockId === b.id ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
 
         <Modal visible={showHarvestPicker} animationType='slide' transparent onRequestClose={() => setShowHarvestPicker(false)}>
           <View style={styles.modalOverlay}>
@@ -832,15 +794,10 @@ const styles = StyleSheet.create({
   harvestOptionTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   harvestOptionMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
 
-  projectSelector: { ...stitchStyles.collectionCard, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, marginBottom: stitchTheme.spacing.sm },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, maxHeight: '80%', paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: stitchTheme.colors.line, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12 },
   modalTitle: { fontSize: stitchTheme.typography.section.fontSize, fontWeight: '800', color: stitchTheme.colors.text },
   modalList: { paddingHorizontal: 24, gap: 4 },
-  projectOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: stitchTheme.radius.md },
-  projectOptionActive: { backgroundColor: stitchTheme.colors.surfaceTint },
-  projectOptionTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
-  projectOptionMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
 });
