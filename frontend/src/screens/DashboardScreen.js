@@ -119,7 +119,7 @@ export default function DashboardScreen({ navigation }) {
         if (!inviteCode.trim()) return;
         setJoining(true);
         try {
-            const { data } = await api.post('/invitations/join', { inviteCode: inviteCode.trim().toUpperCase() });
+            const { data } = await api.post('invitations/join', { inviteCode: inviteCode.trim().toUpperCase() });
             setJoinModalVisible(false);
             setInviteCode('');
             // Trigger sync to fetch the new project

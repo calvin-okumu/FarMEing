@@ -215,7 +215,7 @@ const handleInvite = async () => {
     await syncAll();
 
     // Use project.id as the identifier (backend uses client UUID)
-    await api.post('/invitations', { projectId: project.id, role: inviteRole });
+    await api.post('invitations', { projectId: project.id, role: inviteRole });
     
     syncAll().catch(() => {});
     setInviteVisible(false);
