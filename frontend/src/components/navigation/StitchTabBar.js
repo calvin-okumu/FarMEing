@@ -67,7 +67,7 @@ export default function StitchTabBar({ state, descriptors, navigation }) {
               <Ionicons
                 name={isFocused ? meta.icon.replace('-outline', '') : meta.icon}
                 size={20}
-                color={isFocused ? '#ffffff' : 'rgba(255,255,255,0.68)'}
+                color={isFocused ? stitchTheme.colors.white : stitchTheme.colors.tabBarIconInactive}
               />
               <Text style={[styles.label, isFocused && styles.labelActive]} numberOfLines={1}>
                 {label}
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     minHeight: 52,
-    backgroundColor: 'rgba(17,42,30,0.94)',
+    backgroundColor: stitchTheme.colors.tabBarBackground,
     borderRadius: 28,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -121,9 +121,9 @@ const styles = StyleSheet.create({
     minHeight: 42,
   },
   itemActive: {
-    backgroundColor: 'rgba(253,250,244,0.18)',
+    backgroundColor: stitchTheme.colors.overlayMedium,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: stitchTheme.colors.overlayMedium,
   },
   itemGlow: {
     position: 'absolute',
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: '700',
     fontFamily: stitchTheme.fonts.label,
-    color: 'rgba(255,255,255,0.62)',
+    color: stitchTheme.colors.tabBarLabelInactive,
     letterSpacing: 0.5,
   },
   labelActive: {
-    color: '#ffffff',
+    color: stitchTheme.colors.white,
     fontWeight: '800',
   },
 });

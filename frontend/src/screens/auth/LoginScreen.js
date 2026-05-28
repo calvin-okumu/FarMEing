@@ -2,20 +2,19 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { formatErrorMessage } from '../../services/http';
-import { stitchShadows, stitchTheme } from '../../theme/stitchTheme';
+import { stitchTheme } from '../../theme/stitchTheme';
 import StitchAuthShell from '../../components/ui/StitchAuthShell';
+import { StitchInput, StitchPrimaryButton } from '../../components/ui/StitchPrimitives';
 
 export default function LoginScreen({ navigation }) {
   const { t } = useTranslation();
@@ -60,51 +59,51 @@ ${t('auth.login.welcome_line_two')}`}
         banner={banner}
         onDismissBanner={() => setBanner(null)}
       >
-            <Text style={styles.label}>{t('auth.fields.phone')}</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="call-outline" size={18} color={stitchTheme.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('auth.placeholders.phone')}
-                placeholderTextColor={stitchTheme.colors.textMuted}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-                value={phone}
-                onChangeText={setPhone}
-              />
-            </View>
+            <StitchInput
+              label={t('auth.fields.phone')}
+              icon='call-outline'
+              placeholder={t('auth.placeholders.phone')}
+              keyboardType='phone-pad'
+              autoCapitalize='none'
+              autoCorrect={false}
+              textContentType='telephoneNumber'
+              returnKeyType='next'
+              value={phone}
+              onChangeText={setPhone}
+            />
 
-            <Text style={styles.label}>{t('auth.fields.password')}</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={18} color={stitchTheme.colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('auth.placeholders.password')}
-                placeholderTextColor={stitchTheme.colors.textMuted}
-                secureTextEntry={!showPw}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPw((v) => !v)} style={styles.eyeBtn}>
-                <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={stitchTheme.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
+            <StitchInput
+              label={t('auth.fields.password')}
+              icon='lock-closed-outline'
+              placeholder={t('auth.placeholders.password')}
+              secureTextEntry={!showPw}
+              autoCapitalize='none'
+              autoCorrect={false}
+              textContentType='password'
+              returnKeyType='done'
+              value={password}
+              onChangeText={setPassword}
+              onSubmitEditing={handleLogin}
+              trailing={(
+                <TouchableOpacity onPress={() => setShowPw((v) => !v)} style={styles.eyeBtn} activeOpacity={0.8}>
+                  <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={stitchTheme.colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            />
 
             <TouchableOpacity style={styles.forgotRow} activeOpacity={0.86}>
               <Text style={styles.forgotText}>{t('auth.login.forgot_password')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
+            <StitchPrimaryButton
+              label={t('auth.login.submit')}
               onPress={handleLogin}
               disabled={loading}
-              activeOpacity={0.88}
-            >
-              {loading ? <ActivityIndicator color={stitchTheme.colors.white} /> : <>
-                <Text style={styles.btnText}>{t('auth.login.submit')}</Text>
-                <Ionicons name="arrow-forward" size={20} color={stitchTheme.colors.white} />
-              </>}
-            </TouchableOpacity>
+              loading={loading}
+              icon='arrow-forward'
+              tone='solid'
+              style={styles.btn}
+            />
 
             <View style={styles.altWrap}>
               <View style={styles.altDivider} />
@@ -134,17 +133,10 @@ ${t('auth.login.welcome_line_two')}`}
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: stitchTheme.colors.background },
-  banner: { marginBottom: stitchTheme.spacing.xs },
-  label: { fontSize: stitchTheme.typography.label.fontSize, lineHeight: stitchTheme.typography.label.lineHeight, fontWeight: '800', color: stitchTheme.colors.accentBrown, marginBottom: stitchTheme.spacing.xxs, marginTop: stitchTheme.spacing.sm, textTransform: 'uppercase', letterSpacing: 1 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.sm, minHeight: 54, borderWidth: 1, borderColor: stitchTheme.colors.border },
-  inputIcon: { marginRight: stitchTheme.spacing.xxs },
-  input: { flex: 1, height: 52, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, color: stitchTheme.colors.text },
   eyeBtn: { padding: stitchTheme.spacing.xxs / 2 },
   forgotRow: { alignItems: 'flex-end', marginTop: stitchTheme.spacing.sm },
   forgotText: { color: stitchTheme.colors.primary, fontWeight: '700', fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight },
-  btn: { marginTop: stitchTheme.spacing.lg, backgroundColor: stitchTheme.colors.primary, borderRadius: stitchTheme.radius.md, height: 54, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: stitchTheme.spacing.xs, ...stitchShadows.float },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: stitchTheme.colors.white, fontWeight: '900', fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight },
+  btn: { marginTop: stitchTheme.spacing.lg },
   altWrap: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.xs, marginTop: stitchTheme.spacing.lg },
   altDivider: { flex: 1, height: 1, backgroundColor: stitchTheme.colors.line },
   altLabel: { color: stitchTheme.colors.textMuted, fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.1 },

@@ -5,33 +5,28 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Q } from '@nozbe/watermelondb';
 import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
-import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
-import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSearchBar } from '../components/ui/StitchPrimitives';
+import { stitchTheme, stitchStyles } from '../theme/stitchTheme';
+import { StitchInput, StitchMiniBars, StitchPicker, StitchPrimaryButton, StitchSearchBar } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 
 
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import StatusBanner from '../components/ui/StatusBanner';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import { formatCurrency } from '../utils/currency';
 import useSettingsStore from '../store/useSettingsStore';
 import { initializeLocalRecord } from '../utils/localRecord';
 import { deleteLocalModel, updateLocalModel } from '../utils/resourceMutations';
+import ResourceFormModal from '../components/ui/ResourceFormModal';
 
 const DEFAULT_FORM = {
   name: '',
@@ -102,6 +97,13 @@ export default function InventoryScreen({ route, navigation }) {
     setFormData(DEFAULT_FORM);
     setModalVisible(true);
   };
+
+  useEffect(() => {
+    if (route?.params?.openCreate) {
+      openCreate();
+      navigation.setParams?.({ openCreate: false });
+    }
+  }, [navigation, route?.params?.openCreate]);
 
   const openEdit = (item) => {
     setEditingItem(item);
@@ -200,8 +202,8 @@ export default function InventoryScreen({ route, navigation }) {
           eyebrow: t('inventory.title'),
           title: formatCurrency(grandTotalCost, currency),
           subtitle: projectName || t('projects.title'),
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
+          actionIcon: 'add',
+          onActionPress: openCreate,
           children: (
             <>
               <View style={styles.heroPills}>
@@ -218,7 +220,14 @@ export default function InventoryScreen({ route, navigation }) {
         onDismissBanner={() => setBanner(null)}
       >
         <StitchSearchBar value={query} onChangeText={setQuery} placeholder={t('inventory.search_placeholder')} />
-        <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel='New Item' onActionPress={openCreate} />
+        <StitchPrimaryButton
+          label={t('inventory.create_title')}
+          onPress={openCreate}
+          icon='add-circle'
+          tone='solid'
+          style={styles.createButton}
+        />
+        <StitchDashboardSectionHeader title={t('inventory.title')} subtitle={projectName || t('projects.title')} actionLabel={String(filteredItems.length)} />
         {filteredItems.length ? filteredItems.map((item) => (
           <TouchableOpacity key={item.id} style={styles.card} onPress={() => openEdit(item)} activeOpacity={0.88}>
             <View style={styles.cardTop}>
@@ -239,62 +248,55 @@ export default function InventoryScreen({ route, navigation }) {
         )) : <EmptyState icon="cube-outline" title={t('inventory.empty_title')} subtitle={t('inventory.empty_subtitle')} />}
       </StitchDashboardShell>
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={styles.keyboardView}>
-            <View style={styles.modalContent}>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{editingItem ? t('inventory.edit_title') : t('inventory.create_title')}</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={22} color={stitchTheme.colors.text} /></TouchableOpacity>
-                </View>
-                <StitchInput label={t('inventory.fields.name')} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} />
-                <StitchInput label={t('inventory.fields.category')} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} />
+      <ResourceFormModal
+        visible={modalVisible}
+        title={editingItem ? t('inventory.edit_title') : t('inventory.create_title')}
+        onClose={() => setModalVisible(false)}
+      >
+        <StitchInput label={t('inventory.fields.name')} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} />
+        <StitchInput label={t('inventory.fields.category')} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} />
 
-                <StitchPicker
-                  label={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
-                  options={[{ label: t('common.none', { defaultValue: 'None' }), value: null }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
-                  selectedValue={formData.payeeId}
-                  onSelect={(val) => {
-                    if (!val) {
-                      setFormData((p) => ({ ...p, payee: '', payeeId: null }));
-                    } else {
-                      setFormData((p) => ({ ...p, payee: (payees || []).find((pay) => pay.id === val)?.name || '', payeeId: val }));
-                    }
-                  }}
-                  searchable
-                  placeholder={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
-                />
+        <StitchPicker
+          label={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+          options={[{ label: t('common.none', { defaultValue: 'None' }), value: null }, ...(payees || []).map((p) => ({ label: p.name, value: p.id }))]}
+          selectedValue={formData.payeeId}
+          onSelect={(val) => {
+            if (!val) {
+              setFormData((p) => ({ ...p, payee: '', payeeId: null }));
+            } else {
+              setFormData((p) => ({ ...p, payee: (payees || []).find((pay) => pay.id === val)?.name || '', payeeId: val }));
+            }
+          }}
+          searchable
+          placeholder={t('expenses.fields.payee', { defaultValue: 'Select Payee / Vendor' })}
+        />
 
-                <View style={styles.row}>
-                  <View style={styles.half}>
-                    <StitchInput label={t('inventory.fields.quantity')} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType='decimal-pad' />
-                  </View>
-                  <View style={styles.half}>
-                    <StitchInput label={t('inventory.fields.unit')} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} />
-                  </View>
-                </View>
-                <View style={styles.row}>
-                  <View style={styles.half}>
-                    <StitchInput label={t('inventory.fields.unit_cost')} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType='decimal-pad' />
-                  </View>
-                  <View style={styles.half}>
-                    <StitchInput label={t('inventory.fields.used_qty')} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType='decimal-pad' />
-                  </View>
-                </View>
-                <StitchInput label={t('common.notes')} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline />
-                <StitchPrimaryButton
-                  label={editingItem ? t('common.save') : t('inventory.create_title')}
-                  onPress={handleSubmit}
-                  disabled={!formData.name.trim()}
-                  icon={editingItem ? 'save-outline' : 'add-circle'}
-                  style={styles.saveButton}
-                />
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <StitchInput label={t('inventory.fields.quantity')} value={formData.quantity} onChangeText={(quantity) => setFormData((p) => ({ ...p, quantity }))} keyboardType='decimal-pad' />
+          </View>
+          <View style={styles.half}>
+            <StitchInput label={t('inventory.fields.unit')} value={formData.unit} onChangeText={(unit) => setFormData((p) => ({ ...p, unit }))} />
+          </View>
         </View>
-      </Modal>
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <StitchInput label={t('inventory.fields.unit_cost')} value={formData.unitCost} onChangeText={(unitCost) => setFormData((p) => ({ ...p, unitCost }))} keyboardType='decimal-pad' />
+          </View>
+          <View style={styles.half}>
+            <StitchInput label={t('inventory.fields.used_qty')} value={formData.usedQty} onChangeText={(usedQty) => setFormData((p) => ({ ...p, usedQty }))} keyboardType='decimal-pad' />
+          </View>
+        </View>
+        <StitchInput label={t('common.notes')} value={formData.notes} onChangeText={(notes) => setFormData((p) => ({ ...p, notes }))} multiline />
+        <StitchPrimaryButton
+          label={editingItem ? t('common.save') : t('inventory.create_title')}
+          onPress={handleSubmit}
+          disabled={!formData.name.trim()}
+          icon={editingItem ? 'save-outline' : 'add-circle'}
+          tone='solid'
+          style={styles.saveButton}
+        />
+      </ResourceFormModal>
 
       <ConfirmDialog
         visible={!!deleteTarget}
@@ -331,6 +333,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: stitchTheme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: stitchTheme.spacing.xl },
   list: { paddingBottom: STITCH_TAB_BAR_HEIGHT + 24 },
+  createButton: { marginBottom: stitchTheme.spacing.xs },
   heroPills: { flexDirection: 'row', gap: stitchTheme.spacing.xs, marginTop: 2 },
   chartWrap: { marginTop: stitchTheme.spacing.md },
   card: { ...stitchStyles.collectionCard, paddingHorizontal: 0, paddingLeft: 0 },
@@ -341,11 +344,6 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.md, paddingTop: stitchTheme.spacing.sm, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line, paddingLeft: 18, paddingRight: 14 },
   cardAmount: { ...stitchTheme.typography.cardTitle, color: stitchTheme.colors.primary },
   cardDescription: { marginTop: 6, ...stitchTheme.typography.cardDescription, color: stitchTheme.colors.textMuted, paddingLeft: 18, paddingRight: 14 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(12,18,12,0.42)', justifyContent: 'flex-end' },
-  keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: stitchTheme.colors.backgroundAccent, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, padding: stitchTheme.spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 20, maxHeight: '88%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: stitchTheme.spacing.lg },
-  modalTitle: { fontSize: stitchTheme.typography.title.fontSize, lineHeight: stitchTheme.typography.title.lineHeight, fontWeight: '900', color: stitchTheme.colors.primary },
   row: { flexDirection: 'row', gap: stitchTheme.spacing.sm },
   half: { flex: 1 },
   saveButton: { marginTop: stitchTheme.spacing.lg },

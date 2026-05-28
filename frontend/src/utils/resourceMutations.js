@@ -20,6 +20,70 @@ export async function updateLocalModel(record, applyChanges) {
   });
 }
 
+/**
+ * Re-calculates a sale's total weight, amount, and balance based on linked harvests and payments.
+ * Should be called within a database.write block.
+ * @param {Sale} sale 
+ * @param {Harvest} [updatedHarvest] - Optional freshly updated harvest to use instead of fetching
+ */
+export async function recalculateSale(sale, updatedHarvest = null) {
+  const linkedHarvestLinks = await sale.saleHarvests.fetch();
+  const payments = await sale.salePayments.fetch();
+
+  let totalWeight = 0;
+  for (const sh of linkedHarvestLinks) {
+    if (sh.isDeleted) continue;
+    
+    let h;
+    if (updatedHarvest && sh.harvestId === updatedHarvest.id) {
+      h = updatedHarvest;
+    } else {
+      h = await sh.harvest.fetch();
+    }
+
+    if (h && !h.isDeleted) {
+      totalWeight += (h.weight - (h.rejectedWeight || 0));
+    }
+  }
+
+  const totalCollected = payments
+    .filter(p => !p.isDeleted)
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  const totalAmount = totalWeight * (sale.unitPrice || 0);
+  const balanceDue = Math.max(0, totalAmount - totalCollected);
+  const paymentStatus = totalCollected <= 0 ? 'pending' : balanceDue <= 0 ? 'paid' : 'partial';
+
+  await sale.update(draft => {
+    draft.weightSold = totalWeight;
+    draft.totalAmount = totalAmount;
+    draft.balanceDue = balanceDue;
+    draft.paymentStatus = paymentStatus;
+    markRecordUpdated(draft);
+  });
+}
+
+/**
+ * Finds all sales linked to a harvest and recalculates them.
+ * Should be called within a database.write block.
+ * @param {Database} database
+ * @param {string} harvestId
+ * @param {Harvest} [harvestRecord] - Optional freshly updated harvest record
+ */
+export async function updateLinkedSalesWeights(database, harvestId, harvestRecord = null) {
+  const saleHarvestLinks = await database.get('sale_harvests').query(
+    Q.where('harvest_id', harvestId),
+    Q.where('is_deleted', false)
+  ).fetch();
+
+  for (const sh of saleHarvestLinks) {
+    const sale = await sh.sale.fetch();
+    if (sale && !sale.isDeleted) {
+      await recalculateSale(sale, harvestRecord);
+    }
+  }
+}
+
 export async function deleteLocalModel(record) {
   await record.update((draft) => {
     markRecordDeleted(draft);

@@ -190,6 +190,7 @@ const generateProjectExcelReport = async (req, res) => {
     const totalCost = totalExpenses + totalLabor + totalInventory + totalEquipment;
     const collectedRevenue = project.sales.reduce((sum, s) => sum + ((s.totalAmount || 0) - (s.balanceDue || 0)), 0);
     const pendingRevenue = project.sales.reduce((sum, s) => sum + (s.balanceDue || 0), 0);
+    const netHarvest = project.harvests.reduce((sum, item) => sum + (item.weight - (item.rejectedWeight || 0)), 0);
 
     summarySheet.addRow({ prop: t(lang, 'total_revenue'), val: totalRevenue });
     summarySheet.addRow({ prop: t(lang, 'collected_revenue'), val: collectedRevenue });

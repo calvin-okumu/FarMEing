@@ -29,7 +29,7 @@ export default function StitchAuthShell({
           <View style={styles.topRow}>
             {onBack ? (
               <TouchableOpacity style={styles.topButton} onPress={onBack} activeOpacity={0.88}>
-                <Ionicons name='arrow-back' size={18} color='#ffffff' />
+                <Ionicons name='arrow-back' size={18} color={stitchTheme.colors.white} />
               </TouchableOpacity>
             ) : <View style={styles.topButtonSpacer} />}
             <View style={styles.brandRow}>
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     width: 190,
     height: 190,
     borderRadius: 95,
-    backgroundColor: 'rgba(82,183,136,0.12)',
+    backgroundColor: stitchTheme.colors.overlaySoft,
   },
   heroOrbSmall: {
     position: 'absolute',
@@ -102,9 +102,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: stitchTheme.colors.overlaySoft,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: stitchTheme.colors.overlayMedium,
   },
   topButtonSpacer: {
     width: 40,
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     backgroundColor: stitchTheme.colors.surfaceHighlight,
   },
   brandName: {
-    color: '#ffffff',
+    color: stitchTheme.colors.white,
     fontSize: stitchTheme.typography.body.fontSize,
     lineHeight: stitchTheme.typography.body.lineHeight,
     fontWeight: '800',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: stitchTheme.spacing.xs,
   },
   title: {
-    color: '#ffffff',
+    color: stitchTheme.colors.white,
     fontSize: stitchTheme.typography.display.fontSize,
     lineHeight: stitchTheme.typography.display.lineHeight,
     fontWeight: '900',
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: stitchTheme.spacing.sm,
-    color: 'rgba(255,255,255,0.68)',
+    color: stitchTheme.colors.overlayStrong,
     fontSize: stitchTheme.typography.bodySmall.fontSize,
     lineHeight: 22,
     maxWidth: 280,

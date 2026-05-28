@@ -29,8 +29,9 @@ import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import i18n from '../i18n';
+import { formatErrorMessage } from '../services/http';
 
-import { deleteLocalModel } from '../utils/resourceMutations';
+import { deleteLocalModel, updateLinkedSalesWeights } from '../utils/resourceMutations';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import useAuthStore from '../store/useAuthStore';
@@ -214,17 +215,17 @@ const handleInvite = async () => {
     await syncAll();
 
     // Use project.id as the identifier (backend uses client UUID)
-    await api.post('/invitations', { projectId: project.id, role: inviteRole });
+    await api.post('invitations', { projectId: project.id, role: inviteRole });
     
     syncAll().catch(() => {});
     setInviteVisible(false);
     setBanner({ tone: 'success', title: t('team.invite_created'), message: t('team.invite_created_msg') });
   } catch (err) {
     console.error('[Invite] Error:', err);
-    const status = err.response?.status;
+    const status = err?.statusCode;
     const msg = status === 404 
       ? t('team.sync_required') 
-      : (err.response?.data?.error || err.message || 'Failed to create invitation');
+      : formatErrorMessage(err);
     Alert.alert(t('common.error'), msg);
   } finally {
     setTeamLoading(false);
@@ -279,7 +280,9 @@ const handleInvite = async () => {
       if (downloadRes.status !== 200) {
         throw new Error(`Failed to download ${format} report`);
       }
-      await Sharing.shareAsync(downloadRes.uri);
+      
+      const shareUri = downloadRes.uri.startsWith('file://') ? downloadRes.uri : `file://${downloadRes.uri}`;
+      await Sharing.shareAsync(shareUri);
     } catch (err) {
       console.error('[Export] Error:', err.message);
       Alert.alert('Export Failed', `Could not generate or download the ${format} report.`);
@@ -769,8 +772,8 @@ const handleInvite = async () => {
           <View style={styles.teamTab}>
             <Text style={styles.emptyText}>{t('inventory.accessible_from_workspace', { defaultValue: 'Inventory management available from the workspace menu.' })}</Text>
             <StitchPrimaryButton
-              label="Open Inventory"
-              onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name })}
+              label="Add Inventory Item"
+              onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name, openCreate: true })}
               icon="cube-outline"
               style={{ marginTop: 20, marginHorizontal: 16 }}
             />
@@ -842,8 +845,10 @@ const handleInvite = async () => {
           const tableMap = { budget: 'budget_items', expenses: 'expenses', labor: 'work_entries', harvest: 'harvests', sales: 'sales', equipment: 'equipments' };
           const record = await database.get(tableMap[type]).find(item.id);
           await deleteLocalModel(record);
-        });
-        setDeleteTarget(null);
+          if (type === 'harvest') {
+            await updateLinkedSalesWeights(database, item.id);
+          }
+          });        setDeleteTarget(null);
         syncAll();
       }} />
 

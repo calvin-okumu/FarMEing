@@ -11,18 +11,22 @@ import useBackendStore from '../store/useBackendStore';
 // iOS simulator:    http://localhost:3000
 // Physical device:  http://<your-lan-ip>:3000
 function getDefaultBaseUrl() {
-    if (process.env.EXPO_PUBLIC_API_URL) {
-        return process.env.EXPO_PUBLIC_API_URL;
+    let url = process.env.EXPO_PUBLIC_API_URL;
+    if (!url) {
+        url = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
     }
-
-    if (Platform.OS === 'android') {
-        return 'http://10.0.2.2:3000';
+    
+    // Remove any trailing slashes from the base domain
+    url = url.replace(/\/+$/, '');
+    
+    // Ensure the URL always ends with exactly /api/
+    if (!url.endsWith('/api')) {
+        url += '/api';
     }
-
-    return 'http://localhost:3000';
+    return url + '/';
 }
 
-export const BASE_URL = getDefaultBaseUrl() + '/api/';
+export const BASE_URL = getDefaultBaseUrl();
 
 const api = axios.create({
     baseURL: BASE_URL,

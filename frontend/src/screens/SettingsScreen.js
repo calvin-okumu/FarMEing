@@ -4,29 +4,13 @@ import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
 import useSettingsStore from '../store/useSettingsStore';
 import useSyncStore from '../store/useSyncStore';
-import { syncAll } from '../services/syncService';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
-import { StitchBadge, StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
+import { StitchBadge, StitchChip, StitchListRow, StitchSurface } from '../components/ui/StitchPrimitives';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
-
-function DetailRow({ icon, title, subtitle, tint = stitchTheme.colors.successSurface, iconColor = stitchTheme.colors.primary, rightText }) {
-  return (
-    <View style={styles.detailRow}>
-      <View style={[styles.detailIconWrap, { backgroundColor: tint }]}>
-        <Ionicons name={icon} size={18} color={iconColor} />
-      </View>
-      <View style={styles.detailBody}>
-        <Text style={styles.detailTitle}>{title}</Text>
-        <Text style={styles.detailSubtitle}>{subtitle}</Text>
-      </View>
-      {rightText ? <Text style={styles.detailValue}>{rightText}</Text> : <Ionicons name='chevron-forward' size={20} color={stitchTheme.colors.textMuted} />}
-    </View>
-  );
-}
 
 export default function SettingsScreen({ navigation }) {
   const { t, i18n } = useTranslation();
@@ -115,28 +99,13 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.sectionBlock}>
           <StitchDashboardSectionHeader title={t('settings.account_details')} />
           <View style={styles.listCardStack}>
-            <TouchableOpacity onPress={() => navigation.navigate('Payees')}>
-              <DetailRow icon='business' title={t('payees.title', { defaultValue: 'Payees & Vendors' })} subtitle={t('payees.manage_subtitle', { defaultValue: 'Manage your suppliers and contractors' })} tint={stitchTheme.colors.surfaceMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
-              <DetailRow icon='bar-chart' title={t('settings.reports', { defaultValue: 'Reports & Analytics' })} subtitle={t('settings.reports_subtitle', { defaultValue: 'View project performance and portfolio insights' })} tint={stitchTheme.colors.surfaceTint} />
-            </TouchableOpacity>
-            <DetailRow icon='notifications' title={t('settings.notifications')} subtitle={t('settings.notifications_subtitle')} />
-            <DetailRow icon='help-circle' title={t('settings.help_support')} subtitle={t('settings.help_support_subtitle')} tint={stitchTheme.colors.surfaceSubtle} />
-            <DetailRow icon='document-text' title={t('settings.terms')} subtitle={t('settings.terms_subtitle')} />
-            <DetailRow icon='cash-outline' title={t('settings.currency')} subtitle={t('settings.currency_subtitle')} rightText={currency} />
-            <TouchableOpacity 
-              onPress={() => failedCount > 0 && navigation.navigate('SyncErrors')}
-              activeOpacity={failedCount > 0 ? 0.7 : 1}
-            >
-              <DetailRow 
-                icon='sync' 
-                title={t('settings.sync_status')} 
-                subtitle={syncSummary} 
-                rightText={t(`settings.sync_states.${status}`)} 
-                tint={failedCount > 0 ? stitchTheme.colors.dangerSurface : stitchTheme.colors.successSurface}
-              />
-            </TouchableOpacity>
+            <StitchListRow icon='business' title={t('payees.title', { defaultValue: 'Payees & Vendors' })} subtitle={t('payees.manage_subtitle', { defaultValue: 'Manage your suppliers and contractors' })} tint={stitchTheme.colors.surfaceMuted} onPress={() => navigation.navigate('Payees')} />
+            <StitchListRow icon='bar-chart' title={t('settings.reports', { defaultValue: 'Reports & Analytics' })} subtitle={t('settings.reports_subtitle', { defaultValue: 'View project performance and portfolio insights' })} tint={stitchTheme.colors.surfaceTint} onPress={() => navigation.navigate('Reports')} />
+            <StitchListRow icon='notifications' title={t('settings.notifications')} subtitle={t('settings.notifications_subtitle')} />
+            <StitchListRow icon='help-circle' title={t('settings.help_support')} subtitle={t('settings.help_support_subtitle')} tint={stitchTheme.colors.surfaceSubtle} />
+            <StitchListRow icon='document-text' title={t('settings.terms')} subtitle={t('settings.terms_subtitle')} />
+            <StitchListRow icon='cash-outline' title={t('settings.currency')} subtitle={t('settings.currency_subtitle')} rightText={currency} />
+            <StitchListRow icon='sync' title={t('settings.sync_status')} subtitle={syncSummary} rightText={t(`settings.sync_states.${status}`)} tint={failedCount > 0 ? stitchTheme.colors.dangerSurface : stitchTheme.colors.successSurface} onPress={failedCount > 0 ? () => navigation.navigate('SyncErrors') : undefined} />
           </View>
         </View>
 
@@ -193,12 +162,6 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '700', color: stitchTheme.colors.accentBrown },
   toggleTextActive: { color: stitchTheme.colors.text },
   listCardStack: { gap: stitchTheme.spacing.sm },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: stitchTheme.spacing.md, backgroundColor: stitchTheme.colors.surfaceHighlight, borderRadius: stitchTheme.radius.card, paddingHorizontal: stitchTheme.spacing.md, paddingVertical: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', ...stitchShadows.card },
-  detailIconWrap: { width: 36, height: 36, borderRadius: stitchTheme.radius.sm, alignItems: 'center', justifyContent: 'center' },
-  detailBody: { flex: 1 },
-  detailTitle: { fontSize: stitchTheme.typography.cardTitle.fontSize, lineHeight: stitchTheme.typography.cardTitle.lineHeight, fontWeight: '800', color: stitchTheme.colors.text, fontFamily: stitchTheme.fonts.heading },
-  detailSubtitle: { marginTop: 2, fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.accentBrown },
-  detailValue: { fontSize: stitchTheme.typography.caption.fontSize, lineHeight: stitchTheme.typography.caption.lineHeight, fontWeight: '800', color: stitchTheme.colors.primary, textTransform: 'uppercase' },
   currencySection: { flexDirection: 'row', gap: stitchTheme.spacing.xs, flexWrap: 'wrap' },
   currencyChip: { minWidth: 72, alignItems: 'center' },
   currencyChipText: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, fontWeight: '800' },

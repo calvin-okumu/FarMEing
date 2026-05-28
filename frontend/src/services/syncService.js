@@ -16,6 +16,7 @@ export async function syncAll() {
   try {
     await synchronize({
       database,
+      sendCreatedAsUpdated: true,
       pullChanges: async ({ lastPulledAt, schemaVersion, migration }) => {
         const response = await api.get('sync/pull', {
           params: {

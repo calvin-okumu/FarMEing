@@ -228,174 +228,56 @@ cloudflared tunnel info farmtrack-api
 Update the mobile app environment to use the permanent HTTPS API URL:
 
 ```env
-EXPO_PUBLIC_API_URL=https://api.carlhub.uk
+EXPO_PUBLIC_API_URL=https://api.carlhub.uk/api
 ```
 
 You can place this in `frontend/.env` for local Expo runs, and `frontend/.env.example` now shows the same production default.
 
 Then rebuild the app so the new public URL is bundled into the client.
 
-Recommended production posture:
-
-- Keep the backend bound to `localhost` if possible
-- Do not expose port `3000` publicly
-- Keep `api.carlhub.uk` proxied through Cloudflare
-- Rely on existing app authentication for API access
-- Add Cloudflare WAF or rate limiting later if needed
-
-Troubleshooting:
-
-- If `https://api.carlhub.uk/health` does not load, check that the backend is running on `localhost:3000`, `cloudflared` is active, and the DNS route exists in Cloudflare
-- If the tunnel connects but cannot reach the origin, confirm the `service` value in `/etc/cloudflared/config.yml` is `http://localhost:3000`
-- If the mobile app still points to an old host, update `EXPO_PUBLIC_API_URL` and rebuild the app
-
-### Option C - Private access via Twingate + Nginx
-
-Use this if your backend stays on your local network and only approved users/devices should reach it through Twingate.
-
-Recommended topology:
-
-- Backend app via PM2 on `127.0.0.1:3000`
-- Nginx on the same host, listening on `443`
-- Twingate Connector on the same LAN
-- Twingate Resource pointing to the Nginx hostname on `443`
-
-This keeps port `3000` private and gives the mobile app a stable HTTPS base URL.
-
-#### 2C.1 Install Nginx
-
-On the backend server:
-
-```bash
-sudo apt update
-sudo apt install -y nginx
-```
-
-#### 2C.2 Configure Nginx as a reverse proxy
-
-Create `/etc/nginx/sites-available/farmtrack`:
-
-```nginx
-server {
-    listen 80;
-    server_name api.yourdomain.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Enable the site and reload Nginx:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/farmtrack /etc/nginx/sites-enabled/farmtrack
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-Verify locally on the server:
-
-```bash
-curl http://localhost/health
-# Expected: {"status":"ok"}
-```
-
-#### 2C.3 Add HTTPS in Nginx
-
-For Android devices, use HTTPS with a certificate trusted by the device. The easiest setup is a real domain/subdomain such as `api.yourdomain.com`.
-
-Example TLS config:
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name api.yourdomain.com;
-
-    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-server {
-    listen 80;
-    server_name api.yourdomain.com;
-    return 301 https://$host$request_uri;
-}
-```
-
-> Avoid self-signed certificates for the mobile app unless you also manage device trust settings.
-
-#### 2C.4 Publish the backend through Twingate
-
-In the Twingate Admin Console:
-
-1. Create or reuse a Connector on the same LAN as the backend server.
-2. Add a Resource for `api.yourdomain.com`.
-3. Allow access on TCP port `443`.
-4. Assign the Resource to the users/groups that should access the app.
-
-Each client device that will use the app must have the Twingate client installed, signed in, and connected.
-
-#### 2C.5 Verify over Twingate
-
-From a Twingate-connected laptop or phone:
-
-```bash
-curl https://api.yourdomain.com/health
-# Expected: {"status":"ok"}
-```
-
-If you do not have a real domain and valid certificate, you can use HTTP over Twingate for testing, but Android release builds may require additional cleartext-traffic configuration.
-
 ---
 
-## Part 3: Build the Android APK
+## Part 3: Build and Distribute the Android APK
 
-### 3.1 Update the API URL in eas.json
-
-In `frontend/eas.json`, replace the placeholder URL with your actual backend URL. Examples:
-
-- Cloudflare Tunnel: `https://api.yourdomain.com`
-- Twingate + Nginx: `https://api.yourdomain.com`
+### 3.1 Configure Automated Versioning
+The app is configured to automatically increment version numbers in the cloud. Ensure your `frontend/app.json` has the following baseline:
 
 ```json
-"preview": {
-  "distribution": "internal",
-  "env": {
-    "EXPO_PUBLIC_API_URL": "https://api.yourdomain.com"
-  }
-}
+"ios": { "buildNumber": "1", ... },
+"android": { "versionCode": 1, ... }
 ```
 
-### 3.2 Build
+### 3.2 Generate a Production Keystore (Local Machine)
+To properly sign the app and remove "Unsigned" security warnings on Android, generate a production key:
 
 ```bash
 cd frontend
+eas credentials
+```
+1. Select **Android** -> **production**.
+2. Follow the prompts to let EAS generate and store a new keystore for you.
 
-# Log in to your Expo account (only needed once)
-eas login
+### 3.3 Build the Signed APK
+Use the `website-release` profile to generate a signed file for your website:
 
-# Trigger the APK build on EAS servers
-eas build --platform android --profile preview
+```bash
+cd frontend
+eas build --platform android --profile website-release
 ```
 
-The build runs on EAS cloud servers (5–15 minutes). When it finishes, EAS prints a direct download link for the `.apk` file.
+### 3.4 Host the APK on your Website
+To make the app downloadable from `https://api.carlhub.uk/downloads/farmtrack.apk`:
 
-Install the APK on any Android device by opening the link on the device or sideloading it via ADB.
+1. **Upload the file** to `/var/www/farmtrack/downloads/farmtrack.apk`.
+2. **Set Permissions:**
+   ```bash
+   sudo chown -R www-data:www-data /var/www/farmtrack/downloads
+   sudo find /var/www/farmtrack/downloads -type d -exec chmod 755 {} \;
+   sudo find /var/www/farmtrack/downloads -type f -exec chmod 644 {} \;
+   ```
+3. **Verify Nginx Config:** Ensure your configuration includes the `/downloads/` block (see Part 5).
+4. **Reload Nginx:** `sudo systemctl reload nginx`
+
 
 ---
 
@@ -479,3 +361,88 @@ npx expo prebuild --clean
 ```
 Note that this will regenerate the `android` folder and may overwrite manual native changes.
 
+
+---
+
+## Part 4: Monitoring and Analytics
+
+### 4.1 Track APK Downloads
+Monitor your Nginx access logs to see exactly when someone downloads your APK and from which IP address.
+
+**View live logs:**
+```bash
+sudo tail -f /var/log/nginx/access.log
+```
+
+**Search for APK downloads:**
+```bash
+sudo grep "farmtrack.apk" /var/log/nginx/access.log
+```
+
+**Count total downloads:**
+```bash
+sudo grep "farmtrack.apk" /var/log/nginx/access.log | wc -l
+```
+
+### 4.2 Visual Analytics with GoAccess
+For a beautiful, real-time dashboard of your server traffic and file downloads, use **GoAccess**.
+
+**Install GoAccess:**
+```bash
+sudo apt install -y goaccess
+```
+
+**Run GoAccess:**
+```bash
+sudo goaccess /var/log/nginx/access.log --log-format=COMBINED -c
+```
+
+---
+
+## Part 5: Verified Nginx Configuration
+
+Below is the exact Nginx configuration verified for this project. Save this as \`/etc/nginx/sites-available/farmtrack\` (and link to \`sites-enabled\`).
+
+\`\`\`nginx
+server {
+    listen 80;
+    server_name api.carlhub.uk;
+
+    # Allow large file uploads (e.g., images, PDFs)
+    client_max_body_size 50M;
+
+    # 1. Serve the separate static website
+    location / {
+        root /var/www/farmtrack;
+        index index.html;
+        # Fallback to index.html for SPA client-side routing
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Dedicated block for APK downloads (with correct MIME types)
+    location /downloads/ {
+        root /var/www/farmtrack;
+        autoindex on;
+        types {
+            application/vnd.android.package-archive apk;
+        }
+        default_type application/octet-stream;
+        add_header Content-Disposition "attachment";
+    }
+
+    # 3. Proxy all /api/ requests to the Express backend on port 3001
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Standard proxy headers
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+\`\`\`

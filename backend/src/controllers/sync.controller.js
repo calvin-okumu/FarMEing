@@ -250,8 +250,6 @@ exports.pull = async (req, res) => {
       records.forEach(record => {
         if (record.isDeleted) {
           deleted.push(record.id);
-        } else if (record.createdAt > lastPulledAtDate) {
-          created.push(toWatermelon(record));
         } else {
           updated.push(toWatermelon(record));
         }

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import api from '../lib/api';
+import { formatErrorMessage } from '../services/http';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
@@ -118,14 +119,14 @@ export default function DashboardScreen({ navigation }) {
         if (!inviteCode.trim()) return;
         setJoining(true);
         try {
-            const { data } = await api.post('/invitations/join', { inviteCode: inviteCode.trim().toUpperCase() });
+            const { data } = await api.post('invitations/join', { inviteCode: inviteCode.trim().toUpperCase() });
             setJoinModalVisible(false);
             setInviteCode('');
             // Trigger sync to fetch the new project
             syncAll().catch(() => {});
             Alert.alert(t('common.success'), data.message || 'Joined project successfully!');
         } catch (err) {
-            Alert.alert(t('common.error'), err.response?.data?.error || 'Invalid or expired code');
+            Alert.alert(t('common.error'), formatErrorMessage(err));
         } finally {
             setJoining(false);
         }
@@ -234,7 +235,7 @@ export default function DashboardScreen({ navigation }) {
         if (resourceId === 'inventory') {
             navigation.navigate('Projects', {
                 screen: 'Inventory',
-                params: { projectId: project.id, projectName: project.name },
+                params: { projectId: project.id, projectName: project.name, openCreate: true },
             });
             return;
         }
