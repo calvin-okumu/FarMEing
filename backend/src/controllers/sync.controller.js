@@ -155,15 +155,30 @@ const fromWatermelon = (record) => {
     result[prismaKey] = value;
   }
 
-  // Date fields in the schema that might come as timestamps
+  // Date fields in the schema that might come as timestamps or strings
   const dateFields = ['date', 'startDate', 'endDate', 'expiresAt', 'createdAt', 'updatedAt', 'purchaseDate'];
   dateFields.forEach(field => {
-    if (result[field] !== undefined && result[field] !== null) {
+    if (result[field] !== undefined && result[field] !== null && result[field] !== '') {
       if (typeof result[field] === 'number') {
         result[field] = new Date(result[field]);
-      } else if (typeof result[field] === 'string' && result[field].length > 0) {
-        result[field] = new Date(result[field]);
+      } else if (typeof result[field] === 'string') {
+        // If it's a numeric string, parse it as a number first
+        if (/^\d+$/.test(result[field])) {
+          result[field] = new Date(parseInt(result[field], 10));
+        } else {
+          const date = new Date(result[field]);
+          if (!isNaN(date.getTime())) {
+            result[field] = date;
+          } else {
+            console.warn(`[sync] Invalid date format for field ${field}:`, result[field]);
+            // If it's invalid, maybe it's better to set it to null or leave as is?
+            // For now, let's keep it as is and let Prisma/Validator catch it, 
+            // or we could set it to null if it's optional.
+          }
+        }
       }
+    } else if (result[field] === '') {
+      result[field] = null;
     }
   });
 
@@ -416,6 +431,27 @@ exports.push = async (req, res) => {
             });
             if (updateCount.count > 0) {
               results.processed[watermelonTable].deleted++;
+
+              // ── Cascading Deletes for Sync ─────────────────────────────────
+              if (prismaModel === 'sale') {
+                // Delete payments and harvest links
+                await prisma.payment.updateMany({ where: { saleId: id }, data: { isDeleted: true } });
+                await prisma.saleHarvest.updateMany({ where: { saleId: id }, data: { isDeleted: true } });
+              } else if (prismaModel === 'farmProject') {
+                // Delete all project-bound data
+                const projectWhere = { projectId: id };
+                await Promise.all([
+                  prisma.budgetItem.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.expense.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.workEntry.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.harvest.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.sale.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.inventoryItem.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.projectBlock.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.equipment.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.projectInvitation.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                ]);
+              }
             }
           } catch (deleteError) {
             console.error(`[sync] Delete failed for ${prismaModel} ${id}:`, deleteError.message);

@@ -54,6 +54,7 @@ export default function InventoryScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [payees, setPayees] = useState([]);
+  const [isQuickAction, setIsQuickAction] = useState(false);
 
   useEffect(() => {
     const sub = database.get('payees').query(Q.where('is_deleted', false)).observe().subscribe(setPayees);
@@ -100,6 +101,7 @@ export default function InventoryScreen({ route, navigation }) {
 
   useEffect(() => {
     if (route?.params?.openCreate) {
+      setIsQuickAction(true);
       openCreate();
       navigation.setParams?.({ openCreate: false });
     }
@@ -171,6 +173,15 @@ export default function InventoryScreen({ route, navigation }) {
       setModalVisible(false);
       setEditingItem(null);
       setFormData(DEFAULT_FORM);
+      if (isQuickAction) {
+        setIsQuickAction(false);
+        if (route.params?.fromDashboard) {
+          navigation.goBack();
+          navigation.navigate('Dashboard');
+        } else {
+          navigation.goBack();
+        }
+      }
     } catch (error) {
       setBanner({ tone: 'error', title: t('common.error'), message: error.message });
       Alert.alert(t('common.error'), error.message);
@@ -202,6 +213,15 @@ export default function InventoryScreen({ route, navigation }) {
           eyebrow: t('inventory.title'),
           title: formatCurrency(grandTotalCost, currency),
           subtitle: projectName || t('projects.title'),
+          leftActionIcon: 'arrow-back',
+          onLeftActionPress: () => {
+            if (route.params?.fromDashboard) {
+              navigation.goBack();
+              navigation.navigate('Dashboard');
+            } else {
+              navigation.goBack();
+            }
+          },
           actionIcon: 'add',
           onActionPress: openCreate,
           children: (
@@ -251,7 +271,18 @@ export default function InventoryScreen({ route, navigation }) {
       <ResourceFormModal
         visible={modalVisible}
         title={editingItem ? t('inventory.edit_title') : t('inventory.create_title')}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false);
+          if (isQuickAction) {
+            setIsQuickAction(false);
+            if (route.params?.fromDashboard) {
+              navigation.goBack();
+              navigation.navigate('Dashboard');
+            } else {
+              navigation.goBack();
+            }
+          }
+        }}
       >
         <StitchInput label={t('inventory.fields.name')} value={formData.name} onChangeText={(name) => setFormData((p) => ({ ...p, name }))} />
         <StitchInput label={t('inventory.fields.category')} value={formData.category} onChangeText={(category) => setFormData((p) => ({ ...p, category }))} />

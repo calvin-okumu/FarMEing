@@ -80,19 +80,6 @@ export default function AddSaleScreen({ route, navigation }) {
   useEffect(() => {
     const pid = projectId || project?.id;
     if (!pid) {
-      setAllSaleHarvests([]);
-      return;
-    }
-    const sub = database.get('sale_harvests')
-      .query(Q.on('sales', Q.where('project_id', pid)), Q.where('is_deleted', false))
-      .observe()
-      .subscribe(setAllSaleHarvests);
-    return () => sub.unsubscribe();
-  }, [projectId, project?.id]);
-
-  useEffect(() => {
-    const pid = projectId || project?.id;
-    if (!pid) {
       setBlocks([]);
       setBlockId('');
       return;
@@ -105,12 +92,22 @@ export default function AddSaleScreen({ route, navigation }) {
   }, [projectId, project?.id]);
 
   useEffect(() => {
-    if (linkedHarvestIds.length > 0) {
-      const sum = linkedHarvestIds.reduce((acc, id) => {
+    if (linkedHarvestIds.length > 0 && availableHarvests.length > 0) {
+      // Ensure we only keep linked harvests that are actually available in the current block
+      const availableIds = new Set(availableHarvests.map(h => h.id));
+      const validLinks = linkedHarvestIds.filter(id => availableIds.has(id));
+      
+      if (validLinks.length !== linkedHarvestIds.length) {
+        setLinkedHarvestIds(validLinks);
+      }
+
+      const sum = validLinks.reduce((acc, id) => {
         const h = availableHarvests.find(ah => ah.id === id);
         return acc + (h ? (h.weight - (h.rejectedWeight || 0)) : 0);
       }, 0);
       setWeightSold(String(sum.toFixed(2)));
+    } else if (linkedHarvestIds.length === 0) {
+      setWeightSold('0.00');
     }
   }, [linkedHarvestIds, availableHarvests]);
 
@@ -296,11 +293,11 @@ export default function AddSaleScreen({ route, navigation }) {
           for (const ep of existingPayments) {
             const key = `${ep.amount}_${ep.date}`;
             if (paymentKeys.has(key)) {
-              await ep.update((draft) => { draft.isDeleted = true; });
+              await ep.update((draft) => { markRecordDeleted(draft); });
             } else {
               paymentKeys.add(key);
               if (!keptIds.includes(ep.id)) {
-                await ep.update((draft) => { draft.isDeleted = true; });
+                await ep.update((draft) => { markRecordDeleted(draft); });
               }
             }
           }
@@ -312,6 +309,7 @@ export default function AddSaleScreen({ route, navigation }) {
                   draft.amount = parseFloat(p.amount);
                   draft.date = p.date.getTime();
                   draft.note = p.note || '';
+                  markRecordUpdated(draft);
                 });
               }
             } else {
@@ -331,7 +329,7 @@ export default function AddSaleScreen({ route, navigation }) {
           // Mark removed links as deleted
           for (const sh of existingSaleHarvests) {
             if (!linkedHarvestIds.includes(sh.harvestId)) {
-              await sh.update(d => { d.isDeleted = true; });
+              await sh.update(d => { markRecordDeleted(d); });
             }
           }
           // Create new links
@@ -386,15 +384,7 @@ export default function AddSaleScreen({ route, navigation }) {
 
       syncAll().catch(() => {});
       
-      const activeProjectId = project?.id || projectId;
-      if (fromDashboard && activeProjectId) {
-        navigation.replace('Projects', {
-          screen: 'ProjectDetail',
-          params: { projectId: activeProjectId, initialTab: 'sales' }
-        });
-      } else {
-        navigation.goBack();
-      }
+      navigation.goBack();
     } catch (err) {
       setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('sales.errors.save_local') });
       Alert.alert(t('common.error'), err.message || t('sales.errors.save_local'));
@@ -413,16 +403,7 @@ export default function AddSaleScreen({ route, navigation }) {
           { label: t('sales.total_revenue'), value: formatCurrency(total, currency), icon: 'cash-outline' },
           { label: t('harvest.quantity_heading'), value: `${weightSold || 0} kg`, icon: 'leaf-outline' },
         ],
-        onBack: () => {
-          if (fromDashboard && (project?.id || projectId)) {
-            navigation.replace('Projects', {
-              screen: 'ProjectDetail',
-              params: { projectId: project?.id || projectId, initialTab: 'sales' }
-            });
-          } else {
-            navigation.goBack();
-          }
-        },
+        onBack: () => navigation.goBack(),
       })}
       bodyContentStyle={styles.content}
       banner={banner}
@@ -613,31 +594,46 @@ export default function AddSaleScreen({ route, navigation }) {
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
-                {(availableHarvests || []).filter(h => {
-                  const isTaken = allSaleHarvests.some(sh => sh.harvestId === h.id && sh.saleId !== itemId && !sh.isDeleted);
-                  return !isTaken || linkedHarvestIds.includes(h.id);
-                }).map(harvest => (
-                  <TouchableOpacity
-                    key={harvest.id}
-                    style={[styles.harvestOption, linkedHarvestIds.includes(harvest.id) && styles.harvestOptionActive]}
-                    onPress={() => {
-                      setLinkedHarvestIds(prev =>
-                        prev.includes(harvest.id)
-                          ? prev.filter(id => id !== harvest.id)
-                          : [...prev, harvest.id]
-                      );
-                      setShowHarvestPicker(false);
-                    }}
-
-                    activeOpacity={0.88}
-                  >
-                    <View>
-                      <Text style={styles.harvestOptionTitle}>{`${harvest.crop} - ${formatAppDate(harvest.date)}`}</Text>
-                      <Text style={styles.harvestOptionMeta}>{`${harvest.weight - (harvest.rejectedWeight || 0)} ${harvest.unit}`}</Text>
-                    </View>
-                    {linkedHarvestIds.includes(harvest.id) ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
-                  </TouchableOpacity>
-                ))}
+                {(availableHarvests || []).map(harvest => {
+                  const isLinkedToOther = allSaleHarvests.some(sh => sh.harvestId === harvest.id && sh.saleId !== itemId && !sh.isDeleted);
+                  const isSelected = linkedHarvestIds.includes(harvest.id);
+                  
+                  return (
+                    <TouchableOpacity
+                      key={harvest.id}
+                      style={[
+                        styles.harvestOption, 
+                        isSelected && styles.harvestOptionActive,
+                        isLinkedToOther && styles.harvestOptionDisabled
+                      ]}
+                      disabled={isLinkedToOther}
+                      onPress={() => {
+                        setLinkedHarvestIds(prev =>
+                          prev.includes(harvest.id)
+                            ? prev.filter(id => id !== harvest.id)
+                            : [...prev, harvest.id]
+                        );
+                        // Optional: close on select? User might want to select multiple.
+                      }}
+                      activeOpacity={0.88}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.harvestOptionTitle, isLinkedToOther && { color: stitchTheme.colors.textMuted }]}>
+                          {`${harvest.crop} - ${formatAppDate(harvest.date)}`}
+                        </Text>
+                        <Text style={styles.harvestOptionMeta}>
+                          {`${harvest.weight - (harvest.rejectedWeight || 0)} ${harvest.unit}`}
+                          {isLinkedToOther ? ` • ${t('sales.already_linked') || 'Already Linked'}` : ''}
+                        </Text>
+                      </View>
+                      {isSelected ? <Ionicons name='checkmark-circle' size={18} color={stitchTheme.colors.primaryContainer} /> : null}
+                      {isLinkedToOther ? <Ionicons name='lock-closed-outline' size={16} color={stitchTheme.colors.textMuted} /> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+                {availableHarvests.length === 0 && (
+                  <Text style={styles.emptyText}>{t('harvest.no_harvests_block') || 'No harvests found for this block'}</Text>
+                )}
               </ScrollView>
             </View>
           </View>
@@ -791,8 +787,10 @@ const styles = StyleSheet.create({
   linkedHarvestsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: stitchTheme.spacing.sm },
   harvestOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, marginBottom: stitchTheme.spacing.xs, },
   harvestOptionActive: { backgroundColor: stitchTheme.colors.surfaceTint },
+  harvestOptionDisabled: { opacity: 0.6, backgroundColor: stitchTheme.colors.surfaceMuted },
   harvestOptionTitle: { fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '800', color: stitchTheme.colors.text },
   harvestOptionMeta: { fontSize: stitchTheme.typography.bodySmall.fontSize, lineHeight: stitchTheme.typography.bodySmall.lineHeight, color: stitchTheme.colors.textMuted, marginTop: 2 },
+  emptyText: { textAlign: 'center', marginTop: 32, color: stitchTheme.colors.textMuted, fontSize: 14, fontWeight: '600' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: stitchTheme.radius.xl, borderTopRightRadius: stitchTheme.radius.xl, maxHeight: '80%', paddingBottom: 40 },

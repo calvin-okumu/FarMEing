@@ -188,7 +188,7 @@ export default function ProjectsScreen({ navigation, route }) {
           const newNames = letters.slice(0, newCount).map(l => `Block ${l}`);
           for (const b of existingBlocks) {
             if (!newNames.includes(b.name)) {
-              await b.update((d) => { d.isDeleted = true; });
+              await b.update((d) => { markRecordDeleted(d); });
             }
           }
           for (let i = 0; i < newCount; i++) {

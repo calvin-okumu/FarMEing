@@ -7,8 +7,8 @@ export default function StitchFormHero({ eyebrow, title, subtitle, pills, onBack
     eyebrow,
     title,
     subtitle,
-    actionIcon: 'arrow-back',
-    onActionPress: onBack,
+    leftActionIcon: 'arrow-back',
+    onLeftActionPress: onBack,
     children: pills?.length ? (
       <View style={styles.pillRow}>
         {pills.map((pill, i) => (

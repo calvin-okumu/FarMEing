@@ -18,6 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import api, { BASE_URL } from '../lib/api';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import EmptyState from '../components/ui/EmptyState';
 import { useTranslation } from 'react-i18next';
 import { stitchTheme, stitchShadows } from '../theme/stitchTheme';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
@@ -31,7 +32,7 @@ import { computeProjectSummary } from '../utils/localAnalytics';
 import i18n from '../i18n';
 import { formatErrorMessage } from '../services/http';
 
-import { deleteLocalModel, updateLinkedSalesWeights } from '../utils/resourceMutations';
+import { deleteLocalModel, updateLinkedSalesWeights, deleteSaleCascade } from '../utils/resourceMutations';
 import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import useAuthStore from '../store/useAuthStore';
@@ -85,11 +86,15 @@ function TimelineSection({ title, tone, items, t, currency }) {
                 <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{item.timeLabel}</Text>
                 <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{item.title}</Text>
               </View>
-              {item.amount ? (
-                <Text style={[styles.collectionAmount, { flexShrink: 0 }, item.type === 'SALE' ? styles.collectionAmountPositive : (item.type !== 'HARVEST' ? styles.collectionAmountNegative : null)]}>
-                  {item.type === 'HARVEST' ? `${item.amount} kg` : formatCurrency(item.amount, currency)}
-                </Text>
-              ) : null}
+              <View style={{ alignItems: 'flex-end' }}>
+                {item.amount ? (
+                  <Text style={[styles.collectionAmount, { flexShrink: 0 }, item.type === 'SALE' ? styles.collectionAmountPositive : (item.type !== 'HARVEST' ? styles.collectionAmountNegative : null)]}>
+                    {item.type === 'HARVEST' ? `${item.amount} kg` : formatCurrency(item.amount, currency)}
+                  </Text>
+                ) : null}
+                {item.type === 'SALE' && item.isPaid && <StitchBadge label="PAID" tone="success" style={{ marginTop: 4 }} />}
+                {item.type === 'HARVEST' && item.isPaid && <StitchBadge label="SOLD" tone="success" style={{ marginTop: 4 }} />}
+              </View>
             </View>
             <Text style={styles.collectionDescription} numberOfLines={2} ellipsizeMode='tail'>{item.body}</Text>
           </View>
@@ -135,6 +140,7 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [workEntries, setWorkEntries] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [sales, setSales] = useState([]);
+  const [saleHarvests, setSaleHarvests] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [equipment, setEquipment] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -244,7 +250,7 @@ const handleInvite = async () => {
              // In an offline-first app, we mark as deleted locally and sync
              const record = await database.get('project_access').find(accessId);
              await database.write(async () => {
-               await record.update(r => { r.isDeleted = true; });
+               await record.update(r => { markRecordDeleted(r); });
              });
              syncAll();
           } catch (err) {
@@ -333,6 +339,7 @@ const handleInvite = async () => {
         database.get('equipments').query(Q.where('project_id', Q.oneOf(projectIds)), Q.where('is_deleted', false)).observe().subscribe(setEquipment),
         database.get('employees').query(Q.where('is_deleted', false)).observe().subscribe(setEmployees),
         database.get('sale_payments').query(Q.where('is_deleted', false)).observe().subscribe(setSalePayments),
+        database.get('sale_harvests').query(Q.on('sales', Q.where('project_id', Q.oneOf(projectIds))), Q.where('is_deleted', false)).observe().subscribe(setSaleHarvests),
         database.get('project_blocks').query(Q.where('project_id', projectId), Q.where('is_deleted', false)).observe().subscribe(setBlocks),
       ];
 
@@ -360,11 +367,23 @@ const handleInvite = async () => {
   const budgetProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const selectedBlock = selectedBlockId ? blocks.find(b => b.id === selectedBlockId) : null;
 
-  const employeeMap = new Map();
-  employees.forEach((employee) => {
-    employeeMap.set(employee.id, employee.name);
-    if (employee.remoteId) employeeMap.set(employee.remoteId, employee.name);
-  });
+  const employeeMap = useMemo(() => {
+    const map = new Map();
+    employees.forEach((employee) => {
+      map.set(employee.id, employee.name);
+      if (employee.remoteId) map.set(employee.remoteId, employee.name);
+    });
+    return map;
+  }, [employees]);
+
+  const blockMap = useMemo(() => {
+    const map = new Map();
+    blocks.forEach((block) => {
+      map.set(block.id, block.name);
+      if (block.remoteId) map.set(block.remoteId, block.name);
+    });
+    return map;
+  }, [blocks]);
 
   const saleCustomerMap = useMemo(() => {
     const map = {};
@@ -385,6 +404,34 @@ const handleInvite = async () => {
     for (const id of Object.keys(map)) map[id].sort((a, b) => a.date - b.date);
     return map;
   }, [salePayments]);
+
+  const harvestSaleStatus = useMemo(() => {
+    const map = {};
+    const salesMap = new Map(sales.map(s => [s.id, s]));
+    const saleHarvestsMap = new Map();
+    
+    saleHarvests.forEach(sh => {
+      if (!saleHarvestsMap.has(sh.harvestId)) saleHarvestsMap.set(sh.harvestId, []);
+      saleHarvestsMap.get(sh.harvestId).push(sh.saleId);
+    });
+
+    harvests.forEach(h => {
+      const linkedSaleIds = saleHarvestsMap.get(h.id) || [];
+      const linkedSales = linkedSaleIds.map(sid => salesMap.get(sid)).filter(Boolean);
+      
+      if (linkedSales.length === 0) {
+        map[h.id] = { status: 'unsold' };
+      } else {
+        const allPaid = linkedSales.every(s => s.paymentStatus === 'paid' || (s.balanceDue != null && s.balanceDue <= 0));
+        map[h.id] = { 
+          status: allPaid ? 'paid' : 'sold',
+          salesCount: linkedSales.length,
+          totalRevenue: linkedSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0)
+        };
+      }
+    });
+    return map;
+  }, [harvests, sales, saleHarvests]);
 
   const localTimeline = useMemo(() => {
     const workItems = workEntries.map((entry) => ({
@@ -410,32 +457,46 @@ const handleInvite = async () => {
       amount: expense.amount,
     }));
 
-    const harvestItems = harvests.map((harvest) => ({
-      type: 'HARVEST',
-      date: harvest.date,
-      icon: 'leaf-outline',
-      title: `Harvest: ${harvest.crop}`,
-      body: harvest.notes || 'Yield recorded',
-      timeLabel: formatAppDate(harvest.date),
-      dotColor: stitchTheme.colors.primaryDim,
-      amount: harvest.approvedWeight,
-    }));
+    const harvestItems = harvests.map((harvest) => {
+      const saleInfo = harvestSaleStatus[harvest.id] || { status: 'unsold' };
+      const isPaid = saleInfo.status === 'paid';
+      const isSold = saleInfo.status === 'sold';
+      const blockName = blockMap.get(harvest.blockId);
+      
+      return {
+        type: 'HARVEST',
+        date: harvest.date,
+        icon: 'leaf-outline',
+        title: `Harvest: ${harvest.crop}${blockName ? ` • ${blockName}` : ''}`,
+        body: harvest.notes || 'Yield recorded',
+        timeLabel: formatAppDate(harvest.date),
+        dotColor: isPaid ? stitchTheme.colors.primaryDim : (isSold ? stitchTheme.colors.accentBrown : stitchTheme.colors.primaryDim),
+        amount: harvest.approvedWeight,
+        isPaid,
+        isSold,
+      };
+    });
 
-    const saleItems = sales.map((sale) => ({
-      type: 'SALE',
-      date: sale.date,
-      icon: 'cash-outline',
-      title: `Sale to ${sale.customer || 'Cash'}`,
-      body: [
-        sale.paymentStatus 
-          ? `${sale.paymentStatus.slice(0, 1).toUpperCase() + sale.paymentStatus.slice(1)} — ${formatCurrency(sale.totalAmount - (sale.balanceDue || 0), currency)} paid` 
-          : '', 
-        sale.notes || 'Revenue recorded'
-      ].filter(Boolean).join(' | '),
-      timeLabel: formatAppDate(sale.date),
-      dotColor: stitchTheme.colors.accentBrown,
-      amount: sale.totalAmount,
-    }));
+    const saleItems = sales.map((sale) => {
+      const isPaid = sale.paymentStatus === 'paid' || (sale.balanceDue != null && sale.balanceDue <= 0);
+      const blockName = blockMap.get(sale.blockId);
+      return {
+        type: 'SALE',
+        date: sale.date,
+        icon: 'cash-outline',
+        title: `Sale to ${sale.customer || 'Cash'}${blockName ? ` • ${blockName}` : ''}`,
+        body: [
+          sale.paymentStatus 
+            ? `${sale.paymentStatus.slice(0, 1).toUpperCase() + sale.paymentStatus.slice(1)} — ${formatCurrency(sale.totalAmount - (sale.balanceDue || 0), currency)} paid` 
+            : '', 
+          sale.notes || 'Revenue recorded'
+        ].filter(Boolean).join(' | '),
+        timeLabel: formatAppDate(sale.date),
+        dotColor: isPaid ? stitchTheme.colors.primaryDim : stitchTheme.colors.accentBrown,
+        amount: sale.totalAmount,
+        isPaid,
+      };
+    });
 
     const inventoryItemsTimeline = inventoryItems.map((item) => ({
       type: 'INVENTORY',
@@ -470,7 +531,7 @@ const handleInvite = async () => {
 
     // Sort descending (newest first)
     return all.sort((a, b) => (b.date || 0) - (a.date || 0));
-  }, [workEntries, expenses, harvests, sales, inventoryItems, equipment, employeeMap, t]);
+  }, [workEntries, expenses, harvests, sales, inventoryItems, equipment, employeeMap, blockMap, harvestSaleStatus, t]);
 
   const collectionSearch = searchQuery.trim().toLowerCase();
   const isLocalOnly = project?._raw?._status !== 'synced';
@@ -524,12 +585,24 @@ const handleInvite = async () => {
     return [...base].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
   }, [equipment, collectionSearch, sortMode]);
 
-  const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'equipment', 'team'].includes(activeTab);
+  const filteredInventoryItems = useMemo(() => {
+    const base = collectionSearch
+      ? inventoryItems.filter((item) => [item.name, item.category].filter(Boolean).some((value) => value.toLowerCase().includes(collectionSearch)))
+      : inventoryItems;
+    return [...base].sort((a, b) => sortMode === 'latest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.name || '').localeCompare(b.name || ''));
+  }, [inventoryItems, collectionSearch, sortMode]);
+
+  const showCollectionControls = ['budget', 'expenses', 'labor', 'harvest', 'sales', 'equipment', 'inventory', 'team'].includes(activeTab);
 
   const renderCollectionCard = (title, meta, amount, tone = 'default', type, item, description = '') => {
-    const accentColor = tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown;
+    const isPaidSale = type === 'sales' && (item.paymentStatus === 'paid' || (item.balanceDue != null && item.balanceDue <= 0));
+    const saleInfo = type === 'harvest' ? (harvestSaleStatus[item.id] || { status: 'unsold' }) : null;
+    const isPaidHarvest = type === 'harvest' && saleInfo?.status === 'paid';
+
+    const accentColor = (isPaidSale || isPaidHarvest) ? stitchTheme.colors.primaryDim : (tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown);
     const descColor = type === 'sales' && description ? stitchTheme.colors.accentRed : stitchTheme.colors.textMuted;
     const descWeight = type === 'sales' && description ? '800' : stitchTheme.typography.bodySmall.fontWeight;
+    
     return (
       <TouchableOpacity
         key={item.id}
@@ -551,7 +624,11 @@ const handleInvite = async () => {
             <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{meta}</Text>
             <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{title}</Text>
           </View>
-          <Text style={[styles.collectionAmount, { flexShrink: 0 }, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]} numberOfLines={1}>{amount}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.collectionAmount, { flexShrink: 0 }, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]} numberOfLines={1}>{amount}</Text>
+            {isPaidSale && <StitchBadge label="PAID" tone="success" style={{ marginTop: 4 }} />}
+            {isPaidHarvest && <StitchBadge label="SOLD" tone="success" style={{ marginTop: 4 }} />}
+          </View>
         </View>
         {description ? <Text style={[styles.collectionDescription, { color: descColor, fontWeight: descWeight }]} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
         <View style={styles.collectionActionRow}>
@@ -594,8 +671,8 @@ const handleInvite = async () => {
           subtitle: selectedBlock
             ? `${selectedBlock.crop || project.crop || ''}${selectedBlock.cropVariety ? ` (${selectedBlock.cropVariety})` : ''}${selectedBlock.landSize ? ` • ${selectedBlock.landSize} ${selectedBlock.landUnit || 'acres'}` : ''}${selectedBlock.expectedYield ? ` • ${selectedBlock.expectedYield} yield` : ''}`
             : `${project.landSize} ${project.landUnit} • ${project.startDate ? formatAppDate(project.startDate) : t('projects.fields.start_date')}`,
-          actionIcon: 'arrow-back',
-          onActionPress: () => navigation.goBack(),
+          leftActionIcon: 'arrow-back',
+          onLeftActionPress: () => navigation.goBack(),
           children: (
             <View style={styles.heroPills}>
               <StitchHeroPill label={t('dashboard.total_spent')} value={totalSpent} currency={currency} icon='wallet-outline' style={styles.heroPillPrimary} />
@@ -710,15 +787,21 @@ const handleInvite = async () => {
         )}
 
         {/* --- Content Tabs --- */}
-        {activeTab === 'budget' && filteredBudgetItems.map(item => renderCollectionCard(item.name, formatAppDate(item.createdAt), formatCurrency(item.total, currency), 'negative', 'budget', item, item.notes))}
-        {activeTab === 'expenses' && filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item, item.note))}
-        {activeTab === 'labor' && filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes))}
-        {activeTab === 'harvest' && filteredHarvests.map(item => renderCollectionCard(item.crop, formatAppDate(item.date), `${item.approvedWeight} kg`, 'default', 'harvest', item, item.notes))}
-        {activeTab === 'sales' && filteredSales.map(item => {
+        {activeTab === 'budget' && (filteredBudgetItems.length ? filteredBudgetItems.map(item => renderCollectionCard(item.name, formatAppDate(item.createdAt), formatCurrency(item.total, currency), 'negative', 'budget', item, item.notes)) : <EmptyState title={t('projects.empty_budget')} icon="card-outline" />)}
+        {activeTab === 'expenses' && (filteredExpenses.length ? filteredExpenses.map(item => renderCollectionCard(item.category, formatAppDate(item.date), formatCurrency(item.amount, currency), 'negative', 'expenses', item, item.note)) : <EmptyState title={t('projects.empty_expenses')} icon="receipt-outline" />)}
+        {activeTab === 'labor' && (filteredWorkEntries.length ? filteredWorkEntries.map(item => renderCollectionCard(`${employeeMap.get(item.employeeId) || ''} • ${item.activity}`, formatAppDate(item.date), formatCurrency(item.totalCost, currency), 'negative', 'labor', item, item.notes)) : <EmptyState title={t('projects.empty_labor')} icon="people-outline" />)}
+        {activeTab === 'harvest' && (filteredHarvests.length ? filteredHarvests.map(item => {
+          const blockName = blockMap.get(item.blockId);
+          const title = `${item.crop}${blockName ? ` • ${blockName}` : ''}`;
+          return renderCollectionCard(title, formatAppDate(item.date), `${item.approvedWeight} kg`, 'default', 'harvest', item, item.notes);
+        }) : <EmptyState title={t('projects.empty_harvest')} icon="leaf-outline" />)}
+        {activeTab === 'sales' && (filteredSales.length ? filteredSales.map(item => {
+          const blockName = blockMap.get(item.blockId);
+          const title = `${item.customer || 'Cash'}${blockName ? ` • ${blockName}` : ''}`;
           const due = item.balanceDue > 0 ? `${formatCurrency(item.balanceDue, currency)} due` : '';
-          return renderCollectionCard(item.customer || 'Cash', formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, due);
-        })}
-        {activeTab === 'equipment' && filteredEquipment.map(item => renderCollectionCard(item.name, item.type, t(`equipment.statuses.${item.status}`), item.status === 'OPERATIONAL' ? 'positive' : 'negative', 'equipment', item, item.model))}
+          return renderCollectionCard(title, formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, due);
+        }) : <EmptyState title={t('projects.empty_sales')} icon="cash-outline" />)}
+        {activeTab === 'equipment' && (filteredEquipment.length ? filteredEquipment.map(item => renderCollectionCard(item.name, item.type, t(`equipment.statuses.${item.status}`), item.status === 'OPERATIONAL' ? 'positive' : 'negative', 'equipment', item, item.model)) : <EmptyState title={t('projects.empty_equipment')} icon="construct-outline" />)}
 
         {activeTab === 'team' && (
           <View style={styles.teamTab}>
@@ -733,7 +816,7 @@ const handleInvite = async () => {
                 t={t}
               />
             ))}
-            {!teamLoading && team.length === 0 && <Text style={styles.emptyText}>{t('team.no_members')}</Text>}
+            {!teamLoading && team.length === 0 && <EmptyState title={t('team.no_members')} icon="people-outline" />}
 
             {/* Invitations Section */}
             {activeInvitations.length > 0 && (
@@ -768,19 +851,33 @@ const handleInvite = async () => {
           </View>
         )}
 
-        {activeTab === 'inventory' && (
+        {activeTab === 'inventory' && (filteredInventoryItems.length ? filteredInventoryItems.map(item => (
+          <View key={item.id} style={styles.collectionCard}>
+            <View style={[styles.cardAccent, { backgroundColor: stitchTheme.colors.primaryDim }]} />
+            <View style={styles.collectionTopRow}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{item.name}</Text>
+                <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{item.category}</Text>
+              </View>
+              <Text style={[styles.collectionAmount, { flexShrink: 0 }]} numberOfLines={1}>{item.quantity} {item.unit}</Text>
+            </View>
+            <Text style={styles.collectionDescription} numberOfLines={2} ellipsizeMode='tail'>
+              {formatCurrency(item.totalCost, currency)}{item.usedQty > 0 ? ` • ${t('inventory.used_qty')}: ${item.usedQty} ${item.unit}` : ''}
+            </Text>
+          </View>
+        )) : (
           <View style={styles.teamTab}>
-            <Text style={styles.emptyText}>{t('inventory.accessible_from_workspace', { defaultValue: 'Inventory management available from the workspace menu.' })}</Text>
+            <EmptyState title={t('inventory.empty_title')} subtitle={t('inventory.empty_subtitle')} icon="cube-outline" />
             <StitchPrimaryButton
-              label="Add Inventory Item"
+              label={t('inventory.create_title')}
               onPress={() => navigation.navigate('Inventory', { projectId: project.id, projectName: project.name, openCreate: true })}
               icon="cube-outline"
-              style={{ marginTop: 20, marginHorizontal: 16 }}
+              style={{ marginTop: 4, marginHorizontal: 16 }}
             />
           </View>
-        )}
+        ))}
 
-        {activeTab === 'timeline' && timelineGroups.map((group) => (
+        {activeTab === 'timeline' && (timelineGroups.length ? timelineGroups.map((group) => (
           <TimelineSection
             key={group.title}
             title={group.title}
@@ -789,7 +886,7 @@ const handleInvite = async () => {
             t={t}
             currency={currency}
           />
-        ))}
+        )) : <EmptyState title={t('projects.empty_timeline')} icon="time-outline" />)}
 
         <View style={{ height: 40 }} />
       </StitchDashboardShell>
@@ -844,11 +941,16 @@ const handleInvite = async () => {
         await database.write(async () => {
           const tableMap = { budget: 'budget_items', expenses: 'expenses', labor: 'work_entries', harvest: 'harvests', sales: 'sales', equipment: 'equipments' };
           const record = await database.get(tableMap[type]).find(item.id);
-          await deleteLocalModel(record);
+          if (type === 'sales') {
+            await deleteSaleCascade(record);
+          } else {
+            await deleteLocalModel(record);
+          }
           if (type === 'harvest') {
             await updateLinkedSalesWeights(database, item.id);
           }
-          });        setDeleteTarget(null);
+          });
+        setDeleteTarget(null);
         syncAll();
       }} />
 

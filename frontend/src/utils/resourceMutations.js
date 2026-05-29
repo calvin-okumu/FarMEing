@@ -90,11 +90,25 @@ export async function deleteLocalModel(record) {
   });
 }
 
+export async function deleteSaleCascade(sale) {
+  const database = sale.database;
+  const harvests = await sale.saleHarvests.fetch();
+  const payments = await sale.salePayments.fetch();
+
+  for (const sh of harvests) {
+    await deleteLocalModel(sh);
+  }
+  for (const p of payments) {
+    await deleteLocalModel(p);
+  }
+  await deleteLocalModel(sale);
+}
+
 export async function deleteProjectCascade(database, projectId) {
   await database.write(async () => {
     const projectRecord = await database.get('farm_projects').find(projectId);
-    await deleteLocalModel(projectRecord);
-
+    
+    // Child records with project_id
     for (const table of PROJECT_BOUND_TABLES) {
       const related = await database.get(table).query(
         Q.where('project_id', projectId),
@@ -102,8 +116,14 @@ export async function deleteProjectCascade(database, projectId) {
       ).fetch();
 
       for (const record of related) {
-        await deleteLocalModel(record);
+        if (table === 'sales') {
+          await deleteSaleCascade(record);
+        } else {
+          await deleteLocalModel(record);
+        }
       }
     }
+
+    await deleteLocalModel(projectRecord);
   });
 }

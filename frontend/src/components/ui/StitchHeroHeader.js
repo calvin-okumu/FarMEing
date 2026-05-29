@@ -25,6 +25,8 @@ export default function StitchHeroHeader({
   subtitle,
   actionIcon,
   onActionPress,
+  leftActionIcon,
+  onLeftActionPress,
   children,
   style,
   variant = 'default',
@@ -37,6 +39,9 @@ export default function StitchHeroHeader({
       <View style={[styles.circleSmall, compact && styles.circleSmallCompact]} />
 
       <View style={[styles.topRow, compact && styles.topRowCompact]}>
+        {onLeftActionPress ? (
+          <StitchIconButton icon={leftActionIcon || 'arrow-back'} onPress={onLeftActionPress} iconSize={22} style={styles.leftActionButton} />
+        ) : null}
         <View style={styles.copy}>
           {eyebrow ? <Text style={[styles.eyebrow, compact && styles.eyebrowCompact]}>{eyebrow}</Text> : null}
           <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
@@ -144,6 +149,20 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     marginTop: 0,
+    width: 44,
+    height: 44,
+    borderRadius: stitchTheme.radius.sm,
+    backgroundColor: 'rgba(253,250,244,0.18)',
+    borderColor: 'rgba(255,255,255,0.34)',
+    shadowColor: '#08160f',
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  leftActionButton: {
+    marginTop: 0,
+    marginRight: 8,
     width: 44,
     height: 44,
     borderRadius: stitchTheme.radius.sm,
