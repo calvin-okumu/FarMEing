@@ -172,16 +172,8 @@ export default function AddHarvestScreen({ route, navigation }) {
           });
 
           syncAll().catch(() => {});
-          
-          if (fromDashboard) {
-            // If we came from Dashboard, go to the project detail screen we just added harvest to
-            navigation.replace('Projects', {
-              screen: 'ProjectDetail',
-              params: { projectId: activeProjectId, initialTab: 'harvest' }
-            });
-          } else {
-            navigation.goBack();
-          }
+
+          navigation.goBack();
           } catch (err) {
           setBanner({ tone: 'error', title: t('common.error'), message: err.message || t('harvest.errors.save_local') });
           Alert.alert(t('common.error'), err.message || t('harvest.errors.save_local'));
@@ -201,16 +193,7 @@ export default function AddHarvestScreen({ route, navigation }) {
             { label: 'Approved', value: `${approvedWeight} ${unit}`, icon: 'checkmark-circle-outline' },
             { label: 'Rejected', value: `${rejectedWeight || 0} ${unit}`, icon: 'close-circle-outline' },
           ],
-          onBack: () => {
-            if (fromDashboard && (project?.id || projectId)) {
-              navigation.replace('Projects', {
-                screen: 'ProjectDetail',
-                params: { projectId: project?.id || projectId, initialTab: 'harvest' }
-              });
-            } else {
-              navigation.goBack();
-            }
-          },
+          onBack: () => navigation.goBack(),
         })}
         bodyContentStyle={styles.content}
         banner={banner}

@@ -107,6 +107,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             draft.quantity = parseFloat(quantity);
             draft.unit = unit.trim();
             draft.unitPrice = parseFloat(unitPrice);
+            draft.total = total;
             draft.blockId = blockId || null;
           });
           setBanner({ tone: 'success', title: t('feedback.updated'), message: t('feedback.saved_remote') });
@@ -119,6 +120,7 @@ export default function AddBudgetItemScreen({ route, navigation }) {
             record.quantity = parseFloat(quantity);
             record.unit = unit.trim();
             record.unitPrice = parseFloat(unitPrice);
+            record.total = total;
             record.blockId = blockId || null;
             record.isDeleted = false;
           });

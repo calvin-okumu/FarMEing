@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { updateProfile } from '../services/authService';
 
 const LANG_KEY = 'user_language';
 const CURRENCY_KEY = 'user_currency';
@@ -46,6 +47,7 @@ const useSettingsStore = create((set) => ({
     try {
       await SecureStore.setItemAsync(LANG_KEY, lang);
       set({ language: lang });
+      updateProfile({ locale: lang }).catch(() => {});
     } catch (err) {
       console.warn('Failed to save language preference');
     }
@@ -55,6 +57,7 @@ const useSettingsStore = create((set) => ({
     try {
       await SecureStore.setItemAsync(CURRENCY_KEY, currency);
       set({ currency });
+      updateProfile({ currency }).catch(() => {});
     } catch (err) {
       console.warn('Failed to save currency preference');
     }
@@ -66,14 +69,23 @@ const useSettingsStore = create((set) => ({
         SecureStore.getItemAsync(LANG_KEY),
         SecureStore.getItemAsync(CURRENCY_KEY),
       ]);
+
+      // 1) Stored preference exists — use it, with backend as fallback
       if (storedLang) {
-        set({ language: storedLang, currency: storedCurrency || user?.currency || 'USD' });
+        const effective = storedCurrency || user?.currency || 'USD';
+        set({ language: storedLang, currency: effective });
         return storedLang;
       }
 
-      // Default based on role if no preference stored
+      // 2) No stored preference and no authenticated user — set in-memory only
+      if (!user) {
+        set({ language: 'en', currency: 'USD' });
+        return 'en';
+      }
+
+      // 3) Authenticated user, no stored pref yet — use backend defaults + persist
       const defaultLang = user?.role === 'WORKER' ? 'sw' : 'en';
-      const defaultCurrency = storedCurrency || user?.currency || 'USD';
+      const defaultCurrency = user?.currency || 'USD';
       await Promise.all([
         SecureStore.setItemAsync(LANG_KEY, defaultLang),
         SecureStore.setItemAsync(CURRENCY_KEY, defaultCurrency),

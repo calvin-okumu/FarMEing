@@ -7,6 +7,7 @@ import { database } from '../db';
 import { syncAll } from '../services/syncService';
 import api from '../lib/api';
 import { formatErrorMessage } from '../services/http';
+import EmptyState from '../components/ui/EmptyState';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { StitchChip, StitchSurface } from '../components/ui/StitchPrimitives';
@@ -235,7 +236,7 @@ export default function DashboardScreen({ navigation }) {
         if (resourceId === 'inventory') {
             navigation.navigate('Projects', {
                 screen: 'Inventory',
-                params: { projectId: project.id, projectName: project.name, openCreate: true },
+                params: { projectId: project.id, projectName: project.name, openCreate: true, fromDashboard: true },
             });
             return;
         }
@@ -302,6 +303,14 @@ export default function DashboardScreen({ navigation }) {
                 }}
                 bodyContentStyle={styles.list}
             >
+                {activeProjects.length === 0 ? (
+                  <EmptyState
+                    icon="leaf-outline"
+                    title={t('dashboard.empty_title')}
+                    subtitle={t('dashboard.empty_subtitle')}
+                  />
+                ) : (
+                <>
                 {/* Financial Pulse */}
                 <StitchSurface style={styles.pulseCard} contentStyle={styles.pulseContent} tone='raised' compact>
                     <View style={styles.pulseTopRow}>
@@ -363,6 +372,8 @@ export default function DashboardScreen({ navigation }) {
                     </View>
                 ) : null}
 
+                </>
+                )}
                 <Modal visible={joinModalVisible} animationType="slide" transparent>
                     <View style={styles.modalOverlay}>
                         <View style={styles.modalSheet}>
@@ -416,7 +427,7 @@ export default function DashboardScreen({ navigation }) {
                                 <Text style={styles.modalTitle}>{t('dashboard.active_project')}</Text>
                                 <Text style={styles.modalSubtitle}>{t('dashboard.filter_overview')}</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setProjectPickerVisible(false)} activeOpacity={0.88}>
+                            <TouchableOpacity onPress={() => { setProjectPickerVisible(false); setPendingResource(null); }} activeOpacity={0.88}>
                                 <Ionicons name='close-outline' size={22} color={colors.text} />
                             </TouchableOpacity>
                         </View>
