@@ -11,6 +11,7 @@ export default class SalePayment extends Model {
   @text('sale_id') saleId;
   @field('amount') amount;
   @field('date') date;
+  @text('method') method;
   @text('note') note;
   @field('is_deleted') isDeleted;
   @text('sync_status') syncStatus;

@@ -33,7 +33,8 @@
     },
     "today": "Leo",
     "earlier": "Awali",
-    "select_block": "Chagua Kitalu"
+    "select_block": "Chagua Kitalu",
+    "not_set": "Haijawekwa"
   },
   "months": {
     "january": "Januari",
@@ -710,6 +711,10 @@
       "en": "Kiingereza",
       "sw": "Kiswahili"
     },
+    "data_management": "Usimamizi wa Data",
+    "full_backup": "Backup Kamili (Excel)",
+    "full_backup_subtitle": "Hamisha miradi na rekodi zote kama backup",
+    "exporting": "Inahamisha data...",
     "sync_status": "Hali ya Usawazishaji",
     "sync_states": {
       "idle": "Imetulia",

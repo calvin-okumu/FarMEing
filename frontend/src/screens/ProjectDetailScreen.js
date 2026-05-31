@@ -28,6 +28,7 @@ import StitchDashboardShell, { StitchDashboardSectionHeader } from '../component
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
+import { markRecordDeleted } from '../utils/localRecord';
 import { computeProjectSummary } from '../utils/localAnalytics';
 import i18n from '../i18n';
 import { formatErrorMessage } from '../services/http';
@@ -596,12 +597,13 @@ const handleInvite = async () => {
 
   const renderCollectionCard = (title, meta, amount, tone = 'default', type, item, description = '') => {
     const isPaidSale = type === 'sales' && (item.paymentStatus === 'paid' || (item.balanceDue != null && item.balanceDue <= 0));
+    const isOverdue = type === 'sales' && !isPaidSale && item.dueDate && item.dueDate < Date.now();
     const saleInfo = type === 'harvest' ? (harvestSaleStatus[item.id] || { status: 'unsold' }) : null;
     const isPaidHarvest = type === 'harvest' && saleInfo?.status === 'paid';
 
-    const accentColor = (isPaidSale || isPaidHarvest) ? stitchTheme.colors.primaryDim : (tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown);
-    const descColor = type === 'sales' && description ? stitchTheme.colors.accentRed : stitchTheme.colors.textMuted;
-    const descWeight = type === 'sales' && description ? '800' : stitchTheme.typography.bodySmall.fontWeight;
+    const accentColor = isOverdue ? stitchTheme.colors.accentRed : ((isPaidSale || isPaidHarvest) ? stitchTheme.colors.primaryDim : (tone === 'positive' ? stitchTheme.colors.primaryDim : tone === 'negative' ? stitchTheme.colors.accentRed : stitchTheme.colors.accentBrown));
+    const descColor = (type === 'sales' && (description || isOverdue)) ? stitchTheme.colors.accentRed : stitchTheme.colors.textMuted;
+    const descWeight = (type === 'sales' && (description || isOverdue)) ? '800' : stitchTheme.typography.bodySmall.fontWeight;
     
     return (
       <TouchableOpacity
@@ -622,12 +624,16 @@ const handleInvite = async () => {
         <View style={styles.collectionTopRow}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
             <Text style={styles.collectionTitle} numberOfLines={1} ellipsizeMode='tail'>{meta}</Text>
-            <Text style={[styles.collectionMeta, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode='tail'>{title}</Text>
+            <View style={{ flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.collectionMeta} numberOfLines={1} ellipsizeMode='tail'>{title}</Text>
+              {(type === 'sales' && (item.receiptUrl || item.invoiceUrl)) ? <Ionicons name="attach-outline" size={14} color={stitchTheme.colors.primary} /> : null}
+            </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.collectionAmount, { flexShrink: 0 }, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative]} numberOfLines={1}>{amount}</Text>
+            <Text style={[styles.collectionAmount, { flexShrink: 0 }, tone === 'positive' && styles.collectionAmountPositive, tone === 'negative' && styles.collectionAmountNegative, isOverdue && { color: stitchTheme.colors.accentRed }]} numberOfLines={1}>{amount}</Text>
             {isPaidSale && <StitchBadge label="PAID" tone="success" style={{ marginTop: 4 }} />}
             {isPaidHarvest && <StitchBadge label="SOLD" tone="success" style={{ marginTop: 4 }} />}
+            {isOverdue && <StitchBadge label="OVERDUE" tone="error" style={{ marginTop: 4 }} />}
           </View>
         </View>
         {description ? <Text style={[styles.collectionDescription, { color: descColor, fontWeight: descWeight }]} numberOfLines={3} ellipsizeMode='tail'>{description}</Text> : null}
@@ -798,8 +804,11 @@ const handleInvite = async () => {
         {activeTab === 'sales' && (filteredSales.length ? filteredSales.map(item => {
           const blockName = blockMap.get(item.blockId);
           const title = `${item.customer || 'Cash'}${blockName ? ` • ${blockName}` : ''}`;
+          const isPaid = item.paymentStatus === 'paid' || (item.balanceDue != null && item.balanceDue <= 0);
           const due = item.balanceDue > 0 ? `${formatCurrency(item.balanceDue, currency)} due` : '';
-          return renderCollectionCard(title, formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, due);
+          const dueSuffix = (!isPaid && item.dueDate) ? ` | Due: ${formatAppDate(item.dueDate)}` : '';
+          const fullDesc = `${due}${dueSuffix}`;
+          return renderCollectionCard(title, formatAppDate(item.date), `${item.weightSold} kg / ${formatCurrency(item.totalAmount, currency)}`, 'positive', 'sales', item, fullDesc);
         }) : <EmptyState title={t('projects.empty_sales')} icon="cash-outline" />)}
         {activeTab === 'equipment' && (filteredEquipment.length ? filteredEquipment.map(item => renderCollectionCard(item.name, item.type, t(`equipment.statuses.${item.status}`), item.status === 'OPERATIONAL' ? 'positive' : 'negative', 'equipment', item, item.model)) : <EmptyState title={t('projects.empty_equipment')} icon="construct-outline" />)}
 

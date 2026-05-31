@@ -19,6 +19,8 @@ const createSale = async (req, res) => {
         weightSold:  data.weightSold,
         unitPrice:   data.unitPrice,
         totalAmount: data.totalAmount,
+        receiptUrl:  data.receiptUrl ?? null,
+        invoiceUrl:  data.invoiceUrl ?? null,
         notes:       data.notes ?? null,
       },
     });
@@ -97,6 +99,10 @@ const deleteSale = async (req, res) => {
         data:  { isDeleted: true },
       }),
       prisma.saleHarvest.updateMany({
+        where: { saleId: req.params.id },
+        data:  { isDeleted: true },
+      }),
+      prisma.salePayment.updateMany({
         where: { saleId: req.params.id },
         data:  { isDeleted: true },
       }),

@@ -26,6 +26,9 @@ const { authenticate } = require('./src/middleware/auth.middleware');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust the first proxy (Nginx/Cloudflare)
+app.set('trust proxy', 1);
+
 // Global middleware
 app.use(morgan('dev'));
 app.use(cors());
@@ -34,7 +37,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Debug logging for routes
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} (Proto: ${proto})`);
   next();
 });
 

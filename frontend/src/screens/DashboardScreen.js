@@ -221,7 +221,16 @@ export default function DashboardScreen({ navigation }) {
     const pinnedCards = allResourceCards.slice(0, 3);
     const moreCards = allResourceCards.slice(3);
 
-    const handleResourceOpen = (resourceId) => {
+    const receivables = useMemo(() => {
+        const now = Date.now();
+        const items = sales.filter(s => (s.balanceDue || 0) > 0);
+        const overdue = items.filter(s => s.dueDate && s.dueDate < now);
+        const totalPending = items.reduce((sum, s) => sum + (s.balanceDue || 0), 0);
+        const totalOverdue = overdue.reduce((sum, s) => sum + (s.balanceDue || 0), 0);
+        return { items, overdue, totalPending, totalOverdue };
+    }, [sales]);
+
+    const handleResourcePress = (resourceId) => {
         const project = projects.find(p => p.id === selectedProjectId);
         if (!project) {
             setPendingResource(resourceId);
@@ -372,6 +381,36 @@ export default function DashboardScreen({ navigation }) {
                     </View>
                 ) : null}
 
+                {/* Accounts Receivable Widget */}
+                {receivables.totalPending > 0 && (
+                    <StitchSurface style={[styles.pulseCard, { marginTop: spacing.lg }]} contentStyle={[styles.pulseContent, { gap: 12 }]} tone='raised' compact>
+                        <View style={styles.pulseTopRow}>
+                            <Text style={styles.pulseEyebrow}>{t('dashboard.receivables_title') || 'Accounts Receivable'}</Text>
+                            {receivables.overdue.length > 0 && (
+                                <View style={[styles.pulseBadge, { backgroundColor: colors.accentRed }]}>
+                                    <Text style={[styles.pulseBadgeText, { color: colors.white }]}>{receivables.overdue.length} {t('common.overdue') || 'Overdue'}</Text>
+                                </View>
+                            )}
+                        </View>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View>
+                                <Text style={[styles.metricBlockValue, { fontSize: 24 }]}>{formatCurrency(receivables.totalPending, currency)}</Text>
+                                <Text style={styles.metricBlockNote}>{t('dashboard.pending_from_customers', { count: receivables.items.length }) || `Pending from ${receivables.items.length} customers`}</Text>
+                            </View>
+                            <View style={[styles.metricBlockOrb, { width: 44, height: 44, borderRadius: 12, backgroundColor: `${colors.primaryContainer}18` }]}>
+                                <Ionicons name="cash-outline" size={24} color={colors.primaryContainer} />
+                            </View>
+                        </View>
+
+                        {receivables.overdue.length > 0 && (
+                            <View style={styles.overdueAlert}>
+                                <Ionicons name="warning-outline" size={16} color={colors.accentRed} />
+                                <Text style={styles.overdueText}>{formatCurrency(receivables.totalOverdue, currency)} {t('dashboard.is_overdue') || 'is past due date'}</Text>
+                            </View>
+                        )}
+                    </StitchSurface>
+                )}
                 </>
                 )}
                 <Modal visible={joinModalVisible} animationType="slide" transparent>
@@ -536,7 +575,10 @@ const styles = StyleSheet.create({
   miniStatLabel: { ...type.eyebrow, color: colors.textMuted, flex: 1 },
   miniStatValue: { ...type.metricValue, fontSize: 16, color: colors.text },
 
-    sectionSpacing: { marginTop: spacing.lg, marginBottom: spacing.xs },
+  overdueAlert: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: radius.sm, backgroundColor: `${colors.accentRed}12`, marginTop: 4 },
+  overdueText: { fontSize: 13, color: colors.accentRed, fontWeight: '800' },
+
+  sectionSpacing: { marginTop: spacing.lg, marginBottom: spacing.xs },
     resourcePinned: {
         ...stitchStyles.collectionCard,
         flexDirection: 'row',

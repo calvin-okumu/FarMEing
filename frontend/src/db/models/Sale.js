@@ -12,6 +12,7 @@ export default class Sale extends Model {
   @text('project_id') projectId;
   @text('block_id') blockId;
   @field('date') date;
+  @field('due_date') dueDate;
   @text('customer') customer;
   @field('weight_sold') weightSold;
   @field('unit_price') unitPrice;
@@ -19,6 +20,7 @@ export default class Sale extends Model {
   @text('payment_status') paymentStatus;
   @field('balance_due') balanceDue;
   @text('receipt_url') receiptUrl;
+  @text('invoice_url') invoiceUrl;
   @text('notes') notes;
   @field('is_deleted') isDeleted;
   @field('created_at') createdAt;

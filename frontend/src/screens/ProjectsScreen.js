@@ -26,7 +26,7 @@ import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ResourceFormModal from '../components/ui/ResourceFormModal';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordDeleted } from '../utils/localRecord';
 import { deleteProjectCascade, updateLocalModel } from '../utils/resourceMutations';
 import { useObservable } from '../hooks/useWatermelon';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';

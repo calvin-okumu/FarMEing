@@ -100,6 +100,9 @@ const fieldMapping = {
   purchaseDate: 'purchase_date',
   purchasePrice: 'purchase_price',
   cropVariety: 'crop_variety',
+  dueDate: 'due_date',
+  invoiceUrl: 'invoice_url',
+  method: 'method',
 };
 
 const reverseMapping = Object.fromEntries(
@@ -156,7 +159,7 @@ const fromWatermelon = (record) => {
   }
 
   // Date fields in the schema that might come as timestamps or strings
-  const dateFields = ['date', 'startDate', 'endDate', 'expiresAt', 'createdAt', 'updatedAt', 'purchaseDate'];
+  const dateFields = ['date', 'startDate', 'endDate', 'expiresAt', 'createdAt', 'updatedAt', 'purchaseDate', 'dueDate'];
   dateFields.forEach(field => {
     if (result[field] !== undefined && result[field] !== null && result[field] !== '') {
       if (typeof result[field] === 'number') {
@@ -450,6 +453,8 @@ exports.push = async (req, res) => {
                   prisma.projectBlock.updateMany({ where: projectWhere, data: { isDeleted: true } }),
                   prisma.equipment.updateMany({ where: projectWhere, data: { isDeleted: true } }),
                   prisma.projectInvitation.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.projectAccess.updateMany({ where: projectWhere, data: { isDeleted: true } }),
+                  prisma.employeeProject.updateMany({ where: projectWhere, data: { isDeleted: true } }),
                 ]);
               }
             }

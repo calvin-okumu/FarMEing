@@ -382,8 +382,8 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 ### Financials
 *   **BudgetItem:** Planned costs for a project.
 *   **Expense:** Actual costs incurred. Differentiates `CAPEX` vs `OPEX`. Supports recurring expenses.
-*   **Sale:** Revenue generated from selling harvests. Tracks `paymentStatus` (`pending`, `partial`, `paid`) and `balanceDue` for installment payments. Linked to `Harvest` records via `SaleHarvest`.
-*   **SalePayment:** Individual payment installments against a sale. Each has `saleId`, `amount`, `date`, `note`.
+*   **Sale:** Revenue generated from selling harvests. Tracks `paymentStatus` (`pending`, `partial`, `paid`) and `balanceDue` for installment payments. Now includes `dueDate`, `invoiceUrl`, and `receiptUrl`. Linked to `Harvest` records via `SaleHarvest`.
+*   **SalePayment:** Individual payment installments against a sale. Each has `saleId`, `amount`, `date`, `method`, `note`.
 *   **Payment:** Records payments made to employees.
 
 ### Operations
@@ -405,9 +405,9 @@ The data model is defined in `prisma/schema.prisma`. Key entities include:
 
 ## Sync And Access Notes
 
-- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows. Security scoping is applied to all child records (expenses, harvests, etc.).
+- `/sync/pull` collects accessible project IDs from both owned projects and `ProjectAccess` rows. Security scoping is applied to all child records (expenses, harvests, etc.). Soft-deleted access rows are strictly filtered out to prevent unauthorized access.
 - For `saleHarvest` and `salePayment` records, security scoping is applied via the parent `sale.projectId`.
-- `/sync/push` handles upserting all related operational data and ensures `ProjectAccess` rows are created for new projects.
+- `/sync/push` handles upserting all related operational data and ensures `ProjectAccess` rows are created for new projects. It also implements a **cascading soft-delete** for projects initiated from the client, ensuring all related records are safely preserved but hidden on the server.
 - `project_invitations` and `project_access` are included in the sync lifecycle to support collaborative workflows.
 - Project-scoped APIs such as members and reports expect the server-side project ID. Mobile clients should prefer `remoteId` when present.
-- After deploying schema or access-model changes, run `npx prisma generate` and restart the process manager so runtime code and Prisma delegates stay aligned.
+- Deletions are processed via `prisma.$transaction` to ensure atomic consistency across the 12+ related project entities.

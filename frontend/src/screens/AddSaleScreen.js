@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { useTranslation } from 'react-i18next';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
@@ -21,7 +22,7 @@ import { syncAll } from '../services/syncService';
 import useSettingsStore from '../store/useSettingsStore';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
-import { initializeLocalRecord } from '../utils/localRecord';
+import { initializeLocalRecord, markRecordUpdated, markRecordDeleted } from '../utils/localRecord';
 import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchBlockPicker, StitchChip, StitchDatePicker, StitchInput, StitchPicker, StitchPrimaryButton, StitchSectionTitle, StitchSurface } from '../components/ui/StitchPrimitives';
 import StitchFormHero from '../components/ui/StitchFormHero';
@@ -44,17 +45,25 @@ export default function AddSaleScreen({ route, navigation }) {
   const [weightSold, setWeightSold] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
   const [date, setDate] = useState(new Date());
+  const [dueDate, setDueDate] = useState(useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d;
+  }, []));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
   const [salePayments, setSalePayments] = useState([]);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState(null);
   const [photo, setPhoto] = useState(null);
+  const [invoicePhoto, setInvoicePhoto] = useState(null);
   const [payees, setPayees] = useState([]);
   const [paymentDateTarget, setPaymentDateTarget] = useState(null);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentDate, setNewPaymentDate] = useState(new Date());
+  const [newPaymentMethod, setNewPaymentMethod] = useState('CASH');
   const [newPaymentNote, setNewPaymentNote] = useState('');
   const [newPaymentShowDatePicker, setNewPaymentShowDatePicker] = useState(false);
   const [availableHarvests, setAvailableHarvests] = useState([]);
@@ -63,6 +72,12 @@ export default function AddSaleScreen({ route, navigation }) {
   const [blockId, setBlockId] = useState('');
   const [linkedHarvestIds, setLinkedHarvestIds] = useState([]);
   const [showHarvestPicker, setShowHarvestPicker] = useState(false);
+
+  const PAYMENT_METHODS = [
+    { label: t('sales.payment_methods.cash') || 'Cash', value: 'CASH' },
+    { label: t('sales.payment_methods.bank_transfer') || 'Bank Transfer', value: 'BANK_TRANSFER' },
+    { label: t('sales.payment_methods.mobile_money') || 'Mobile Money', value: 'MOBILE_MONEY' },
+  ];
 
   useEffect(() => {
     const loadProject = async () => {
@@ -157,8 +172,10 @@ export default function AddSaleScreen({ route, navigation }) {
       setWeightSold(String(item.weightSold ?? ''));
       setUnitPrice(String(item.unitPrice ?? ''));
       setDate(item.date ? new Date(item.date) : new Date());
+      setDueDate(item.dueDate ? new Date(item.dueDate) : null);
       setNotes(item.notes || '');
       setPhoto(item.receiptUrl || null);
+      setInvoicePhoto(item.invoiceUrl || null);
       const payments = await item.salePayments.fetch();
       const seen = new Set();
       const unique = payments.filter(p => {
@@ -168,10 +185,20 @@ export default function AddSaleScreen({ route, navigation }) {
         return true;
       });
       if (unique.length > 0) {
-        setSalePayments(unique.map(p => ({ id: p.id, amount: String(p.amount), date: new Date(p.date), _record: p })));
+        setSalePayments(unique.map(p => ({ 
+          id: p.id, 
+          amount: String(p.amount), 
+          date: new Date(p.date), 
+          method: p.method || 'CASH',
+          _record: p 
+        })));
       } else if (item.balanceDue != null && item.balanceDue < item.totalAmount) {
         const paid = item.totalAmount - item.balanceDue;
-        setSalePayments([{ amount: String(paid), date: item.date ? new Date(item.date) : new Date() }]);
+        setSalePayments([{ 
+          amount: String(paid), 
+          date: item.date ? new Date(item.date) : new Date(),
+          method: 'CASH'
+        }]);
       }
       const linked = await item.saleHarvests.fetch();
       setLinkedHarvestIds(linked.map(sh => sh.harvestId));
@@ -184,14 +211,27 @@ export default function AddSaleScreen({ route, navigation }) {
   }, []);
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled) setPhoto(result.assets[0].uri);
+    } catch (err) {
+      console.warn('Document picking error:', err);
+    }
+  };
+
+  const pickInvoice = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled) setInvoicePhoto(result.assets[0].uri);
+    } catch (err) {
+      console.warn('Document picking error:', err);
+    }
   };
 
   const takePhoto = async () => {
@@ -214,12 +254,18 @@ export default function AddSaleScreen({ route, navigation }) {
   const addPayment = () => {
     setNewPaymentAmount('');
     setNewPaymentDate(new Date());
+    setNewPaymentMethod('CASH');
     setNewPaymentNote('');
     setPaymentModalVisible(true);
   };
   const confirmAddPayment = () => {
     if (newPaymentAmount && parseFloat(newPaymentAmount) > 0) {
-      setSalePayments([...salePayments, { amount: newPaymentAmount, date: newPaymentDate, note: newPaymentNote }]);
+      setSalePayments([...salePayments, { 
+        amount: newPaymentAmount, 
+        date: newPaymentDate, 
+        method: newPaymentMethod,
+        note: newPaymentNote 
+      }]);
     }
     setPaymentModalVisible(false);
   };
@@ -281,10 +327,12 @@ export default function AddSaleScreen({ route, navigation }) {
             draft.unitPrice = parseFloat(unitPrice);
             draft.totalAmount = parseFloat(total);
             draft.date = date.getTime();
+            draft.dueDate = dueDate ? dueDate.getTime() : null;
             draft.notes = notes.trim();
             draft.paymentStatus = paymentStatus;
             draft.balanceDue = balanceDue;
             draft.receiptUrl = photo || '';
+            draft.invoiceUrl = invoicePhoto || '';
           });
           const existingPayments = await record.salePayments.fetch();
           const existingIds = existingPayments.map(p => p.id);
@@ -308,6 +356,7 @@ export default function AddSaleScreen({ route, navigation }) {
                 await existing.update((draft) => {
                   draft.amount = parseFloat(p.amount);
                   draft.date = p.date.getTime();
+                  draft.method = p.method || 'CASH';
                   draft.note = p.note || '';
                   markRecordUpdated(draft);
                 });
@@ -318,6 +367,7 @@ export default function AddSaleScreen({ route, navigation }) {
               draft.saleId = record.id;
               draft.amount = parseFloat(p.amount);
               draft.date = p.date.getTime();
+              draft.method = p.method || 'CASH';
               draft.note = p.note || '';
             });
           }
@@ -560,12 +610,12 @@ export default function AddSaleScreen({ route, navigation }) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.uploadTitle}>Attach Receipt</Text>
-                <Text style={styles.uploadSubtitle}>Upload a photo of the receipt or delivery note</Text>
+                <Text style={styles.uploadSubtitle}>Upload a receipt (Image or PDF)</Text>
               </View>
             </View>
             <View style={styles.uploadActions}>
               <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.88}>
-                <Text style={styles.uploadButtonText}>Album</Text>
+                <Text style={styles.uploadButtonText}>Browse</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.uploadButton} onPress={takePhoto} activeOpacity={0.88}>
                 <Text style={styles.uploadButtonText}>Camera</Text>
@@ -575,8 +625,48 @@ export default function AddSaleScreen({ route, navigation }) {
 
           {photo ? (
             <View style={styles.photoWrap}>
-              <Image source={{ uri: photo }} style={styles.photo} />
+              {photo.toLowerCase().endsWith('.pdf') ? (
+                <View style={[styles.photo, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="document-text" size={40} color={stitchTheme.colors.primary} />
+                  <Text style={{ fontSize: 12, color: stitchTheme.colors.textSecondary, marginTop: 4 }}>PDF Document</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: photo }} style={styles.photo} />
+              )}
               <TouchableOpacity style={styles.removePhoto} onPress={() => setPhoto(null)} activeOpacity={0.85}>
+                <Ionicons name="close" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          <View style={[styles.uploadCard, { marginTop: stitchTheme.spacing.md }]}>
+            <View style={styles.uploadLeft}>
+              <View style={styles.uploadIconWrap}>
+                <Ionicons name={invoicePhoto ? 'document-text' : 'attach-outline'} size={22} color={stitchTheme.colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.uploadTitle}>{t('sales.attach_external_invoice') || 'External Invoice'}</Text>
+                <Text style={styles.uploadSubtitle}>Attach an invoice (Image or PDF)</Text>
+              </View>
+            </View>
+            <View style={styles.uploadActions}>
+              <TouchableOpacity style={styles.uploadButton} onPress={pickInvoice} activeOpacity={0.88}>
+                <Text style={styles.uploadButtonText}>Browse</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {invoicePhoto ? (
+            <View style={styles.photoWrap}>
+              {invoicePhoto.toLowerCase().endsWith('.pdf') ? (
+                <View style={[styles.photo, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="document-text" size={40} color={stitchTheme.colors.primary} />
+                  <Text style={{ fontSize: 12, color: stitchTheme.colors.textSecondary, marginTop: 4 }}>PDF Document</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: invoicePhoto }} style={styles.photo} />
+              )}
+              <TouchableOpacity style={styles.removePhoto} onPress={() => setInvoicePhoto(null)} activeOpacity={0.85}>
                 <Ionicons name="close" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -639,12 +729,26 @@ export default function AddSaleScreen({ route, navigation }) {
           </View>
         </Modal>
 
-        <StitchInput
-          label={t('sales.date_label')}
-          value={formatAppDate(date)}
-          onPress={() => setShowDatePicker(true)}
-          icon='calendar-outline'
-        />
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <StitchInput
+              label={t('sales.date_label')}
+              value={formatAppDate(date)}
+              onPress={() => setShowDatePicker(true)}
+              icon='calendar-outline'
+            />
+          </View>
+          <View style={styles.half}>
+            <StitchInput
+              label={t('sales.due_date_label') || 'Due Date'}
+              value={dueDate ? formatAppDate(dueDate) : (t('common.not_set') || 'Not Set')}
+              onPress={() => setShowDueDatePicker(true)}
+              icon='alarm-outline'
+              actionIcon={dueDate ? 'close-circle' : null}
+              onActionPress={dueDate ? () => setDueDate(null) : null}
+            />
+          </View>
+        </View>
 
         <StitchDatePicker
           visible={showDatePicker}
@@ -655,10 +759,21 @@ export default function AddSaleScreen({ route, navigation }) {
               setPaymentDateTarget(null);
             } else {
               setDate(d);
+              // Update dueDate to one month from the selected sale date
+              const newDue = new Date(d);
+              newDue.setMonth(newDue.getMonth() + 1);
+              setDueDate(newDue);
             }
             setShowDatePicker(false);
           }}
           onClose={() => { setShowDatePicker(false); setPaymentDateTarget(null); }}
+        />
+
+        <StitchDatePicker
+          visible={showDueDatePicker}
+          date={dueDate || new Date()}
+          onDateChange={(d) => { setDueDate(d); setShowDueDatePicker(false); }}
+          onClose={() => setShowDueDatePicker(false)}
         />
 
         <StitchDatePicker
@@ -705,6 +820,20 @@ export default function AddSaleScreen({ route, navigation }) {
                 placeholder={t('sales.note_placeholder')}
                 placeholderTextColor={stitchTheme.colors.textMuted}
               />
+              
+              <View style={styles.methodRow}>
+                {PAYMENT_METHODS.map((m) => (
+                  <TouchableOpacity
+                    key={m.value}
+                    style={[styles.methodChip, newPaymentMethod === m.value && styles.methodChipActive]}
+                    onPress={() => setNewPaymentMethod(m.value)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.methodChipText, newPaymentMethod === m.value && styles.methodChipTextActive]}>{m.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 <TouchableOpacity
                   style={[styles.uploadButton, { flex: 1 }]}
@@ -753,6 +882,11 @@ const styles = StyleSheet.create({
   paymentModalContent: { backgroundColor: stitchTheme.colors.surfaceHighlight, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 48, gap: stitchTheme.spacing.sm },
   paymentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   paymentModalTitle: { fontSize: 20, fontWeight: '900', color: stitchTheme.colors.primary },
+  methodRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  methodChip: { flex: 1, paddingVertical: 10, borderRadius: stitchTheme.radius.sm, backgroundColor: stitchTheme.colors.surfaceInset, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stitchTheme.colors.border },
+  methodChipActive: { backgroundColor: stitchTheme.colors.primarySoft, borderColor: stitchTheme.colors.primaryDim },
+  methodChipText: { fontSize: 12, fontWeight: '800', color: stitchTheme.colors.textMuted },
+  methodChipTextActive: { color: stitchTheme.colors.primary },
   modalNoteInput: { minHeight: 44, borderRadius: stitchTheme.radius.md, backgroundColor: stitchTheme.colors.surfaceInset, paddingHorizontal: stitchTheme.spacing.md, fontSize: stitchTheme.typography.body.fontSize, lineHeight: stitchTheme.typography.body.lineHeight, fontWeight: '600', color: stitchTheme.colors.text, borderWidth: 1, borderColor: stitchTheme.colors.border },
   paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: stitchTheme.spacing.sm, paddingTop: stitchTheme.spacing.xs, borderTopWidth: 1, borderTopColor: stitchTheme.colors.line },
   paymentSummaryLabel: { ...stitchTheme.typography.eyebrow, color: stitchTheme.colors.textMuted },
