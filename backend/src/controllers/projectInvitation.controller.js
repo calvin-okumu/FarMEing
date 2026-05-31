@@ -137,4 +137,62 @@ const joinProject = async (req, res) => {
   }
 };
 
-module.exports = { createInvitation, joinProject };
+/**
+ * OWNER lists all invitations for a project.
+ */
+const listInvitations = async (req, res) => {
+  const { projectId } = req.params;
+
+  try {
+    const access = await verifyProjectAccess(projectId, req.user.id, res, ['OWNER']);
+    if (!access) return;
+
+    const invitations = await prisma.projectInvitation.findMany({
+      where: {
+        projectId,
+        isDeleted: false,
+        isUsed: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({ invitations });
+  } catch (error) {
+    console.error('List Invitations Error:', error);
+    return res.status(500).json({ error: 'Failed to list invitations' });
+  }
+};
+
+/**
+ * OWNER deletes/revokes an invitation.
+ */
+const deleteInvitation = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const invitation = await prisma.projectInvitation.findUnique({
+      where: { id },
+    });
+
+    if (!invitation || invitation.isDeleted) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    // Verify user is OWNER of the project
+    const access = await verifyProjectAccess(invitation.projectId, req.user.id, res, ['OWNER']);
+    if (!access) return;
+
+    await prisma.projectInvitation.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
+
+    return res.json({ message: 'Invitation revoked successfully' });
+  } catch (error) {
+    console.error('Delete Invitation Error:', error);
+    return res.status(500).json({ error: 'Failed to delete invitation' });
+  }
+};
+
+module.exports = { createInvitation, joinProject, listInvitations, deleteInvitation };

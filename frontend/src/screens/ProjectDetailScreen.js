@@ -682,16 +682,9 @@ const handleInvite = async () => {
           onLeftActionPress: () => navigation.goBack(),
           children: (
             <View style={styles.heroPills}>
-              <StitchHeroPill label={t('dashboard.total_spent')} value={totalSpent} currency={currency} icon='wallet-outline' style={styles.heroPillPrimary} />
-              <StitchHeroPill label={t('dashboard.revenue')} value={collectedRevenue.toLocaleString()} note={pendingRevenue > 0 ? pendingRevenue.toLocaleString() : ''} currency={currency} icon='cash-outline' style={styles.heroPillPrimary} />
-              <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
-                <StitchHeroPill
-                  label={t('export.short_label')}
-                  value={t('export.short_value')}
-                  icon='download-outline'
-                  style={styles.heroPillSecondary}
-                />
-              </TouchableOpacity>
+              <StitchHeroPill label={t('dashboard.budget')} value={totalBudget} currency={currency} icon='card-outline' style={styles.heroPillPrimary} />
+              <StitchHeroPill label={t('dashboard.total_spent')} value={totalSpent} currency={currency} icon='wallet-outline' style={styles.heroPillSecondary} />
+              <StitchHeroPill label={t('dashboard.revenue')} value={collectedRevenue.toLocaleString()} note={pendingRevenue > 0 ? pendingRevenue.toLocaleString() : ''} currency={currency} icon='cash-outline' style={styles.heroPillTertiary} />
             </View>
           ),
         }}
@@ -719,6 +712,9 @@ const handleInvite = async () => {
                   <StitchChip key={tab} label={t(`projects.tabs.${tab}`)} active={activeTab === tab} onPress={() => setActiveTab(tab)} />
                 ))}
               </ScrollView>
+              <TouchableOpacity onPress={() => setExportModalVisible(true)} disabled={exporting}>
+                <Ionicons name="download-outline" size={20} color={stitchTheme.colors.primary} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
             </View>
             {showCollectionControls ? (
               <View style={styles.stickyControlsRow}>
@@ -739,36 +735,6 @@ const handleInvite = async () => {
           </View>
         }
       >
-        {/* --- Metric Cards --- */}
-        <View style={styles.overviewGrid}>
-          <MetricCard title={t('dashboard.budget')} value={formatCurrency(totalBudget, currency)} note={t('dashboard.planned_allocation')} icon='card-outline' accent={stitchTheme.colors.primaryDim} />
-          <MetricCard title={t('dashboard.total_spent')} value={formatCurrency(totalSpent, currency)} note={`${budgetProgress.toFixed(1)}% used`} icon='wallet-outline' accent={stitchTheme.colors.accentBrown} />
-        </View>
-
-        {/* --- Budget Chart --- */}
-        {totalBudget > 0 ? (
-          <StitchSurface style={styles.chartCard} contentStyle={styles.chartContent} tone='raised' compact>
-            <View style={styles.chartTopRow}>
-              <View>
-                <Text style={styles.chartEyebrow}>Budget vs Actual</Text>
-                <Text style={styles.chartTitle}>{formatCurrency(totalSpent, currency)} / {formatCurrency(totalBudget, currency)}</Text>
-              </View>
-              <View style={[styles.chartProgressRing, budgetProgress > 100 && styles.chartProgressRingDanger]}>
-                <Text style={[styles.chartProgressText, budgetProgress > 100 && styles.chartProgressTextDanger]}>{Math.min(budgetProgress, 999).toFixed(0)}%</Text>
-              </View>
-            </View>
-            <View style={styles.chartBarTrack}>
-              <View style={[styles.chartBarFill, { width: `${Math.min(budgetProgress, 100)}%` }, budgetProgress > 100 && styles.chartBarFillDanger]} />
-            </View>
-            <View style={styles.chartLabelsRow}>
-               <Text style={styles.chartLabel}>{budgetProgress.toFixed(1)}% of budget used</Text>
-               <Text style={[styles.chartLabel, budgetProgress > 100 ? { color: stitchTheme.colors.accentRed } : { color: stitchTheme.colors.primaryContainer }]}>
-                 {totalSpent > totalBudget ? 'Over budget' : `${formatCurrency(totalBudget - totalSpent, currency)} left`}
-               </Text>
-            </View>
-          </StitchSurface>
-        ) : null}
-
         {/* --- Section Header + Add Button --- */}
         <StitchDashboardSectionHeader
           title={t(`projects.tabs.${activeTab}`)}
