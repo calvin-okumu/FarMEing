@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
   Dimensions,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -841,11 +842,10 @@ const handleInvite = async () => {
                       <TouchableOpacity 
                         onPress={() => {
                           const msg = `Join my farm project on FarmTrack! Use code: ${inv.inviteCode}`;
-                          if (Platform.OS === 'ios' || Platform.OS === 'android') {
-                             Sharing.shareAsync('', { dialogTitle: 'Share Invite Code', message: msg });
-                          } else {
-                             Alert.alert('Invite Code', msg);
-                          }
+                          Share.share({
+                            message: msg,
+                            title: 'Share Invite Code',
+                          }).catch(err => console.error('[Share] Error:', err));
                         }}
                         style={styles.inviteShareBtn}
                       >

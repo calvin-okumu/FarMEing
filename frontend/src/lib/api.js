@@ -32,8 +32,11 @@ export const BASE_URL = getDefaultBaseUrl();
 
 const api = axios.create({
     baseURL: BASE_URL,
-    timeout: 15000, // Increased timeout for slow networks
-    headers: { 'Content-Type': 'application/json' },
+    timeout: 20000, // Increased for stability
+    headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.181 Mobile Safari/537.36'
+    },
     withCredentials: false
 });
 
@@ -43,7 +46,14 @@ api.interceptors.request.use(async (config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log(`[API Request] ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+
+    // Ensure the URL ends with a trailing slash to avoid Nginx redirects
+    if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
+        config.url += '/';
+    }
+
+    const fullUrl = `${config.baseURL}${config.url}`.replace(/([^:]\/)\/+/g, "$1");
+    console.log(`[API Request] ${config.method.toUpperCase()} ${fullUrl}`);
     return config;
 });
 
@@ -57,18 +67,20 @@ api.interceptors.response.use(
         const isNetworkError = !error.response && (
             error.code === 'ECONNABORTED' ||
             error.message === 'Network Error' ||
-            error.message.includes('Network request failed')
+            error.message.includes('Network request failed') ||
+            error.code === 'ERR_NETWORK'
         );
 
         if (isNetworkError) {
             const detail = error.code ? ` (${error.code})` : '';
+            const configUrl = error.config ? `${error.config.baseURL}${error.config.url}` : BASE_URL;
             const wrappedError = new Error(
-                `Cannot reach backend at ${BASE_URL}${detail}. ${error.message}`
+                `Cannot reach backend at ${configUrl}${detail}. ${error.message}`
             );
             wrappedError.isBackendUnavailable = true;
             wrappedError.statusCode = null;
             useBackendStore.getState().setOffline(wrappedError.message);
-            console.error(`[API Error] ${wrappedError.message}`, error);
+            console.error(`[API Error Detail] URL: ${configUrl} | Code: ${error.code} | Msg: ${error.message}`);
             return Promise.reject(wrappedError);
         }
 
