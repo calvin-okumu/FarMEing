@@ -361,6 +361,24 @@ export default schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 30,
+      steps: [
+        addColumns({
+          table: 'sales',
+          columns: [
+            { name: 'due_date', type: 'number', isOptional: true },
+            { name: 'invoice_url', type: 'string', isOptional: true },
+          ],
+        }),
+        addColumns({
+          table: 'sale_payments',
+          columns: [
+            { name: 'method', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 });
 

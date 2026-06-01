@@ -23,6 +23,7 @@ import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
 import { STITCH_TAB_BAR_HEIGHT } from '../components/navigation/StitchTabBar';
 import useSettingsStore from '../store/useSettingsStore';
+import EmptyState from '../components/ui/EmptyState';
 import { StitchChip, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 
 export default function PayeeDetailScreen({ route, navigation }) {
@@ -116,8 +117,8 @@ export default function PayeeDetailScreen({ route, navigation }) {
           </View>
         ))}
 
-        {activeTab === 'expenses' && !expenses.length ? <Text style={styles.emptyText}>No expenses linked to this payee.</Text> : null}
-        {activeTab === 'inventory' && !inventoryItems.length ? <Text style={styles.emptyText}>No inventory items linked to this payee.</Text> : null}
+        {activeTab === 'expenses' && !expenses.length ? <EmptyState title={t('payees.expenses_empty')} icon="receipt-outline" /> : null}
+        {activeTab === 'inventory' && !inventoryItems.length ? <EmptyState title={t('payees.inventory_empty')} icon="cube-outline" /> : null}
         
         {payee.notes ? (
           <View style={styles.notesSection}>

@@ -69,8 +69,8 @@ Supports **English (en)** and **Kiswahili (sw)**.
 - **Expense:** `id`, `projectId`, `category`, `amount`, `date`, `note`, `expenseType`, `isRecurring`, `frequency`, `payee`, `payeeId`, `receiptUrl`.
 - **WorkEntry:** `id`, `projectId`, `employeeId`, `activity`, `date`, `daysWorked`, `ratePerDay`, `totalCost`, `hoursWorked`, `status`, `notes`, `isRecurring`, `frequency`.
 - **Harvest:** `id`, `projectId`, `crop`, `date`, `weight`, `rejectedWeight`, `rejectedReason`, `unit`, `quality`, `notes`.
-- **Sale:** `id`, `projectId`, `date`, `customer`, `weightSold`, `unitPrice`, `totalAmount`, `paymentStatus`, `balanceDue`, `receiptUrl`, `notes`.
-- **SalePayment:** `id`, `saleId`, `amount`, `date`, `note` — individual payment installments against a sale.
+- **Sale:** `id`, `projectId`, `blockId`, `date`, `dueDate`, `customer`, `weightSold`, `unitPrice`, `totalAmount`, `paymentStatus`, `balanceDue`, `receiptUrl`, `invoiceUrl`, `notes`.
+- **SalePayment:** `id`, `saleId`, `amount`, `date`, `method`, `note` — individual payment installments against a sale.
 - **SaleHarvest:** `id`, `saleId`, `harvestId` — join table linking sales to specific harvest records.
 - **ProjectInvitation:** `id`, `projectId`, `role`, `inviteCode`, `expiresAt`, `isUsed`.
 - **ProjectAccess:** `id`, `projectId`, `userId`, `role`.
@@ -119,9 +119,13 @@ The `syncService.js` handles bi-directional synchronization:
 - `AddSaleScreen`: Form to record revenue with multi-installment payment tracking.
   - **Vendor picker**: Select from payees list with free-text fallback.
   - **Linked Harvests**: Multi-select modal to link specific harvest records to the sale.
-  - **Receipt upload**: Camera/Album image upload.
-  - **Payment installments**: Add multiple partial payments via modal (amount + date + note).
+  - **Due Date**: Defaults to one month after the sale date (auto-updates if sale date changes).
+  - **Document Attachments**: Supports uploading both **Images** and **PDFs** for receipts and external invoices using `expo-document-picker`.
+  - **Payment installments**: Add multiple partial payments via modal (amount + date + method + note).
   - **Status**: Auto-computed (`pending` / `partial` / `paid`) from collected vs total.
+
+- `AddExpenseScreen`: Form to record operational and capital expenditures.
+  - **Document Attachments**: Supports uploading both **Images** and **PDFs** for receipts using `expo-document-picker`.
 
 ### Sales & Payment flow:
 - Create a sale with weight, price, and optional initial payment.

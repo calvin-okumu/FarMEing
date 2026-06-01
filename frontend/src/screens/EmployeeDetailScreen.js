@@ -23,6 +23,7 @@ import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { formatCurrency } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { computeEmployeeBalance } from '../utils/localAnalytics';
+import EmptyState from '../components/ui/EmptyState';
 import { StitchChip, StitchInput, StitchPrimaryButton, StitchSurface } from '../components/ui/StitchPrimitives';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import { StitchScreenSkeleton } from '../components/ui/StitchSkeleton';
@@ -353,7 +354,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 <Ionicons name="create-outline" size={14} color={stitchTheme.colors.textMuted} />
               </View>
             </TouchableOpacity>
-          )) : <Text style={styles.emptyText}>{t('labor.empty_state')}</Text>
+          )) : <EmptyState title={t('labor.empty_state')} icon="people-outline" />
         ) : (
           payments.length ? payments.map(payment => (
             <TouchableOpacity
@@ -377,7 +378,7 @@ export default function EmployeeDetailScreen({ route, navigation }) {
                 </View>
               </View>
             </TouchableOpacity>
-          )) : <Text style={styles.emptyText}>{t('payments.empty')}</Text>
+          )) : <EmptyState title={t('payments.empty')} icon="cash-outline" />
         )}
 
         <TouchableOpacity style={styles.deleteTrigger} onPress={() => setDeleteVisible(true)} activeOpacity={0.88}>

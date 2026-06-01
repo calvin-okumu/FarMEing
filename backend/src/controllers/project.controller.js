@@ -177,10 +177,58 @@ const deleteProject = async (req, res) => {
   }
 
   try {
-    await prisma.farmProject.update({
-      where: { id: req.params.id },
-      data: { isDeleted: true },
-    });
+    const projectId = req.params.id;
+
+    await prisma.$transaction([
+      prisma.farmProject.update({
+        where: { id: projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.projectBlock.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.budgetItem.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.expense.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.workEntry.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.harvest.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.sale.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.inventoryItem.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.equipment.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.employeeProject.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.projectAccess.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+      prisma.projectInvitation.updateMany({
+        where: { projectId },
+        data: { isDeleted: true },
+      }),
+    ]);
 
     return res.status(204).send();
   } catch (error) {
@@ -283,10 +331,13 @@ const removeProjectMember = async (req, res) => {
   }
 
   try {
-    await prisma.projectAccess.deleteMany({
+    await prisma.projectAccess.updateMany({
       where: {
         projectId: req.params.id,
         userId: userId,
+      },
+      data: {
+        isDeleted: true,
       },
     });
 

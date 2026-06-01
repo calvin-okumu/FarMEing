@@ -12,12 +12,38 @@ const getProjectData = async (id, userId, res) => {
     where: { id },
     include: {
       budgetItems: { where: { isDeleted: false } },
-      expenses: { where: { isDeleted: false }, include: { payeeRecord: true } },
-      workEntries: { where: { isDeleted: false }, include: { employee: true } },
-      harvests: { where: { isDeleted: false }, include: { block: true } },
-      sales: { where: { isDeleted: false }, include: { salePayments: { where: { isDeleted: false } } } },
+      expenses: {
+        where: { isDeleted: false },
+        include: { payeeRecord: true, block: { select: { id: true, name: true } } },
+      },
+      workEntries: {
+        where: { isDeleted: false },
+        include: { employee: true, block: { select: { id: true, name: true } } },
+      },
+      harvests: {
+        where: { isDeleted: false },
+        include: { block: { select: { id: true, name: true } } },
+      },
+      sales: {
+        where: { isDeleted: false },
+        include: { salePayments: { where: { isDeleted: false } }, block: { select: { id: true, name: true } } },
+      },
       inventoryItems: { where: { isDeleted: false } },
       equipment: { where: { isDeleted: false } },
+      blocks: { where: { isDeleted: false } },
+      season: true,
+      projectAccess: {
+        where: { isDeleted: false },
+        include: { user: { select: { id: true, name: true, phone: true } } },
+      },
+      employees: {
+        where: { isDeleted: false },
+        include: {
+          employee: {
+            include: { payments: { where: { isDeleted: false } } },
+          },
+        },
+      },
     },
   });
 };
@@ -32,12 +58,70 @@ const generateProjectReport = async (req, res) => {
 
     const doc = new PDFDocument({ margin: 50 });
 
-    // Set filename
     const filename = `Report_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
     res.setHeader('Content-disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-type', 'application/pdf');
 
     doc.pipe(res);
+
+    // ── Computed values ──────────────────────────────────────────────────────
+    const totalBudget = project.budgetItems.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalExpenses = project.expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const capex = project.expenses.filter(e => e.expenseType === 'CAPEX').reduce((s, e) => s + (e.amount || 0), 0);
+    const opex = totalExpenses - capex;
+    const approvedLabor = project.workEntries.filter(w => w.status === 'APPROVED').reduce((s, w) => s + (w.totalCost || 0), 0);
+    const pendingLabor = project.workEntries.filter(w => w.status === 'PENDING').reduce((s, w) => s + (w.totalCost || 0), 0);
+    const totalLabor = approvedLabor + pendingLabor;
+    const totalInventory = project.inventoryItems.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+    const totalEquipment = project.equipment.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
+    const totalRevenue = project.sales.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+    const totalCost = totalExpenses + totalLabor + totalInventory + totalEquipment;
+    const netProfit = totalRevenue - totalCost;
+    const collectedRevenue = project.sales.reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
+    const pendingRevenue = project.sales.reduce((sum, item) => sum + (item.balanceDue || 0), 0);
+    const totalRejected = project.harvests.reduce((sum, item) => sum + (item.rejectedWeight || 0), 0);
+    const netHarvest = project.harvests.reduce((sum, item) => sum + (item.weight - (item.rejectedWeight || 0)), 0);
+    const expectedYield = project.expectedYield || 0;
+    const yieldPerformance = expectedYield > 0 ? (netHarvest / expectedYield) * 100 : null;
+
+    // Employee payments
+    const empPaymentMap = {};
+    project.employees.forEach(ep => {
+      const emp = ep.employee;
+      if (!empPaymentMap[emp.id]) {
+        empPaymentMap[emp.id] = { name: emp.name, earned: 0, paid: 0 };
+      }
+      emp.payments.forEach(p => {
+        empPaymentMap[emp.id].paid += p.amount || 0;
+      });
+    });
+    project.workEntries.forEach(w => {
+      if (empPaymentMap[w.employee?.id]) {
+        empPaymentMap[w.employee.id].earned += w.totalCost || 0;
+      }
+    });
+    const totalEarned = Object.values(empPaymentMap).reduce((s, e) => s + e.earned, 0);
+    const totalPaid = Object.values(empPaymentMap).reduce((s, e) => s + e.paid, 0);
+    const outstandingPay = totalEarned - totalPaid;
+
+    // Budget vs Actual by category
+    const budgetCatMap = {};
+    project.budgetItems.forEach(b => {
+      budgetCatMap[b.category] = budgetCatMap[b.category] || { planned: 0, spent: 0 };
+      budgetCatMap[b.category].planned += b.total || 0;
+    });
+    project.expenses.forEach(e => {
+      budgetCatMap[e.category] = budgetCatMap[e.category] || { planned: 0, spent: 0 };
+      budgetCatMap[e.category].spent += e.amount || 0;
+    });
+
+    // Rejection reasons
+    const rejectionReasons = {};
+    project.harvests.forEach(h => {
+      if (h.rejectedReason && h.rejectedWeight) {
+        rejectionReasons[h.rejectedReason] = (rejectionReasons[h.rejectedReason] || 0) + h.rejectedWeight;
+      }
+    });
 
     // ── Header ───────────────────────────────────────────────────────────────
     doc.fontSize(24).text(t(lang, 'report_title'), { align: 'center' });
@@ -48,51 +132,57 @@ const generateProjectReport = async (req, res) => {
 
     // ── Project Info ─────────────────────────────────────────────────────────
     doc.fontSize(16).text(project.name, { underline: true });
-    doc.fontSize(12).text(`${t(lang, 'crop')}: ${project.crop || t(lang, 'n_a')}`);
+    doc.fontSize(12);
+    doc.text(`${t(lang, 'crop')}: ${project.crop || t(lang, 'n_a')}${project.cropVariety ? ` (${project.cropVariety})` : ''}`);
     doc.text(`${t(lang, 'land_size')}: ${project.landSize} ${project.landUnit}`);
     doc.text(`${t(lang, 'status')}: ${project.status || 'Active'}`);
     doc.text(`${t(lang, 'date')}: ${project.startDate.toLocaleDateString()} - ${project.endDate ? project.endDate.toLocaleDateString() : t(lang, 'present')}`);
+    if (project.season) {
+      doc.text(`${t(lang, 'season')}: ${project.season.name}`);
+    }
     doc.moveDown();
 
     // ── Financial Summary ────────────────────────────────────────────────────
-    const totalBudget = project.budgetItems.reduce((sum, item) => sum + (item.total || 0), 0);
-    const totalExpenses = project.expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const totalLabor = project.workEntries.reduce((sum, item) => sum + (item.totalCost || 0), 0);
-    const totalInventory = project.inventoryItems.reduce((sum, item) => sum + (item.totalCost || 0), 0);
-    const totalEquipment = project.equipment.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
-    const totalRevenue = project.sales.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-    const totalCost = totalExpenses + totalLabor + totalInventory + totalEquipment;
-    const netProfit = totalRevenue - totalCost;
-    const collectedRevenue = project.sales.reduce((sum, item) => sum + ((item.totalAmount || 0) - (item.balanceDue || 0)), 0);
-    const pendingRevenue = project.sales.reduce((sum, item) => sum + (item.balanceDue || 0), 0);
-
     doc.fontSize(16).text(t(lang, 'financial_summary'), { underline: true });
     doc.fontSize(12);
     doc.text(`${t(lang, 'total_revenue')}: ${totalRevenue.toLocaleString()}`);
     doc.text(`${t(lang, 'collected_revenue')}: ${collectedRevenue.toLocaleString()}${pendingRevenue > 0 ? ` (${pendingRevenue.toLocaleString()} ${t(lang, 'pending')})` : ''}`);
     doc.text(`${t(lang, 'total_spending')}: ${totalCost.toLocaleString()}`);
-    doc.text(`${t(lang, 'net_profit_loss')}: ${netProfit.toLocaleString()}`, { 
-      color: netProfit >= 0 ? 'green' : 'red' 
+    doc.text(`${t(lang, 'net_profit_loss')}: ${netProfit.toLocaleString()}`, {
+      color: netProfit >= 0 ? 'green' : 'red'
     });
     doc.moveDown();
 
-    // ── Breakdown ────────────────────────────────────────────────────────────
-    doc.text(`- ${t(lang, 'operational_expenses')}: ${totalExpenses.toLocaleString()}`);
-    doc.text(`- ${t(lang, 'labor_costs')}: ${totalLabor.toLocaleString()}`);
+    doc.text(`- ${t(lang, 'operational_expenses')} (OPEX): ${opex.toLocaleString()}`);
+    doc.text(`- ${t(lang, 'capital_expenses')} (CAPEX): ${capex.toLocaleString()}`);
+    doc.text(`- ${t(lang, 'approved_labor')}: ${approvedLabor.toLocaleString()}`);
+    if (pendingLabor > 0) {
+      doc.text(`- ${t(lang, 'pending_labor')}: ${pendingLabor.toLocaleString()}`);
+    }
     doc.text(`- ${t(lang, 'inventory_purchases')}: ${totalInventory.toLocaleString()}`);
     doc.text(`- ${t(lang, 'equipment_investments')}: ${totalEquipment.toLocaleString()}`);
     doc.moveDown();
 
-    // ── Production & Yield Analysis ──────────────────────────────────────────
-    const netHarvest = project.harvests.reduce((sum, item) => sum + (item.weight - (item.rejectedWeight || 0)), 0);
-    const totalRejected = project.harvests.reduce((sum, item) => sum + (item.rejectedWeight || 0), 0);
-    const expectedYield = project.expectedYield || 0;
-    const yieldPerformance = expectedYield > 0 ? (netHarvest / expectedYield) * 100 : null;
+    // ── Employee Payments Summary ────────────────────────────────────────────
+    if (outstandingPay > 0 || totalPaid > 0) {
+      doc.fontSize(16).text(t(lang, 'employee_payments'), { underline: true });
+      doc.fontSize(12);
+      doc.text(`${t(lang, 'total_earned')}: ${totalEarned.toLocaleString()}`);
+      doc.text(`${t(lang, 'total_paid')}: ${totalPaid.toLocaleString()}`);
+      doc.text(`${t(lang, 'outstanding')}: ${outstandingPay.toLocaleString()}`, {
+        color: outstandingPay > 0 ? 'red' : 'green'
+      });
+      doc.moveDown();
+    }
 
+    // ── Production & Yield Analysis ──────────────────────────────────────────
     doc.fontSize(16).text(t(lang, 'production'), { underline: true });
     doc.fontSize(12).text(`${t(lang, 'approved_harvest')}: ${netHarvest.toLocaleString()} kg`);
     doc.text(`${t(lang, 'rejected')}: ${totalRejected.toLocaleString()} kg`);
-    
+    if (netHarvest > 0 && totalRejected > 0) {
+      doc.text(`Rejection Rate: ${((totalRejected / (netHarvest + totalRejected)) * 100).toFixed(1)}%`);
+    }
+
     if (expectedYield > 0) {
       doc.moveDown(0.5);
       doc.fontSize(14).text(t(lang, 'actual_vs_expected'), { underline: true });
@@ -100,16 +190,42 @@ const generateProjectReport = async (req, res) => {
       doc.text(`${t(lang, 'expected_yield')}: ${expectedYield.toLocaleString()} kg`);
       doc.text(`Performance: ${yieldPerformance.toFixed(1)}% of target`);
     }
-    
-    // Labor Efficiency
-    if (netHarvest > 0 && totalLabor > 0) {
-      const laborEff = totalLabor / netHarvest;
+
+    if (netHarvest > 0 && totalCost > 0) {
       doc.moveDown(0.5);
-      doc.text(`${t(lang, 'labor_efficiency')}: ${laborEff.toFixed(2)} / kg`);
+      doc.text(`Cost per kg: ${(totalCost / netHarvest).toFixed(2)}`);
+    }
+
+    if (netHarvest > 0 && totalLabor > 0) {
+      doc.text(`${t(lang, 'labor_efficiency')}: ${(totalLabor / netHarvest).toFixed(2)} / kg`);
     }
     doc.moveDown();
 
-    // ── Top Suppliers (Vendor Analysis) ──────────────────────────────────────
+    // ── Rejection Reasons ────────────────────────────────────────────────────
+    const rejectionEntries = Object.entries(rejectionReasons).sort((a, b) => b[1] - a[1]);
+    if (rejectionEntries.length > 0) {
+      doc.fontSize(16).text(t(lang, 'rejected'), { underline: true });
+      doc.fontSize(12);
+      rejectionEntries.forEach(([reason, weight]) => {
+        doc.text(`- ${reason}: ${weight.toLocaleString()} kg`);
+      });
+      doc.moveDown();
+    }
+
+    // ── Budget vs Actual by Category ─────────────────────────────────────────
+    const budgetCatEntries = Object.entries(budgetCatMap).sort((a, b) => b[1].planned - a[1].planned);
+    if (budgetCatEntries.length > 0) {
+      doc.fontSize(16).text(t(lang, 'budget_vs_actual'), { underline: true });
+      doc.fontSize(12);
+      budgetCatEntries.forEach(([cat, vals]) => {
+        const variance = vals.planned - vals.spent;
+        const pct = vals.planned > 0 ? ((vals.spent / vals.planned) * 100).toFixed(0) : '-';
+        doc.text(`- ${cat}: ${t(lang, 'planned')} ${vals.planned.toLocaleString()} | ${t(lang, 'spent')} ${vals.spent.toLocaleString()} (${pct}%) | ${t(lang, 'variance')} ${variance.toLocaleString()}`);
+      });
+      doc.moveDown();
+    }
+
+    // ── Top Suppliers ────────────────────────────────────────────────────────
     const supplierMap = {};
     project.expenses.forEach(e => {
       const name = e.payee || e.payeeRecord?.name || t(lang, 'n_a');
@@ -119,11 +235,9 @@ const generateProjectReport = async (req, res) => {
       const name = i.payee || t(lang, 'n_a');
       supplierMap[name] = (supplierMap[name] || 0) + (i.totalCost || 0);
     });
-
     const topSuppliers = Object.entries(supplierMap)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-
     if (topSuppliers.length > 0) {
       doc.fontSize(16).text(t(lang, 'top_suppliers'), { underline: true });
       doc.fontSize(12);
@@ -133,14 +247,24 @@ const generateProjectReport = async (req, res) => {
       doc.moveDown();
     }
 
-    // ── Budget Breakdown ────────────────────────────────────────────────
+    // ── Budget Breakdown ─────────────────────────────────────────────────────
     if (project.budgetItems.length > 0) {
       doc.fontSize(16).text(t(lang, 'budget_breakdown'), { underline: true });
       doc.fontSize(12);
       project.budgetItems.forEach(item => {
         doc.text(`- ${item.name} (${item.category}): ${item.quantity} ${item.unit} × ${item.unitPrice} = ${item.total}`);
       });
-      doc.text(`Total Budget: ${totalBudget.toLocaleString()}`);
+      doc.text(`Total ${t(lang, 'budget_breakdown')}: ${totalBudget.toLocaleString()}`);
+      doc.moveDown();
+    }
+
+    // ── Team Members ─────────────────────────────────────────────────────────
+    if (project.projectAccess.length > 0) {
+      doc.fontSize(16).text(t(lang, 'team_members'), { underline: true });
+      doc.fontSize(12);
+      project.projectAccess.forEach(pa => {
+        doc.text(`- ${pa.user?.name || pa.userName || t(lang, 'n_a')} (${pa.role})${pa.user?.phone ? ` - ${pa.user.phone}` : ''}`);
+      });
       doc.moveDown();
     }
 
@@ -165,25 +289,13 @@ const generateProjectExcelReport = async (req, res) => {
     const project = await getProjectData(id, req.user.id, res);
     if (!project) return;
 
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Shamba Mkononi';
-    workbook.created = new Date();
-
-    const summarySheet = workbook.addWorksheet('Summary');
-    summarySheet.columns = [
-      { header: t(lang, 'property'), key: 'prop', width: 25 },
-      { header: t(lang, 'value'), key: 'val', width: 30 },
-    ];
-
-    summarySheet.addRow({ prop: 'Project Name', val: project.name });
-    summarySheet.addRow({ prop: t(lang, 'crop'), val: project.crop || t(lang, 'n_a') });
-    summarySheet.addRow({ prop: t(lang, 'status'), val: project.status });
-    summarySheet.addRow({ prop: t(lang, 'land_size'), val: `${project.landSize} ${project.landUnit}` });
-    summarySheet.addRow({});
-
-    // Financials
+    // ── Computed values ──────────────────────────────────────────────────────
     const totalExpenses = project.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const totalLabor = project.workEntries.reduce((sum, w) => sum + (w.totalCost || 0), 0);
+    const capex = project.expenses.filter(e => e.expenseType === 'CAPEX').reduce((s, e) => s + (e.amount || 0), 0);
+    const opex = totalExpenses - capex;
+    const approvedLabor = project.workEntries.filter(w => w.status === 'APPROVED').reduce((s, w) => s + (w.totalCost || 0), 0);
+    const pendingLabor = project.workEntries.filter(w => w.status === 'PENDING').reduce((s, w) => s + (w.totalCost || 0), 0);
+    const totalLabor = approvedLabor + pendingLabor;
     const totalInventory = project.inventoryItems.reduce((sum, i) => sum + (i.totalCost || 0), 0);
     const totalEquipment = project.equipment.reduce((sum, eq) => sum + (eq.purchasePrice || 0), 0);
     const totalRevenue = project.sales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
@@ -191,93 +303,198 @@ const generateProjectExcelReport = async (req, res) => {
     const collectedRevenue = project.sales.reduce((sum, s) => sum + ((s.totalAmount || 0) - (s.balanceDue || 0)), 0);
     const pendingRevenue = project.sales.reduce((sum, s) => sum + (s.balanceDue || 0), 0);
     const netHarvest = project.harvests.reduce((sum, item) => sum + (item.weight - (item.rejectedWeight || 0)), 0);
+    const totalRejected = project.harvests.reduce((sum, item) => sum + (item.rejectedWeight || 0), 0);
+
+    // Employee payments
+    const empPaymentMap = {};
+    project.employees.forEach(ep => {
+      const emp = ep.employee;
+      if (!empPaymentMap[emp.id]) {
+        empPaymentMap[emp.id] = { name: emp.name, earned: 0, paid: 0 };
+      }
+      emp.payments.forEach(p => {
+        empPaymentMap[emp.id].paid += p.amount || 0;
+      });
+    });
+    project.workEntries.forEach(w => {
+      if (empPaymentMap[w.employee?.id]) {
+        empPaymentMap[w.employee.id].earned += w.totalCost || 0;
+      }
+    });
+    const totalEarned = Object.values(empPaymentMap).reduce((s, e) => s + e.earned, 0);
+    const totalPaid = Object.values(empPaymentMap).reduce((s, e) => s + e.paid, 0);
+
+    // Budget vs Actual by category
+    const budgetCatMap = {};
+    project.budgetItems.forEach(b => {
+      budgetCatMap[b.category] = budgetCatMap[b.category] || { planned: 0, spent: 0 };
+      budgetCatMap[b.category].planned += b.total || 0;
+    });
+    project.expenses.forEach(e => {
+      budgetCatMap[e.category] = budgetCatMap[e.category] || { planned: 0, spent: 0 };
+      budgetCatMap[e.category].spent += e.amount || 0;
+    });
+
+    // Block-level aggregation
+    const blockData = {};
+    (project.blocks || []).forEach(b => { blockData[b.id] = { name: b.name, expenses: 0, labor: 0, harvest: 0, revenue: 0 }; });
+    blockData['_none'] = { name: 'Overall', expenses: 0, labor: 0, harvest: 0, revenue: 0 };
+    project.expenses.forEach(e => {
+      const key = e.blockId || '_none';
+      if (!blockData[key]) blockData[key] = { name: e.block?.name || 'Overall', expenses: 0, labor: 0, harvest: 0, revenue: 0 };
+      blockData[key].expenses += e.amount || 0;
+    });
+    project.workEntries.forEach(w => {
+      const key = w.blockId || '_none';
+      if (!blockData[key]) blockData[key] = { name: w.block?.name || 'Overall', expenses: 0, labor: 0, harvest: 0, revenue: 0 };
+      blockData[key].labor += w.totalCost || 0;
+    });
+    project.harvests.forEach(h => {
+      const key = h.blockId || '_none';
+      if (!blockData[key]) blockData[key] = { name: h.block?.name || 'Overall', expenses: 0, labor: 0, harvest: 0, revenue: 0 };
+      blockData[key].harvest += (h.weight - (h.rejectedWeight || 0)) || 0;
+    });
+    project.sales.forEach(s => {
+      const key = s.blockId || '_none';
+      if (!blockData[key]) blockData[key] = { name: s.block?.name || 'Overall', expenses: 0, labor: 0, harvest: 0, revenue: 0 };
+      blockData[key].revenue += s.totalAmount || 0;
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Shamba Mkononi';
+    workbook.created = new Date();
+
+    // ── Summary Sheet ────────────────────────────────────────────────────────
+    const summarySheet = workbook.addWorksheet(t(lang, 'report_summary'));
+    summarySheet.columns = [
+      { header: t(lang, 'property'), key: 'prop', width: 30 },
+      { header: t(lang, 'value'), key: 'val', width: 35 },
+    ];
+
+    summarySheet.addRow({ prop: 'Project Name', val: project.name });
+    summarySheet.addRow({ prop: t(lang, 'crop'), val: project.crop || t(lang, 'n_a') });
+    if (project.cropVariety) summarySheet.addRow({ prop: 'Crop Variety', val: project.cropVariety });
+    summarySheet.addRow({ prop: t(lang, 'status'), val: project.status });
+    summarySheet.addRow({ prop: t(lang, 'land_size'), val: `${project.landSize} ${project.landUnit}` });
+    if (project.season) summarySheet.addRow({ prop: t(lang, 'season'), val: project.season.name });
+    summarySheet.addRow({});
+    summarySheet.addRow({ prop: t(lang, 'financial_summary'), val: '' });
 
     summarySheet.addRow({ prop: t(lang, 'total_revenue'), val: totalRevenue });
     summarySheet.addRow({ prop: t(lang, 'collected_revenue'), val: collectedRevenue });
     if (pendingRevenue > 0) summarySheet.addRow({ prop: `${t(lang, 'pending')} Revenue`, val: pendingRevenue });
+    summarySheet.addRow({ prop: t(lang, 'operational_expenses') + ' (OPEX)', val: opex });
+    summarySheet.addRow({ prop: t(lang, 'capital_expenses') + ' (CAPEX)', val: capex });
+    summarySheet.addRow({ prop: t(lang, 'approved_labor'), val: approvedLabor });
+    if (pendingLabor > 0) summarySheet.addRow({ prop: t(lang, 'pending_labor'), val: pendingLabor });
+    summarySheet.addRow({ prop: t(lang, 'inventory_purchases'), val: totalInventory });
+    summarySheet.addRow({ prop: t(lang, 'equipment_investments'), val: totalEquipment });
     summarySheet.addRow({ prop: t(lang, 'total_spending'), val: totalCost });
     summarySheet.addRow({ prop: t(lang, 'net_profit_loss'), val: totalRevenue - totalCost });
     summarySheet.addRow({});
 
-    // Yield Analysis
+    // Employee payment summary on summary sheet
+    summarySheet.addRow({ prop: t(lang, 'employee_payments'), val: '' });
+    summarySheet.addRow({ prop: t(lang, 'total_earned'), val: totalEarned });
+    summarySheet.addRow({ prop: t(lang, 'total_paid'), val: totalPaid });
+    summarySheet.addRow({ prop: t(lang, 'outstanding'), val: totalEarned - totalPaid });
+    summarySheet.addRow({});
+
+    // Yield on summary sheet
+    summarySheet.addRow({ prop: t(lang, 'production'), val: '' });
+    summarySheet.addRow({ prop: t(lang, 'approved_harvest'), val: `${netHarvest} kg` });
+    summarySheet.addRow({ prop: t(lang, 'rejected'), val: `${totalRejected} kg` });
+    if (netHarvest > 0 && totalRejected > 0) {
+      summarySheet.addRow({ prop: 'Rejection Rate', val: `${((totalRejected / (netHarvest + totalRejected)) * 100).toFixed(1)}%` });
+    }
     if (project.expectedYield > 0) {
       summarySheet.addRow({ prop: t(lang, 'expected_yield'), val: `${project.expectedYield} kg` });
-      summarySheet.addRow({ prop: t(lang, 'approved_harvest'), val: `${netHarvest} kg` });
       summarySheet.addRow({ prop: 'Yield Performance', val: `${((netHarvest / project.expectedYield) * 100).toFixed(1)}%` });
     }
-
-    // Efficiency
+    if (netHarvest > 0 && totalCost > 0) {
+      summarySheet.addRow({ prop: 'Cost per kg', val: (totalCost / netHarvest).toFixed(2) });
+    }
     if (netHarvest > 0 && totalLabor > 0) {
       summarySheet.addRow({ prop: t(lang, 'labor_efficiency'), val: `${(totalLabor / netHarvest).toFixed(2)} / kg` });
     }
 
-    // Expenses Sheet
+    // ── Expenses Sheet ───────────────────────────────────────────────────────
     const expenseSheet = workbook.addWorksheet('Expenses');
     expenseSheet.columns = [
       { header: t(lang, 'date'), key: 'date', width: 15 },
       { header: t(lang, 'category'), key: 'category', width: 20 },
+      { header: t(lang, 'expense_type'), key: 'expenseType', width: 12 },
       { header: t(lang, 'payee'), key: 'payee', width: 25 },
       { header: t(lang, 'amount'), key: 'amount', width: 15 },
+      { header: t(lang, 'recurring'), key: 'recurring', width: 12 },
       { header: t(lang, 'note'), key: 'note', width: 40 },
     ];
     project.expenses.forEach(e => {
       expenseSheet.addRow({
         date: e.date.toLocaleDateString(),
         category: e.category,
+        expenseType: e.expenseType,
         payee: e.payee || e.payeeRecord?.name || t(lang, 'n_a'),
         amount: e.amount,
+        recurring: e.isRecurring ? t(lang, 'yes') : '',
         note: e.note
       });
     });
-    expenseSheet.autoFilter = { from: 'A1', to: 'E1' };
+    expenseSheet.autoFilter = { from: 'A1', to: 'G1' };
 
-    // Labor Sheet
+    // ── Labor Sheet ──────────────────────────────────────────────────────────
     const laborSheet = workbook.addWorksheet('Labor');
     laborSheet.columns = [
       { header: t(lang, 'date'), key: 'date', width: 15 },
       { header: t(lang, 'worker'), key: 'name', width: 25 },
-      { header: t(lang, 'activity'), key: 'activity', width: 25 },
+      { header: t(lang, 'activity'), key: 'activity', width: 20 },
       { header: t(lang, 'days'), key: 'days', width: 10 },
       { header: t(lang, 'cost'), key: 'cost', width: 15 },
+      { header: t(lang, 'labor_status'), key: 'status', width: 12 },
+      { header: t(lang, 'paid'), key: 'paid', width: 10 },
     ];
     project.workEntries.forEach(w => {
       laborSheet.addRow({
         date: w.date.toLocaleDateString(),
-        name: w.employee.name,
+        name: w.employee?.name || t(lang, 'n_a'),
         activity: w.activity,
         days: w.daysWorked,
-        cost: w.totalCost
+        cost: w.totalCost,
+        status: w.status,
+        paid: w.isPaid ? t(lang, 'yes') : '',
       });
     });
-    laborSheet.autoFilter = { from: 'A1', to: 'E1' };
+    laborSheet.autoFilter = { from: 'A1', to: 'G1' };
 
-    // Harvest Sheet
+    // ── Harvest Sheet ────────────────────────────────────────────────────────
     if (project.harvests.length > 0) {
       const harvestSheet = workbook.addWorksheet('Harvest');
       harvestSheet.columns = [
         { header: t(lang, 'date'), key: 'date', width: 15 },
         { header: t(lang, 'block'), key: 'block', width: 20 },
         { header: t(lang, 'crop'), key: 'crop', width: 20 },
-        { header: `${t(lang, 'approved')} ${t(lang, 'weight_kg')}`, key: 'weight', width: 20 },
-        { header: `${t(lang, 'rejected')} ${t(lang, 'weight_kg')}`, key: 'rejected', width: 20 },
-        { header: t(lang, 'notes'), key: 'notes', width: 40 },
+        { header: `${t(lang, 'approved')} ${t(lang, 'weight_kg')}`, key: 'weight', width: 18 },
+        { header: `${t(lang, 'rejected')} ${t(lang, 'weight_kg')}`, key: 'rejected', width: 18 },
+        { header: t(lang, 'quality'), key: 'quality', width: 12 },
+        { header: t(lang, 'rejection_reason'), key: 'rejReason', width: 20 },
+        { header: t(lang, 'notes'), key: 'notes', width: 35 },
       ];
       project.harvests.forEach(h => {
-        const netWeight = h.weight - (h.rejectedWeight || 0);
-        const rejWeight = h.rejectedWeight || 0;
         harvestSheet.addRow({
           date: h.date.toLocaleDateString(),
           block: h.block?.name || 'Overall',
           crop: h.crop,
-          weight: netWeight,
-          rejected: rejWeight,
+          weight: h.weight - (h.rejectedWeight || 0),
+          rejected: h.rejectedWeight || 0,
+          quality: h.quality || '',
+          rejReason: h.rejectedReason || '',
           notes: h.notes
         });
       });
-      harvestSheet.autoFilter = { from: 'A1', to: 'F1' };
+      harvestSheet.autoFilter = { from: 'A1', to: 'H1' };
     }
 
-    // Sales Sheet
+    // ── Sales Sheet ──────────────────────────────────────────────────────────
     if (project.sales.length > 0) {
       const salesSheet = workbook.addWorksheet('Sales');
       salesSheet.columns = [
@@ -305,7 +522,7 @@ const generateProjectExcelReport = async (req, res) => {
       salesSheet.autoFilter = { from: 'A1', to: 'H1' };
     }
 
-    // Sale Payments Sheet
+    // ── Sale Payments Sheet ──────────────────────────────────────────────────
     const allPayments = project.sales.flatMap(s => (s.salePayments || []).map(p => ({ ...p, customer: s.customer || 'Cash' })));
     if (allPayments.length > 0) {
       const paymentsSheet = workbook.addWorksheet('Sale Payments');
@@ -326,7 +543,7 @@ const generateProjectExcelReport = async (req, res) => {
       paymentsSheet.autoFilter = { from: 'A1', to: 'D1' };
     }
 
-    // Budget Sheet
+    // ── Budget Sheet ─────────────────────────────────────────────────────────
     if (project.budgetItems.length > 0) {
       const budgetSheet = workbook.addWorksheet('Budget');
       budgetSheet.columns = [
@@ -350,7 +567,7 @@ const generateProjectExcelReport = async (req, res) => {
       budgetSheet.autoFilter = { from: 'A1', to: 'F1' };
     }
 
-    // Inventory Sheet
+    // ── Inventory Sheet ──────────────────────────────────────────────────────
     if (project.inventoryItems.length > 0) {
       const inventorySheet = workbook.addWorksheet('Inventory');
       inventorySheet.columns = [
@@ -360,7 +577,8 @@ const generateProjectExcelReport = async (req, res) => {
         { header: t(lang, 'unit'), key: 'unit', width: 10 },
         { header: t(lang, 'unit_cost'), key: 'cost', width: 15 },
         { header: t(lang, 'used_qty'), key: 'used', width: 12 },
-        { header: t(lang, 'notes'), key: 'notes', width: 40 },
+        { header: t(lang, 'remaining_qty'), key: 'remaining', width: 12 },
+        { header: t(lang, 'notes'), key: 'notes', width: 35 },
       ];
       project.inventoryItems.forEach(i => {
         inventorySheet.addRow({
@@ -370,13 +588,14 @@ const generateProjectExcelReport = async (req, res) => {
           unit: i.unit,
           cost: i.unitCost,
           used: i.usedQty,
+          remaining: (i.quantity || 0) - (i.usedQty || 0),
           notes: i.notes
         });
       });
-      inventorySheet.autoFilter = { from: 'A1', to: 'G1' };
+      inventorySheet.autoFilter = { from: 'A1', to: 'H1' };
     }
 
-    // Equipment Sheet
+    // ── Equipment Sheet ──────────────────────────────────────────────────────
     if (project.equipment.length > 0) {
       const equipSheet = workbook.addWorksheet('Equipment');
       equipSheet.columns = [
@@ -402,6 +621,97 @@ const generateProjectExcelReport = async (req, res) => {
       equipSheet.autoFilter = { from: 'A1', to: 'G1' };
     }
 
+    // ── Budget vs Actual Sheet ──────────────────────────────────────────────
+    const budgetCatEntries = Object.entries(budgetCatMap)
+      .map(([cat, vals]) => ({
+        category: cat,
+        planned: vals.planned,
+        spent: vals.spent,
+        variance: vals.planned - vals.spent,
+        utilization: vals.planned > 0 ? `${((vals.spent / vals.planned) * 100).toFixed(0)}%` : '-',
+      }))
+      .sort((a, b) => b.planned - a.planned);
+
+    if (budgetCatEntries.length > 0) {
+      const bvaSheet = workbook.addWorksheet(t(lang, 'budget_vs_actual'));
+      bvaSheet.columns = [
+        { header: t(lang, 'category'), key: 'category', width: 25 },
+        { header: t(lang, 'planned'), key: 'planned', width: 18 },
+        { header: t(lang, 'spent'), key: 'spent', width: 18 },
+        { header: t(lang, 'variance'), key: 'variance', width: 18 },
+        { header: '% Utilized', key: 'utilization', width: 14 },
+      ];
+      budgetCatEntries.forEach(row => bvaSheet.addRow(row));
+      bvaSheet.autoFilter = { from: 'A1', to: 'E1' };
+    }
+
+    // ── Employee Payment Summary Sheet ──────────────────────────────────────
+    const empPaymentRows = Object.values(empPaymentMap)
+      .map(emp => ({
+        employee: emp.name,
+        earned: emp.earned,
+        paid: emp.paid,
+        outstanding: emp.earned - emp.paid,
+      }))
+      .filter(r => r.earned > 0 || r.paid > 0)
+      .sort((a, b) => b.outstanding - a.outstanding);
+
+    if (empPaymentRows.length > 0) {
+      const empSheet = workbook.addWorksheet(t(lang, 'employee_payments'));
+      empSheet.columns = [
+        { header: t(lang, 'employee'), key: 'employee', width: 25 },
+        { header: t(lang, 'total_earned'), key: 'earned', width: 18 },
+        { header: t(lang, 'total_paid'), key: 'paid', width: 18 },
+        { header: t(lang, 'outstanding'), key: 'outstanding', width: 18 },
+      ];
+      empPaymentRows.forEach(row => empSheet.addRow(row));
+      empSheet.autoFilter = { from: 'A1', to: 'D1' };
+    }
+
+    // ── Block Profitability Sheet ───────────────────────────────────────────
+    const blockRows = Object.values(blockData)
+      .map(b => ({
+        block: b.name,
+        expenses: b.expenses,
+        labor: b.labor,
+        harvest: b.harvest,
+        revenue: b.revenue,
+        profit: b.revenue - b.expenses - b.labor,
+      }))
+      .sort((a, b) => b.profit - a.profit);
+
+    if (blockRows.length > 1) {
+      const blockSheet = workbook.addWorksheet(t(lang, 'block_profitability'));
+      blockSheet.columns = [
+        { header: t(lang, 'block'), key: 'block', width: 20 },
+        { header: t(lang, 'block_expenses'), key: 'expenses', width: 16 },
+        { header: t(lang, 'block_labor'), key: 'labor', width: 16 },
+        { header: `${t(lang, 'block_harvest')}`, key: 'harvest', width: 16 },
+        { header: t(lang, 'block_revenue'), key: 'revenue', width: 16 },
+        { header: t(lang, 'block_profit'), key: 'profit', width: 16 },
+      ];
+      blockRows.forEach(row => blockSheet.addRow(row));
+      blockSheet.autoFilter = { from: 'A1', to: 'F1' };
+    }
+
+    // ── Team Members Sheet ───────────────────────────────────────────────────
+    if (project.projectAccess.length > 0) {
+      const teamSheet = workbook.addWorksheet(t(lang, 'team_members'));
+      teamSheet.columns = [
+        { header: t(lang, 'user'), key: 'name', width: 25 },
+        { header: t(lang, 'role'), key: 'role', width: 15 },
+        { header: 'Phone', key: 'phone', width: 20 },
+      ];
+      project.projectAccess.forEach(pa => {
+        teamSheet.addRow({
+          name: pa.user?.name || pa.userName || t(lang, 'n_a'),
+          role: pa.role,
+          phone: pa.user?.phone || pa.userPhone || '',
+        });
+      });
+      teamSheet.autoFilter = { from: 'A1', to: 'C1' };
+    }
+
     const filename = `Report_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -417,7 +727,428 @@ const generateProjectExcelReport = async (req, res) => {
   }
 };
 
+const generateFullUserExcelBackup = async (req, res) => {
+  const userId = req.user.id;
+  const lang = req.query.lang || 'en';
+
+  try {
+    // 1. Fetch All Accessible Project IDs
+    const ownedProjects = await prisma.farmProject.findMany({
+      where: { userId, isDeleted: false },
+      select: { id: true },
+    });
+    const sharedProjects = await prisma.projectAccess.findMany({
+      where: { userId, isDeleted: false },
+      select: { projectId: true },
+    });
+    const allProjectIds = Array.from(new Set([
+      ...ownedProjects.map(p => p.id),
+      ...sharedProjects.map(p => p.projectId)
+    ]));
+
+    // 2. Fetch User-Level Data
+    const [seasons, employees, payees] = await Promise.all([
+      prisma.season.findMany({ where: { userId, isDeleted: false } }),
+      prisma.employee.findMany({ where: { userId, isDeleted: false } }),
+      prisma.payee.findMany({ where: { userId, isDeleted: false } }),
+    ]);
+
+    // 3. Fetch Domain Data across all accessible projects
+    const [projects, blocks, budgetItems, expenses, workEntries, harvests, sales, inventoryItems, equipment] = await Promise.all([
+      prisma.farmProject.findMany({
+        where: { id: { in: allProjectIds }, isDeleted: false },
+        include: { season: true }
+      }),
+      prisma.projectBlock.findMany({ where: { projectId: { in: allProjectIds }, isDeleted: false } }),
+      prisma.budgetItem.findMany({ where: { projectId: { in: allProjectIds }, isDeleted: false } }),
+      prisma.expense.findMany({
+        where: { projectId: { in: allProjectIds }, isDeleted: false },
+        include: { payeeRecord: true, block: true }
+      }),
+      prisma.workEntry.findMany({
+        where: { projectId: { in: allProjectIds }, isDeleted: false },
+        include: { employee: true, block: true }
+      }),
+      prisma.harvest.findMany({
+        where: { projectId: { in: allProjectIds }, isDeleted: false },
+        include: { block: true }
+      }),
+      prisma.sale.findMany({
+        where: { projectId: { in: allProjectIds }, isDeleted: false },
+        include: { salePayments: { where: { isDeleted: false } }, block: true }
+      }),
+      prisma.inventoryItem.findMany({
+        where: { projectId: { in: allProjectIds }, isDeleted: false },
+        include: { payeeRecord: true }
+      }),
+      prisma.equipment.findMany({ where: { projectId: { in: allProjectIds }, isDeleted: false } }),
+    ]);
+
+    // 4. Fetch Cross-Project Data Linked to User's Employees
+    const employeeIds = employees.map(e => e.id);
+    const employeePayments = await prisma.payment.findMany({
+      where: { employeeId: { in: employeeIds }, isDeleted: false },
+      include: { employee: true }
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Shamba Mkononi';
+    workbook.created = new Date();
+
+    // ── Helper to format date ────────────────────────────────────────────────
+    const fd = (date) => (date ? new Date(date).toLocaleDateString() : '');
+
+    // ── Projects Sheet ───────────────────────────────────────────────────────
+    const projSheet = workbook.addWorksheet('Projects');
+    projSheet.columns = [
+      { header: 'ID', key: 'id', width: 36 },
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Crop', key: 'crop', width: 20 },
+      { header: 'Variety', key: 'cropVariety', width: 20 },
+      { header: 'Land Size', key: 'landSize', width: 12 },
+      { header: 'Unit', key: 'landUnit', width: 10 },
+      { header: 'Start Date', key: 'startDate', width: 15 },
+      { header: 'End Date', key: 'endDate', width: 15 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Season', key: 'season', width: 20 },
+      { header: 'Notes', key: 'notes', width: 40 },
+    ];
+    projects.forEach(p => projSheet.addRow({
+      ...p,
+      startDate: fd(p.startDate),
+      endDate: fd(p.endDate),
+      season: p.season?.name || ''
+    }));
+
+    // ── Seasons Sheet ────────────────────────────────────────────────────────
+    if (seasons.length > 0) {
+      const seasonSheet = workbook.addWorksheet('Seasons');
+      seasonSheet.columns = [
+        { header: 'ID', key: 'id', width: 36 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Start Date', key: 'startDate', width: 15 },
+        { header: 'End Date', key: 'endDate', width: 15 },
+      ];
+      seasons.forEach(s => seasonSheet.addRow({ ...s, startDate: fd(s.startDate), endDate: fd(s.endDate) }));
+    }
+
+    // ── Expenses Sheet ───────────────────────────────────────────────────────
+    const expSheet = workbook.addWorksheet('Expenses');
+    expSheet.columns = [
+      { header: 'Project', key: 'projectName', width: 20 },
+      { header: 'Block', key: 'blockName', width: 20 },
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Type', key: 'expenseType', width: 12 },
+      { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Payee', key: 'payee', width: 25 },
+      { header: 'Note', key: 'note', width: 40 },
+    ];
+    expenses.forEach(e => {
+      const p = projects.find(proj => proj.id === e.projectId);
+      expSheet.addRow({
+        projectName: p?.name || '',
+        blockName: e.block?.name || '',
+        date: fd(e.date),
+        category: e.category,
+        expenseType: e.expenseType,
+        amount: e.amount,
+        payee: e.payee || e.payeeRecord?.name || '',
+        note: e.note
+      });
+    });
+
+    // ── Labor (Work Entries) ─────────────────────────────────────────────────
+    const labSheet = workbook.addWorksheet('Labor');
+    labSheet.columns = [
+      { header: 'Project', key: 'projectName', width: 20 },
+      { header: 'Block', key: 'blockName', width: 20 },
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Employee', key: 'employeeName', width: 25 },
+      { header: 'Activity', key: 'activity', width: 20 },
+      { header: 'Days', key: 'daysWorked', width: 10 },
+      { header: 'Cost', key: 'totalCost', width: 15 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Is Paid', key: 'isPaid', width: 10 },
+    ];
+    workEntries.forEach(w => {
+      const p = projects.find(proj => proj.id === w.projectId);
+      labSheet.addRow({
+        projectName: p?.name || '',
+        blockName: w.block?.name || '',
+        date: fd(w.date),
+        employeeName: w.employee?.name || '',
+        activity: w.activity,
+        daysWorked: w.daysWorked,
+        totalCost: w.totalCost,
+        status: w.status,
+        isPaid: w.isPaid ? 'Yes' : 'No'
+      });
+    });
+
+    // ── Harvest Sheet ────────────────────────────────────────────────────────
+    if (harvests.length > 0) {
+      const harSheet = workbook.addWorksheet('Harvest');
+      harSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Block', key: 'blockName', width: 20 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Crop', key: 'crop', width: 20 },
+        { header: 'Weight (kg)', key: 'weight', width: 15 },
+        { header: 'Rejected (kg)', key: 'rejected', width: 15 },
+        { header: 'Quality', key: 'quality', width: 12 },
+        { header: 'Notes', key: 'notes', width: 35 },
+      ];
+      harvests.forEach(h => {
+        const p = projects.find(proj => proj.id === h.projectId);
+        harSheet.addRow({
+          projectName: p?.name || '',
+          blockName: h.block?.name || '',
+          date: fd(h.date),
+          crop: h.crop,
+          weight: h.weight,
+          rejected: h.rejectedWeight || 0,
+          quality: h.quality || '',
+          notes: h.notes
+        });
+      });
+    }
+
+    // ── Sales Sheet ──────────────────────────────────────────────────────────
+    if (sales.length > 0) {
+      const salSheet = workbook.addWorksheet('Sales');
+      salSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Block', key: 'blockName', width: 20 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Customer', key: 'customer', width: 25 },
+        { header: 'Weight (kg)', key: 'weight', width: 15 },
+        { header: 'Price', key: 'price', width: 15 },
+        { header: 'Total', key: 'total', width: 15 },
+        { header: 'Due', key: 'balance', width: 15 },
+        { header: 'Status', key: 'status', width: 12 },
+      ];
+      sales.forEach(s => {
+        const p = projects.find(proj => proj.id === s.projectId);
+        salSheet.addRow({
+          projectName: p?.name || '',
+          blockName: s.block?.name || '',
+          date: fd(s.date),
+          customer: s.customer || 'Cash',
+          weight: s.weightSold,
+          price: s.unitPrice,
+          total: s.totalAmount,
+          balance: s.balanceDue || 0,
+          status: s.paymentStatus || 'paid'
+        });
+      });
+    }
+
+    // ── Sale Payments Sheet ──────────────────────────────────────────────────
+    const allSalePayments = sales.flatMap(s => (s.salePayments || []).map(p => ({ ...p, projectName: projects.find(proj => proj.id === s.projectId)?.name, customer: s.customer || 'Cash' })));
+    if (allSalePayments.length > 0) {
+      const spSheet = workbook.addWorksheet('Sale Payments');
+      spSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Customer', key: 'customer', width: 25 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Method', key: 'method', width: 12 },
+        { header: 'Note', key: 'note', width: 40 },
+      ];
+      allSalePayments.forEach(p => spSheet.addRow({
+        projectName: p.projectName,
+        date: fd(p.date),
+        customer: p.customer,
+        amount: p.amount,
+        method: p.method,
+        note: p.note
+      }));
+    }
+
+    // ── Sale-Harvest Links ───────────────────────────────────────────────────
+    const allSaleHarvests = await prisma.saleHarvest.findMany({
+      where: { saleId: { in: sales.map(s => s.id) }, isDeleted: false },
+      include: { sale: true, harvest: true }
+    });
+    if (allSaleHarvests.length > 0) {
+      const shSheet = workbook.addWorksheet('Sale-Harvest Links');
+      shSheet.columns = [
+        { header: 'Sale ID', key: 'saleId', width: 36 },
+        { header: 'Harvest ID', key: 'harvestId', width: 36 },
+        { header: 'Customer', key: 'customer', width: 25 },
+        { header: 'Crop', key: 'crop', width: 20 },
+      ];
+      allSaleHarvests.forEach(sh => shSheet.addRow({
+        saleId: sh.saleId,
+        harvestId: sh.harvestId,
+        customer: sh.sale.customer || 'Cash',
+        crop: sh.harvest.crop
+      }));
+    }
+
+    // ── Project Access Sheet ─────────────────────────────────────────────────
+    const projectAccess = await prisma.projectAccess.findMany({
+      where: { projectId: { in: allProjectIds }, isDeleted: false },
+      include: { user: true, project: true }
+    });
+    if (projectAccess.length > 0) {
+      const paSheet = workbook.addWorksheet('Project Access');
+      paSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'User', key: 'userName', width: 25 },
+        { header: 'Role', key: 'role', width: 15 },
+        { header: 'Email', key: 'email', width: 25 },
+      ];
+      projectAccess.forEach(pa => paSheet.addRow({
+        projectName: pa.project.name,
+        userName: pa.user.name,
+        role: pa.role,
+        email: pa.user.phone
+      }));
+    }
+
+    // ── Inventory Sheet ──────────────────────────────────────────────────────
+    if (inventoryItems.length > 0) {
+      const invSheet = workbook.addWorksheet('Inventory');
+      invSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Qty', key: 'quantity', width: 10 },
+        { header: 'Unit', key: 'unit', width: 10 },
+        { header: 'Unit Cost', key: 'unitCost', width: 15 },
+        { header: 'Total Cost', key: 'totalCost', width: 15 },
+        { header: 'Used Qty', key: 'usedQty', width: 12 },
+      ];
+      inventoryItems.forEach(i => {
+        const p = projects.find(proj => proj.id === i.projectId);
+        invSheet.addRow({
+          projectName: p?.name || '',
+          ...i
+        });
+      });
+    }
+
+    // ── Equipment Sheet ──────────────────────────────────────────────────────
+    if (equipment.length > 0) {
+      const eqSheet = workbook.addWorksheet('Equipment');
+      eqSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Type', key: 'type', width: 20 },
+        { header: 'Date', key: 'purchaseDate', width: 15 },
+        { header: 'Price', key: 'purchasePrice', width: 15 },
+        { header: 'Status', key: 'status', width: 12 },
+      ];
+      equipment.forEach(e => {
+        const p = projects.find(proj => proj.id === e.projectId);
+        eqSheet.addRow({
+          projectName: p?.name || '',
+          ...e,
+          purchaseDate: fd(e.purchaseDate)
+        });
+      });
+    }
+
+    // ── Budget Sheet ─────────────────────────────────────────────────────────
+    if (budgetItems.length > 0) {
+      const budSheet = workbook.addWorksheet('Budget');
+      budSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Item', key: 'name', width: 25 },
+        { header: 'Qty', key: 'quantity', width: 10 },
+        { header: 'Unit', key: 'unit', width: 10 },
+        { header: 'Price', key: 'unitPrice', width: 15 },
+        { header: 'Total', key: 'total', width: 15 },
+      ];
+      budgetItems.forEach(b => {
+        const p = projects.find(proj => proj.id === b.projectId);
+        budSheet.addRow({
+          projectName: p?.name || '',
+          ...b
+        });
+      });
+    }
+
+    // ── Blocks Sheet ─────────────────────────────────────────────────────────
+    if (blocks.length > 0) {
+      const bloSheet = workbook.addWorksheet('Blocks');
+      bloSheet.columns = [
+        { header: 'Project', key: 'projectName', width: 20 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Land Size', key: 'landSize', width: 12 },
+        { header: 'Unit', key: 'landUnit', width: 10 },
+        { header: 'Crop', key: 'crop', width: 20 },
+      ];
+      blocks.forEach(b => {
+        const p = projects.find(proj => proj.id === b.projectId);
+        bloSheet.addRow({
+          projectName: p?.name || '',
+          ...b
+        });
+      });
+    }
+
+    // ── Employees Sheet ──────────────────────────────────────────────────────
+    if (employees.length > 0) {
+      const empSheet = workbook.addWorksheet('Employees');
+      empSheet.columns = [
+        { header: 'ID', key: 'id', width: 36 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Phone', key: 'phone', width: 20 },
+        { header: 'Role', key: 'role', width: 15 },
+      ];
+      employees.forEach(e => empSheet.addRow(e));
+    }
+
+    // ── Employee Payments Sheet ──────────────────────────────────────────────
+    if (employeePayments.length > 0) {
+      const epSheet = workbook.addWorksheet('Employee Payments');
+      epSheet.columns = [
+        { header: 'Employee', key: 'employeeName', width: 25 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Note', key: 'note', width: 40 },
+      ];
+      employeePayments.forEach(p => epSheet.addRow({
+        employeeName: p.employee?.name || '',
+        date: fd(p.date),
+        amount: p.amount,
+        note: p.note
+      }));
+    }
+
+    // ── Payees Sheet ─────────────────────────────────────────────────────────
+    if (payees.length > 0) {
+      const paySheet = workbook.addWorksheet('Payees');
+      paySheet.columns = [
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Phone', key: 'phone', width: 20 },
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Notes', key: 'notes', width: 35 },
+      ];
+      payees.forEach(p => paySheet.addRow(p));
+    }
+
+    const filename = `Full_Backup_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Full Backup Export Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate full Excel backup' });
+    }
+  }
+};
+
 module.exports = {
   generateProjectReport,
   generateProjectExcelReport,
+  generateFullUserExcelBackup,
 };

@@ -7,6 +7,7 @@ import { database } from '../db';
 import { stitchShadows, stitchTheme, stitchStyles } from '../theme/stitchTheme';
 import { StitchHeroPill } from '../components/ui/StitchHeroHeader';
 import StitchDashboardShell, { StitchDashboardSectionHeader } from '../components/ui/StitchDashboardShell';
+import EmptyState from '../components/ui/EmptyState';
 import { StitchChip, StitchSurface, StitchSectionTitle } from '../components/ui/StitchPrimitives';
 import { formatCurrency } from '../utils/currency';
 import { computeProjectSummary, computePortfolioSummary } from '../utils/localAnalytics';
@@ -237,7 +238,7 @@ export default function ReportsScreen({ navigation }) {
             navigation={navigation}
           />
         ))}
-        {!data.projects.length ? <Text style={styles.emptyText}>{t('dashboard.no_active_projects', { defaultValue: 'No active projects found.' })}</Text> : null}
+        {!data.projects.length ? <EmptyState title={t('dashboard.no_active_projects', { defaultValue: 'No active projects found.' })} icon="folder-open-outline" /> : null}
       </ScrollView>
 
       <StitchDashboardSectionHeader title={t('dashboard.cost_allocation', { defaultValue: 'Cost Allocation' })} subtitle={t('dashboard.spending_breakdown', { defaultValue: 'Portfolio spending breakdown' })} style={styles.sectionSpacing} />
@@ -346,7 +347,7 @@ export default function ReportsScreen({ navigation }) {
             <Text style={styles.workerStatValue}>{formatCurrency(worker.earned, currency)}</Text>
           </View>
         ))}
-        {!laborStats.workers.length ? <Text style={styles.emptySmall}>{t('dashboard.no_labor_data', { defaultValue: 'No labor data found.' })}</Text> : null}
+        {!laborStats.workers.length ? <EmptyState title={t('dashboard.no_labor_data', { defaultValue: 'No labor data found.' })} icon="people-outline" /> : null}
       </View>
 
       <StitchDashboardSectionHeader title={t('dashboard.activity_mix', { defaultValue: 'Activity Mix' })} subtitle={t('dashboard.days_by_activity', { defaultValue: 'Days worked by activity type' })} style={styles.sectionSpacing} />
@@ -357,7 +358,7 @@ export default function ReportsScreen({ navigation }) {
             <Text style={styles.activityStatValue}>{act.days} {t('common.days', { defaultValue: 'days' })}</Text>
           </View>
         ))}
-        {!laborStats.activities.length ? <Text style={styles.emptySmall}>{t('dashboard.no_activity_data', { defaultValue: 'No activity data found.' })}</Text> : null}
+        {!laborStats.activities.length ? <EmptyState title={t('dashboard.no_activity_data', { defaultValue: 'No activity data found.' })} icon="flash-outline" /> : null}
       </View>
 
       <View style={{ height: 40 }} />

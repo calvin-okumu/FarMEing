@@ -13,6 +13,8 @@ const createSaleSchema = z.object({
   weightSold:  z.number().positive('Weight sold must be positive'),
   unitPrice:   z.number().positive('Unit price must be positive'),
   totalAmount: z.number().positive('Total amount must be positive'),
+  receiptUrl:  z.string().url('Invalid receipt URL').optional().nullable(),
+  invoiceUrl:  z.string().url('Invalid invoice URL').optional().nullable(),
   notes:       z.string().optional().nullable(),
 });
 
@@ -24,6 +26,8 @@ const updateSaleSchema = z
     weightSold:  z.number().positive().optional(),
     unitPrice:   z.number().positive().optional(),
     totalAmount: z.number().positive().optional(),
+    receiptUrl:  z.string().url('Invalid receipt URL').optional().nullable(),
+    invoiceUrl:  z.string().url('Invalid invoice URL').optional().nullable(),
     notes:       z.string().optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {

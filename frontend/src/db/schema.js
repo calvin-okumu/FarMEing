@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 29, // Incremented version
+  version: 30, // Incremented version
   tables: [
     // ── Equipment ─────────────────────────────────────────────────────────────
     tableSchema({
@@ -143,6 +143,7 @@ export default appSchema({
         { name: 'sale_id',     type: 'string' },
         { name: 'amount',      type: 'number' },
         { name: 'date',        type: 'number' },
+        { name: 'method',      type: 'string', isOptional: true },
         { name: 'note',        type: 'string', isOptional: true },
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },
@@ -278,6 +279,7 @@ export default appSchema({
         { name: 'project_id',  type: 'string' },
         { name: 'block_id',    type: 'string', isOptional: true },
         { name: 'date',        type: 'number' },
+        { name: 'due_date',    type: 'number', isOptional: true },
         { name: 'customer',    type: 'string', isOptional: true },
         { name: 'weight_sold', type: 'number' },
         { name: 'unit_price',  type: 'number' },
@@ -285,6 +287,7 @@ export default appSchema({
         { name: 'payment_status', type: 'string', isOptional: true },
         { name: 'balance_due', type: 'number', isOptional: true },
         { name: 'receipt_url', type: 'string', isOptional: true },
+        { name: 'invoice_url', type: 'string', isOptional: true },
         { name: 'notes',       type: 'string', isOptional: true },
         { name: 'is_deleted',  type: 'boolean' },
         { name: 'created_at',  type: 'number' },

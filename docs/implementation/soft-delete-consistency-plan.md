@@ -12,27 +12,27 @@ This plan defines how FarmTrack should make soft delete behavior consistent acro
 
 ## Current Findings
 
-FarmTrack already uses `isDeleted` in most places, but the behavior is not fully uniform.
+FarmTrack uses `isDeleted` uniformly across all business models.
 
-- Backend schema already uses `isDeleted` for most business models
-- Frontend local models also store `isDeleted`
-- Sync already supports tombstones and pending deletes
-- Most delete endpoints already perform soft delete
-- `Payment` is the main inconsistency: it has local `is_deleted` support but no backend `isDeleted` field or delete endpoint
+- Backend schema uses `isDeleted` for all business models (including `Payment`).
+- Frontend local models store `is_deleted` and expose it as `isDeleted`.
+- Sync fully supports tombstones and pending deletes.
+- All delete endpoints perform soft delete via a comprehensive cascading transaction.
+- Project access verification strictly filters out soft-deleted records.
 
 ## Standard Rule
 
 For every business entity in scope:
 
 - Delete means setting `isDeleted = true`
-- Normal reads must exclude deleted records
-- Updates to deleted records must be rejected
-- Sync must preserve deletion state until the server confirms it
-- Hard delete is reserved for explicit cleanup, not user workflows
+- Normal reads must exclude deleted records (`where: { isDeleted: false }`)
+- Updates to deleted records are rejected
+- Sync preserves deletion state until the server confirms it
+- Hard delete is strictly forbidden in user workflows
 
 ## Scope
 
-Apply the rule consistently to these records:
+The rule is applied consistently to:
 
 - `FarmProject`
 - `BudgetItem`
@@ -43,8 +43,28 @@ Apply the rule consistently to these records:
 - `Harvest`
 - `Sale`
 - `InventoryItem`
+- `Equipment`
+- `ProjectAccess`
+- `ProjectInvitation`
+- `EmployeeProject`
 
-Do not expand this to `User` or other auth/system records unless there is a product requirement.
+---
+
+## Implementation Status: COMPLETED
+
+### Backend Standardized
+- All controllers (`Sale`, `Harvest`, `Expense`, etc.) use `verifyProjectAccess` and filter by `isDeleted: false`.
+- `deleteProject` in `project.controller.js` implements a **comprehensive cascading soft-delete** of all 12+ related entities within a single database transaction.
+- `checkProjectAccess` helper filters out soft-deleted access rows to prevent unauthorized data access after a member is removed.
+
+### Frontend Standardized
+- Deletions are routed through `markRecordDeleted` in `localRecord.js`.
+- All forms (`AddSaleScreen`, `AddExpenseScreen`) correctly update `updatedAt` and `isDeleted` flags.
+
+### Sync Standardized
+- `sync.controller.js` implements the same cascading soft-delete logic for projects initiated from the mobile app.
+- `fieldMapping` includes all synchronization-critical fields.
+- `fromWatermelon` correctly handles all date-type fields (including `dueDate`).
 
 ## Phase 1: Close Schema Gaps
 

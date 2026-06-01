@@ -1,9 +1,14 @@
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
 import useSettingsStore from '../store/useSettingsStore';
 import useSyncStore from '../store/useSyncStore';
+import { BASE_URL } from '../lib/api';
+import { syncAll } from '../services/syncService';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { formatAppDate } from '../utils/date';
 import { stitchShadows, stitchTheme } from '../theme/stitchTheme';
@@ -18,6 +23,7 @@ export default function SettingsScreen({ navigation }) {
   const logout = useAuthStore((s) => s.logout);
   const { language, currency, setLanguage, setCurrency } = useSettingsStore();
   const { status, lastSyncAt, failedCount } = useSyncStore();
+  const [exporting, setExporting] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert(t('settings.logout'), t('settings.confirm_logout'), [
@@ -29,6 +35,38 @@ export default function SettingsScreen({ navigation }) {
   const changeLanguage = async (lang) => {
     await setLanguage(lang);
     await i18n.changeLanguage(lang);
+  };
+
+  const handleFullBackup = async () => {
+    setExporting(true);
+    try {
+      // 1. Sync first to ensure server has latest local data
+      await syncAll();
+
+      const token = useAuthStore.getState().token;
+      const fileUri = `${FileSystem.documentDirectory}FarmTrack_Full_Backup_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const lang = i18n.language || 'en';
+
+      const downloadRes = await FileSystem.downloadAsync(
+        `${BASE_URL}reports/full-backup/excel?lang=${lang}`,
+        fileUri,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (downloadRes.status !== 200) {
+        throw new Error('Failed to download backup');
+      }
+
+      const shareUri = downloadRes.uri.startsWith('file://') ? downloadRes.uri : `file://${downloadRes.uri}`;
+      await Sharing.shareAsync(shareUri);
+    } catch (err) {
+      console.error('[Backup] Error:', err.message);
+      Alert.alert(t('common.error'), 'Could not generate full backup. Please check your internet connection.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const syncSummary = failedCount > 0
@@ -94,6 +132,21 @@ export default function SettingsScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </StitchSurface>
+        </View>
+
+        <View style={styles.sectionBlock}>
+          <StitchDashboardSectionHeader title={t('settings.data_management')} />
+          <View style={styles.listCardStack}>
+            <StitchListRow
+              icon='cloud-download'
+              title={t('settings.full_backup')}
+              subtitle={t('settings.full_backup_subtitle')}
+              tint={stitchTheme.colors.primarySoft}
+              onPress={handleFullBackup}
+              disabled={exporting}
+              rightElement={exporting ? <ActivityIndicator size='small' color={stitchTheme.colors.primary} /> : null}
+            />
+          </View>
         </View>
 
         <View style={styles.sectionBlock}>

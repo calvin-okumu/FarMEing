@@ -33,7 +33,8 @@
     },
     "today": "Leo",
     "earlier": "Awali",
-    "select_block": "Chagua Kitalu"
+    "select_block": "Chagua Kitalu",
+    "not_set": "Haijawekwa"
   },
   "months": {
     "january": "Januari",
@@ -174,7 +175,9 @@
     "irrigation_alert": "Tahadhari ya Umwagiliaji",
     "irrigation_alert_body": "Unyevu wa udongo katika Sekta C unapungua. Kagua pampu na ratiba ya shamba.",
     "irrigation_alert_warning": "Malipo ya wafanyakazi yanayochelewa yanaongezeka. Kagua shughuli kabla ya mzunguko unaofuata wa umwagiliaji.",
-    "run_action": "Endesha Hatua"
+    "run_action": "Endesha Hatua",
+    "empty_title": "Karibu FarmTrack",
+    "empty_subtitle": "Anzisha mradi wako wa kwanza"
   },
   "timeline": {
     "project_activity": "Farm Activity",
@@ -273,7 +276,14 @@
       "save_local": "Imeshindikana kuhifadhi mradi kwenye kifaa",
       "delete_local": "Imeshindikana kufuta mradi",
       "not_found": "Mradi haujapatikana"
-    }
+    },
+    "empty_budget": "Hakuna vitu vya bajeti bado",
+    "empty_expenses": "Hakuna gharama zilizorekodiwa",
+    "empty_labor": "Hakuna rekodi za kazi",
+    "empty_harvest": "Hakuna mavuno yaliyorekodiwa",
+    "empty_sales": "Hakuna mauzo yaliyorekodiwa",
+    "empty_equipment": "Hakuna vifaa vilivyoongezwa",
+    "empty_timeline": "Hakuna shughuli bado"
   },
   "budget": {
     "edit_title": "Hariri Kipengee cha Bajeti",
@@ -418,7 +428,9 @@
       "category": "Kategoria",
       "notes": "Maelezo"
     },
-    "no_category": "Jumla"
+    "no_category": "Jumla",
+    "expenses_empty": "Hakuna gharama zinazohusiana na mlipwa huyu",
+    "inventory_empty": "Hakuna bidhaa za stoo zinazohusiana na mlipwa huyu"
   },
   "labor": {
     "screen_title": "Worker Activity",
@@ -699,6 +711,10 @@
       "en": "Kiingereza",
       "sw": "Kiswahili"
     },
+    "data_management": "Usimamizi wa Data",
+    "full_backup": "Backup Kamili (Excel)",
+    "full_backup_subtitle": "Hamisha miradi na rekodi zote kama backup",
+    "exporting": "Inahamisha data...",
     "sync_status": "Hali ya Usawazishaji",
     "sync_states": {
       "idle": "Imetulia",

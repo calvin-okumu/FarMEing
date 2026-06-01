@@ -94,10 +94,16 @@ const deleteHarvest = async (req, res) => {
     const access = await verifyProjectAccess(harvest.projectId, req.user.id, res, ['OWNER', 'MANAGER']);
     if (!access) return;
 
-    await prisma.harvest.update({
-      where: { id: req.params.id },
-      data:  { isDeleted: true },
-    });
+    await prisma.$transaction([
+      prisma.harvest.update({
+        where: { id: req.params.id },
+        data:  { isDeleted: true },
+      }),
+      prisma.saleHarvest.updateMany({
+        where: { harvestId: req.params.id },
+        data:  { isDeleted: true },
+      }),
+    ]);
 
     return res.status(204).send();
   } catch (error) {

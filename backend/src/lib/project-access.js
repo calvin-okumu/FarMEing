@@ -60,7 +60,7 @@ const ensureOwnerAccess = async (projectId, userId) => {
 const checkProjectAccess = async (projectId, userId, allowedRoles = []) => {
   const access = prisma.projectAccess
     ? await prisma.projectAccess.findFirst({
-        where: { projectId, userId },
+        where: { projectId, userId, isDeleted: false },
         include: { project: { select: PROJECT_SELECT } }
       })
     : null;

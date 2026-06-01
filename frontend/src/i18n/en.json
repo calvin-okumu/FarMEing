@@ -33,7 +33,8 @@
     },
     "today": "Today",
     "earlier": "Earlier",
-    "select_block": "Select Block"
+    "select_block": "Select Block",
+    "not_set": "Not Set"
   },
   "months": {
     "january": "January",
@@ -198,7 +199,12 @@
     "irrigation_alert": "Irrigation Alert",
     "irrigation_alert_body": "Soil moisture in Sector C is trending low. Review pumps and field schedule.",
     "irrigation_alert_warning": "Pending labor payouts are building up. Review operations before the next irrigation cycle.",
-    "run_action": "Run Action"
+    "run_action": "Run Action",
+    "empty_title": "Welcome to FarmTrack",
+    "empty_subtitle": "Create your first project to get started",
+    "receivables_title": "Accounts Receivable",
+    "pending_from_customers": "Pending from {{count}} customers",
+    "is_overdue": "is past due date"
   },
   "timeline": {
     "project_activity": "Farm Activity",
@@ -297,7 +303,14 @@
       "save_local": "Failed to save project locally",
       "delete_local": "Failed to delete project",
       "not_found": "Project not found"
-    }
+    },
+    "empty_budget": "No budget items yet",
+    "empty_expenses": "No expenses recorded",
+    "empty_labor": "No labor entries",
+    "empty_harvest": "No harvest records",
+    "empty_sales": "No sales recorded",
+    "empty_equipment": "No equipment added",
+    "empty_timeline": "No activity yet"
   },
   "budget": {
     "edit_title": "Edit Budget Item",
@@ -442,7 +455,9 @@
       "category": "Category",
       "notes": "Notes"
     },
-    "no_category": "General"
+    "no_category": "General",
+    "expenses_empty": "No expenses linked to this payee",
+    "inventory_empty": "No inventory items linked to this payee"
   },
   "labor": {
     "screen_title": "Worker Activity",
@@ -580,6 +595,16 @@
     "amount_placeholder": "Amount",
     "note_placeholder": "Note (optional)",
     "empty": "No sales records",
+    "due_date_label": "Due Date",
+    "attach_external_invoice": "External Invoice",
+    "attach_invoice_subtitle": "Attach an invoice generated outside the app",
+    "already_linked": "Already Linked",
+    "confirm_payment": "Confirm Payment",
+    "payment_methods": {
+      "cash": "Cash",
+      "bank_transfer": "Bank Transfer",
+      "mobile_money": "Mobile Money"
+    },
     "errors": {
       "weight_required": "Valid weight is required",
       "unit_price_required": "Valid unit price is required",
@@ -723,6 +748,10 @@
       "en": "English",
       "sw": "Kiswahili"
     },
+    "data_management": "Data Management",
+    "full_backup": "Full Backup (Excel)",
+    "full_backup_subtitle": "Export all projects and records as a backup",
+    "exporting": "Exporting data...",
     "sync_status": "Sync Status",
     "sync_states": {
       "idle": "Idle",

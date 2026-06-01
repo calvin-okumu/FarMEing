@@ -1,4 +1,4 @@
-import { getJson, postJson } from './http';
+import { getJson, postJson, patchJson } from './http';
 
 function normalizePhone(phone) {
   if (typeof phone !== 'string') return '';
@@ -26,4 +26,8 @@ export function loginUser(payload) {
 
 export function getCurrentUser() {
   return getJson('me');
+}
+
+export function updateProfile(payload) {
+  return patchJson('me', payload);
 }

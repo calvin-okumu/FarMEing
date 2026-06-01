@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { useTranslation } from 'react-i18next';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../db';
@@ -99,14 +100,15 @@ export default function AddExpenseScreen({ route, navigation }) {
   }, [itemId]);
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled) setPhoto(result.assets[0].uri);
+    } catch (err) {
+      console.warn('Document picking error:', err);
+    }
   };
 
   const takePhoto = async () => {
@@ -308,12 +310,12 @@ export default function AddExpenseScreen({ route, navigation }) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.uploadTitle}>{t('expenses.attach_receipt')}</Text>
-              <Text style={styles.uploadSubtitle}>{t('expenses.attach_receipt_subtitle')}</Text>
+              <Text style={styles.uploadSubtitle}>Upload a receipt (Image or PDF)</Text>
             </View>
           </View>
           <View style={styles.uploadActions}>
             <TouchableOpacity style={styles.uploadButton} onPress={pickImage} activeOpacity={0.88}>
-              <Text style={styles.uploadButtonText}>{t('common.album')}</Text>
+              <Text style={styles.uploadButtonText}>Browse</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.uploadButton} onPress={takePhoto} activeOpacity={0.88}>
               <Text style={styles.uploadButtonText}>{t('common.camera')}</Text>
@@ -323,7 +325,14 @@ export default function AddExpenseScreen({ route, navigation }) {
 
         {photo ? (
           <View style={styles.photoWrap}>
-            <Image source={{ uri: photo }} style={styles.photo} />
+            {photo.toLowerCase().endsWith('.pdf') ? (
+              <View style={[styles.photo, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="document-text" size={40} color={stitchTheme.colors.primary} />
+                <Text style={{ fontSize: 12, color: stitchTheme.colors.textSecondary, marginTop: 4 }}>PDF Document</Text>
+              </View>
+            ) : (
+              <Image source={{ uri: photo }} style={styles.photo} />
+            )}
             <TouchableOpacity style={styles.removePhoto} onPress={() => setPhoto(null)} activeOpacity={0.85}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
